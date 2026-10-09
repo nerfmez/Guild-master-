@@ -1,0 +1,16 @@
+{
+  "name": "little-leaf-guild",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A cozy pixel adventurer guild management game",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.js",
+    "export": "node scripts/export.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

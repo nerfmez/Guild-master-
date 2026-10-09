@@ -1,0 +1,16 @@
+{
+  "standalone": true,
+  "externalRequests": 0,
+  "desktopViewport": [
+    1440,
+    960
+  ],
+  "phoneViewport": [
+    390,
+    844
+  ],
+  "errors": [],
+  "missionCompleted": true,
+  "rewardGold": 1310,
+  "checksum": "ccf63717"
+}

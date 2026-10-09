@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4eddf">
+  <meta name="description" content="กิลด์ใบอ่อน — เกมบริหารกิลด์นักผจญภัยพิกเซลแสนอบอุ่น สร้างบ้านให้เหล่านักผจญภัย จัดทีม และออกสำรวจ">
+  <title>Little Leaf Guild · กิลด์ใบอ่อน</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/leaf.svg">
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="กิลด์ใบอ่อน"><img src="./assets/leaf.svg" alt=""><span><strong>LITTLE LEAF</strong><small>กิลด์ใบอ่อน</small></span></a>
+      <div id="resources" class="resources" aria-label="ทรัพยากรกิลด์"></div>
+      <div class="header-end"><div id="calendar" class="calendar"></div><button class="icon-button" id="settings-button" title="บันทึกและตั้งค่า" aria-label="บันทึกและตั้งค่า">☷</button></div>
+    </header>
+    <main class="game-layout">
+      <section class="world-area" aria-label="พื้นที่กิลด์">
+        <div class="world-toolbar"><div id="chapter-label" class="chapter-label"></div><div class="world-actions"><button id="zoom-out" class="icon-button" aria-label="ซูมออก">−</button><button id="zoom-in" class="icon-button" aria-label="ซูมเข้า">+</button><button id="home-view" class="icon-button" aria-label="กลับมุมมองกิลด์">⌂</button></div></div>
+        <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์ กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="build-hint" class="build-hint" hidden></div><div id="objective" class="objective"></div><div class="scene-caption"><span class="leaf-dot"></span> A little home for big adventures</div></div>
+        <div class="mission-heading"><span>ทีมที่ออกเดินทาง</span><div class="time-controls" aria-label="ควบคุมเวลา"><button id="pause-button" aria-label="หยุดเวลา">Ⅱ</button><button data-speed="1" class="active">×1</button><button data-speed="2">×2</button><button data-speed="4">×4</button></div></div>
+        <div id="mission-strip" class="mission-strip"></div>
+        <nav class="bottom-nav" aria-label="เมนูกิลด์"><button data-tab="quests" class="active"><span>▤</span>คำร้อง</button><button data-tab="members"><span>♟</span>สมาชิก</button><button data-tab="build"><span>⌂</span>สร้างกิลด์</button><button data-tab="workshop"><span>⚒</span>โรงซ่อม</button><button data-tab="journal"><span>✦</span>สมุดกิลด์</button></nav>
+      </section>
+      <aside class="notebook" aria-label="รายละเอียดบริหารกิลด์"><div class="notebook-top"><div><small>THE GUILD JOURNAL</small><h1 id="panel-heading">กระดานคำร้อง</h1></div><span class="notebook-mark">❦</span></div><div id="panel-content" class="panel-content"></div><div class="notebook-foot"><span id="save-status">บันทึกอัตโนมัติ</span><span>✦</span></div></aside>
+    </main>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+    <dialog id="settings-dialog"><form method="dialog"><button class="close-dialog" aria-label="ปิด">×</button></form><div id="settings-content"></div></dialog>
+    <dialog id="confirm-dialog"><h2 id="confirm-title"></h2><p id="confirm-message"></p><div class="dialog-actions"><button id="confirm-cancel" class="secondary">ยกเลิก</button><button id="confirm-ok" class="primary">ยืนยัน</button></div></dialog>
+    <input type="file" id="import-file" accept="application/json,.json" hidden>
+    <noscript>เกมนี้ต้องเปิด JavaScript เพื่อเล่น</noscript>
+  </div>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
