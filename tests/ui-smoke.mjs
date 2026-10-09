@@ -1,6 +1,6 @@
 /** Optional browser smoke test. Run with node tests/ui-smoke.mjs; excluded from npm test.
  * Set PLAYWRIGHT_MODULE / BROWSER_EXECUTABLE when using another Playwright installation.
- * Uses the real UI and read-only diagnostics. Virtual time advances the normal game loop.
+ * Uses the real UI and read-only diagnostics. The real game loop advances missions while the menus are open.
  */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -12,26 +12,27 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/opt/codex/r
 const root = fileURLToPath(new URL('../', import.meta.url));
 const port = Number(process.env.UI_SMOKE_PORT || 5182);
 const server = spawn(process.execPath, ['scripts/serve.mjs'], { cwd: root, env: { ...process.env, PORT: String(port) }, stdio: 'ignore' });
-const browser = await chromium.launch({ headless: true, executablePath: process.env.BROWSER_EXECUTABLE || '/root/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell' });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.BROWSER_EXECUTABLE || '/root/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.clock.install();
+
   for (let attempt = 0; attempt < 20; attempt++) {
     try { await page.goto(`http://127.0.0.1:${port}`); break; }
     catch (error) { if (attempt === 19) throw error; await new Promise(resolve => setTimeout(resolve, 100)); }
   }
-  await page.waitForFunction(() => Boolean(window.guildDebug));
+  await page.waitForFunction(() => Boolean(window.guildDebug?.getRendererInfo()?.ready));
   await page.evaluate(() => document.fonts.ready);
   const state = () => page.evaluate(() => window.guildDebug.getState());
-  const click = selector => page.locator(selector).first().click();
-  const nav = tab => click(`.bottom-nav [data-tab="${tab}"]`);
+  const click = async selector => {if(selector==='#settings-button'&&!(await page.locator('#management-dialog').evaluate(e=>e.open)))await page.locator('#menu-button').click();if(selector==='#pause-button'&&(await page.locator('#management-dialog').evaluate(e=>e.open)))await page.locator('#menu-close').click();await page.locator(selector).first().click();};
+  const nav = async tab => {if(!(await page.locator('#management-dialog').evaluate(e=>e.open)))await click('#menu-button');await click(`.bottom-nav [data-tab="${tab}"]`);};
   const sceneClick = async (x, y) => {
     const point = await page.evaluate(({ x, y }) => window.guildDebug.getScenePoint(x + 0.5, y + 0.5), { x, y });
     await page.mouse.click(point.x, point.y);
   };
 
+  await nav('quests');
   await click('[data-quest="patrol"]');
   await click('[data-pick-member="mira"]');
   assert.equal(await page.locator('[data-send-mission]').isDisabled(), true, 'Incomplete team cannot leave');
@@ -39,11 +40,17 @@ try {
   await click('[data-pick-member="finn"]');
   await click('[data-pick-member="lune"]');
   await click('[data-send-mission]');
+  await page.locator('#menu-close').click();
   await click('[data-speed="4"]');
-  await page.clock.runFor(6000);
+  await nav('quests');
+  await click('[data-open-mission]');
+  await page.locator('[data-event-choice="help"]').waitFor({state:'visible'});
+  console.log('Mission decision visible');
   assert.equal(await page.locator('[data-event-choice="help"]').isVisible(), true, 'Journey event appears');
   await click('[data-event-choice="help"]');
-  await page.clock.runFor(10000);
+  if(process.env.UI_SMOKE_EVIDENCE)await page.screenshot({path:root+'docs/images/mission-game.png'});
+  await page.waitForFunction(()=>window.guildDebug.getState().missions.at(-1)?.status==='completed');
+  console.log('Mission completed');
   const completed = await state();
   assert.equal(completed.missions.at(-1).status, 'completed');
   assert.equal(completed.missions.at(-1).event.choiceId, 'help');
@@ -93,7 +100,7 @@ try {
   assert.equal(imported.settings.speed, 2);
   assert.equal(imported.settings.sound, false);
   assert.equal(await page.locator('[data-speed="2"]').getAttribute('aria-pressed'), 'true', 'Import applies saved speed to the UI');
-  await page.clock.runFor(1000);
+  await page.waitForFunction(elapsed=>window.guildDebug.getState().elapsed>elapsed+1,imported.elapsed,{timeout:15000});
   assert.ok((await state()).elapsed > imported.elapsed + 1, 'Imported game actually advances at the saved speed');
   await click('#pause-button');
 
@@ -102,13 +109,17 @@ try {
   await page.locator('#settings-dialog [aria-label="ปิด"]').click();
   const saved = await state();
   await page.reload();
-  await page.waitForFunction(() => Boolean(window.guildDebug));
+  await page.waitForFunction(() => Boolean(window.guildDebug?.getRendererInfo()?.ready));
   await page.evaluate(() => document.fonts.ready);
   assert.equal((await state()).gold, saved.gold, 'Reload does not repeat rewards');
   assert.deepEqual((await state()).completedQuests, saved.completedQuests);
-  await page.clock.resume();
+
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(150);
+  const renderInfo=await page.evaluate(()=>window.guildDebug.getRendererInfo());
+  assert.equal(renderInfo.renderer,'WebGL');
+  assert.deepEqual(renderInfo.viewport,[390,844]);
+  assert.equal(await page.locator('#management-dialog').evaluate(e=>e.open),false,'Menus are closed on the scene');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 390, 'Phone layout has no horizontal overflow');
   assert.deepEqual(errors, [], 'No uncaught JavaScript errors');
 

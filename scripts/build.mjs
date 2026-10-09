@@ -1,5 +1,10 @@
-import {cp,mkdir,rm} from 'node:fs/promises';
+import {cp,mkdir,rm,readFile,writeFile} from 'node:fs/promises';
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist',{recursive:true});
 for(const file of ['index.html','src','assets'])await cp(file,`dist/${file}`,{recursive:true});
-console.log('Built dist/ — static, no external runtime dependencies.');
+await mkdir('dist/vendor',{recursive:true});
+await cp('node_modules/phaser/dist/phaser.min.js','dist/vendor/phaser.min.js');
+await cp('node_modules/phaser/LICENSE.md','dist/vendor/phaser-MIT.txt');
+const html=(await readFile('dist/index.html','utf8')).replace('./node_modules/phaser/dist/phaser.min.js','./vendor/phaser.min.js');
+await writeFile('dist/index.html',html);
+console.log('Built dist/ with local Phaser runtime — no CDN dependency.');

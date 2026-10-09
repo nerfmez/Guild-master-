@@ -1,5 +1,8 @@
 {
   "standalone": true,
+  "engine": "Phaser",
+  "version": "3.90.0",
+  "renderer": "WebGL",
   "externalRequests": 0,
   "desktopViewport": [
     1440,
@@ -9,8 +12,39 @@
     390,
     844
   ],
+  "landscapeViewport": [
+    844,
+    390
+  ],
+  "offlineFileOpened": true,
+  "initialMenuClosed": true,
+  "fullViewport": true,
+  "zoom": true,
   "errors": [],
-  "missionCompleted": true,
-  "rewardGold": 1310,
-  "checksum": "ccf63717"
+  "landscape": {
+    "engine": "Phaser",
+    "version": "3.90.0",
+    "renderer": "WebGL",
+    "ready": true,
+    "viewport": [
+      844,
+      390
+    ],
+    "zoom": 1.15,
+    "roomCount": 6,
+    "camera": {
+      "width": 844,
+      "height": 390,
+      "scrollX": 16,
+      "scrollY": 65,
+      "focus": [
+        438,
+        260
+      ]
+    },
+    "canvas": [
+      844,
+      390
+    ]
+  }
 }
