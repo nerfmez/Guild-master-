@@ -2,7 +2,7 @@
   "standalone": true,
   "engine": "Phaser",
   "version": "3.90.0",
-  "renderer": "WebGL",
+  "renderer": "WebGL / Canvas fallback",
   "projection": "isometric 2:1",
   "desktopViewport": [
     1440,
@@ -12,9 +12,9 @@
     390,
     844
   ],
-  "deliveredFile": "play-rooms-49608b46.html",
-  "sha256": "49608b4692253682b88640f3e4abb5c4b008f3318797e53cb68223f86be763d8",
-  "bytes": 856307,
+  "deliveredFile": "play-android-fixed-3fe732e0.html",
+  "sha256": "3fe732e08fb5a31dc204944718877b7e409decb0933dc152367dad708cba8b6b",
+  "bytes": 859311,
   "exactDeliveryOpened": true,
   "emptyStart": true,
   "customRoomSize": true,
@@ -27,5 +27,30 @@
   "saveReload": true,
   "offline": true,
   "externalRequests": 0,
-  "errors": []
+  "errors": [],
+  "bootChecks": [
+    {
+      "mode": "no-webgl",
+      "initialRenderer": "Canvas",
+      "renderedScene": true,
+      "roomPlacement": true,
+      "zoom": true,
+      "mobile": true,
+      "saveReload": true,
+      "externalRequests": 0,
+      "errors": []
+    },
+    {
+      "mode": "webgl-loss",
+      "initialRenderer": "WebGL",
+      "renderedScene": true,
+      "roomPlacement": true,
+      "zoom": true,
+      "mobile": true,
+      "saveReload": true,
+      "externalRequests": 0,
+      "errors": []
+    }
+  ],
+  "actualAndroidDeviceTested": false
 }

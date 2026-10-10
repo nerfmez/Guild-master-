@@ -11,7 +11,7 @@ npm ci
 npm start
 ```
 
-เปิด `http://localhost:5173` ใช้ Node.js 20 ขึ้นไป ใช้ Phaser 3.90.0 ที่ติดตั้งไว้ในโครงการ ไม่โหลดจาก CDN ระหว่างเล่น
+เปิด `http://localhost:5173` ใช้ Node.js 20 ขึ้นไป ใช้ Phaser 3.90.0 ที่ติดตั้งไว้ในโครงการ ไม่โหลดจาก CDN ระหว่างเล่น ใช้ WebGL เมื่อเปิดได้ และใช้ตัววาด Canvas ของ Phaser เมื่อ WebGL เปิดไม่ได้ ไฟล์ Android ที่เปิดผ่าน content:// ใช้ตัววาด Canvas โดยตรง
 
 ## ระบบที่เล่นได้ในเวอร์ชันแรก
 
@@ -56,9 +56,12 @@ npm run export
 ```bash
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs BROWSER_EXECUTABLE=/path/to/chromium node tests/ui-smoke.mjs
 node tests/rooms-smoke.mjs
+node tests/boot-smoke.mjs
 ```
 
 ค่าเริ่มต้นของ browser smoke เป็นพาธ runtime ของสภาพแวดล้อมผู้พัฒนา หากรันที่อื่นให้ระบุสองตัวแปรข้างต้น ตรวจการจัดทีม เหตุการณ์ รางวัล คราฟต์ อัปเกรด ย้ายของ และเซฟ/โหลด ส่วน rooms-smoke ตรวจไฟล์ส่งจริง การสร้างห้อง หมุน/ย้ายพร้อมของ ต่อเติมและล็อกตามกิลด์ มือถือ 390×844 เซฟ/โหลด และเปิด offline
+
+การตรวจ boot-smoke เปิดไฟล์ส่งจริงโดยปิด WebGL และจำลอง GPU context หายกลางเกม ตรวจว่าฉากกลับมา วางห้อง ซูม และบันทึก/โหลดได้ โดยรักษาความคืบหน้า ใช้ Chromium และ viewport มือถือจำลอง ยังไม่ได้ทดสอบ Samsung Internet บนอุปกรณ์จริง
 
 ## ขอบเขตปัจจุบัน
 

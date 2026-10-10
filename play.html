@@ -26,12 +26,14 @@ dialog{border:2px solid #937443;border-radius:7px;background:var(--paper);color:
 .menu-journeys{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}.menu-journeys .journey-card.empty{display:none}.menu-journeys .journey-card{flex:none;min-height:77px}
 
 .room-size{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}.room-size label{font-size:11px;color:var(--muted)}.room-size input{display:block;width:100%;margin-top:5px;border:1px solid var(--line);border-radius:5px;background:var(--paper);padding:9px;color:var(--ink)}.room-catalog{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 20px}.room-catalog button{display:flex;align-items:center;gap:8px;font-size:11px;text-align:left}.room-catalog span{width:17px;height:17px;flex:none;border:1px solid #a78c68;border-radius:3px}.area-stages{margin:12px 0;border:1px solid var(--line);border-radius:5px;overflow:hidden}.area-stage{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;font-size:11px;background:#f2eadb;border-bottom:1px solid var(--line)}.area-stage:last-child{border-bottom:0}.area-stage small{display:block;font-size:10px;color:var(--muted);margin-top:2px}.area-stage b{font-size:10px;font-weight:500;color:var(--muted)}.area-stage.current{background:#e7eddb}.area-stage.current b{color:#69815c}
+
+.scene-status{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);max-width:calc(100% - 40px);padding:18px 24px;border:1px solid #cabb9a;border-radius:6px;background:#fff6e4;color:#655541;text-align:center;font-size:13px;box-shadow:0 5px 18px #55412c20}.scene-status[hidden]{display:none}.scene-status button{display:block;margin:12px auto 0}.scene-status button[hidden]{display:none}
 </style>
 </head>
 <body>
  <div id="app">
   <main class="world-area" aria-label="พื้นที่กิลด์">
-   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas></div>
+   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์…</span><button hidden>เปิดฉากอีกครั้ง</button></div></div>
    <header class="topbar">
     <div class="brand"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA1NiI+PHBhdGggZmlsbD0iI2NlODU3YSIgZD0iTTQgMmg0MHYzOEwyNCA1NCA0IDQweiIvPjxwYXRoIGZpbGw9IiNmZmY0ZGYiIGQ9Ik0yMiA5aDR2MTBoN3Y0aC03djE3aC00VjIzaC03di00aDd6TTExIDI2aDd2NGg0djRoLTd2LTRoLTR6bTI2IDBoLTd2NGgtNHY0aDd2LTRoNHoiLz48L3N2Zz4K" alt=""><div><strong>กิลด์ใบอ่อน</strong><small>LITTLE LEAF GUILD</small></div></div>
     <div id="resources" class="resources" aria-label="ทรัพยากรกิลด์"></div>
@@ -2717,19 +2719,37 @@ class GuildRenderer {
   this.canvas=canvas;this.onSelect=onSelect;this.state={facilities:[],members:[],missions:[]};
   this.zoom=1;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.signature='';this.buildType=null;this.moveId=null;this.rotation=0;this.siteProps=[];this.roomMode=null;this.roomMoveId=null;
   this.pointers=new Map();this.elapsed=0;this.ready=false;this.frozen=new URLSearchParams(location.search).has('still');
-  const owner=this;
-  class GuildScene extends Phaser.Scene{
-   constructor(){super('guild');}
-   create(){owner.scene=this;owner.setup();}
-   update(_time,delta){owner.update(Math.min(.05,delta/1000));}
-  }
   const box=canvas.parentElement.getBoundingClientRect();
   this.width=Math.round(box.width);this.height=Math.round(box.height);
-  this.game=new Phaser.Game({type:Phaser.WEBGL,canvas,parent:canvas.parentElement,width:this.width,height:this.height,
+  // Android content providers can restrict GPU contexts for downloaded files.
+  let context=null;
+  if(location.protocol!=='content:'){try{context=canvas.getContext('webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true})||canvas.getContext('experimental-webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true});if(context?.isContextLost())context=null;}catch{}}
+  this.start(context?Phaser.WEBGL:Phaser.CANVAS,context);
+ }
+ showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
+ start(type,context=null){
+  const owner=this,canvas=this.canvas;this.renderType=type;this.showStatus('กำลังเปิดกิลด์…');
+  class GuildScene extends Phaser.Scene{
+   constructor(){super('guild');}
+   create(){owner.scene=this;try{owner.setup();}catch(error){owner.ready=false;owner.recoverCanvas(error);}}
+   update(_time,delta){owner.update(Math.min(.05,delta/1000));}
+  }
+  this.bootTimer=setTimeout(()=>{if(!this.ready)this.recoverCanvas();},10000);
+  try{this.game=new Phaser.Game({type,context,canvas,parent:canvas.parentElement,width:this.width,height:this.height,
    backgroundColor:'#9cac7d',pixelArt:true,roundPixels:true,antialias:false,transparent:false,
    scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.NO_CENTER},
    fps:{target:30},input:{activePointers:3,keyboard:false},scene:GuildScene,banner:false,
-   render:{preserveDrawingBuffer:true,antialias:false,roundPixels:true}});
+   render:{preserveDrawingBuffer:true,antialias:false,roundPixels:true}});}catch(error){queueMicrotask(()=>this.recoverCanvas(error));}
+ }
+ recoverCanvas(error,force=false){
+  clearTimeout(this.bootTimer);
+  if(error)console.warn('Guild scene startup:',error.message||error);
+  if(this.renderType===Phaser.CANVAS&&!force){this.ready=false;this.showStatus('ฉากยังเปิดไม่สำเร็จ ลองเปิดฉากอีกครั้ง',true);return;}
+  const canvas=this.canvas.cloneNode(false);this.canvas.replaceWith(canvas);
+  // A failed boot has no next frame to process Phaser's deferred destruction.
+  if(this.game){this.game.destroy(false);this.game.runDestroy();}
+  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.pointers.clear();this.drag=null;this.pinch=null;
+  this.start(Phaser.CANVAS);
  }
  texture(key,canvas){const t=this.scene.textures;if(t.exists(key))t.remove(key);t.addCanvas(key,canvas).setFilter(Phaser.Textures.FilterMode.NEAREST);return key;}
  put(key,sprite,x,y,depth=y){if(!this.scene.textures.exists(key))this.texture(key,sprite.canvas);return this.scene.add.image(x-sprite.footX,y-sprite.footY,key).setOrigin(0).setDepth(depth);}
@@ -2742,7 +2762,9 @@ class GuildRenderer {
   this.groundImage=this.scene.add.image(0,0,this.texture('ground',base.canvas)).setOrigin(0).setDepth(-9999);
   this.decorate();this.ghost=this.scene.add.graphics().setDepth(9999);this.bindInput();
   this.game.scale.on('resize',size=>{this.width=size.width;this.height=size.height;this.applyView();});
-  this.center();this.rebuild();this.syncActors();this.canvas.dataset.renderer='Phaser WebGL';
+  this.center();this.rebuild();this.syncActors();this.canvas.dataset.renderer='Phaser '+(this.renderType===Phaser.WEBGL?'WebGL':'Canvas');
+  clearTimeout(this.bootTimer);const status=document.getElementById('scene-status');if(status)status.hidden=true;
+  if(this.renderType===Phaser.WEBGL)this.canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();queueMicrotask(()=>this.recoverCanvas());},{once:true});
   this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
  }
  decorate(){
@@ -2850,8 +2872,8 @@ class GuildRenderer {
   const good=this.ghostCheck.ok,color=good?0x92c583:0xdb8468;g.fillStyle(color,.45);g.fillPoints(polygon,true);g.lineStyle(2,color,1);g.strokePoints(polygon,true);if(this.roomMode){const r=this.rotation,p=r===0?gridPoint(x+d.w/2,y+d.h):r===1?gridPoint(x,y+d.h/2):r===2?gridPoint(x+d.w/2,y):gridPoint(x+d.w,y+d.h/2);g.fillStyle(0xffefd0,1);g.fillCircle(p.x,p.y,4);}
  }
 
- getInfo(){return{engine:'Phaser',version:Phaser.VERSION,renderer:this.game.renderer.type===Phaser.WEBGL?'WebGL':'unknown',ready:this.ready,viewport:[this.width,this.height],zoom:this.camera?.zoom,projection:'isometric 2:1',roomCount:(this.state.rooms||[]).length,facilityCount:this.state.facilities.length,building:{...this.state.building},drawnParts:this.rooms.length,camera:{width:this.camera?.width,height:this.camera?.height,scrollX:this.camera?.scrollX,scrollY:this.camera?.scrollY,focus:[this.focusX,this.focusY]},canvas:[this.canvas.width,this.canvas.height]};}
- destroy(){this.game.destroy(false);}
+ getInfo(){return{engine:'Phaser',version:Phaser.VERSION,renderer:this.game?.renderer?.type===Phaser.WEBGL?'WebGL':this.game?.renderer?.type===Phaser.CANVAS?'Canvas':'starting',ready:this.ready,viewport:[this.width,this.height],zoom:this.camera?.zoom,projection:'isometric 2:1',roomCount:(this.state.rooms||[]).length,facilityCount:this.state.facilities.length,building:{...this.state.building},drawnParts:this.rooms.length,camera:{width:this.camera?.width,height:this.camera?.height,scrollX:this.camera?.scrollX,scrollY:this.camera?.scrollY,focus:[this.focusX,this.focusY]},canvas:[this.canvas.width,this.canvas.height]};}
+ destroy(){clearTimeout(this.bootTimer);this.game?.destroy(false);}
 }
 
 return {GuildRenderer};
@@ -2873,7 +2895,7 @@ state.settings??={};
 state.settings.paused=false;
 let ui={tab:'home',questId:null,memberId:null,facilityId:null,missionId:null,region:'meadow',selected:new Set(),policy:'balanced',buildType:null,moveId:null,roomPlacement:null,moveRoomId:null,partitionId:null,roomWidth:3,roomHeight:3,zoom:1,paused:false,speed:state.settings.speed||1,sound:!!state.settings.sound,tutorial:!state.completedQuests?.patrol};
 let renderer;
-try{renderer=new GuildRenderer($('guild-world'),onSceneSelect);renderer.setState(state);}catch(error){console.error(error);toast('ฉากเปิดไม่ได้ กรุณารีเฟรชเกม',true);}
+try{renderer=new GuildRenderer($('guild-world'),onSceneSelect);renderer.setState(state);}catch(error){console.error(error);$('scene-status').querySelector('span').textContent='ฉากเปิดไม่ได้ กรุณาเปิดไฟล์ใหม่ด้วยเบราว์เซอร์';}
 let audioContext;
 function playChime(){if(!ui.sound)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();audioContext.resume();const now=audioContext.currentTime;for(const [i,f] of [523.25,659.25,783.99].entries()){const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sine';osc.frequency.value=f;gain.gain.setValueAtTime(0,now+i*.065);gain.gain.linearRampToValueAtTime(.035,now+i*.065+.012);gain.gain.exponentialRampToValueAtTime(.001,now+i*.065+.23);osc.connect(gain);gain.connect(audioContext.destination);osc.start(now+i*.065);osc.stop(now+i*.065+.24);}}catch{}}
 function toast(text,error=false){const node=document.createElement('div');node.className='toast'+(error?' error':' success');node.textContent=text;$('toasts').appendChild(node);setTimeout(()=>node.remove(),5500);while($('toasts').children.length>3)$('toasts').firstChild.remove();}
@@ -2949,7 +2971,7 @@ $('zoom-in').addEventListener('click',()=>{ui.zoom=Math.min(2.4,(renderer?.zoom|
 document.addEventListener('input',event=>{const d=event.target.dataset;if(d.roomDimension){ui[d.roomDimension==='width'?'roomWidth':'roomHeight']=Number(event.target.value);if($('room-estimate'))$('room-estimate').textContent=moneyCost(getPartitionCost(ui.roomWidth,ui.roomHeight));}if(d.partitionSize)ui[d.partitionSize==='width'?'roomDraftW':'roomDraftH']=Number(event.target.value);});
 document.addEventListener('keydown',event=>{if(event.target.matches('input,select,textarea,button')||document.querySelector('dialog[open]'))return;if((event.key==='Enter'||event.key===' ')&&event.target.matches('[role="button"]')){event.preventDefault();event.target.click();return;}if(event.code==='KeyR'&&(ui.buildType||ui.moveId||ui.roomPlacement||ui.moveRoomId)){event.preventDefault();renderer?.rotatePlacement();syncHUD();return;}if(event.code==='Space'){event.preventDefault();ui.paused=!ui.paused;syncHUD();}if(['1','2','4'].includes(event.key)){ui.speed=Number(event.key);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();}if(event.key==='Escape'){cancelBuild();closeMenu();}});
 let lastFrame=performance.now(),uiTimer=0,saveTimer=0,seenLog=state.log[0];
-function frame(now){state.settings.paused=ui.paused;const dt=Math.max(0,Math.min((now-lastFrame)/1000,.25));lastFrame=now;if(!document.hidden&&!ui.paused&&!$('confirm-dialog').open&&!$('settings-dialog').open){tick(state,dt*ui.speed);renderer?.setState(state);uiTimer+=dt;saveTimer+=dt;if(state.log[0]!==seenLog){const latest=state.log[0];if(latest?.type!=='daily'){toast(latest.text);playChime();}seenLog=state.log[0];}if(uiTimer>.9){syncHUD();if(!document.activeElement?.matches('input,select,textarea')&&(ui.missionId||ui.questId||ui.tab==='journal'||ui.tab==='members'||ui.tab==='build'||ui.tab==='workshop'))syncUI();uiTimer=0;}if(saveTimer>12){save();saveTimer=0;}}if(ui.missionId)drawMissionScene();requestAnimationFrame(frame);}
+function frame(now){state.settings.paused=ui.paused;const dt=Math.max(0,Math.min((now-lastFrame)/1000,.25));lastFrame=now;if(renderer?.ready&&!document.hidden&&!ui.paused&&!$('confirm-dialog').open&&!$('settings-dialog').open){tick(state,dt*ui.speed);renderer?.setState(state);uiTimer+=dt;saveTimer+=dt;if(state.log[0]!==seenLog){const latest=state.log[0];if(latest?.type!=='daily'){toast(latest.text);playChime();}seenLog=state.log[0];}if(uiTimer>.9){syncHUD();if(!document.activeElement?.matches('input,select,textarea')&&(ui.missionId||ui.questId||ui.tab==='journal'||ui.tab==='members'||ui.tab==='build'||ui.tab==='workshop'))syncUI();uiTimer=0;}if(saveTimer>12){save();saveTimer=0;}}if(ui.missionId)drawMissionScene();requestAnimationFrame(frame);}
 function drawMissionScene(){const canvas=$('mission-scene');if(!canvas||!ui.missionId)return;const mission=state.missions.find(m=>m.id===ui.missionId);const quest=QUESTS.find(q=>q.id===mission?.questId);if(mission&&quest)drawBattleScene(canvas,mission,quest,state,{paused:ui.paused||document.hidden||!$('management-dialog').open,time:performance.now()/1000});}
 
 syncUI();save();requestAnimationFrame(frame);if(loadNotice)setTimeout(()=>toast(loadNotice,true),800);document.addEventListener('visibilitychange',()=>{lastFrame=performance.now();if(document.hidden)save();});window.addEventListener('pagehide',()=>save());

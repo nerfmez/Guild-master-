@@ -4,7 +4,7 @@ import {writeFile,readFile,copyFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
 const root=fileURLToPath(new URL('../',import.meta.url)).replace(/\/$/,'');
-const bytes=await readFile(root+'/play.html'),sha256=createHash('sha256').update(bytes).digest('hex'),file='play-rooms-'+sha256.slice(0,8)+'.html';
+const bytes=await readFile(root+'/play.html'),sha256=createHash('sha256').update(bytes).digest('hex'),file=(process.env.DELIVERY_PREFIX||'play-rooms-')+sha256.slice(0,8)+'.html';
 await copyFile(root+'/play.html',root+'/'+file);
 const browser=await chromium.launch({headless:true,executablePath:process.env.BROWSER_EXECUTABLE||'/root/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{

@@ -10,19 +10,37 @@ export class GuildRenderer {
   this.canvas=canvas;this.onSelect=onSelect;this.state={facilities:[],members:[],missions:[]};
   this.zoom=1;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.signature='';this.buildType=null;this.moveId=null;this.rotation=0;this.siteProps=[];this.roomMode=null;this.roomMoveId=null;
   this.pointers=new Map();this.elapsed=0;this.ready=false;this.frozen=new URLSearchParams(location.search).has('still');
-  const owner=this;
-  class GuildScene extends Phaser.Scene{
-   constructor(){super('guild');}
-   create(){owner.scene=this;owner.setup();}
-   update(_time,delta){owner.update(Math.min(.05,delta/1000));}
-  }
   const box=canvas.parentElement.getBoundingClientRect();
   this.width=Math.round(box.width);this.height=Math.round(box.height);
-  this.game=new Phaser.Game({type:Phaser.WEBGL,canvas,parent:canvas.parentElement,width:this.width,height:this.height,
+  // Android content providers can restrict GPU contexts for downloaded files.
+  let context=null;
+  if(location.protocol!=='content:'){try{context=canvas.getContext('webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true})||canvas.getContext('experimental-webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true});if(context?.isContextLost())context=null;}catch{}}
+  this.start(context?Phaser.WEBGL:Phaser.CANVAS,context);
+ }
+ showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
+ start(type,context=null){
+  const owner=this,canvas=this.canvas;this.renderType=type;this.showStatus('กำลังเปิดกิลด์…');
+  class GuildScene extends Phaser.Scene{
+   constructor(){super('guild');}
+   create(){owner.scene=this;try{owner.setup();}catch(error){owner.ready=false;owner.recoverCanvas(error);}}
+   update(_time,delta){owner.update(Math.min(.05,delta/1000));}
+  }
+  this.bootTimer=setTimeout(()=>{if(!this.ready)this.recoverCanvas();},10000);
+  try{this.game=new Phaser.Game({type,context,canvas,parent:canvas.parentElement,width:this.width,height:this.height,
    backgroundColor:'#9cac7d',pixelArt:true,roundPixels:true,antialias:false,transparent:false,
    scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.NO_CENTER},
    fps:{target:30},input:{activePointers:3,keyboard:false},scene:GuildScene,banner:false,
-   render:{preserveDrawingBuffer:true,antialias:false,roundPixels:true}});
+   render:{preserveDrawingBuffer:true,antialias:false,roundPixels:true}});}catch(error){queueMicrotask(()=>this.recoverCanvas(error));}
+ }
+ recoverCanvas(error,force=false){
+  clearTimeout(this.bootTimer);
+  if(error)console.warn('Guild scene startup:',error.message||error);
+  if(this.renderType===Phaser.CANVAS&&!force){this.ready=false;this.showStatus('ฉากยังเปิดไม่สำเร็จ ลองเปิดฉากอีกครั้ง',true);return;}
+  const canvas=this.canvas.cloneNode(false);this.canvas.replaceWith(canvas);
+  // A failed boot has no next frame to process Phaser's deferred destruction.
+  if(this.game){this.game.destroy(false);this.game.runDestroy();}
+  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.pointers.clear();this.drag=null;this.pinch=null;
+  this.start(Phaser.CANVAS);
  }
  texture(key,canvas){const t=this.scene.textures;if(t.exists(key))t.remove(key);t.addCanvas(key,canvas).setFilter(Phaser.Textures.FilterMode.NEAREST);return key;}
  put(key,sprite,x,y,depth=y){if(!this.scene.textures.exists(key))this.texture(key,sprite.canvas);return this.scene.add.image(x-sprite.footX,y-sprite.footY,key).setOrigin(0).setDepth(depth);}
@@ -35,7 +53,9 @@ export class GuildRenderer {
   this.groundImage=this.scene.add.image(0,0,this.texture('ground',base.canvas)).setOrigin(0).setDepth(-9999);
   this.decorate();this.ghost=this.scene.add.graphics().setDepth(9999);this.bindInput();
   this.game.scale.on('resize',size=>{this.width=size.width;this.height=size.height;this.applyView();});
-  this.center();this.rebuild();this.syncActors();this.canvas.dataset.renderer='Phaser WebGL';
+  this.center();this.rebuild();this.syncActors();this.canvas.dataset.renderer='Phaser '+(this.renderType===Phaser.WEBGL?'WebGL':'Canvas');
+  clearTimeout(this.bootTimer);const status=document.getElementById('scene-status');if(status)status.hidden=true;
+  if(this.renderType===Phaser.WEBGL)this.canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();queueMicrotask(()=>this.recoverCanvas());},{once:true});
   this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
  }
  decorate(){
@@ -143,6 +163,6 @@ export class GuildRenderer {
   const good=this.ghostCheck.ok,color=good?0x92c583:0xdb8468;g.fillStyle(color,.45);g.fillPoints(polygon,true);g.lineStyle(2,color,1);g.strokePoints(polygon,true);if(this.roomMode){const r=this.rotation,p=r===0?gridPoint(x+d.w/2,y+d.h):r===1?gridPoint(x,y+d.h/2):r===2?gridPoint(x+d.w/2,y):gridPoint(x+d.w,y+d.h/2);g.fillStyle(0xffefd0,1);g.fillCircle(p.x,p.y,4);}
  }
 
- getInfo(){return{engine:'Phaser',version:Phaser.VERSION,renderer:this.game.renderer.type===Phaser.WEBGL?'WebGL':'unknown',ready:this.ready,viewport:[this.width,this.height],zoom:this.camera?.zoom,projection:'isometric 2:1',roomCount:(this.state.rooms||[]).length,facilityCount:this.state.facilities.length,building:{...this.state.building},drawnParts:this.rooms.length,camera:{width:this.camera?.width,height:this.camera?.height,scrollX:this.camera?.scrollX,scrollY:this.camera?.scrollY,focus:[this.focusX,this.focusY]},canvas:[this.canvas.width,this.canvas.height]};}
- destroy(){this.game.destroy(false);}
+ getInfo(){return{engine:'Phaser',version:Phaser.VERSION,renderer:this.game?.renderer?.type===Phaser.WEBGL?'WebGL':this.game?.renderer?.type===Phaser.CANVAS?'Canvas':'starting',ready:this.ready,viewport:[this.width,this.height],zoom:this.camera?.zoom,projection:'isometric 2:1',roomCount:(this.state.rooms||[]).length,facilityCount:this.state.facilities.length,building:{...this.state.building},drawnParts:this.rooms.length,camera:{width:this.camera?.width,height:this.camera?.height,scrollX:this.camera?.scrollX,scrollY:this.camera?.scrollY,focus:[this.focusX,this.focusY]},canvas:[this.canvas.width,this.canvas.height]};}
+ destroy(){clearTimeout(this.bootTimer);this.game?.destroy(false);}
 }

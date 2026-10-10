@@ -8,6 +8,8 @@
 
 `node tests/rooms-smoke.mjs` ผ่านบนไฟล์ส่งจริง: เริ่ม 0 ห้อง สร้างห้อง 3×3 หมุนห้องพร้อมเตียง ต่อเติมขั้น 1 และล็อกขั้น 2 ที่กิลด์ F ย้ายห้องพร้อมเตียง สร้างห้อง 3×2 และหมุนด้วยปุ่มบนมือถือ 390×844 บันทึก/โหลดห้องสองห้อง เปิดแบบ file:// offline โดยไม่ใช้ HTTP/HTTPS และไม่มี uncaught JavaScript errors รายละเอียดอยู่ใน [rooms-check.json](rooms-check.json)
 
+`node tests/boot-smoke.mjs` ผ่านบนไฟล์ส่งจริง: เปิดโดยปิด WebGL ใช้ Canvas ได้; เปิดแบบ WebGL แล้วทำให้ GPU context หาย สลับเป็น Canvas และรักษาความคืบหน้าครบ ทั้งสองแบบตรวจว่ามีภาพฉากจริง วางห้อง ซูม เปลี่ยน viewport เป็น 390×844 และเซฟ/โหลดได้ ไม่มี HTTP/HTTPS requests หรือ uncaught errors รายละเอียดใน [boot-check.json](boot-check.json) การตรวจนี้ใช้ Chromium ไม่ใช่ Samsung Internet หรือ content:// บนเครื่อง Android จริง
+
 `npm run build` และ `npm run export` ผ่าน ไฟล์เดี่ยวรวม Phaser ฟอนต์ไทยและใบอนุญาต ข้อมูลไฟล์ปัจจุบันอยู่ใน [standalone-check.json](standalone-check.json)
 
 การจัดทีม เหตุการณ์ รางวัล คราฟต์/ใส่ของ ราคายืนยันอัปเกรด และนำเข้าเซฟผ่าน browser smoke ในเวอร์ชันจัดของก่อนหน้า ไม่ได้รันทดสอบลำดับภารกิจในเบราว์เซอร์ใหม่ทั้งหมดรอบนี้; engine campaign ยังผ่านหลังเพิ่มห้อง

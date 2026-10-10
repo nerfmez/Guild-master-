@@ -12,15 +12,22 @@
 
 ข้อจำกัด: ตรวจภาพนิ่งและการใช้งานใน browser emulation ตัวละคร/animation ไม่ได้แก้รอบนี้ ไม่มีวิดีโอ normal-speed หรือการวัด FPS บนอุปกรณ์จริง ไม่อ้างเปอร์เซ็นต์ความเหมือนเรฟ
 
-ไฟล์ส่งจริง: `play-rooms-49608b46.html` เท่ากับ `play.html`
+การแก้ฉากไม่ขึ้น: เพิ่มการเลือก Canvas เมื่อ WebGL เปิดไม่ได้ และใช้ Canvas สำหรับไฟล์ content://; กู้ฉากบน canvas ใหม่เมื่อ GPU context หาย ใช้ภาพและระบบจัดวางเดิม เพิ่มสถานะเปิดฉากและปุ่มลองใหม่ แทนปล่อยฉากว่าง ดูภาพไฟล์ส่งจริงที่ 1536×864 ทั้ง WebGL/Canvas และ 390×844 แบบ Canvas หลังสร้างห้อง ภาพพื้น ผนัง ของ และตัวละครยังปรากฏครบ ไม่พบฉากขาว การตรวจนี้ไม่ยืนยันอาการบน Samsung Internet เครื่องผู้ใช้ เพราะยังไม่มีผลจากอุปกรณ์จริง
 
-SHA-256: `49608b4692253682b88640f3e4abb5c4b008f3318797e53cb68223f86be763d8`
+ไฟล์ส่งจริง: `play-android-fixed-3fe732e0.html` เท่ากับ `play.html`
+
+SHA-256: `3fe732e08fb5a31dc204944718877b7e409decb0933dc152367dad708cba8b6b`
 
 | ภาพที่ตรวจ | SHA-256 |
 |---|---|
 | empty-floor.png | `4d79a8fce1bc61a61488e83ef19b605294f184164889fde2b20b32247afe18c0` |
-| room-layout.png | `55517bda2c0d4d8a6b45fe3847ed6a59ca58a8205d1b77bd4a47e097fb29d9b7` |
-| rooms-expanded.png | `4be9e634b6ff9ab09b4f694987bcc7f2faa8f51cb094baa2e836f04320df45a8` |
-| room-menu.png | `f58540dfc983257c12c28272454e9c95b33287a0869911204de0ae7a4f8b7505` |
-| mobile-room-build.png | `eafec77378fbc6c46f6491a6cae06ccfd7cf2f6c66f6bb0d30153413d6bbf197` |
-| mobile-rooms.png | `7a1c0e0f00e64edea06bb250beb984bb4b7bbb467458cb17ebc5637b5eab862c` |
+| room-layout.png | `96f018ee483a5e4a55efc95ce53578d48e552b77c5665df18ff18e0f61ab8467` |
+| rooms-expanded.png | `276cc0dc798901358fb8fd42b11fdf100fb22c11dbfa0ab1028860d7076680e3` |
+| room-menu.png | `964fc35e76927a31e3535b9558a1bc3071ed6d6b7aeecaa6f0f9ed5199662faa` |
+| mobile-room-build.png | `f0d596423798005b0b092ace1a2e7fcae18f2b889d06e8aec25891e8965a2bcd` |
+| mobile-rooms.png | `cc32fdf0b1192dc20e37a9b43d16955a6231a8a836403a7e52afd7335e1da7c2` |
+| boot-no-webgl.png | `64ebe3251a2f8fb21d344d486321fd2d1df71d14e9a18bafa365ea3cb7e2a46f` |
+| boot-mobile-no-webgl.png | `6655021746a994261cf44ae157c6657a963c4fb2ddb805ada829bc70069dbc19` |
+| boot-webgl.png | `41ac6fe66295649a918343a1dd50563951a17aecb8535068c2bd96c836a245ff` |
+| boot-webgl-loss.png | `a5a4d5aa40df343118629a9502655d77d9108985a600f69237a00ba7161470cb` |
+| boot-mobile-webgl-loss.png | `89ea1d88a03d879f63bee84c624a23060b8c946e2f699031c526ed1942740982` |

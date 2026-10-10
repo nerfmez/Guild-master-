@@ -1,0 +1,29 @@
+{
+  "file": "play-android-fixed-3fe732e0.html",
+  "sha256": "3fe732e08fb5a31dc204944718877b7e409decb0933dc152367dad708cba8b6b",
+  "bytes": 859311,
+  "cases": [
+    {
+      "mode": "no-webgl",
+      "initialRenderer": "Canvas",
+      "renderedScene": true,
+      "roomPlacement": true,
+      "zoom": true,
+      "mobile": true,
+      "saveReload": true,
+      "externalRequests": 0,
+      "errors": []
+    },
+    {
+      "mode": "webgl-loss",
+      "initialRenderer": "WebGL",
+      "renderedScene": true,
+      "roomPlacement": true,
+      "zoom": true,
+      "mobile": true,
+      "saveReload": true,
+      "externalRequests": 0,
+      "errors": []
+    }
+  ]
+}
