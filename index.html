@@ -14,12 +14,13 @@
   <main class="world-area" aria-label="พื้นที่กิลด์">
    <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์ · R32…</span><button hidden>เปิดฉากอีกครั้ง</button><noscript>ต้องเปิด JavaScript ในเบราว์เซอร์เพื่อเล่นเกม</noscript></div></div>
    <header class="topbar">
-    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong id="brand-name">Guild Master</strong><small id="brand-sub">GUILD MASTER · R32</small></div></div>
+    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong id="brand-name">Guild Master</strong><small id="brand-sub">GUILD MASTER · R33</small></div></div>
     <div id="resources" class="resources" aria-label="ทรัพยากรกิลด์"></div>
     <div id="calendar" class="calendar"></div>
    </header>
    <div class="world-actions" aria-label="มุมมองฉาก"><button id="zoom-in" aria-label="ซูมเข้า">+</button><button id="zoom-out" aria-label="ซูมออก">−</button><button id="home-view" aria-label="กลับมุมมองกิลด์">⌂</button></div>
    <button id="goal-card" class="goal-card" type="button" aria-live="polite"></button>
+   <div id="event-banner" class="event-banner" hidden role="status"></div>
    <div id="follow-chip" class="follow-chip" hidden role="status"><span class="fc-dot" aria-hidden="true"></span><div class="fc-text"><b id="fc-name"></b><small id="fc-sub"></small></div><button id="fc-mission" type="button">ภารกิจ</button><button id="fc-stop" type="button" aria-label="หยุดติดตาม">✕</button></div>
    <div id="build-hint" class="placement-bar" hidden><div class="pb-info"><b id="pb-title"></b><small id="pb-status"></small></div><div class="pb-actions"><button data-cancel-build aria-label="ยกเลิก">✕<span>ยกเลิก</span></button><button data-rotate-placement aria-label="หมุน">↻<span>หมุน</span></button><button class="primary" data-confirm-placement>✓<span id="pb-confirm">วางตรงนี้</span></button></div></div>
    <div class="screen-bottom">
@@ -36,7 +37,7 @@
   </main>
   <dialog id="management-dialog" class="management-dialog" aria-labelledby="panel-heading">
    <aside class="notebook">
-    <div class="notebook-top"><div><small>GUILD MASTER · R32</small><h1 id="panel-heading">เมนูกิลด์</h1></div><button id="menu-close" class="close-dialog" aria-label="กลับสู่ฉาก">×</button></div>
+    <div class="notebook-top"><div><small>GUILD MASTER · R33</small><h1 id="panel-heading">เมนูกิลด์</h1></div><button id="menu-close" class="close-dialog" aria-label="กลับสู่ฉาก">×</button></div>
     <div class="menu-body">
      <nav class="bottom-nav" aria-label="เมนูกิลด์">
       <button data-tab="home"><span>⌂</span>ภาพรวม</button><button data-tab="quests"><span>▤</span>คำร้อง</button><button data-tab="members"><span>♟</span>สมาชิก</button><button data-tab="build"><span>▧</span>ห้องและต่อเติม</button><button data-tab="workshop"><span>⚒</span>คราฟต์</button><button data-tab="village"><span>⌂</span>หมู่บ้าน</button><button data-tab="journal"><span>✦</span>บันทึก</button>
@@ -54,6 +55,7 @@
   <dialog id="setup-dialog" class="setup-dialog" aria-labelledby="setup-title"><div id="setup-content"></div></dialog>
   <dialog id="story-dialog" class="story-dialog" aria-labelledby="story-title"><div id="story-content"></div></dialog>
   <dialog id="visitor-dialog" class="visitor-dialog" aria-labelledby="visitor-title"><div id="visitor-content"></div></dialog>
+  <dialog id="event-dialog" class="event-dialog" aria-labelledby="event-title"><div id="event-content"></div></dialog>
   <dialog id="report-dialog" class="report-dialog" aria-labelledby="report-title"><div id="report-content"></div></dialog>
   <dialog id="confirm-dialog"><h2 id="confirm-title"></h2><p id="confirm-message"></p><div class="dialog-actions"><button id="confirm-cancel" class="secondary">ยกเลิก</button><button id="confirm-ok" class="primary">ยืนยัน</button></div></dialog>
   <input type="file" id="import-file" accept="application/json,.json" hidden>

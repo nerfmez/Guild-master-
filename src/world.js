@@ -453,13 +453,17 @@ export class GuildRenderer {
  stopFollow(){if(!this.follow)return;this.follow=null;this.zoomTarget=null;this.onFollow?.(null);}
  followMissionFor(){const f=this.follow;if(!f)return null;if(f.kind==='mission')return(this.state.missions||[]).find(m=>m.id===f.id);return(this.state.missions||[]).find(m=>(m.status==='active'||m.status==='decision')&&m.memberIds.includes(f.id));}
  followInfo(){
-  const f=this.follow;if(!f)return null;const m=this.followMissionFor(),quest=m&&QUESTS.find(q=>q.id===m.questId);
+  const f=this.follow;if(!f)return null;
+  if(f.kind==='event'){const foes=this.eventFoes();if(f.id==='boss'){const b=foes[0];return{kind:'event',id:f.id,missionId:null,name:'บอสโลก',quest:b?`HP ${Math.max(0,Math.round(b.hp/b.maxHp*100))}% · ${HUNT_ZONES[b.zone]?.name||''}`:null};}return{kind:'event',id:f.id,missionId:null,name:'มอนบุกหมู่บ้าน',quest:`เหลือ ${foes.length} ตัว`};}
+  const m=this.followMissionFor(),quest=m&&QUESTS.find(q=>q.id===m.questId);
   const hunter=f.kind==='member'&&this.state.world?.hunters?.find(h=>h.id===f.id);if(hunter)return{kind:f.kind,id:f.id,missionId:null,name:(this.state.members||[]).find(x=>x.id===f.id)?.name||'',quest:`${({go:'กำลังเดินไป',hunt:'กำลังล่ามอนที่',return:'กำลังกลับจาก',carry:'แบกเพื่อนกลับจาก',carried:'สลบ ถูกหามกลับจาก',down:'สลบอยู่ที่',defend:'ป้องกันเมือง'})[hunter.mode]||''}${hunter.mode==='defend'?'':HUNT_ZONES[hunter.zone]?.name||''}`};
   const names=f.kind==='member'?[(this.state.members||[]).find(x=>x.id===f.id)?.name]:(m?.memberIds||[]).map(id=>(this.state.members||[]).find(x=>x.id===id)?.name);
   return{kind:f.kind,id:f.id,missionId:m?.id||null,name:names.filter(Boolean).join(' · ')||'ทีม',quest:quest?.name||null};
  }
+ eventFoes(){const id=this.follow?.id;return(this.state.world?.monsters||[]).filter(m=>!m.dead&&(id==='boss'?m.boss:m.raid));}
  followPoint(){
   const f=this.follow;if(!f)return null;
+  if(f.kind==='event'){const foes=this.eventFoes();if(!foes.length)return null;const p=gridPoint(foes.reduce((s,m)=>s+m.x,0)/foes.length,foes.reduce((s,m)=>s+m.y,0)/foes.length);return{x:p.x,y:p.y-10};}
   if(f.kind==='member'){const a=this.actors.get(f.id);return a&&a.image.visible?{x:a.x,y:a.y-10}:null;}
   const team=[...this.actors.values()].filter(a=>a.missionId===f.id&&a.away&&a.image.visible);
   if(team.length)return{x:team.reduce((s,a)=>s+a.x,0)/team.length,y:team.reduce((s,a)=>s+a.y,0)/team.length-10};
@@ -651,7 +655,7 @@ export class GuildRenderer {
   if(this.follow){
    const m=this.follow.kind==='mission'?(this.state.missions||[]).find(m=>m.id===this.follow.id):null;
    if(this.follow.kind==='mission'&&!(m&&(m.status==='active'||m.status==='decision')))this.stopFollow();
-   else{const p=this.followPoint();if(p){const k=1-Math.pow(.015,Math.min(dt,.1));this.focusX+=(p.x-this.focusX)*k;this.focusY+=(p.y-this.focusY)*k;}
+   else{const p=this.followPoint();if(!p&&this.follow.kind==='event')this.stopFollow();else if(p){const k=1-Math.pow(.015,Math.min(dt,.1));this.focusX+=(p.x-this.focusX)*k;this.focusY+=(p.y-this.focusY)*k;}
     if(this.zoomTarget){const k=1-Math.pow(.05,Math.min(dt,.1));this.zoom+=(this.zoomTarget-this.zoom)*k;if(Math.abs(this.zoomTarget-this.zoom)<.005)this.zoom=this.zoomTarget;}
     this.applyView();const info=this.followInfo(),sig=JSON.stringify(info);if(sig!==this.followSig){this.followSig=sig;this.onFollow?.(info);}}
   }
