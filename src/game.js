@@ -502,7 +502,8 @@ function updateRank(state) {
 }
 
 function dailyUpdate(state) {
-  const upkeep = getGuildStats(state).upkeep;
+  // New guilds are not charged before their first mission pays anything.
+  const upkeep = state.goals?.firstMission ? getGuildStats(state).upkeep : 0;
   const paid = Math.min(state.gold, upkeep);
   if (paid) transact(state, { gold: paid }, 'อาหารและดูแลกิลด์ประจำวัน');
   if (paid < upkeep) {

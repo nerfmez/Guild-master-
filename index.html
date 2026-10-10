@@ -5,20 +5,21 @@
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
  <meta name="theme-color" content="#939c32">
  <meta name="description" content="กิลด์ใบอ่อน — บ้านของนักผจญภัยในหมู่บ้านพิกเซล">
- <title>กิลด์ใบอ่อน · R9</title>
+ <title>กิลด์ใบอ่อน · R10</title>
  <link rel="icon" type="image/svg+xml" href="./assets/leaf.svg">
  <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
  <div id="app">
   <main class="world-area" aria-label="พื้นที่กิลด์">
-   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์ · R9…</span><button hidden>เปิดฉากอีกครั้ง</button><noscript>ต้องเปิด JavaScript ในเบราว์เซอร์เพื่อเล่นเกม</noscript></div></div>
+   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์ · R10…</span><button hidden>เปิดฉากอีกครั้ง</button><noscript>ต้องเปิด JavaScript ในเบราว์เซอร์เพื่อเล่นเกม</noscript></div></div>
    <header class="topbar">
-    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong>กิลด์ใบอ่อน</strong><small>LITTLE LEAF GUILD · R9</small></div></div>
+    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong>กิลด์ใบอ่อน</strong><small>LITTLE LEAF GUILD · R10</small></div></div>
     <div id="resources" class="resources" aria-label="ทรัพยากรกิลด์"></div>
     <div id="calendar" class="calendar"></div>
    </header>
    <div class="world-actions" aria-label="มุมมองฉาก"><button id="zoom-in" aria-label="ซูมเข้า">+</button><button id="zoom-out" aria-label="ซูมออก">−</button><button id="home-view" aria-label="กลับมุมมองกิลด์">⌂</button></div>
+   <button id="goal-card" class="goal-card" type="button" aria-live="polite"></button>
    <div id="build-hint" class="build-hint" hidden></div>
    <div class="screen-bottom">
     <button id="journeys-button" class="journeys-button" data-tab="quests" aria-label="ดูคำร้องและทีมเดินทาง"><span class="pixel-badge">▤</span><span>คำร้อง<span id="journey-count" class="journey-count">เริ่มการเดินทาง</span></span></button>
@@ -28,7 +29,7 @@
   </main>
   <dialog id="management-dialog" class="management-dialog" aria-labelledby="panel-heading">
    <aside class="notebook">
-    <div class="notebook-top"><div><small>LITTLE LEAF GUILD · R6</small><h1 id="panel-heading">เมนูกิลด์</h1></div><button id="menu-close" class="close-dialog" aria-label="กลับสู่ฉาก">×</button></div>
+    <div class="notebook-top"><div><small>LITTLE LEAF GUILD · R10</small><h1 id="panel-heading">เมนูกิลด์</h1></div><button id="menu-close" class="close-dialog" aria-label="กลับสู่ฉาก">×</button></div>
     <div class="menu-body">
      <nav class="bottom-nav" aria-label="เมนูกิลด์">
       <button data-tab="home"><span>⌂</span>ภาพรวม</button><button data-tab="quests"><span>▤</span>คำร้อง</button><button data-tab="members"><span>♟</span>สมาชิก</button><button data-tab="build"><span>▧</span>ห้องและต่อเติม</button><button data-tab="workshop"><span>⚒</span>คราฟต์</button><button data-tab="journal"><span>✦</span>บันทึก</button>
@@ -42,6 +43,7 @@
   <div id="chapter-label" hidden></div><div id="objective" hidden></div><div id="mission-strip" hidden></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <dialog id="settings-dialog"><form method="dialog"><button class="close-dialog" aria-label="ปิด">×</button></form><div id="settings-content"></div></dialog>
+  <dialog id="report-dialog" class="report-dialog" aria-labelledby="report-title"><div id="report-content"></div></dialog>
   <dialog id="confirm-dialog"><h2 id="confirm-title"></h2><p id="confirm-message"></p><div class="dialog-actions"><button id="confirm-cancel" class="secondary">ยกเลิก</button><button id="confirm-ok" class="primary">ยืนยัน</button></div></dialog>
   <input type="file" id="import-file" accept="application/json,.json" hidden>
   <noscript>เกมนี้ต้องเปิด JavaScript เพื่อเล่น</noscript>

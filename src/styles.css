@@ -19,3 +19,33 @@ dialog{border:2px solid #937443;border-radius:7px;background:var(--paper);color:
 .room-size{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}.room-size label{font-size:11px;color:var(--muted)}.room-size input{display:block;width:100%;margin-top:5px;border:1px solid var(--line);border-radius:5px;background:var(--paper);padding:9px;color:var(--ink)}.room-catalog{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 20px}.room-catalog button{display:flex;align-items:center;gap:8px;font-size:11px;text-align:left}.room-catalog span{width:17px;height:17px;flex:none;border:1px solid #a78c68;border-radius:3px}.area-stages{margin:12px 0;border:1px solid var(--line);border-radius:5px;overflow:hidden}.area-stage{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;font-size:11px;background:#f2eadb;border-bottom:1px solid var(--line)}.area-stage:last-child{border-bottom:0}.area-stage small{display:block;font-size:10px;color:var(--muted);margin-top:2px}.area-stage b{font-size:10px;font-weight:500;color:var(--muted)}.area-stage.current{background:#e7eddb}.area-stage.current b{color:#69815c}
 
 .scene-status{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);max-width:calc(100% - 40px);padding:18px 24px;border:1px solid #cabb9a;border-radius:6px;background:#fff6e4;color:#655541;text-align:center;font-size:13px;box-shadow:0 5px 18px #55412c20}.scene-status[hidden]{display:none}.scene-status button{display:block;margin:12px auto 0}.scene-status button[hidden]{display:none}.scene-status small,.scene-status noscript{display:block;margin-top:10px;max-width:380px;overflow-wrap:anywhere;font-size:11px;line-height:1.7}
+/* R10: next-step goal card, quest nudge and mission report. */
+.goal-card{position:absolute;z-index:3;left:24px;top:calc(max(20px,env(safe-area-inset-top)) + 78px);width:min(300px,calc(100% - 48px));display:grid;gap:3px;padding:11px 15px 12px;text-align:left;background:#f8edd3f2;border:1px solid #967b49;border-radius:6px;box-shadow:0 3px 0 #65513060;color:var(--ink);font:inherit;cursor:pointer}
+.goal-card small{font-size:10px;letter-spacing:.06em;color:#9b7a4a;font-weight:600}
+.goal-card b{font-size:15px;font-weight:600;line-height:1.4}
+.goal-card span{font-size:11.5px;line-height:1.6;color:#7a6a58}
+.goal-card.urgent{animation:goal-glow 1.6s ease-in-out infinite}
+.goal-card.urgent small::before{content:'▶ '}
+.goal-progress{display:block;height:6px;margin-top:5px;background:#e6dcc4;border-radius:3px;overflow:hidden}
+.goal-progress i{display:block;height:100%;background:var(--sage);transition:width .6s}
+.journeys-button.nudge{animation:goal-glow 1.6s ease-in-out infinite}
+@keyframes goal-glow{0%,100%{box-shadow:0 3px 0 #65513060,0 0 0 0 #f2c76a00}50%{box-shadow:0 3px 0 #65513060,0 0 0 5px #f2c76acc}}
+@media(max-width:620px){.goal-card{left:14px;top:calc(max(15px,env(safe-area-inset-top)) + 112px);width:calc(100% - 84px);padding:9px 12px}.goal-card b{font-size:13.5px}}
+@media(prefers-reduced-motion:reduce){.goal-card.urgent,.journeys-button.nudge{animation:none}}
+.report-dialog{max-width:500px}
+.report-kicker{display:block;font-size:11px;color:#9b7a4a;font-weight:600;margin-bottom:4px}
+.report-dialog h2{margin-bottom:6px}
+.report-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.report-chip{display:grid;padding:7px 12px;background:#fff6e2;border:1px solid #e3d3b0;border-radius:6px;animation:chip-pop .35s ease-out both}
+.report-chip:nth-child(2){animation-delay:.08s}.report-chip:nth-child(3){animation-delay:.16s}.report-chip:nth-child(4){animation-delay:.24s}.report-chip:nth-child(5){animation-delay:.32s}
+.report-chip b{font-size:16px;color:#6f5a3a}.report-chip small{font-size:10px;color:var(--muted)}
+@keyframes chip-pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.report-team{display:flex;gap:10px;margin:8px 0 4px}
+.report-member{flex:1;display:grid;justify-items:center;gap:2px;padding:8px 4px;border-radius:6px;background:#f6efdf;text-align:center}
+.report-member canvas{width:48px;height:54px;image-rendering:pixelated}
+.report-member b{font-size:12px}.report-member small{font-size:10.5px;color:var(--muted)}
+.report-member.up{background:#e9f1dc;outline:1px solid #a8c08f}.report-member.up small{color:#5f8250;font-weight:600}
+.report-rank{display:flex;gap:12px;align-items:center;margin-top:12px;padding:10px 12px;background:#fdf0d6;border:1px solid #e7c98d;border-radius:6px}
+.report-rank b{font-size:14px}.report-rank small{display:block;font-size:11px;color:var(--muted);line-height:1.6}
+.report-next{display:grid;gap:2px;margin-top:12px;padding:10px 12px;border-left:3px solid var(--sage);background:#f3f2e6}
+.report-next small{font-size:10px;color:#9b7a4a;font-weight:600}.report-next b{font-size:13px}.report-next span{font-size:11px;color:var(--muted)}

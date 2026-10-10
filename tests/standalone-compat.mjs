@@ -24,7 +24,7 @@ for(const mode of ['restricted-canvas','webgl']){
   await page.goto('file://'+root+'/'+file+'?still');
   await page.waitForFunction(()=>window.guildDebug?.getRendererInfo()?.ready);
   await page.evaluate(()=>document.fonts.ready);
-  assert.equal(await page.title(),'กิลด์ใบอ่อน · R9');
+  assert.equal(await page.title(),'กิลด์ใบอ่อน · R10');
   assert.equal(await page.locator('#scene-status').isVisible(),false);
   const info=await page.evaluate(()=>window.guildDebug.getRendererInfo());
   assert.equal(info.renderer,mode==='restricted-canvas'?'Canvas':'WebGL');
