@@ -6384,7 +6384,17 @@ class GuildRenderer {
  }
  roomFor(m){if(this.prepping?.has(m.id)){const board=this.state.facilities.find(f=>f.type==='board');if(board)return board;}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
   if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','dorm'][hash(m.id)%4];
+  // Sleepers and patients are spread over every bed, two to a bed, instead of crowding the first one.
+  if(type==='dorm'||type==='infirmary'){const plan=this.bedPlan();const f=plan.get(m.id);if(f)return f;if(type==='dorm'&&this.wantsBed(m))return this.state.facilities.find(f=>f.type==='reception')||this.state.facilities[0];}
   return this.state.facilities.find(f=>f.type===type)||this.state.facilities[0];}
+ wantsBed(m){return m.injury>0||(m.task==='rest'&&m.energy<95&&!m.waitingReason);}
+ bedPlan(){
+  const key=this.state.elapsed|0;if(this.bedPlanKey===key&&this.bedPlanCache)return this.bedPlanCache;
+  const plan=new Map(),away=new Set((this.state.missions||[]).filter(x=>x.status==='active'||x.status==='decision').flatMap(x=>x.memberIds));
+  for(const type of ['infirmary','dorm']){const beds=this.state.facilities.filter(f=>f.type===type);let slot=0;
+   for(const m of [...this.state.members].sort((a,b)=>a.id<b.id?-1:1)){if(plan.has(m.id)||away.has(m.id)||m.errand)continue;const wants=type==='infirmary'?m.injury>0:!m.injury&&m.task==='rest'&&m.energy<95&&!m.waitingReason;if(!wants)continue;
+    if(slot>=beds.length*2)break;plan.set(m.id,beds[slot%beds.length]);slot++;}}
+  this.bedPlanKey=key;this.bedPlanCache=plan;return plan;}
 
  syncActors(){
   const ids=new Set([...this.state.members.map(m=>m.id),'master']);for(const [id,a] of this.actors)if(!ids.has(id)){a.image.destroy();a.emote?.destroy();this.actors.delete(id);}
@@ -6413,7 +6423,7 @@ class GuildRenderer {
   this.assignBeds();
   this.syncMaster();
  }
- // Up to two people share a bed's pillow: sleepers in the dorm, patients in the infirmary.
+ // Each bed takes one sleeper first and a second only when every bed is in use: sleepers in the dorm, patients in the infirmary.
  assignBeds(){
   const pillow=(f,lx)=>{const d=FACILITIES[f.type],r=f.rotation||0,ly=.33,[x,y]=r===1?[d.h-ly,lx]:r===2?[d.w-lx,d.h-ly]:r===3?[ly,d.w-lx]:[lx,ly];const p=gridPoint(f.x+x,f.y+y),base=gridPoint(f.x,f.y);return{x:p.x,y:p.y-13,depth:base.y+(d.w+d.h)*6+1};};
   const used=new Map();
@@ -6461,7 +6471,7 @@ class GuildRenderer {
    else if(home&&m.task==='work')pose='work'+(Math.floor(t*2.2)%2);
    else if(home&&m.task==='rest'&&m.energy<95&&!m.waitingReason&&!m.injury)pose='sleep';
    else pose=t%4.3<.15?'blink':Math.floor(t*1.5)%2?'breath':'idle';
-   const inBed=a.bed&&home&&!walking&&(pose==='sleep'||m.injury>0);if(inBed)pose='bed';
+   const inBed=a.bed&&home&&!walking&&(pose==='sleep'||m.injury>0);if(inBed)pose='bed';else if(pose==='sleep')pose=Math.floor(t*1.2)%2?'breath':'idle';
    const facing=pose.startsWith('walk')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
    a.image.setTexture(`actor-${m.id}-${m.class}-${facing}-${pose}`);
    if(inBed)a.image.setPosition(Math.round(a.bed.x),Math.round(a.bed.y)).setDepth(a.bed.depth+(hash(m.id)%89)/1000);
