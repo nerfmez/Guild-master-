@@ -33,8 +33,8 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){this.showStatus('ฉากกิลด์ไม่แสดงภาพ กดเพื่อวาดใหม่',true);return;}
-  this.repairs.push(now);console.warn('Guild scene blank; redrawing');this.recoverCanvas(undefined,true);
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R9',null,()=>this.recoverCanvas(undefined,true));return;}
+  this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
  start(type,context=null){
@@ -52,7 +52,7 @@ export class GuildRenderer {
    render:{preserveDrawingBuffer:true,antialias:false,roundPixels:true}});}catch(error){queueMicrotask(()=>this.recoverCanvas(error));}
  }
  recoverCanvas(error,force=false){
-  clearTimeout(this.bootTimer);
+  clearTimeout(this.bootTimer);window.guildBoot?.note('restart'+(error?': '+(error.message||error):this.ready?'':' (timeout)'));
   if(error)console.warn('Guild scene startup:',error.message||error);
   if(this.renderType===Phaser.CANVAS&&!force){this.ready=false;window.guildBoot?.fail(error||new Error('ตัววาดฉาก Canvas เริ่มทำงานไม่สำเร็จ'));const button=document.querySelector('#scene-status button');if(button)button.onclick=()=>this.recoverCanvas(undefined,true);return;}
   const canvas=this.canvas.cloneNode(false);this.canvas.replaceWith(canvas);
@@ -74,7 +74,7 @@ export class GuildRenderer {
   this.game.scale.on('resize',size=>{this.width=size.width;this.height=size.height;this.applyView();});
   this.center();this.rebuild();this.syncActors();this.canvas.dataset.renderer='Phaser '+(this.renderType===Phaser.WEBGL?'WebGL':'Canvas');
   clearTimeout(this.bootTimer);window.guildBoot?.ready();const status=document.getElementById('scene-status');if(status)status.hidden=true;
-  this.readyAt=Date.now();if(this.renderType===Phaser.CANVAS)this.canvas.addEventListener('contextrestored',()=>this.recoverCanvas(undefined,true),{once:true});
+  this.readyAt=Date.now();if(this.renderType===Phaser.CANVAS){this.canvas.addEventListener('contextlost',()=>window.guildBoot?.note('context lost'),{once:true});}if(this.renderType===Phaser.CANVAS)this.canvas.addEventListener('contextrestored',()=>this.recoverCanvas(undefined,true),{once:true});
   if(this.renderType===Phaser.WEBGL)this.canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();queueMicrotask(()=>this.recoverCanvas());},{once:true});
   this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
  }

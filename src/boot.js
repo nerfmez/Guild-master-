@@ -1,21 +1,36 @@
 /* Kept as a small classic script so even a failed game bundle has visible status. */
 (function(){
  'use strict';
- var complete=false,timer;
- function fail(error){
-  clearTimeout(timer);
+ var complete=false,timer,notes=[];
+ // Files opened from Android downloads (content://) have lost their GPU canvases, leaving
+ // a blank scene. Software-backed 2D canvases keep their pixels, so request those there.
+ var cpu=location.protocol==='content:';
+ if(cpu){
+  var getContext=HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext=function(type,options){
+   if(type==='2d'){options=Object.assign({willReadFrequently:true},options||{});}
+   return getContext.call(this,type,options);
+  };
+ }
+ function note(text){notes.push(String(text).slice(0,120));if(notes.length>6)notes.shift();}
+ function detail(){return 'R9 · '+(cpu?'cpu-canvas':'gpu-canvas')+' · '+(notes.join(' | ')||'-');}
+ function show(text,error,retry){
   var node=document.getElementById('scene-status');
   if(!node)return;
   node.hidden=false;
-  node.querySelector('span').textContent='เปิดกิลด์ไม่สำเร็จ · R8';
-  var detail=node.querySelector('small');
-  if(!detail){detail=document.createElement('small');node.appendChild(detail);}
-  detail.textContent=String(error&&error.message||error||'เกมเริ่มทำงานไม่สำเร็จ').slice(0,240);
+  node.querySelector('span').textContent=text;
+  var small=node.querySelector('small');
+  if(!small){small=document.createElement('small');node.appendChild(small);}
+  small.textContent=(error?String(error&&error.message||error).slice(0,240)+' · ':'')+detail();
   var button=node.querySelector('button');
-  button.hidden=false;button.textContent='ลองเปิดอีกครั้ง';button.onclick=function(){location.reload();};
+  button.hidden=false;button.textContent='ลองเปิดอีกครั้ง';button.onclick=retry||function(){location.reload();};
  }
- window.guildBoot={version:'R8',fail:fail,ready:function(){complete=true;clearTimeout(timer);var node=document.getElementById('scene-status');if(node)node.hidden=true;}};
- window.addEventListener('error',function(event){if(!complete)fail(event.error||event.message);});
- window.addEventListener('unhandledrejection',function(event){if(!complete)fail(event.reason);});
+ function fail(error){
+  clearTimeout(timer);note('fail: '+(error&&error.message||error));
+  show('เปิดกิลด์ไม่สำเร็จ · R9',error||'เกมเริ่มทำงานไม่สำเร็จ');
+ }
+ window.guildBoot={version:'R9',cpuCanvas:cpu,fail:fail,note:note,show:show,detail:detail,ready:function(){complete=true;clearTimeout(timer);note('ready');var node=document.getElementById('scene-status');if(node)node.hidden=true;}};
+ window.addEventListener('error',function(event){note('error: '+(event.error&&event.error.message||event.message));if(!complete)fail(event.error||event.message);});
+ window.addEventListener('unhandledrejection',function(event){note('rejection: '+(event.reason&&event.reason.message||event.reason));if(!complete)fail(event.reason);});
  timer=setTimeout(function(){fail('การเริ่มฉากใช้เวลานานเกินไป');},15000);
 })();
