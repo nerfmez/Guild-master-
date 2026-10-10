@@ -3,7 +3,8 @@ import { FACILITIES } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove } from './game.js';
 import { makeActorTexture } from './render.js';
 import { QUESTS } from './content.js';
-import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,questRoute,regionOpen,biomeAt,makeWorldGround,scatterNature,mistTint,makeFoeSprite,makeFlowers,makeBellTower,makeCrystals,makeHollowOak,makeAncientTree,makeCampfire,makeBridge,makeLogBarrier,makeFog,makeSignText } from './overworld.js';
+import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,questRoute,regionOpen,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeFoeSprite,makeFlowers,makeBellTower,makeCrystals,makeHollowOak,makeAncientTree,makeCampfire,makeBridge,makeLogBarrier,makeFog,makeSignText } from './overworld.js';
+import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly } from './worldart.js';
 import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
@@ -35,7 +36,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R25',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R26',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -124,39 +125,98 @@ export class GuildRenderer {
    this.scene.tweens.add({targets:puff,x:p.x+dx/len*14,y:p.y+dy/len*7-4,scale:2.4,alpha:0,duration:480,ease:'Quad.easeOut',onComplete:()=>puff.destroy()});}}
 
  // ---- The world outside: regions, roads, village, roaming foes and travelling teams. ----
- decorateWorld(){
-  // Floor: one soft, blended ground image for the whole world, under the village's own detailed ground.
-  const g=makeWorldGround(),t=this.scene.textures;if(t.exists('world-ground'))t.remove('world-ground');t.addCanvas('world-ground',g.canvas).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  this.scene.add.image(g.x,g.y,'world-ground').setOrigin(0).setScale(g.scale).setDepth(-9999.5);
-  const N=window.VillageNature,V=window.VillageProps;this.worldProps=[];
-  const meta=this.propMeta??=new Map();const place=(key,make,x,y,depth)=>{const p=gridPoint(x,y);let s=meta.get(key);if(!s||!this.scene.textures.exists(key)){s=make();meta.set(key,s);this.texture(key,s.canvas);}const image=this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(depth??p.y);this.worldProps.push(image);return image;};
-  const bridge=makeBridge();this.texture('world-bridge',bridge.canvas);this.scene.add.image(bridge.x,bridge.y,'world-bridge').setOrigin(0).setDepth(bridge.depthY);
-  // Nature thickens from scattered trees into woods and misty forest; mist tints trees deeper in.
-  for(const item of scatterNature()){
-   if(item.kind==='tree'){const base=()=>N.makeTree({seed:item.seed,season:item.gold?'gold':'green',kind:item.seed%2?'oak':'birch'});place(`wt-${item.seed}-${item.gold?1:0}-${item.mist}`,()=>mistTint(base(),item.mist),item.x,item.y);}
-   else if(item.kind==='bush')place(`wb-${item.seed}-${item.mist}`,()=>mistTint(N.makeBush({seed:item.seed}),item.mist),item.x,item.y);
-   else if(item.kind==='rock')place(`wr-${item.seed}`,()=>N.makeRock({seed:item.seed,size:item.seed%2?'large':'small'}),item.x,item.y);
-   else place(`wf-${item.seed}`,()=>makeFlowers(item.seed),item.x,item.y,gridPoint(item.x,item.y).y-20);
+ // World ground is painted lazily in crisp chunks around the view, a few rows per frame.
+ initGround(){
+  for(const c of this.groundChunks||[])c.image?.destroy();this.groundJob=null;
+  const CH=1024,pts=[[WORLD.x0,WORLD.y0],[WORLD.x1,WORLD.y0],[WORLD.x0,WORLD.y1],[WORLD.x1,WORLD.y1]].map(([x,y])=>gridPoint(x,y));
+  const x0=Math.floor(Math.min(...pts.map(p=>p.x))/CH)*CH,x1=Math.max(...pts.map(p=>p.x)),y0=Math.floor(Math.min(...pts.map(p=>p.y))/CH)*CH,y1=Math.max(...pts.map(p=>p.y));
+  this.groundChunks=[];for(let top=y0;top<y1;top+=CH)for(let left=x0;left<x1;left+=CH)this.groundChunks.push({left,top,size:CH,image:null,painter:null});
+ }
+ updateGround(budget=8){
+  if(!this.groundChunks||!this.camera)return;const v=this.camera.worldView,m=200,start=performance.now();
+  while(performance.now()-start<budget){
+   let job=this.groundJob;
+   if(!job){let bd=Infinity;for(const c of this.groundChunks){if(c.image||c.left>v.right+m||c.left+c.size<v.x-m||c.top>v.bottom+m||c.top+c.size<v.y-m)continue;const d=(c.left+c.size/2-v.centerX)**2+(c.top+c.size/2-v.centerY)**2;if(d<bd){bd=d;job=c;}}
+    if(!job)return;this.groundJob=job;job.painter=makeGroundPainter(job.left,job.top,job.size,2);}
+   if(job.painter.step(6)){const key=`ground-chunk-${job.left}-${job.top}`;this.texture(key,job.painter.canvas);job.image=this.scene.add.image(job.left,job.top,key).setOrigin(0).setScale(2).setDepth(-9999.5);job.painter=null;this.groundJob=null;}
   }
-  for(const [x,y,seed] of VILLAGE_HOMES)place('home-'+seed,()=>makeCottage({seed,roof:['#8fa0b1','#c98a72','#a39bb8','#d6b072'][seed%4]}),x,y,gridPoint(x,y).y+30);
+ }
+ decorateWorld(){
+  const N=window.VillageNature,V=window.VillageProps,B=window.VillageBuildings;this.worldProps=[];this.initGround();
+  const meta=this.propMeta??=new Map();const place=(key,make,x,y,depth)=>{const p=gridPoint(x,y);let s=meta.get(key);if(!s||!this.scene.textures.exists(key)){s=make();meta.set(key,s);this.texture(key,s.canvas);}const image=this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(depth??p.y);this.worldProps.push(image);return image;};
+  const flat=(key,s,depth)=>{this.texture(key,s.canvas);const image=this.scene.add.image(s.x,s.y,key).setOrigin(0).setDepth(depth);this.worldProps.push(image);return image;};
+  const bake=(key,make)=>{if(!this.scene.textures.exists(key))this.texture(key,make().canvas);return key;};
+  const bridge=makeBridge();flat('world-bridge',bridge,bridge.depthY);
+  const M=MEADOW_SCENE,S=QUEST_SITES,at=(x,y)=>gridPoint(x,y).y;
+  // The farm west of the village: fenced wheat with a scarecrow, a kitchen plot, hay, a barn and a turning windmill.
+  this.wheat=[];
+  for(const f of FIELDS){
+   flat('fence-back-'+f.kind,makeFieldFence(f,'back'),at(f.x,f.y)-2);flat('fence-front-'+f.kind,makeFieldFence(f,'front'),at(f.x+f.w,f.y+f.h)+14);
+   if(f.kind==='wheat'){const split=M.scarecrow.x+M.scarecrow.y;for(const part of ['back','front']){const keys=[0,1].map(k=>{const s=makeWheat(f,k,part,split);this.texture(`wheat-${part}-${k}`,s.canvas);return s;});this.wheat.push({part,image:flat(`wheat-${part}-0`,keys[0],at(M.scarecrow.x,M.scarecrow.y)+(part==='back'?-1:1))});}}
+   else flat('veg-'+f.kind,makeVegPatch(f),at(f.x+f.w/2,f.y+f.h/2));
+  }
+  place('scarecrow',makeScarecrow,M.scarecrow.x,M.scarecrow.y);
+  M.hay.forEach(([x,y],i)=>place('hay-'+i%2,()=>makeHayBale(i%2),x,y));
+  place('barn',()=>B.makeShed({seed:731,variant:'barn',roof:'terra'}),M.barn.x,M.barn.y,at(M.barn.x,M.barn.y)+16);
+  const mill=place('windmill',makeWindmill,M.windmill.x,M.windmill.y);for(let k=0;k<6;k++)bake('sails-'+k,()=>makeSails(k*Math.PI/12));
+  const hub=gridPoint(M.windmill.x,M.windmill.y);this.sails=this.scene.add.image(hub.x,hub.y-89,'sails-0').setDepth(mill.depth+1);this.worldProps.push(this.sails);
+  for(const [x,y] of M.lamps)place('lm-lamp',()=>V.makeProp('lamp',{seed:7}),x,y);
+  for(const [x,y,seed,gold] of M.trees)place(`mt-${seed}-${gold}`,()=>N.makeTree({seed,season:gold?'gold':'green',kind:seed%2?'oak':'birch'}),x,y);
+  flat('dock',makeDock(DOCK),at(DOCK.x,DOCK.y));
+  // Meadow flora: drifts of themed wildflowers, swaying grass, reeds and lilies on the pond.
+  const blooms=[];
+  for(const item of scatterMeadow()){const v=Math.floor(Math.abs(item.x*7+item.y*13))%2,y=at(item.x,item.y);
+   if(item.kind==='flowers'){place(`fp-${item.theme}-${v}`,()=>makeFlowerPatch(item.theme,v),item.x,item.y,y-4);blooms.push(item);}
+   else if(item.kind==='tallgrass')place('tg-'+item.seed,()=>makeTallGrass(item.seed),item.x,item.y);
+   else if(item.kind==='bush')place('mb-'+item.seed,()=>N.makeBush({seed:item.seed}),item.x,item.y);
+   else if(item.kind==='rock')place('mr-'+item.seed,()=>N.makeRock({seed:item.seed,size:'small'}),item.x,item.y);
+   else if(item.kind==='reeds')place('reeds-'+item.seed,()=>makeReeds(item.seed),item.x,item.y);
+   else if(item.kind==='lily')place('lily-'+item.seed,()=>makeLily(item.seed),item.x,item.y,y-60);}
+  // The rest of the world: woods with glades, misty trees, rocky hills.
+  for(const item of scatterNature()){const m=item.mist||0;
+   if(item.kind==='tree'){const base=()=>N.makeTree({seed:item.seed,season:item.gold?'gold':'green',kind:item.seed%2?'oak':'birch'});place(`wt-${item.seed}-${item.gold?1:0}-${m}`,()=>mistTint(base(),m),item.x,item.y);}
+   else if(item.kind==='rock')place(`wr-${item.seed}`,()=>N.makeRock({seed:item.seed,size:item.seed%2?'large':'small'}),item.x,item.y);
+   else if(item.kind==='flowers')place(`wf-${m}`,()=>mistTint(makeFlowerPatch(4,0),m),item.x,item.y,at(item.x,item.y)-4);
+   else if(item.kind==='mushroom')place(`wm-${item.seed}-${m}`,()=>mistTint(makeMushrooms(item.seed),m),item.x,item.y);
+   else if(item.kind==='stump')place(`ws-${item.seed}-${m}`,()=>mistTint(makeStump(item.seed),m),item.x,item.y);
+   else if(item.kind==='drygrass')place(`wd-${item.seed}`,()=>makeDryGrass(item.seed),item.x,item.y);
+   else place(`wg-${item.seed}-${m}`,()=>mistTint(makeTallGrass(item.seed),m),item.x,item.y);
+  }
+  for(const [x,y,seed] of VILLAGE_HOMES)place('home-'+seed,()=>makeCottage({seed,roof:['#8fa0b1','#c98a72','#a39bb8','#d6b072'][seed%4]}),x,y,at(x,y)+30);
   // Landmarks where quests happen.
-  const S=QUEST_SITES;
-  for(let i=0;i<5;i++)place('fence-'+(i%2),()=>V.makeProp('fence-h',{seed:i%2,length:3}),S.patrol.x-3+i*1.2,S.patrol.y-3.2);
   place('lm-cart',()=>V.makeProp('cart',{seed:5}),S.escort.x+1.2,S.escort.y-1.2);
-  for(let i=0;i<5;i++)place('lm-herb-'+(i%3),()=>N.makeBush({seed:10+i%3}),S.herbs.x-2+(i%3)*1.4,S.herbs.y-1.5+Math.floor(i/3)*2.6);
   place('lm-hollow',makeHollowOak,S.hollow.x+2.4,S.hollow.y-1.5);
   place('lm-crystals',makeCrystals,S.crystals.x+2.2,S.crystals.y-1.4);
   place('lm-tower',makeBellTower,S.ruins.x+3,S.ruins.y-2);
   for(let i=0;i<3;i++)place('lm-lamp',()=>V.makeProp('lamp',{seed:7}),S.mistpath.x-2+i*2.2,S.mistpath.y-1.8+(i%2)*3.2);
-  this.campfire=place('lm-fire-0',()=>makeCampfire(0),S.rescue.x+1.6,S.rescue.y-.6);if(!this.scene.textures.exists('lm-fire-1'))this.texture('lm-fire-1',makeCampfire(1).canvas);
+  this.campfire=place('lm-fire-0',()=>makeCampfire(0),S.rescue.x+1.6,S.rescue.y-.6);bake('lm-fire-1',()=>makeCampfire(1));
   place('lm-ancient',makeAncientTree,S.heart.x+3,S.heart.y-3);
   for(const sign of SIGNPOSTS)place('sign-'+sign.region,()=>makeSignText(sign.text),sign.x,sign.y);
+  // Little lives: sheep in the pasture, ducks on the pond, butterflies over the flowers.
+  for(let k=0;k<3;k++)bake('sheep-'+k,()=>makeSheep(k));for(let k=0;k<2;k++){bake('duck-'+k,()=>makeDuck(k));bake('duckw-'+k,()=>makeDuck(k,true));}for(let k=0;k<2;k++)for(let c=0;c<4;c++)bake(`fly-${k}-${c}`,()=>makeButterfly(k,c));
+  const P=M.pasture;this.sheep=Array.from({length:6},(_,i)=>{const a=i*1.1,x=P.x+Math.cos(a)*P.r*.6,y=P.y+Math.sin(a)*P.r*.5,image=this.scene.add.image(0,0,'sheep-2').setOrigin(.5,14/18);this.worldProps.push(image);return{x,y,tx:x,ty:y,wait:1+i*.7,image};});
+  this.ducks=Array.from({length:4},(_,i)=>{const image=this.scene.add.image(0,0,'duck-0').setOrigin(.5,8/11);this.worldProps.push(image);return{a:i*1.7,k:.3+(i%3)*.14,speed:(i%2?1:-1)*(.05+i*.012),plain:i===3,image};});
+  this.flies=blooms.filter((_,i)=>i%5===0).slice(0,14).map((b,i)=>{const p=gridPoint(b.x,b.y),image=this.scene.add.image(p.x,p.y,'fly-0-0').setOrigin(.5);this.worldProps.push(image);return{x:p.x,y:p.y-12,tone:(b.theme+i)%4,phase:i*1.9,image};});
   // Drifting fog over the misty woods.
-  this.fogs=[];for(let i=0;i<16;i++){const x=-22+(i*7.3)%34,y=-62+(i*5.9)%28;if(biomeAt(x,y).mist<.35)continue;const p=gridPoint(x,y);if(!this.scene.textures.exists('fog-'+i%3))this.texture('fog-'+i%3,makeFog(i%3).canvas);this.fogs.push({image:this.scene.add.image(p.x,p.y,'fog-'+i%3).setDepth(p.y+80).setAlpha(.55),x:p.x,y:p.y,phase:i});}
-  // Foes roam near their homes: slimes in the meadow, golems on the hills, guardians in the woods.
+  this.fogs=[];for(let i=0;i<16;i++){const x=-22+(i*7.3)%34,y=-62+(i*5.9)%28;if(biomeAt(x,y).mist<.35)continue;const p=gridPoint(x,y);bake('fog-'+i%3,()=>makeFog(i%3));this.fogs.push({image:this.scene.add.image(p.x,p.y,'fog-'+i%3).setDepth(p.y+80).setAlpha(.55),x:p.x,y:p.y,phase:i});}
+  // Foes roam near their homes: slimes out past the farm, golems on the hills, guardians in the woods.
   this.foes=[];this.worldSigns=[];this.signRank=null;this.parties=new Map();
-  const homes={meadow:[[-26,26],[-34,18],[-20,28],[-40,28],[-30,20]],ruins:[[56,6],[60,14],[66,4],[52,22],[64,-8]],mist:[[-4,-34],[6,-44],[-8,-54],[8,-50],[-2,-60]]};
+  const homes={meadow:[[-46,34],[-50,20],[-38,40],[-16,35],[-52,28]],ruins:[[56,6],[60,14],[66,4],[52,22],[64,-8]],mist:[[-4,-34],[6,-44],[-8,-54],[8,-50],[-2,-60]]};
   for(const [region,list] of Object.entries(homes)){const quest=QUESTS.find(q=>q.region===region&&!q.story)||QUESTS.find(q=>q.region===region);for(const [x,y] of list)this.foes.push({region,quest,hx:x,hy:y,x,y,tx:x,ty:y,wait:Math.random()*3,image:this.scene.add.image(0,0,this.foeTexture(quest,.42)).setOrigin(.5,1)});}
+ }
+ updateCritters(dt,t,playing){
+  const P=MEADOW_SCENE.pasture;
+  for(const s of this.sheep||[]){
+   if(playing){s.wait-=dt;if(s.wait<=0&&Math.hypot(s.tx-s.x,s.ty-s.y)<.05){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*P.r;s.tx=P.x+Math.cos(a)*r;s.ty=P.y+Math.sin(a)*r*.8;s.wait=3+Math.random()*6;}
+    const dx=s.tx-s.x,dy=s.ty-s.y,d=Math.hypot(dx,dy);if(d>.05){s.x+=dx/d*Math.min(d,dt*.45);s.y+=dy/d*Math.min(d,dt*.45);const sx=(dx-dy);if(Math.abs(sx)>.01)s.flip=sx<0;}}
+   const moving=Math.hypot(s.tx-s.x,s.ty-s.y)>.05,p=gridPoint(s.x,s.y);s.image.setTexture(moving?'sheep-'+(Math.floor(t*6+s.wait)%2):'sheep-2').setFlipX(!!s.flip).setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y);
+  }
+  for(const d of this.ducks||[]){if(playing)d.a+=dt*d.speed;const x=LAKE.x-1.2+Math.cos(d.a)*LAKE.rx*d.k,y=LAKE.y+Math.sin(d.a)*LAKE.ry*d.k,p=gridPoint(x,y),vx=-Math.sin(d.a)*LAKE.rx*d.speed,vy=Math.cos(d.a)*LAKE.ry*d.speed;
+   d.image.setTexture((d.plain?'duckw-':'duck-')+(Math.floor(t*2+d.a*3)%2)).setFlipX(vx-vy<0).setPosition(Math.round(p.x),Math.round(p.y+Math.sin(t*2+d.a)*.6)).setDepth(p.y);}
+  for(const f of this.flies||[]){const x=f.x+Math.sin(t*.7+f.phase)*22+Math.sin(t*1.9+f.phase)*6,y=f.y+Math.cos(t*.5+f.phase)*9-Math.abs(Math.sin(t*4+f.phase))*4;
+   f.image.setTexture(`fly-${Math.floor(t*9+f.phase)%2}-${f.tone}`).setPosition(Math.round(x),Math.round(y)).setDepth(f.y+40);}
+  if(this.sails)this.sails.setTexture('sails-'+(Math.floor(t*2.5)%6));
+  for(const w of this.wheat||[])w.image.setTexture(`wheat-${w.part}-${Math.floor(t/1.1)%2}`);
  }
  foeTexture(quest,scale,flash=false){const key=`foe-${quest.id}-${scale}-${flash?1:0}`;if(!this.scene.textures.exists(key)){const s=makeFoeSprite(quest,scale,flash);this.texture(key,s.canvas);}return key;}
  refreshWorldSigns(){
@@ -166,7 +226,7 @@ export class GuildRenderer {
    const lock=makeSignText(`ต้องเป็นกิลด์ ${rank}`,true),q=gridPoint(sign.x+2.4,sign.y-2.6);this.texture('lock-'+sign.region+rank,lock.canvas);this.worldSigns.push(this.scene.add.image(q.x-lock.footX,q.y-lock.footY,'lock-'+sign.region+rank).setOrigin(0).setDepth(q.y));}
  }
  updateWorld(dt,playing){
-  if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;
+  if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;this.updateGround();this.updateCritters(dt,t,playing);
   for(const f of this.foes){
    if(playing){f.wait-=dt;if(f.wait<=0){f.tx=f.hx+(Math.random()-.5)*7;f.ty=f.hy+(Math.random()-.5)*7;f.wait=3+Math.random()*4;}
     const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d>.05){f.x+=dx/d*Math.min(d,dt*.8);f.y+=dy/d*Math.min(d,dt*.8);}}
@@ -175,7 +235,7 @@ export class GuildRenderer {
   for(const fog of this.fogs||[])fog.image.setPosition(fog.x+Math.sin(t*.12+fog.phase)*40,fog.y+Math.cos(t*.09+fog.phase)*10).setAlpha(.4+Math.sin(t*.3+fog.phase)*.15);
   if(this.campfire)this.campfire.setTexture(Math.floor(t*6)%2?'lm-fire-1':'lm-fire-0');
   // Only draw world props near the view.
-  this.cullClock=(this.cullClock||0)-dt;if(this.cullClock<=0&&this.camera){this.cullClock=.25;const v=this.camera.worldView,m=220;for(const img of this.worldProps||[])img.setVisible(img.x+img.width>v.x-m&&img.x<v.right+m&&img.y+img.height>v.y-m&&img.y<v.bottom+m);for(const f of this.foes)f.image.setVisible(f.image.x>v.x-m&&f.image.x<v.right+m&&f.image.y>v.y-m&&f.image.y<v.bottom+m+60);}
+  this.cullClock=(this.cullClock||0)-dt;if(this.cullClock<=0&&this.camera){this.cullClock=.25;const v=this.camera.worldView,m=220;for(const c of this.groundChunks||[])c.image?.setVisible(c.left<v.right+m&&c.left+c.size>v.x-m&&c.top<v.bottom+m&&c.top+c.size>v.y-m);for(const img of this.worldProps||[])img.setVisible(img.x+img.width>v.x-m&&img.x<v.right+m&&img.y+img.height>v.y-m&&img.y<v.bottom+m);for(const f of this.foes)f.image.setVisible(f.image.x>v.x-m&&f.image.x<v.right+m&&f.image.y>v.y-m&&f.image.y<v.bottom+m+60);}
   // Mission foes, strike effects and the floating quest tag for each travelling team.
   const live=new Set();
   for(const m of this.state.missions||[]){if(m.status!=='active'&&m.status!=='decision')continue;const quest=QUESTS.find(q=>q.id===m.questId);if(!quest)continue;live.add(m.id);
