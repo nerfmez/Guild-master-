@@ -403,3 +403,23 @@ body.on-title .event-banner{visibility:hidden}
 .dungeon-dialog .dd-head b{font-size:14px;font-weight:600}.dungeon-dialog .close-dialog{position:static;color:#4f4540}
 .dungeon-dialog .dungeon-view{width:100%;max-height:none;margin:0}
 .mission-watch{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}.mission-watch button{min-height:0;padding:8px}
+/* Guild master on foot */
+.world-actions #hero-toggle{font-size:17px}.world-actions #hero-toggle.active{background:#f3d58e;border-color:#b98a3e}
+.hero-hud{position:absolute;inset:0;z-index:5;pointer-events:none}
+.hero-hud>*{pointer-events:auto}
+.hero-status{position:absolute;left:24px;top:calc(max(20px,env(safe-area-inset-top)) + 78px);width:min(260px,calc(100% - 48px));display:grid;gap:4px;padding:10px 12px;background:#2c241ee6;color:#fbeed2;border:1px solid #c79b55;border-radius:8px}
+.hero-status b{font-size:14px;font-weight:600}.hero-status small{font-size:11px;color:#e3cfa5}
+.hero-bar{height:7px;border-radius:4px;background:#00000055;overflow:hidden}.hero-bar i{display:block;height:100%;width:0;border-radius:4px;transition:width .15s}
+.hero-bar.hp i{background:#7fd18b}.hero-bar.xp i{background:#e8cd8c}
+.hero-status button{margin-top:4px;min-height:0;padding:6px 10px;font-size:12px;border-radius:999px;background:#f3d58e;border:1px solid #b98a3e;color:#3d2c22;cursor:pointer}
+.hero-stick{position:absolute;left:28px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 24px);width:120px;height:120px;border-radius:50%;background:#2c241e55;border:2px solid #fbeed266;touch-action:none}
+.hero-stick i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:#fbeed2cc;border:2px solid #c79b55;transition:transform .05s}
+.hero-buttons{position:absolute;right:24px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 24px);display:flex;gap:10px;align-items:flex-end}
+.hero-buttons button{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;font-size:22px;background:#fbeed2e8;border:2px solid #b98a3e;color:#3d2c22;touch-action:none;cursor:pointer;padding:0}
+.hero-buttons button small{font-size:9px;margin-top:-6px}
+.hero-buttons #hero-attack{width:82px;height:82px;font-size:28px;background:#f3d58e}
+.hero-buttons button.cooling{opacity:.45}
+.hero-help{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);margin:0;font-size:11px;color:#fbeed2;text-shadow:0 1px 2px #000;white-space:nowrap;pointer-events:none!important}
+body.hero-mode .screen-bottom,body.hero-mode .goal-card,body.hero-mode #follow-chip{display:none!important}
+@media(max-width:620px){.hero-help{display:none}.hero-status{top:calc(max(15px,env(safe-area-inset-top)) + 112px)}}
+body.on-title .hero-hud{display:none}

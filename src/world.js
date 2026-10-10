@@ -40,7 +40,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R36',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R37',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -519,6 +519,27 @@ export class GuildRenderer {
   const k=1-c.left/c.total,out=k<.5,f=out?k*2:(1-k)*2,leg=Math.hypot(road.x-home.x,road.y-home.y),tot=leg+Math.hypot(far.x-road.x,far.y-road.y),d=f*tot;
   const at=d<leg?{x:home.x+(road.x-home.x)*d/(leg||1),y:home.y+(road.y-home.y)*d/(leg||1)}:{x:road.x+(far.x-road.x)*(d-leg)/(tot-leg),y:17.5};
   const p=gridPoint(at.x,at.y);this.wagon.setOrigin(this.wagonFoot.x/this.wagon.width,this.wagonFoot.y/this.wagon.height).setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y+2).setFlipX(!out).setVisible(at.x<60);}
+ // ---- The guild master on foot: the player's own character in the world. ----
+ slashArc(x,y,angle){const g=this.scene.add.graphics().setDepth(y+400).setPosition(x,y);g.lineStyle(3,0xfff8e7,.95);g.beginPath();g.arc(0,0,14,angle-1.1,angle+1.1);g.strokePath();g.lineStyle(1,0xffe08a,.9);g.beginPath();g.arc(0,0,10,angle-.9,angle+.9);g.strokePath();this.scene.tweens.add({targets:g,alpha:0,scale:1.3,duration:220,onComplete:()=>g.destroy()});}
+ updateHero(dt){
+  const h=this.state.hero,master=this.actors.get('master');
+  if(!h?.active){if(this.heroImage)this.heroImage.setVisible(false);this.heroCam=false;return;}
+  if(master)master.image.setVisible(false);
+  const p=this.state.profile||{masterName:'หัวหน้ากิลด์',hair:'#5b4637',outfit:'#6f8f6a',skin:'#f1c9a5',hairStyle:'short'},m={id:'master',name:p.masterName,class:'master',hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle};
+  if(!this.scene.textures.exists('actor-master-master-south-idle'))this.bakeActor(m);
+  this.heroImage??=this.scene.add.image(0,0,'actor-master-master-south-idle').setOrigin(.5,48/52);
+  const at=gridPoint(h.x,h.y),sx=h.fx-h.fy,sy=h.fx+h.fy,dir=Math.abs(sx)>Math.abs(sy)?(sx>0?'east':'west'):(sy>0?'south':'north');
+  const pose=h.down>0?'sleep':h.swing>0?(h.swing>.12?'train0':'train1'):h.moving?'walk'+(Math.floor((this.realTime||0)*10)%4):Math.floor((this.realTime||0)*1.5)%2?'breath':'idle';
+  this.placeBody(this.heroImage,'actor-master-master',{mode:h.down>0?'down':'hunt'},at,pose,dir,at.y+1);
+  this.heroImage.setVisible(true).setAlpha(h.dash>0?.6:1);
+  // Health and a little name tag above the master's head.
+  const ratio=h.hp/Math.max(1,h.maxHp);this.hpBars.fillStyle(0x3b302a,.85).fillRect(Math.round(at.x-11),Math.round(at.y-40),22,4);this.hpBars.fillStyle(ratio<.35?0xe0a050:0x7fd18b,1).fillRect(Math.round(at.x-10),Math.round(at.y-39),Math.round(20*ratio),2);
+  // The camera stays with the master.
+  if(!this.heroCam){this.heroCam=true;this.stopFollow?.();this.zoomTarget=Math.max(.3,Math.min(2.4,2.1/(this.baseZoom||1)));}
+  const k=1-Math.pow(.004,Math.min(dt,.1));this.focusX+=(at.x-this.focusX)*k;this.focusY+=(at.y-10-this.focusY)*k;this.userPanned=true;
+  if(this.zoomTarget){this.zoom+=(this.zoomTarget-this.zoom)*Math.min(1,dt*4);if(Math.abs(this.zoomTarget-this.zoom)<.005){this.zoom=this.zoomTarget;this.zoomTarget=null;}}
+  this.applyView();
+ }
  updateLife(dt,playing){
   this.updateCaravan();
   const w=this.state.world;if(!w||!this.scene)return;const t=this.realTime||0;
@@ -576,6 +597,11 @@ export class GuildRenderer {
    else if(e.type==='skill'){this.floatText(p.x,p.y-44,e.name,'#fff1c4',8);if(e.skill==='fireball'){const q=gridPoint(e.tx,e.ty);this.ring(q.x,q.y,0xf08a4b,22);}else this.ring(p.x,p.y,e.skill==='guard'?0x8eb6e0:e.skill==='blessing'?0x9fe08a:0xe8cd8c,e.skill==='blessing'?28:16);}
    else if(e.type==='ko')this.floatText(p.x,p.y-30,'สลบ!','#ffb0a0',10);
    else if(e.type==='kill')this.dustPuff(e.x-.4,e.y-.4,.8,.8);
+   else if(e.type==='swing'){const f=gridPoint(e.x+e.fx*.8,e.y+e.fy*.8);this.slashArc(f.x,f.y-12,Math.atan2(f.y-p.y,f.x-p.x));}
+   else if(e.type==='dash')this.dustPuff(e.x-.3,e.y-.3,.6,.6);
+   else if(e.type==='dodge')this.floatText(p.x,p.y-38,'หลบ!','#bfe3ff',9);
+   else if(e.type==='level'){this.floatText(p.x,p.y-48,'LEVEL UP! Lv.'+e.level,'#ffe08a',11);this.ring(p.x,p.y,0xffe08a,26);}
+   else if(e.type==='revive')this.floatText(p.x,p.y-40,'ฟื้นแล้ว','#9fe08a',9);
    else if(e.type==='sell')this.floatText(p.x,p.y-40,`ขายของ ${e.amount} ชิ้น`,'#ffe08a',9);
   }
   for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
@@ -683,6 +709,7 @@ export class GuildRenderer {
   this.updateWorld(dt,playing);
   this.updateVillagers(dt,playing);
   this.updateLife(dt,playing);
+  this.updateHero(dt);
   // Follow a watched team until the player drags the view or the team is home.
   if(this.follow){
    const m=this.follow.kind==='mission'?(this.state.missions||[]).find(m=>m.id===this.follow.id):null;

@@ -998,3 +998,40 @@ test('homes grow by themselves when what families need is nearby; village levels
   assert.equal(back.village.lots.shop.rot, 1);
   assert.equal(back.village.homes.h0.tier, 1);
 });
+
+test('the guild master can step out, walk, fight monsters, dodge, get knocked out and wake at the guild', () => {
+  const state = createGame(131);
+  assert.equal(act(state, 'heroMode', { on: true }).ok, true);
+  const hero = state.hero;
+  assert.ok(hero.active);
+  // Walk west along the road toward the meadow.
+  const start = hero.x;
+  hero.input = { dx: -1, dy: 0 };
+  tick(state, 2);
+  assert.ok(hero.x < start - 5, 'the master walks');
+  // Stand next to a monster and swing until it falls: the guild gets coins, the master gets experience.
+  tick(state, 1);
+  const m = state.world.monsters.find(x => !x.dead && x.zone === 'meadow');
+  Object.assign(hero, { x: m.x - 0.8, y: m.y, fx: 1, fy: 0 });
+  hero.input = { attack: true };
+  const gold = state.gold, xp = hero.xp;
+  for (let i = 0; i < 40 && !m.dead; i++) { hero.x = m.x - 0.8; hero.y = m.y; tick(state, 0.25); }
+  assert.ok(m.dead, 'the swing kills the monster');
+  assert.ok(state.gold > gold && (hero.xp > xp || hero.level > 1), 'coins for the guild, experience for the master');
+  // A dodge makes the master untouchable for a moment.
+  hero.input = { dash: true, dx: 1, dy: 0 };
+  tick(state, 0.05);
+  assert.ok(hero.dash > 0 && hero.dashCd > 0);
+  // Knocked out, then carried home and back on their feet at the guild door.
+  hero.input = {}; hero.hp = 1; hero.dash = 0;
+  const foe = state.world.monsters.find(x => !x.dead && x.zone === 'meadow');
+  Object.assign(foe, { x: hero.x + 0.3, y: hero.y, hx: hero.x, hy: hero.y, target: 'hero', cd: 0 });
+  for (let i = 0; i < 20 && !(hero.down > 0); i++) tick(state, 0.25);
+  assert.ok(hero.down > 0, 'knocked out');
+  tick(state, 5);
+  assert.equal(hero.down, 0); assert.ok(hero.hp > 0 && Math.abs(hero.y - 11) < 6, 'back at the guild');
+  const back = deserializeGame(serializeGame(state));
+  assert.equal(back.hero.active, true); assert.equal(back.hero.level, hero.level);
+  assert.equal(act(state, 'heroMode', { on: false }).ok, true);
+  assert.equal(state.hero.active, false);
+});

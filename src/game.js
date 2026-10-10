@@ -2,11 +2,11 @@ import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,
 import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
-import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, spawnMonster, pointIn, worldRandom } from './life.js';
+import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero } from './life.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
 import { tickTown, sanitizePaths, sanitizeHomes, population, spotFree, ROTATABLE, homeOf } from './town.js';
-import { createTrade, sellLoot, tickTrade, dailyTrade, wholesale, sendCaravan, treasureAction, sanitizeTrade } from './trade.js';
+import { createTrade, sellLoot, tickTrade, dailyTrade, wholesale, sendCaravan, treasureAction, sanitizeTrade, storeUsed, storeCapacity } from './trade.js';
 export const SAVE_VERSION = 5;
 export const DAY_LENGTH = 240;
 const RESOURCE_KEYS = ['gold', 'wood', 'stone', 'herb'];
@@ -98,7 +98,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0,
     policy: { memberHunting: true, autoPetitions: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), idleBank: 0,
+    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -1052,6 +1052,7 @@ function lifeContext(state) {
     freeToHunt: member => state.policy?.memberHunting !== false && !introActive(state) && !isBusy(state, member.id) && member.energy >= 70 && member.injury <= 15 && member.autoWork !== false && member.task !== 'train' && !member.waitingReason,
     // Word of the guild's hunters spreads: fair renown for work at the guild's own level.
     renown: (zone, kills) => { const z = HUNT_ZONES[zone]; if (z) state.rep += Math.round(kills * 0.15 * renownFactor(state, z) * 10) / 10; },
+    storePart: (part, n) => { const t = state.trade, room = storeCapacity(state) - storeUsed(t); if (room > 0) t.store[part] = (t.store[part] || 0) + Math.min(n, room); },
     sellLoot: (hunter, who) => sellLoot(state, tradeContext(state), hunter, who),
     bossZone: () => bossAlive(state)?.zone || null,
     freeToDefend: member => !isBusy(state, member.id) && member.injury <= 40 && member.energy >= 20,
@@ -1646,6 +1647,7 @@ function command(state, type, payload = {}) {
     case 'setBuyRate': if (!BUY_RATES[payload.rate]) return failure('ราคารับซื้อไม่ถูกต้อง'); state.trade.buyRate = payload.rate; return success(`ตั้งราคารับซื้อเป็น${BUY_RATES[payload.rate].name}`);
     case 'setAutoWholesale': state.trade.autoWholesale = Boolean(payload.on); return success(state.trade.autoWholesale ? 'โกดังใกล้เต็มจะขายส่งเอง' : 'เก็บของไว้ทั้งหมด ไม่ขายเอง');
     case 'toggleWorkshop': if (!VILLAGE_PROJECTS[payload.workshop] || !['tannery', 'apothecary', 'jeweler'].includes(payload.workshop)) return failure('ไม่พบโรงงานนี้'); state.trade.halt[payload.workshop] = !state.trade.halt[payload.workshop]; if (!state.trade.halt[payload.workshop]) delete state.trade.halt[payload.workshop]; return success(state.trade.halt[payload.workshop] ? `${VILLAGE_PROJECTS[payload.workshop].name}หยุดรับวัตถุดิบ` : `${VILLAGE_PROJECTS[payload.workshop].name}กลับมาทำงาน`);
+    case 'heroMode': { if (introActive(state)) return failure('รอให้บทนำจบก่อน'); const hero = setHeroActive(state, lifeContext(state), Boolean(payload.on)); return success(hero.active ? 'หัวหน้ากิลด์ออกไปข้างนอกเอง' : 'หัวหน้ากิลด์กลับมาประจำโต๊ะ'); }
     case 'moveVillageBuilding': return moveVillageBuilding(state, payload);
     case 'wholesale': return wholesale(state, tradeContext(state), payload);
     case 'sendCaravan': return sendCaravan(state, tradeContext(state), payload);
@@ -1868,6 +1870,7 @@ export function deserializeGame(source) {
   state.policy = { memberHunting: data.policy?.memberHunting !== false, autoPetitions: data.policy?.autoPetitions !== false };
   state.director = sanitizeDirector(data.director, state.elapsed);
   state.trade = sanitizeTrade(data.trade);
+  state.hero = sanitizeHero(data.hero);
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
   // Older saves count the quests they already cleared as their record of work.
   const jobs = data.record?.jobs ?? Object.values(state.completedQuests).reduce((sum, n) => sum + n, 0);
