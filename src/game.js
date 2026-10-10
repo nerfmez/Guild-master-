@@ -63,7 +63,7 @@ function createMember(content, level = 1) {
     injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null };
 }
 
-export function createGame(seed = 123) {
+export function createGame(seed = 123, options = {}) {
   const state = {
     version: SAVE_VERSION, seed: seed >>> 0 || 123, rng: seed >>> 0 || 123, nextId: 10,
     gold: 1200, wood: 32, stone: 20, herb: 12, rep: 0, day: 1, clock: 0, elapsed: 0,
@@ -83,8 +83,51 @@ export function createGame(seed = 123) {
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, garden: false },
     bankruptcyDays: 0,
   };
+  if (options.opening) {
+    // Opening chapter: an empty hall, then adventurers arrive one step at a time.
+    state.members = []; state.facilities = []; state.wood = 40; state.stone = 24;
+    state.intro = { step: 'reception', timer: 0, visitors: [], next: [], after: null };
+    addLog(state, 'ผู้ใหญ่บ้านมอบบ้านเก่าข้างต้นไม้ให้เปิดเป็นกิลด์ เริ่มจากวางโต๊ะรับคำร้อง', 'story');
+    return state;
+  }
   addLog(state, 'บ้านเก่าข้างต้นไม้เปิดเป็นกิลด์แล้ว ส่งสมาชิก 3 คนลาดตระเวนทางหมู่บ้านเพื่อเริ่มต้น', 'story');
   return state;
+}
+
+export const INTRO_STEPS = ['reception', 'dorm', 'training', 'patrol', 'wait', 'visit', 'done'];
+const INTRO_ARRIVALS = { dorm: { next: ['mira'], after: 'training', delay: 6 }, training: { next: ['finn', 'lune'], after: 'patrol', delay: 8 }, patrol: { next: ['noa'], after: 'done', delay: 10 } };
+export function introActive(state) { return Boolean(state.intro && state.intro.step !== 'done'); }
+function introWait(state, from) {
+  const arrival = INTRO_ARRIVALS[from];
+  Object.assign(state.intro, { step: 'wait', timer: 0, next: [...arrival.next], after: arrival.after, delay: arrival.delay });
+}
+/** Advance the opening chapter when its condition is met; members only join through welcomeVisitors. */
+function advanceIntro(state, seconds = 0) {
+  const intro = state.intro;
+  if (!introActive(state)) return;
+  const has = type => state.facilities.some(f => f.type === type);
+  if (intro.step === 'reception' && has('reception')) intro.step = 'dorm';
+  if (intro.step === 'dorm' && has('dorm')) introWait(state, 'dorm');
+  if (intro.step === 'training' && has('training')) introWait(state, 'training');
+  if (intro.step === 'patrol' && state.completedQuests.patrol) introWait(state, 'patrol');
+  if (intro.step === 'wait') {
+    intro.timer += seconds;
+    if (intro.timer >= (intro.delay || 6)) { intro.visitors = intro.next; intro.next = []; intro.step = 'visit'; }
+  }
+}
+function welcomeVisitors(state) {
+  const intro = state.intro;
+  if (!introActive(state) || intro.step !== 'visit' || !intro.visitors.length) return failure('ยังไม่มีใครมาที่ประตู');
+  const names = [];
+  for (const id of intro.visitors) {
+    const content = MEMBER_BY_ID[id];
+    if (!content || memberById(state, id)) continue;
+    state.members.push(createMember(content)); names.push(content.name);
+  }
+  intro.visitors = []; intro.step = intro.after || 'done'; intro.after = null;
+  addLog(state, `${names.join(' · ')} เข้าร่วมกิลด์แล้ว`, 'story');
+  advanceIntro(state);
+  return success(`ยินดีต้อนรับ ${names.join(' · ')}`);
 }
 
 export function getMemberStats(state, memberOrId) {
@@ -582,6 +625,7 @@ export function tick(state, seconds) {
       updateCombat(mission, quest);
       if (mission.progress >= mission.duration) resolveMission(state, mission);
     }
+    if (state.intro) advanceIntro(state, step);
     if (state.clock >= DAY_LENGTH - 0.00001) {
       state.clock = 0;
       state.day += 1;
@@ -736,9 +780,15 @@ function hostEvent(state, payload) {
 
 /** Every rejected command leaves state unchanged. */
 export function act(state, type, payload = {}) {
+  const result = command(state, type, payload);
+  if (result?.ok && state?.intro) advanceIntro(state);
+  return result;
+}
+function command(state, type, payload = {}) {
   if (!state || typeof state !== 'object') return failure('ไม่พบข้อมูลกิลด์');
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return failure('คำสั่งไม่ถูกต้อง');
   switch (type) {
+    case 'welcomeVisitors': return welcomeVisitors(state);
     case 'sendMission': return sendMission(state, payload);
     case 'chooseEvent': return chooseEvent(state, payload);
     case 'recallMission': {
@@ -813,7 +863,15 @@ export function deserializeGame(source) {
   validateNumber(state, 'elapsed', 0, 1000000000);
   validateNumber(state, 'landLevel', 0, 2, true);
   if (!state.grid || state.grid.width !== 20 + state.landLevel * 6 || state.grid.height !== 16 + state.landLevel * 4) throw new Error('ขนาดที่ดินไม่ตรงกับระดับการขยาย');
-  if (!Array.isArray(state.members) || state.members.length < 3 || state.members.length > 12) throw new Error('รายชื่อสมาชิกไม่ถูกต้อง');
+  const opening = Boolean(data.intro) && data.intro.step !== 'done';
+  if (data.intro !== undefined) {
+    const intro = data.intro, starters = new Set(MEMBERS.filter(member => member.starter).map(member => member.id));
+    if (!intro || typeof intro !== 'object' || !INTRO_STEPS.includes(intro.step) || !finiteNumber(intro.timer) || intro.timer < 0
+      || !Array.isArray(intro.visitors) || !Array.isArray(intro.next) || [...intro.visitors, ...intro.next].some(id => !starters.has(id))
+      || (intro.after !== null && intro.after !== undefined && !INTRO_STEPS.includes(intro.after))) throw new Error('ข้อมูลช่วงเริ่มเกมไม่ถูกต้อง');
+    state.intro = { step: intro.step, timer: intro.timer, visitors: [...intro.visitors], next: [...intro.next], after: intro.after ?? null, delay: finiteNumber(intro.delay) ? intro.delay : 6 };
+  }
+  if (!Array.isArray(state.members) || state.members.length < (opening ? 0 : 3) || state.members.length > 12) throw new Error('รายชื่อสมาชิกไม่ถูกต้อง');
   const ids = new Set();
   state.members = state.members.map(member => {
     if (!member || !MEMBER_BY_ID[member.id] || ids.has(member.id) || !JOBS[member.class]) throw new Error('พบสมาชิกซ้ำหรืออาชีพไม่ถูกต้อง');
@@ -833,7 +891,7 @@ export function deserializeGame(source) {
     if (!finiteNumber(normalized.trainingProgress) || normalized.trainingProgress < 0) normalized.trainingProgress = 0;
     return normalized;
   });
-  if (!Array.isArray(state.facilities) || state.facilities.length < 1 || state.facilities.length > 100) throw new Error('รายชื่อห้องไม่ถูกต้อง');
+  if (!Array.isArray(state.facilities) || state.facilities.length < (opening ? 0 : 1) || state.facilities.length > 100) throw new Error('รายชื่อห้องไม่ถูกต้อง');
   if(data.version<3&&!data.building){
     state.building={x:5,y:4,width:Math.min(12,state.grid.width-6),height:Math.min(10,state.grid.height-5),level:2};
     const oldAreas=[];for(const f of state.facilities){const w=['reception','dorm','kitchen','training','lounge'].includes(f?.type)?4:3;const area={x:f?.x,y:f?.y,w,h:3};if(!f||!FACILITIES[f.type]||!Number.isInteger(f.x)||!Number.isInteger(f.y)||f.x<0||f.y<0||f.x+w>state.grid.width||f.y+3>state.grid.height||oldAreas.some(a=>intersects(a,area)))throw new Error('ผังในเซฟเดิมไม่ถูกต้อง');oldAreas.push(area);}
@@ -861,7 +919,7 @@ export function deserializeGame(source) {
     if (!canPlaceFacility(state, room.type,room.x,room.y,room.id,room.rotation??0,false).ok) throw new Error('ห้องในเซฟวางทับกันหรืออยู่นอกพื้นที่');
   }
   if(!hasWalkableEntries(state,state.facilities))throw new Error('ทางใช้งานเฟอร์นิเจอร์ถูกบัง');
-  if (!state.facilities.some(room => room.type === 'reception') || roomLevel(state, 'dorm') * 4 < state.members.length) throw new Error('โต๊ะรับคำร้องหรือเตียงพักไม่เพียงพอ');
+  if ((!opening && !state.facilities.some(room => room.type === 'reception')) || roomLevel(state, 'dorm') * 4 < state.members.length) throw new Error('โต๊ะรับคำร้องหรือเตียงพักไม่เพียงพอ');
   if (!Array.isArray(state.missions) || state.missions.length > 22) throw new Error('รายการภารกิจไม่ถูกต้อง');
   const missionIds = new Set(), assigned = new Set();
   for (const mission of state.missions) {
