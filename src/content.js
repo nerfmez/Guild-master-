@@ -193,7 +193,7 @@ export const VILLAGE_LEVELS = [
   { level: 2, prosperity: 250, name: 'หมู่บ้านอบอุ่น' },
   { level: 3, prosperity: 900, name: 'หมู่บ้านคึกคัก' },
   { level: 4, prosperity: 2600, name: 'ตำบลริมทาง' },
-  { level: 5, prosperity: 6000, name: 'เมืองใบอ่อน' },
+  { level: 5, prosperity: 7000, name: 'เมืองใบอ่อน' },
 ];
 export const VILLAGE_PROJECTS = {
   house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง' },

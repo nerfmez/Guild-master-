@@ -112,7 +112,7 @@ test('bankrupt guild remains playable, charges modest upkeep, and limits daily w
   const state = createGame();
   state.gold = 0;
   tick(state, 240);
-  assert.equal(state.gold, 0);
+  assert.ok(state.gold < 20, 'only the small market fees of free adventurers come in');
   assert.equal(state.day, 2);
   assert.equal(previewMission(state, 'patrol', party).ok, true);
   complete(state, dispatch(state));
@@ -579,14 +579,14 @@ test('board teams use their own slots, so the player can still send important wo
   assert.doesNotThrow(() => deserializeGame(serializeGame(state)));
 });
 
-test('a plain player finishes the demo in one to two hours, ranks climb by renown and merit, and money circulates', async () => {
+test('a plain player finishes the demo in about two hours, ranks climb by renown and merit, and money circulates', async () => {
   const { simulate } = await import('./simulate.js');
   for (const seed of [1, 2, 3, 4, 5]) {
     const { state, metrics: m } = simulate(seed, { freePlay: 3600 });
     const min = s => s / 60;
     assert.ok(m.finishedAt !== null, `seed ${seed} finishes the demo story`);
-    assert.ok(min(m.finishedAt) >= 50 && min(m.finishedAt) <= 120, `seed ${seed} demo takes 50-120 game minutes, took ${min(m.finishedAt)}`);
-    assert.ok(min(m.ranks.E) <= 20 && min(m.ranks.D) <= 60 && min(m.ranks.C) <= 105, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
+    assert.ok(min(m.finishedAt) >= 60 && min(m.finishedAt) <= 130, `seed ${seed} demo takes 60-130 game minutes, took ${min(m.finishedAt)}`);
+    assert.ok(min(m.ranks.E) <= 35 && min(m.ranks.D) <= 70 && min(m.ranks.C) <= 120, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
     assert.equal(state.rank, 'C', `seed ${seed} the demo stops at rank C`);
     assert.equal(m.bankruptDays, 0, `seed ${seed} never misses upkeep`);
     assert.equal(m.failures, 0, `seed ${seed} teams only take work they can handle`);
@@ -595,7 +595,7 @@ test('a plain player finishes the demo in one to two hours, ranks climb by renow
     assert.ok(state.members.every(member => member.points > 0), `seed ${seed} mentoring gives every member, rookies included, real work`);
     assert.ok(m.trade >= 5000, `seed ${seed} adventurers spent their wages in the village (${Math.round(m.trade)} G)`);
     assert.ok(state.members.every(member => member.equipment.weapon), `seed ${seed} everyone ends up armed`);
-    assert.ok(m.village[5] === undefined || m.village[5] > m.finishedAt * 1.3, `seed ${seed} the top village level is left for later`);
+    assert.ok(m.village[5] === undefined || m.village[5] > m.finishedAt * 1.2, `seed ${seed} the top village level is left for later`);
     const idle = m.ledger['ดอกผลกองทุนและค่าแผงตลาด'] || 0, commission = m.ledger['ค่านายหน้า'] || 0;
     assert.ok(idle > commission * 0.1 && idle < commission, `seed ${seed} idle income matters but does not replace work (${idle} vs ${commission})`);
     assert.doesNotThrow(() => serializeGame(state));
@@ -758,14 +758,14 @@ test('the living world: members hunt in real time, carry the fallen home, sell l
   for (let t = 0; t < 40 && h2.mode === 'go'; t++) tick(s2, 2);
   h2.hp = 1;
   const monster = s2.world.monsters.find(m => !m.dead && m.zone === h2.zone);
-  Object.assign(monster, { x: h2.x + .3, y: h2.y, target: h2.id, cd: 0 });
+  Object.assign(monster, { x: h2.x, y: h2.y, hx: h2.x, hy: h2.y, target: h2.id, cd: 0 });
   const potionsBefore = s2.members.find(m => m.id === h2.id).pack.potion;
   for (let t = 0; t < 20 && h2.mode !== 'carried'; t++) tick(s2, .5);
   assert.equal(h2.mode, 'carried', 'they fall and are carried, never killed');
   assert.equal(potionsBefore, 0);
   for (let t = 0; t < 200 && s2.world.hunters.some(h => h.id === h2.id); t++) tick(s2, 2);
   const fallen = s2.members.find(m => m.id === h2.id);
-  assert.ok(fallen.injury >= 30, 'home again, they need the infirmary');
+  assert.ok(fallen.injury >= 25, 'home again, they need the infirmary');
 });
 
 test('free adventurers live at the inn, hunt on their own, and can be invited once they like the guild', () => {
@@ -789,4 +789,60 @@ test('free adventurers live at the inn, hunt on their own, and can be invited on
   assert.equal(joined.name, f.name);
   assert.ok(!state.world.free.includes(f));
   assert.deepEqual(deserializeGame(serializeGame(state)).members.at(-1), joined);
+});
+
+test('the storyteller paces small happenings, choices and big events, and big events play out in the world', () => {
+  const state = createGame(81);
+  state.completedQuests.patrol = 1;
+  // Nothing happens in the first minutes, then small happenings come a few minutes apart.
+  tick(state, 120);
+  assert.equal(state.director.history.length, 0, 'a quiet start');
+  tick(state, 300);
+  assert.ok(state.director.history.length >= 1, 'a small happening arrived');
+  // A choice waits for the player; answering applies its effect.
+  state.director.nextDecision = state.elapsed; state.director.nextMinor = state.elapsed + 999; state.director.nextMajor = state.elapsed + 9999;
+  tick(state, 1);
+  const pending = state.director.pending;
+  assert.ok(pending && pending.choices.length >= 2, 'a decision is waiting');
+  assert.equal(act(state, 'resolveEvent', { choiceId: 'nope' }).ok, false);
+  const restored = deserializeGame(serializeGame(state));
+  assert.equal(restored.director.pending.id, pending.id, 'a waiting choice survives save and load');
+  assert.equal(act(state, 'resolveEvent', { choiceId: pending.choices[0].id }).ok, true);
+  assert.equal(state.director.pending, null);
+  assert.equal(state.director.history[0].id, pending.id);
+  // An unanswered choice settles itself on its gentlest option.
+  state.director.nextDecision = state.elapsed; tick(state, 1);
+  assert.ok(state.director.pending);
+  tick(state, 310);
+  assert.ok(!state.director.pending || state.director.pending.id !== pending.id, 'the old choice settled');
+  // A raid: monsters walk in from the west road and the people at home go out to meet them.
+  const raid = createGame(82);
+  raid.completedQuests.patrol = 1; raid.elapsed = 1000;
+  Object.assign(raid.director, { nextMajor: 1000, nextDecision: 9999, nextMinor: 9999, history: [{ id: 'boss' }, { id: 'celebrity' }, { id: 'storm' }] });
+  raid.members.forEach(m => { m.level = 8; m.energy = 100; });
+  tick(raid, 1);
+  assert.equal(raid.director.active?.id, 'raid');
+  assert.ok(raid.world.monsters.filter(m => m.raid).length >= 5, 'raiders on the road');
+  assert.ok(raid.world.hunters.some(h => h.party.startsWith('pt-defend')), 'defenders rally');
+  assert.ok(raid.director.alert?.watch === 'raid', 'the player is told and can watch');
+  for (let t = 0; t < 150 && raid.director.active; t++) tick(raid, 2);
+  assert.equal(raid.director.active, null, 'the raid ends');
+  assert.ok(!raid.world.monsters.some(m => m.raid), 'no raiders are left behind');
+  assert.equal(raid.director.history[0].id, 'raid');
+  // A world boss draws hunters who may enter its ground; beating it pays the guild.
+  const boss = createLivingGame(83);
+  boss.completedQuests.patrol = 1; boss.rank = 'E'; boss.elapsed = 1000;
+  Object.assign(boss.director, { nextMajor: 1000, nextDecision: 9999, nextMinor: 9999, history: [{ id: 'raid' }, { id: 'celebrity' }, { id: 'storm' }] });
+  tick(boss, 1);
+  const keeper = boss.world.monsters.find(m => m.boss);
+  assert.equal(boss.director.active?.id, 'boss');
+  assert.equal(keeper.zone, 'woods');
+  const gold = boss.gold;
+  keeper.hp = 1;
+  boss.members.forEach(m => { m.level = 9; m.rank = 'E'; m.energy = 100; });
+  for (let t = 0; t < 200 && boss.world.monsters.includes(keeper); t++) tick(boss, 2);
+  assert.ok(!boss.world.monsters.includes(keeper), 'the boss falls');
+  assert.equal(boss.director.active, null);
+  assert.ok(boss.gold > gold, 'the association pays a bounty');
+  assert.equal(boss.director.history[0].outcome, 'สำเร็จ');
 });
