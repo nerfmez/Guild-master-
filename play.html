@@ -5779,7 +5779,7 @@ function monsterSpawns() {
 return {WORLD,BIOMES,PATHS,RIVER,LAKE,BRIDGE,QUEST_SITES,SIGNPOSTS,VILLAGE_HOMES,regionOpen,smoothPath,CREEK,FOOTBRIDGE,biomeAt,nearPath,inWater,questRoute,FIELDS,DOCK,makeGroundPainter,MEADOW_BOX,MEADOW_SCENE,scatterMeadow,ORCHARD,WILD_SCENE,scatterNature,mistTint,makeBridge,makeFog,monsterSpawns};
 })();
 const World=(()=>{
-const { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,buildingRect,partitionSize,partitionRect,pointInRect }=Site;
+const { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,siteRoads,buildingRect,partitionSize,partitionRect,pointInRect }=Site;
 const { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS }=Content;
 const { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome }=Engine;
 const { makeActorTexture,villagerLook,applicantLook }=Artwork;
@@ -5881,12 +5881,19 @@ class GuildRenderer {
  }
  rebuild(){
   if(!this.ready)return;for(const image of this.rooms)image.destroy();this.rooms=[];this.furnitureSprites=[];
-  const terrain=makeGround(this.state);this.groundImage.setTexture(this.texture('ground',terrain.canvas));
+  // Only redraw what changed: the village ground depends on the grid and roads, furniture on its type, level and turn.
+  const groundSig=JSON.stringify([this.state.grid,siteRoads(this.state)]);
+  if(groundSig!==this.groundSig||!this.scene.textures.exists('ground')){this.groundSig=groundSig;const terrain=makeGround(this.state);this.groundImage.setTexture(this.texture('ground',terrain.canvas));}
   for(const image of this.siteProps)image.destroy();this.siteProps=[];
   for(const d of siteDecorations(this.state)){const p=gridPoint(d.x,d.y);this.siteProps.push(this.put('outside-'+d.type,makeOutdoor(d.type),p.x,p.y,p.y+12));}
   for(const part of makeBuilding(this.state).layers){const p=gridPoint(part.x,part.y),key='building-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
   for(const room of this.state.rooms||[])for(const part of makePartition(room,this.state).layers){const p=gridPoint(part.x,part.y),key='partition-'+room.id+'-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
-  for(const f of this.state.facilities)for(const part of makeRoom(f).layers){const p=gridPoint(f.x+part.x,f.y+part.y),key='furniture-'+f.id+'-'+part.name;const image=this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort);this.rooms.push(image);this.furnitureSprites.push({f,image,canvas:part.sprite.canvas,alpha:part.sprite.canvas.getContext('2d').getImageData(0,0,part.sprite.canvas.width,part.sprite.canvas.height).data});}
+  const furn=this.furnitureCache??=new Map();
+  for(const f of this.state.facilities){
+   const sig=JSON.stringify([f.type,f.level,f.rotation||0]);let cached=furn.get(f.id);
+   if(!cached||cached.sig!==sig||cached.parts.some(c=>!this.scene.textures.exists(c.key))){cached={sig,parts:makeRoom(f).layers.map(part=>{const key='furniture-'+f.id+'-'+part.name;this.texture(key,part.sprite.canvas);return{part,key,canvas:part.sprite.canvas,alpha:part.sprite.canvas.getContext('2d').getImageData(0,0,part.sprite.canvas.width,part.sprite.canvas.height).data};})};furn.set(f.id,cached);}
+   for(const c of cached.parts){const p=gridPoint(f.x+c.part.x,f.y+c.part.y),image=this.put(c.key,c.part.sprite,p.x,p.y,p.y+c.part.sort);this.rooms.push(image);this.furnitureSprites.push({f,image,canvas:c.canvas,alpha:c.alpha});}
+  }
   for(const a of this.furnitureSprites)if(a.f.id===this.moveId)a.image.setAlpha(.25);
   this.animateChanges();
   if(!this.userPanned){const b=buildingRect(this.state),p=gridPoint(b.x+b.w/2,b.y+b.h/2);this.focusX=p.x;this.focusY=p.y+22;this.applyView();}
