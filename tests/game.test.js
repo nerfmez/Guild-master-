@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
+import { marketPrice, tradeQuote, addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
 import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
@@ -519,15 +519,16 @@ test('idle guild upgrades and village projects grow income, petitions and the vi
   assert.equal(act(state, 'buildProject', { projectId: 'market' }).ok, true);
   assert.equal(act(state, 'buildProject', { projectId: 'smithy' }).ok, true);
   assert.equal(getCraftCost(state, { cost: { gold: 100, wood: 5 } }).gold, 90);
+  state.market.wood = 60;
   const wood = state.wood;
   assert.equal(act(state, 'buyMaterial', { key: 'wood' }).ok, true);
   assert.equal(state.wood, wood + 10);
   // Adventurers spend their wages in the village shop: morale up, village more prosperous.
   const mira = state.members.find(m => m.id === 'mira');
-  mira.purse = 50; mira.morale = 60;
+  mira.purse = 400; mira.morale = 60;
   const prosperity = state.village.prosperity;
   tick(state, 30);
-  assert.ok(mira.purse < 50 && mira.morale > 60 && state.village.prosperity > prosperity);
+  assert.ok(mira.purse < 400 && mira.morale > 60 && state.village.prosperity > prosperity);
   const restored = deserializeGame(serializeGame(state));
   assert.deepEqual(restored.village, state.village);
   assert.deepEqual(restored.upgrades, state.upgrades);
@@ -640,4 +641,41 @@ test('fame draws applicants to the door; rookies are generated and famous advent
   assert.equal(getAvailableRecruits(state).find(m => m.id === 'poppy').available, false);
   const data = JSON.parse(serializeGame(state)); delete data.checksum; data.members.at(-1).bio.trait = 'cheater';
   assert.throws(() => deserializeGame(JSON.stringify(data)));
+});
+
+test('the village market moves with supply, shops restock from it, and adventurers buy, use and mend their own gear', () => {
+  const state = createGame(41);
+  state.gold = 8000; state.wood = 300; state.stone = 300; state.herb = 100;
+  const price = marketPrice(state, 'herb');
+  const sold = tradeQuote(state, 'herb', true).gold;
+  assert.equal(act(state, 'sellMaterial', { key: 'herb' }).ok, true);
+  assert.ok(marketPrice(state, 'herb') < price, 'selling floods the market');
+  assert.ok(tradeQuote(state, 'herb', true).gold < sold, 'the next lot fetches less');
+  assert.ok(tradeQuote(state, 'herb', false).gold > tradeQuote(state, 'herb', true).gold, 'buying back costs more than selling');
+  assert.equal(act(state, 'buildProject', { projectId: 'shop' }).ok, true);
+  assert.equal(act(state, 'buildProject', { projectId: 'smithy' }).ok, true);
+  assert.ok(state.shops.ration > 0 && state.shops.potion > 0, 'the shop stocks supplies from market herbs');
+  assert.ok(state.shops.gear['oak-blade'] > 0, 'the smithy forges first-tier gear from market wood and stone');
+  // Wages buy supplies and gear; nobody spends the guild's gold.
+  const mira = state.members.find(m => m.id === 'mira'), gold = state.gold;
+  mira.purse = 300;
+  tick(state, 10);
+  assert.equal(mira.equipment.weapon, 'oak-blade');
+  assert.equal(mira.pack.ration, 1);
+  assert.equal(mira.pack.potion, 1);
+  assert.ok(state.gold >= gold, 'the guild pays nothing for members\' own purchases');
+  // A journey uses the ration and wears the blade.
+  const mission = dispatch(state, 'patrol', party);
+  assert.deepEqual(mission.rations, ['mira']);
+  assert.equal(mira.pack.ration, 0);
+  complete(state, mission);
+  assert.ok(mira.wear.weapon < 100);
+  mira.wear.weapon = 10;
+  const worn = getMemberStats(state, mira).basePower;
+  mira.purse = 200;
+  mira.shopClock = 0;
+  tick(state, 1);
+  assert.equal(mira.wear.weapon, 100, 'the smithy mends worn gear for a fee');
+  assert.ok(getMemberStats(state, mira).basePower > worn);
+  assert.deepEqual(deserializeGame(serializeGame(state)).shops, state.shops);
 });

@@ -1,5 +1,5 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS } from './content.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES } from './content.js';
 
 export const SAVE_VERSION = 5;
 export const DAY_LENGTH = 240;
@@ -62,7 +62,7 @@ function canAfford(state, cost) {
 
 function createMember(content, level = 1) {
   const member = { id: content.id, name: content.name, class: content.class, level, xp: 0, energy: 100, morale: 80,
-    injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null, purse: 0 };
+    injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null, purse: 0, pack: { ration: 0, potion: 0 }, wear: { weapon: 100, accessory: 100 } };
   if (content.rookie) { member.bio = { name: content.name, class: content.class, trait: content.trait, hair: content.hair, description: content.description, rookie: true }; member.hair = content.hair; }
   return member;
 }
@@ -87,7 +87,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, garden: false },
     bankruptcyDays: 0,
     applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0 }, upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0 }, idleBank: 0,
+    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, trade: 0 }, idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -160,7 +160,7 @@ export function getMemberStats(state, memberOrId) {
   const job = JOBS[member.class];
   const weapon = EQUIPMENT_BY_ID[member.equipment?.weapon];
   const accessory = EQUIPMENT_BY_ID[member.equipment?.accessory];
-  const basePower = job.power + (member.level - 1) * 2.7 + (weapon?.power || 0) + (accessory?.power || 0) + (traitOf(member).power || 0);
+  const basePower = job.power + (member.level - 1) * 2.7 + (weapon?.power || 0) * wearFactor(member, 'weapon') + (accessory?.power || 0) * wearFactor(member, 'accessory') + (traitOf(member).power || 0);
   const moraleFactor = 0.85 + member.morale * 0.002;
   const energyFactor = 0.7 + member.energy * 0.003;
   const injuryFactor = 1 - member.injury * 0.004;
@@ -443,7 +443,7 @@ function autoEquip(state) {
     const current = EQUIPMENT_BY_ID[member.equipment[slot]];
     const best = EQUIPMENT.filter(item => item.slot === slot && state.inventory[item.id] > 0 && (!item.classes.length || item.classes.includes(equipmentBaseClass(member))))
       .sort((a, b) => value(b) - value(a))[0];
-    if (best && value(best) > value(current)) { state.inventory[best.id] -= 1; if (current) state.inventory[current.id] = (state.inventory[current.id] || 0) + 1; member.equipment[slot] = best.id; changes++; }
+    if (best && value(best) > value(current)) { state.inventory[best.id] -= 1; if (current) state.inventory[current.id] = (state.inventory[current.id] || 0) + 1; member.equipment[slot] = best.id; (member.wear ??= { weapon: 100, accessory: 100 })[slot] = 100; changes++; }
   }
   return changes ? success(`จัดอุปกรณ์ใหม่ ${changes} ชิ้น`) : failure('ทุกคนใส่ของที่ดีที่สุดอยู่แล้ว');
 }
@@ -638,6 +638,8 @@ function sendMission(state, payload) {
   petition.status = 'taken'; petition.missionId = mission.id;
   state.missions.push(mission);
   party.forEach(member => { member.task = 'mission'; });
+  // Members who packed rations take them along: the journey tires them less.
+  mission.rations = party.filter(member => member.pack?.ration > 0).map(member => { member.pack.ration -= 1; return member.id; });
   addLog(state, payload.auto ? `${party.map(member => member.name).join(' · ')} หยิบงาน “${quest.name}” จากกระดานแล้ว` : `ส่ง ${party.map(member => member.name).join(' · ')} ไป${quest.name}`, 'mission');
   return success(`ทีมออกเดินทางไป${quest.name}แล้ว`);
 }
@@ -751,11 +753,16 @@ function resolveMission(state, mission) {
   mission.memberIds.forEach(id => {
     const member = memberById(state, id);
     member.task = 'rest';
-    member.energy = clamp(member.energy - mission.energyCost, 0, 100);
+    member.energy = clamp(member.energy - mission.energyCost * (mission.rations?.includes(member.id) ? 0.7 : 1), 0, 100);
     member.morale = clamp(member.morale + (won ? 7 : -9) + (won && mission.petition ? PAYOUT_PLANS[mission.petition.plan]?.morale || 0 : 0), 20, 100);
     const injury = won ? Math.max(0, Math.round((1.12 - readiness) * 23 + mission.risk * 3)) : 16 + Math.round(mission.risk * 10);
     const healerReduction = mission.roles?.includes('heal') ? 3 : 0;
-    member.injury = clamp(member.injury + Math.max(0, injury - (traitOf(member).injuryReduction || 0) - healerReduction), 0, 100);
+    let hurt = Math.max(0, injury - (traitOf(member).injuryReduction || 0) - healerReduction);
+    if (hurt > 4 && member.pack?.potion > 0) { member.pack.potion -= 1; hurt = Math.round(hurt / 2); }
+    member.injury = clamp(member.injury + hurt, 0, 100);
+    // Gear wears with every journey, more on a retreat; the smithy mends it.
+    member.wear ??= { weapon: 100, accessory: 100 };
+    for (const slot of ['weapon', 'accessory']) if (member.equipment[slot]) member.wear[slot] = Math.max(0, member.wear[slot] - Math.round(7 + mission.risk * 6 + (won ? 0 : 8)));
     member.missionsDone += won ? 1 : 0;
     addXp(state, member, quest.reward.xp * (won ? 1 : 0.35));
   });
@@ -802,6 +809,7 @@ function dailyUpdate(state) {
   if (shop) transact(state, { gold: shop * 20 }, 'ค่าเช่าร้านค้าในหมู่บ้าน', 1);
   if (market) transact(state, { wood: market * 3, stone: market * 2, herb: market * 2 }, 'ของจากตลาดนัด', 1);
   settleIdle(state, true);
+  restockShops(state);
   state.daily = { missionCounts: {}, work: {}, garden: Boolean(garden) };
   if (state.day % 3 === 0) {
     const choices = ['ชาวบ้านฝากขนมปังมาให้กิลด์ สมาชิกทุกคนขวัญดีขึ้น', 'เด็ก ๆ นำภาพวาดทีมกิลด์มาติดผนัง ทุกคนยิ้มให้กัน'];
@@ -880,7 +888,22 @@ export function getProjectStatus(state, id) {
   else if (!canAfford(state, getProjectCost(state, id))) reason = 'ทรัพยากรไม่เพียงพอ';
   return { ok: !reason, reason, level, max: p.max, cost: getProjectCost(state, id) };
 }
-export const SHOP_GOODS = { wood: { amount: 10, gold: 34 }, stone: { amount: 10, gold: 46 }, herb: { amount: 5, gold: 30 } };
+export const TRADE_LOT = { wood: 10, stone: 10, herb: 5 };
+const MARKET_START = { wood: 30, stone: 24, herb: 20 };
+/** A material's price: scarce in the village means dear, plenty means cheap (half to one and a half of base). */
+export function marketPrice(state, key) { const stock = state.market?.[key] ?? MARKET_START[key]; return Math.round(MATERIALS[key].price * clamp(1.5 - stock / 60, 0.5, 1.5) * 10) / 10; }
+/** Gold for selling (or cost of buying) a lot, unit by unit as the price moves. */
+export function tradeQuote(state, key, sell = true) {
+  let stock = state.market?.[key] ?? MARKET_START[key], gold = 0;
+  for (let i = 0; i < TRADE_LOT[key]; i++) { const price = MATERIALS[key].price * clamp(1.5 - stock / 60, 0.5, 1.5); if (sell) { gold += price * 0.9; stock += 1; } else { gold += price * 1.2; stock -= 1; } }
+  return { amount: TRADE_LOT[key], gold: sell ? Math.floor(gold) : Math.ceil(gold), available: sell || (state.market?.[key] ?? MARKET_START[key]) >= TRADE_LOT[key] };
+}
+/** What an adventurer pays the smithy for a piece of gear, and to mend it. */
+export function gearPrice(item) { return Math.round((item.cost.gold || 0) * 1.2 + (item.cost.wood || 0) * 4 + (item.cost.stone || 0) * 5 + (item.cost.herb || 0) * 6); }
+export function repairCost(item, wear) { return Math.ceil(gearPrice(item) * 0.25 * (100 - wear) / 100); }
+const gearValue = item => (item?.power || 0) * 2 + (item?.health || 0) * 0.5 + (item?.luck || 0) * 40;
+/** Worn gear (below a quarter) keeps only 60% of its power until mended. */
+const wearFactor = (member, slot) => (member.wear?.[slot] ?? 100) < 25 ? 0.6 : 1;
 
 /** Add a petition straight to the desk or the board (used by the village flow and by tests). */
 export function addPetition(state, questId, options = {}) {
@@ -982,15 +1005,64 @@ function settleIdle(state, force = false) {
 function tickVillage(state, step) {
   state.idleBank = (state.idleBank || 0) + idleRate(state) * step;
   settleIdle(state);
-  const shop = state.village?.shop || 0;
-  if (!shop) return;
   for (const member of state.members) {
-    if (isBusy(state, member.id) || !(member.purse >= 1)) continue;
-    const spend = Math.min(member.purse, (0.25 + shop * 0.15) * step);
-    member.purse -= spend;
-    member.morale = clamp(member.morale + spend * 0.12, 0, 100);
-    state.village.prosperity += spend * 0.2;
+    if (isBusy(state, member.id)) continue;
+    member.shopClock = (member.shopClock ?? (hashId(member.id) % 8)) - step;
+    if (member.shopClock > 0) continue;
+    member.shopClock = 8;
+    memberShopping(state, member);
   }
+}
+const hashId = id => [...String(id)].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) >>> 0, 7);
+/** Money spent in the village shops makes the village more prosperous. */
+function spendInVillage(state, member, gold) { member.purse -= gold; state.village.prosperity += gold * 0.2; state.village.trade = (state.village.trade || 0) + gold; }
+/** An adventurer at home looks after themselves: mend gear, pack supplies, save for and buy better gear, then treats. */
+function memberShopping(state, member) {
+  const v = state.village, shops = state.shops;
+  member.pack ??= { ration: 0, potion: 0 }; member.wear ??= { weapon: 100, accessory: 100 };
+  if (v.smithy) for (const slot of ['weapon', 'accessory']) {
+    const item = EQUIPMENT_BY_ID[member.equipment[slot]];
+    if (!item || member.wear[slot] >= 60) continue;
+    const cost = repairCost(item, member.wear[slot]);
+    if (member.purse >= cost) { spendInVillage(state, member, cost); member.wear[slot] = 100; }
+  }
+  if (v.shop) for (const id of ['ration', 'potion']) {
+    if ((member.pack[id] || 0) >= 1 || !(shops[id] > 0) || member.purse < CONSUMABLES[id].price) continue;
+    spendInVillage(state, member, CONSUMABLES[id].price); shops[id] -= 1; member.pack[id] = (member.pack[id] || 0) + 1;
+  }
+  if (v.smithy) for (const slot of ['weapon', 'accessory']) {
+    const current = EQUIPMENT_BY_ID[member.equipment[slot]];
+    const best = Object.entries(shops.gear).filter(([, n]) => n > 0).map(([id]) => EQUIPMENT_BY_ID[id])
+      .filter(item => item.slot === slot && (!item.classes.length || item.classes.includes(equipmentBaseClass(member))) && gearValue(item) > gearValue(current) * 1.15 + 2 && gearPrice(item) <= member.purse)
+      .sort((a, b) => gearValue(b) - gearValue(a))[0];
+    if (!best) continue;
+    spendInVillage(state, member, gearPrice(best)); if (!(shops.gear[best.id] -= 1)) delete shops.gear[best.id];
+    if (current) { shops.gear[current.id] = (shops.gear[current.id] || 0) + 1; member.purse += Math.floor(gearPrice(current) * 0.25); }
+    member.equipment[slot] = best.id; member.wear[slot] = 100;
+    addLog(state, `${member.name}ซื้อ${best.name}ด้วยเงินของตัวเองที่โรงตีเหล็ก`, 'member');
+  }
+  // Treats only from savings beyond what the next upgrade needs.
+  if (v.shop && member.purse > 90) { const treat = Math.min(member.purse - 90, 6 + v.shop * 3); spendInVillage(state, member, treat); member.morale = clamp(member.morale + treat * 0.5, 0, 100); }
+}
+/** Each morning the shops restock from the village market, and the village uses up some of its stock. */
+function restockShops(state) {
+  const v = state.village, shops = state.shops, m = state.market;
+  const take = (cost, times = 1) => { for (const [k, n] of Object.entries(cost)) if ((m[k] || 0) < n * times) return false; for (const [k, n] of Object.entries(cost)) m[k] -= n * times; return true; };
+  if (v.shop) for (const [id, c] of Object.entries(CONSUMABLES)) { const want = (id === 'ration' ? 4 : 3) * v.shop; while ((shops[id] || 0) < want && take({ herb: c.herb })) shops[id] = (shops[id] || 0) + 1; }
+  if (v.smithy) for (const item of EQUIPMENT.filter(e => !e.loot && e.workshopLevel <= v.smithy && hasRank(state, e.unlockRank))) {
+    while ((shops.gear[item.id] || 0) < 1 + (v.smithy >= 2 ? 1 : 0) && take({ wood: item.cost.wood || 0, stone: item.cost.stone || 0, herb: item.cost.herb || 0 })) shops.gear[item.id] = (shops.gear[item.id] || 0) + 1;
+  }
+  for (const k of Object.keys(MATERIALS)) m[k] = Math.max(0, Math.floor(m[k] * 0.9));
+}
+function sellMaterial(state, payload) {
+  const key = payload.key;
+  if (!MATERIALS[key]) return failure('ตลาดไม่รับของชนิดนี้');
+  const quote = tradeQuote(state, key, true);
+  if (state[key] < quote.amount) return failure(`มี${MATERIALS[key].name}ไม่ถึง ${quote.amount}`);
+  transact(state, { [key]: quote.amount }, `ขาย${MATERIALS[key].name}ให้ตลาด`);
+  transact(state, { gold: quote.gold }, `ขาย${MATERIALS[key].name}ให้ตลาด`, 1);
+  state.market[key] += quote.amount;
+  return success(`ขาย${MATERIALS[key].name} ${quote.amount} ได้ ${quote.gold} G`);
 }
 function buyUpgrade(state, payload) {
   const u = GUILD_UPGRADES[payload.upgradeId];
@@ -1009,6 +1081,7 @@ function buildProject(state, payload) {
   if (!status.ok) return failure(status.reason);
   transact(state, status.cost, `หมู่บ้าน: ${p.name}`);
   if (id === 'house') state.village.houses += 1; else state.village[id] = (state.village[id] || 0) + 1;
+  if (id === 'shop' || id === 'smithy') restockShops(state);
   const before = getVillageInfo(state).level;
   state.village.prosperity += p.prosperity;
   const after = getVillageInfo(state);
@@ -1017,14 +1090,16 @@ function buildProject(state, payload) {
   return success(id === 'house' ? 'สร้างบ้านใหม่แล้ว' : `${p.name}ระดับ ${state.village[id]}`);
 }
 function buyMaterial(state, payload) {
-  const good = SHOP_GOODS[payload.key];
-  if (!good) return failure('ร้านไม่มีของชนิดนี้');
-  if (!(state.village?.shop > 0)) return failure('ต้องสร้างร้านค้าในหมู่บ้านก่อน');
-  if (state.gold < good.gold) return failure('เหรียญไม่เพียงพอ');
-  transact(state, { gold: good.gold }, `ซื้อ${({ wood: 'ไม้', stone: 'หิน', herb: 'สมุนไพร' })[payload.key]}จากร้านค้า`);
-  transact(state, { [payload.key]: good.amount }, 'ของจากร้านค้า', 1);
-  state.village.prosperity += good.gold * 0.2;
-  return success(`ซื้อแล้ว +${good.amount}`);
+  const key = payload.key;
+  if (!MATERIALS[key]) return failure('ตลาดไม่มีของชนิดนี้');
+  const quote = tradeQuote(state, key, false);
+  if (!quote.available) return failure(`ตลาดมี${MATERIALS[key].name}ไม่พอ`);
+  if (state.gold < quote.gold) return failure('เหรียญไม่เพียงพอ');
+  transact(state, { gold: quote.gold }, `ซื้อ${MATERIALS[key].name}จากตลาด`);
+  transact(state, { [key]: quote.amount }, `ซื้อ${MATERIALS[key].name}จากตลาด`, 1);
+  state.market[key] -= quote.amount;
+  state.village.prosperity += quote.gold * 0.1;
+  return success(`ซื้อ${MATERIALS[key].name} +${quote.amount}`);
 }
 /** Income earned while the game was closed: the coffer and market keep paying for up to two hours. */
 function collectIdle(state, payload) {
@@ -1232,6 +1307,7 @@ function equip(state, payload) {
   state.inventory[item.id] -= 1;
   if (old) state.inventory[old] = (state.inventory[old] || 0) + 1;
   member.equipment[item.slot] = item.id;
+  (member.wear ??= { weapon: 100, accessory: 100 })[item.slot] = 100;
   return success(`${member.name} สวม${item.name}แล้ว`);
 }
 
@@ -1285,6 +1361,7 @@ function command(state, type, payload = {}) {
     case 'buyUpgrade': return buyUpgrade(state, payload);
     case 'buildProject': return buildProject(state, payload);
     case 'buyMaterial': return buyMaterial(state, payload);
+    case 'sellMaterial': return sellMaterial(state, payload);
     case 'collectIdle': return collectIdle(state, payload);
     case 'chooseEvent': return chooseEvent(state, payload);
     case 'recallMission': {
@@ -1392,6 +1469,10 @@ export function deserializeGame(source) {
     if (!finiteNumber(normalized.trainingProgress) || normalized.trainingProgress < 0) normalized.trainingProgress = 0;
     if (!finiteNumber(normalized.purse) || normalized.purse < 0 || normalized.purse > 100000000) normalized.purse = 0;
     if (normalized.autoWork !== undefined) normalized.autoWork = Boolean(normalized.autoWork);
+    const count = n => Number.isInteger(n) && n >= 0 && n <= 9 ? n : 0, pct = n => finiteNumber(n) ? clamp(n, 0, 100) : 100;
+    normalized.pack = { ration: count(member.pack?.ration), potion: count(member.pack?.potion) };
+    normalized.wear = { weapon: pct(member.wear?.weapon), accessory: pct(member.wear?.accessory) };
+    if (normalized.shopClock !== undefined && !finiteNumber(normalized.shopClock)) delete normalized.shopClock;
     return normalized;
   });
   if (!Array.isArray(state.facilities) || state.facilities.length < (opening ? 0 : 1) || state.facilities.length > 100) throw new Error('รายชื่อห้องไม่ถูกต้อง');
@@ -1476,7 +1557,7 @@ export function deserializeGame(source) {
   validateNumber(village, 'prosperity', 0, 1000000000);
   validateNumber(village, 'houses', 0, VILLAGE_LOTS.houses.length, true);
   for (const id of ['shop', 'market', 'smithy']) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
-  state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy };
+  state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy, trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
   state.idleBank = finiteNumber(data.idleBank) ? clamp(data.idleBank, 0, 1000000) : 0;
   const appIds = new Set();
   state.applicants = (Array.isArray(data.applicants) ? data.applicants : []).filter(a => a && typeof a.id === 'string' && !appIds.has(a.id) && appIds.add(a.id) && ['coming', 'waiting'].includes(a.status)
@@ -1484,6 +1565,9 @@ export function deserializeGame(source) {
     && (a.memberId ? MEMBER_BY_ID[a.memberId] && !MEMBER_BY_ID[a.memberId].starter && !ids.has(a.memberId) : validRookie({ id: a.rookieId, bio: { ...a.bio, rookie: true } }))).slice(0, 4)
     .map(a => ({ id: a.id, status: a.status, eta: finiteNumber(a.eta) ? clamp(a.eta, 0, 600) : 0, etaTotal: finiteNumber(a.etaTotal) ? clamp(a.etaTotal, 1, 600) : 20, patience: finiteNumber(a.patience) ? clamp(a.patience, 0, 1000) : 160,
       memberId: a.memberId || null, rookieId: a.memberId ? null : a.rookieId, bio: a.memberId ? null : { name: a.bio.name, class: a.bio.class, trait: a.bio.trait, hair: a.bio.hair, description: a.bio.description }, level: a.level, fee: a.fee, famous: Boolean(a.famous) }));
+  state.market = Object.fromEntries(Object.keys(MATERIALS).map(k => [k, Number.isInteger(data.market?.[k]) && data.market[k] >= 0 && data.market[k] < 1000000 ? data.market[k] : defaults.market[k]]));
+  const stock = n => Number.isInteger(n) && n >= 0 && n < 1000 ? n : 0;
+  state.shops = { ration: stock(data.shops?.ration), potion: stock(data.shops?.potion), gear: Object.fromEntries(Object.entries(data.shops?.gear || {}).filter(([id, n]) => EQUIPMENT_BY_ID[id] && !EQUIPMENT_BY_ID[id].loot && stock(n) > 0)) };
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
   // Older saves count the quests they already cleared as their record of work.
   const jobs = data.record?.jobs ?? Object.values(state.completedQuests).reduce((sum, n) => sum + n, 0);

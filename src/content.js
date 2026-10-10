@@ -185,9 +185,9 @@ export const VILLAGE_LEVELS = [
 ];
 export const VILLAGE_PROJECTS = {
   house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง' },
-  shop: { name: 'ร้านค้า', icon: '🛍', max: 3, villageLevel: 1, base: { gold: 300, wood: 18, stone: 8 }, growth: 1.9, prosperity: 140, description: 'นักผจญภัยใช้เงินส่วนตัวซื้อของกิน ขวัญดีขึ้น · กิลด์ได้ค่าเช่าวันละ 20 G ต่อระดับ · ซื้อวัตถุดิบได้' },
+  shop: { name: 'ร้านค้า', icon: '🛍', max: 3, villageLevel: 1, base: { gold: 240, wood: 14, stone: 6 }, growth: 1.9, prosperity: 140, description: 'ขายเสบียงและยาให้นักผจญภัยด้วยเงินของพวกเขาเอง (ใช้สมุนไพรจากตลาด) · ขนมช่วยขวัญ · กิลด์ได้ค่าเช่าวันละ 20 G ต่อระดับ' },
   market: { name: 'ตลาดนัด', icon: '🧺', max: 3, villageLevel: 2, base: { gold: 420, wood: 20, stone: 14 }, growth: 1.9, prosperity: 200, description: 'แผงค้าส่งไม้ หิน สมุนไพรให้กิลด์ทุกวัน และเก็บค่าแผง 0.15 G/วินาทีต่อระดับ' },
-  smithy: { name: 'โรงตีเหล็ก', icon: '⚒', max: 3, villageLevel: 3, base: { gold: 520, wood: 16, stone: 24 }, growth: 1.9, prosperity: 260, description: 'ลดค่าเงินคราฟต์อุปกรณ์ 10% ต่อระดับ' },
+  smithy: { name: 'โรงตีเหล็ก', icon: '⚒', max: 3, villageLevel: 1, base: { gold: 320, wood: 12, stone: 18 }, growth: 2, prosperity: 180, description: 'ขายและซ่อมอาวุธให้นักผจญภัย อาวุธขั้นสูงขึ้นตามระดับ (ใช้ไม้และหินจากตลาด) · ลดเงินคราฟต์ของกิลด์ 10% ต่อระดับ' },
 };
 /** Where homes and businesses stand on the world map (grid units, top-left of the footprint). */
 export const VILLAGE_LOTS = {
@@ -213,3 +213,10 @@ export const TRAIT_NAMES = ['ใจเย็น', 'ช่างสังเก�
 export const ROOKIE_NAMES = ['ปิ่น', 'ต้นข้าว', 'โอ๊ต', 'มะปราง', 'ภู', 'น้ำหวาน', 'กิ่ง', 'ตะวัน', 'ใบเตย', 'ก้อนหิน', 'ฝ้าย', 'เมฆ', 'แพรว', 'บุญมา', 'ขนุน', 'ดาวเรือง', 'สายลม', 'ปุยฝ้าย'];
 export const ROOKIE_LINES = ['เด็กจากหมู่บ้านข้าง ๆ ที่อยากเห็นโลกกว้าง', 'เคยช่วยพ่อเฝ้าไร่ เลยไม่กลัวหมูป่า', 'อ่านนิทานนักผจญภัยจนจำได้ทุกเล่ม', 'ฝึกมาเองจากหนังสือเก่า ๆ ในห้องสมุด', 'มาตามคำบอกเล่าว่ากิลด์นี้ใจดี', 'อยากเก็บเงินซื้อดาบเล่มแรกของตัวเอง', 'ได้ยินชื่อกิลด์จากชาวบ้านที่เคยได้รับความช่วยเหลือ'];
 export const HAIR_COLORS = ['#5b4637', '#8b5a3c', '#d9b26f', '#a66c59', '#6f6a8f', '#e9e2d0', '#73818d', '#c79894', '#82976a'];
+
+// ---- The village market: prices move with supply, shops restock from it, adventurers buy with their own wages. ----
+export const MATERIALS = { wood: { name: 'ไม้', icon: '▰', price: 4 }, stone: { name: 'หิน', icon: '◆', price: 5 }, herb: { name: 'สมุนไพร', icon: '❧', price: 6 } };
+export const CONSUMABLES = {
+  ration: { name: 'เสบียงเดินทาง', price: 9, herb: 1, description: 'ใช้พลังในภารกิจน้อยลง 30%' },
+  potion: { name: 'ยาสมุนไพร', price: 22, herb: 2, description: 'บาดเจ็บจากภารกิจลดลงครึ่งหนึ่ง' },
+};
