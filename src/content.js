@@ -209,7 +209,7 @@ export const HOME_NEEDS = {
   goods: { name: 'ของใช้', icon: '🧺', from: ['smithy', 'tannery', 'apothecary', 'jeweler', 'market'], reach: 18 },
   road: { name: 'ถนนถึงบ้าน', icon: '🛤', road: 0.5 },
   safety: { name: 'ความปลอดภัย', icon: '🛡', from: ['guild', 'dojo'], reach: 16 },
-  leisure: { name: 'ที่พักผ่อน', icon: '🎪', from: ['inn', 'market', 'arena'], reach: 18 },
+  leisure: { name: 'ที่พักผ่อน', icon: '🎪', from: ['inn', 'market', 'arena', 'auction'], reach: 18 },
 };
 /** Needs for the next tier, and the village level a tier waits for. */
 export const HOUSE_UPGRADES = [
@@ -227,6 +227,7 @@ export const VILLAGE_PROJECTS = {
   apothecary: { name: 'โรงปรุงยา', icon: '⚗', max: 3, villageLevel: 2, base: { gold: 320, wood: 14, stone: 10 }, growth: 1.9, prosperity: 170, description: 'ปรุงเยือก น้ำผึ้ง สปอร์ และผงหมอกเป็นยาบำรุง · ระดับเพิ่มความเร็ว' },
   jeweler: { name: 'ร้านเจียระไน', icon: '💍', max: 3, villageLevel: 2, base: { gold: 380, wood: 10, stone: 18 }, growth: 2, prosperity: 190, description: 'เจียเขา เปลือก ผลึก และแกนหินเป็นเครื่องประดับ · ระดับเพิ่มความเร็ว' },
   caravan: { name: 'ลานคาราวาน', icon: '🐎', max: 3, villageLevel: 2, base: { gold: 450, wood: 26, stone: 10 }, growth: 2, prosperity: 200, description: 'ส่งคาราวานขนของในโกดังไปขายเมืองหลวง ได้ราคาสูงกว่าขายในเมือง และรับใบสั่งซื้อโบนัส · ระดับเพิ่มความจุ' },
+  auction: { name: 'โรงประมูล', icon: '🔨', max: 2, villageLevel: 4, base: { gold: 900, wood: 30, stone: 30 }, growth: 2.2, prosperity: 260, description: 'นำสมบัติขึ้นประมูลทุกเช้า ได้ราคาสูงกว่านักสะสมเมื่อมีพ่อค้าในเมืองมากและกิลด์มีชื่อเสียง · ระดับ 2 ดึงผู้ประมูลจากต่างเมือง' },
   smithy: { name: 'โรงตีเหล็ก', icon: '⚒', max: 3, villageLevel: 1, base: { gold: 320, wood: 12, stone: 18 }, growth: 2, prosperity: 180, description: 'ขายและซ่อมอาวุธให้นักผจญภัย อาวุธขั้นสูงขึ้นตามระดับ (ใช้ไม้และหินจากตลาด) · ลดเงินคราฟต์ของกิลด์ 10% ต่อระดับ' },
 };
 /** Where homes and businesses stand on the world map (grid units, top-left of the footprint). */
@@ -252,11 +253,12 @@ export const VILLAGE_LOTS = {
   apothecary: { x: -15, y: 13, seed: 167, style: 'apothecary' },
   jeweler: { x: 30, y: 12.6, seed: 173, style: 'jeweler' },
   caravan: { x: 38.5, y: 19.5, seed: 179, style: 'caravan' },
+  auction: { x: 27, y: 8, seed: 191, style: 'auction' },
 };
 /** Footprints of village buildings on the world grid (width, depth). */
-export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4] };
+export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4], auction: [2.6, 2.5] };
 /** Every village business the player can build (houses aside). */
-export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan'];
+export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan', 'auction'];
 
 // ---- Applicants: fame draws newcomers to the door; famous adventurers come only when the guild suits them. ----
 export const TRAIT_NAMES = ['ใจเย็น', 'ช่างสังเกต', 'ใฝ่รู้', 'อ่อนโยน', 'รักอิสระ', 'ขยัน', 'ร่าเริง', 'รอบคอบ', 'กล้าหาญ', 'ช่างพูด', 'อดทน', 'สุขุม'];
@@ -366,5 +368,5 @@ export const TRADE_RULES = {
   recipe: 3, goodsValue: 1.7, workTime: 45,
   townDemand: 3, townDemandPerLevel: 2,
   caravanTime: 360, caravanCapacity: 30, caravanPerLevel: 15, caravanMarkup: 1.35, contractBonus: 0.5, caravanRisk: 0.18, caravanLoss: 0.35, escortCost: 60,
-  displaySlots: 6, displayTip: 0.02,
+  displaySlots: 6, displayTip: 0.02, auctionLots: 4,
 };

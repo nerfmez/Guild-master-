@@ -98,7 +98,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0,
     policy: { memberHunting: true, autoPetitions: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), idleBank: 0,
+    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -1102,7 +1102,8 @@ function tradeContext(state) {
   return {
     income: (gold, reason) => { if (gold > 0) transact(state, { gold }, reason, 1); }, expense: (gold, reason) => { if (gold > 0) transact(state, { gold }, reason); },
     log: (text, type) => addLog(state, text, type), random: () => worldRandom(state), villageLevel: () => getVillageInfo(state).level,
-    rep: n => { state.rep += n; }, prosperity: n => { state.village.prosperity += n; },
+    rep: n => { state.rep += n; }, prosperity: n => { state.village.prosperity += n; }, renown: () => state.rep,
+    merchants: () => Object.values(state.village.homes || {}).filter(h => h.tier >= 3).length,
     openParts: () => [...new Set(Object.values(HUNT_ZONES).filter(z => hasRank(state, z.rank)).flatMap(z => z.species.map(sp => MONSTER_PART[sp]).filter(Boolean)))],
   };
 }
@@ -1650,6 +1651,7 @@ function command(state, type, payload = {}) {
     case 'sendCaravan': return sendCaravan(state, tradeContext(state), payload);
     case 'sellTreasure': return treasureAction(state, tradeContext(state), payload, false);
     case 'displayTreasure': return treasureAction(state, tradeContext(state), payload, true);
+    case 'auctionTreasure': return treasureAction(state, tradeContext(state), payload, 'auction');
     case 'resolveEvent': return resolveDecision(state, directorContext(state), payload.choiceId);
     case 'setPolicy': {
       state.policy = { ...(state.policy || {}) };

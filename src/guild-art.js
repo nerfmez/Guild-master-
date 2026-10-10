@@ -214,6 +214,7 @@ export const HOME_STYLES={
  apothecary:{w:2.4,h:2.3,z:34,ridge:'x',roof:'plum',wall:'plaster',awning:['#8fb3c9','#f4e5c9'],sign:'potion',chimney:[1.9,.5],flowers:true},
  jeweler:{w:2.4,h:2.2,z:36,ridge:'y',roof:'slate',wall:'stone',sign:'gem',shutters:'#6f8fb0',lantern:true},
  caravan:{w:2.8,h:2.4,z:30,ridge:'x',roof:'terra',wall:'timber',sign:'cart',porch:true,woodpile:true,lantern:true},
+ auction:{w:2.6,h:2.5,z:56,ridge:'x',roof:'plum',wall:'stone',storeys:2,sign:'gem',lantern:true,porch:true,shutters:'#c98a72'},
  store:{w:2.6,h:2.3,z:32,ridge:'x',roof:'moss',wall:'timber',awning:['#7fa37a','#f4e5c9'],sign:'bag',chimney:[2.1,.5],flowers:true},
 };
 /** The arena where the guild association holds rank exams: a sand ring with a fence, banners and, as it grows, stands. */

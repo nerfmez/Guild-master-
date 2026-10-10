@@ -920,6 +920,20 @@ test('hunters sell parts and treasures at the guild counter; the guild makes goo
   const g4 = state.gold;
   assert.equal(act(state, 'sellTreasure', { index: 0 }).ok, true);
   assert.equal(state.gold, g4 + 120);
+  // The auction house sells lots each morning, usually above the collector's price when the town is rich.
+  state.trade.treasures = [{ id: 'jadeIdol', from: 'x' }];
+  assert.equal(act(state, 'auctionTreasure', { index: 0 }).ok, false, 'needs an auction house');
+  state.village.auction = 1; state.rep = 1500;
+  for (let i = 0; i < 6; i++) state.village.homes['h' + (i % 3)] = { tier: 3, progress: 0 };
+  assert.equal(act(state, 'auctionTreasure', { index: 0 }).ok, true);
+  assert.equal(state.trade.auction.length, 1);
+  assert.equal(deserializeGame(serializeGame(state)).trade.auction.length, 1, 'lots survive save and load');
+  const g5 = state.gold;
+  tick(state, 240 - state.clock + 1);
+  assert.equal(state.trade.auction.length, 0);
+  const sale = state.ledger.find(e => e.text === 'ประมูลสมบัติ');
+  assert.ok(sale && sale.gold > 380, `the auction beat the collector (${sale?.gold})`);
+  assert.ok(state.gold > g5 - 500);
 });
 
 test('engine modules use plain named imports so the single-file export can bundle them', async () => {

@@ -6,7 +6,7 @@ const R = TRADE_RULES;
 
 export function createTrade() {
   return { buyRate: 'fair', autoWholesale: true, store: {}, goods: {}, treasures: [], displayed: [], work: {}, halt: {}, demand: {},
-    caravan: null, contract: null, stats: { bought: 0, spent: 0, earned: 0, made: 0, trips: 0 }, recent: [] };
+    caravan: null, contract: null, auction: [], stats: { bought: 0, spent: 0, earned: 0, made: 0, trips: 0 }, recent: [] };
 }
 const sum = obj => Object.values(obj).reduce((s, n) => s + n, 0);
 export const storeCapacity = state => R.storeBase + (state.upgrades?.storehouse || 0) * R.storePerLevel;
@@ -99,7 +99,21 @@ export function wholesale(state, ctx, payload, auto = false) {
 }
 
 /** Once a day the townsfolk buy goods from the guild's workshops, collectors pay to see the display, and prices recover. */
+/** Each morning the auction house sells its lots: more merchants in town and more renown mean higher bids. */
+function holdAuction(state, ctx) {
+  const t = state.trade; if (!t.auction.length) return;
+  const level = state.village?.auction || 0, merchants = ctx.merchants?.() || 0;
+  let total = 0; const lines = [];
+  for (const item of t.auction) {
+    const def = TREASURES[item.id], heat = 0.85 + ctx.random() * 0.55 + merchants * 0.05 + Math.min(0.5, ctx.renown() / 1500) + (level - 1) * 0.2;
+    const bid = Math.round(def.value * Math.min(2.6, heat)); total += bid; lines.push(`${def.name} ${bid} G`);
+  }
+  t.auction = [];
+  ctx.income(total, 'ประมูลสมบัติ'); t.stats.earned += total; remember(t, `ประมูล · +${total} G`);
+  ctx.log(`🔨 ประมูลเช้านี้คึกคัก! ${lines.join(' · ')} (รวม ${total} G)`, 'success');
+}
 export function dailyTrade(state, ctx) {
+  holdAuction(state, ctx);
   const t = state.trade, want = R.townDemand + ctx.villageLevel() * R.townDemandPerLevel;
   let gold = 0, sold = 0;
   for (const [id, g] of Object.entries(t.goods)) {
@@ -164,10 +178,16 @@ function caravanHome(state, ctx) {
   t.caravan = null; t.contract = null;
 }
 
-// ---- Treasures: sell to a collector, or keep in the guild's display for renown and visitors. ----
+// ---- Treasures: sell to a collector, keep in the guild's display, or put up at the auction house. ----
 export function treasureAction(state, ctx, payload, display) {
   const t = state.trade, i = Number(payload.index), item = Number.isInteger(i) ? t.treasures[i] : null, def = item && TREASURES[item.id];
   if (!def) return { ok: false, message: 'ไม่พบสมบัติชิ้นนี้' };
+  if (display === 'auction') {
+    if (!(state.village?.auction > 0)) return { ok: false, message: 'ต้องสร้างโรงประมูลในหมู่บ้านก่อน' };
+    if (t.auction.length >= R.auctionLots) return { ok: false, message: 'รายการประมูลพรุ่งนี้เต็มแล้ว' };
+    t.treasures.splice(i, 1); t.auction.push(item);
+    return { ok: true, message: `${def.name}ขึ้นรายการประมูลเช้าพรุ่งนี้` };
+  }
   if (display) {
     if (t.displayed.length >= R.displaySlots) return { ok: false, message: 'ตู้จัดแสดงเต็มแล้ว' };
     t.treasures.splice(i, 1); t.displayed.push(item); ctx.rep(def.rep);
@@ -192,6 +212,7 @@ export function sanitizeTrade(data) {
   const treasure = x => x && TREASURES[x.id] ? { id: x.id, from: typeof x.from === 'string' ? x.from.slice(0, 20) : '' } : null;
   t.treasures = (Array.isArray(data.treasures) ? data.treasures : []).map(treasure).filter(Boolean).slice(0, 12);
   t.displayed = (Array.isArray(data.displayed) ? data.displayed : []).map(treasure).filter(Boolean).slice(0, R.displaySlots);
+  t.auction = (Array.isArray(data.auction) ? data.auction : []).map(treasure).filter(Boolean).slice(0, R.auctionLots);
   for (const good of Object.values(GOODS)) { const j = data.work?.[good.workshop]; if (j && typeof j === 'object' && num(j.progress, 1e4) && num(j.value, 1e7)) t.work[good.workshop] = { busy: Boolean(j.busy), progress: j.progress, value: j.value }; if (data.halt?.[good.workshop]) t.halt[good.workshop] = true; }
   for (const [id, n] of Object.entries(data.demand || {})) if ((PARTS[id] || GOODS[id]) && num(n, 1e5)) t.demand[id] = n;
   const c = data.caravan;
