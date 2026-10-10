@@ -307,6 +307,9 @@ export function drawItemIcon(canvas,type='sword',size=40) {
     rect(c,-7,-12,14,2,P.woodDark);rect(c,-9,-10,2,12,P.woodDark);rect(c,7,-10,2,12,P.woodDark);
     poly(c,[[0,-3],[8,3],[6,12],[0,16],[-6,12],[-8,3]],P.deep);
     poly(c,[[0,-1],[6,4],[4,10],[0,13],[-4,10],[-6,4]],P.lavender);rect(c,-2,3,4,6,P.white);rect(c,0,1,3,3,P.gold);
+  } else if(name==='map') {
+    box(c,-13,-11,26,22,P.paper,P.woodDark); rect(c,-11,-9,8,18,'#c9dcaa'); rect(c,-3,-9,7,18,'#d6cfbd'); rect(c,4,-9,7,18,'#a7bdb4');
+    rect(c,-9,4,6,2,P.wood); rect(c,-4,1,6,2,P.wood); rect(c,1,-2,5,2,P.wood); rect(c,6,-6,3,3,P.coral); rect(c,-11,-4,3,3,P.coral);
   } else if(name==='hammer') {
     c.rotate(-.6); rect(c,-2,-4,4,19,P.woodDark); rect(c,-1,-4,2,18,P.wood); box(c,-10,-13,20,10,'#9aa6a4',P.deep); rect(c,-8,-11,16,2,'#c9d1cc'); c.rotate(.6);
   } else if(name==='scroll') {
