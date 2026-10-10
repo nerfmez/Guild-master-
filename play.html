@@ -4135,12 +4135,11 @@ function makeHeartTree(frame = 0) {
   const r = rand(41);
   return sprite(250, 266, 125, 254, (c, A) => {
     A.ellipse(c, 125, 254, 96, 12, '#00000030');
-    // Roots arch out of the ground and dive back in.
-    for (const [x, dir, len, hi] of [[96, -1, 46, 14], [106, -1, 26, 8], [142, 1, 46, 14], [134, 1, 26, 8], [120, 0, 10, 4]]) {
-      const pts = [], N = 10;
-      for (let k = 0; k <= N; k++) { const f = k / N; pts.push([x + 10 + dir * len * f, 206 + f * 48 - Math.sin(f * Math.PI) * hi]); }
-      for (let k = N; k >= 0; k--) { const f = k / N, wdt = 16 * (1 - f) + 3; pts.push([x + 10 + dir * len * f + dir * wdt * .3, 206 + f * 48 - Math.sin(f * Math.PI) * hi + wdt * .9]); }
-      A.poly(c, pts, '#4f4038'); A.poly(c, pts.slice(0, N + 1).map(([px, py]) => [px, py]).concat(pts.slice(0, N + 1).reverse().map(([px, py]) => [px, py + 3])), '#6b584c');
+    // Roots arch out of the ground and dive back in: a chain of blobs that thins toward the tip.
+    const roots = [[100, -1, 50, 12], [108, -1, 28, 7], [146, 1, 50, 12], [138, 1, 30, 7], [124, 0, 10, 3]];
+    for (const pass of [0, 1]) for (const [x, dir, len, hi] of roots) for (let f = 0; f <= 1.001; f += .04) {
+      const px = x + dir * len * f, py = 212 + f * 40 - Math.sin(f * Math.PI) * hi, rad = 10 * (1 - f) + 2.5;
+      if (pass) A.ellipse(c, px - 1, py - rad * .35, rad * .75, rad * .45, '#6b584c'); else A.ellipse(c, px, py, rad * 1.15, rad * .9, '#4f4038');
     }
     // A twisting trunk: two strands wound together.
     A.poly(c, [[94, 218], [156, 218], [148, 150], [154, 110], [138, 92], [112, 92], [98, 112], [104, 150]], '#5a4a40');
