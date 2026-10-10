@@ -1,5 +1,5 @@
 import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,siteRoads,buildingRect,partitionSize,partitionRect,pointInRect } from './site.js';
-import { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,MONSTER_STATS,JOBS } from './content.js';
+import { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,MONSTER_STATS,JOBS,VILLAGE_BUSINESSES } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
 import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { drainFx } from './life.js';
@@ -39,7 +39,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R33',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R34',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -366,7 +366,7 @@ export class GuildRenderer {
  /** Footprints of the village buildings that stand now (grid units). */
  villageRects(except){const v=getVillageInfo(this.state),out=[];
   for(let i=0;i<Math.min(v.houses,VILLAGE_LOTS.houses.length);i++){const key='h'+i;if(key===except)continue;const at=this.villageLot(key),[w,h]=VILLAGE_FOOTPRINT.house;out.push({key,x:at.x,y:at.y,w,h});}
-  for(const id of ['shop','market','smithy','dojo','arena'])if(v[id]&&id!==except){const at=this.villageLot(id),[w,h]=VILLAGE_FOOTPRINT[id];out.push({key:id,x:at.x,y:at.y,w,h});}
+  for(const id of VILLAGE_BUSINESSES)if(v[id]&&id!==except){const at=this.villageLot(id),[w,h]=VILLAGE_FOOTPRINT[id];out.push({key:id,x:at.x,y:at.y,w,h});}
   return out;}
  underBuilding(x,y){return (this.villageRects()||[]).some(r=>x>r.x-.6&&x<r.x+r.w+.6&&y>r.y-.6&&y<r.y+r.h+.6);}
  // ---- Choosing where a village building goes: tap the map, see green or red, then confirm. ----
@@ -388,7 +388,7 @@ export class GuildRenderer {
   if(!this.scene||!this.state||!this.worldProps)return;const v=getVillageInfo(this.state),tier=v.level>=5?2:v.level>=3?1:0,want=[];
   // Buildings stand where the player put them (older saves fall back to the original lots).
   VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses){const at=this.villageLot('h'+i);want.push({key:'h'+i,style:lot.styles[tier],seed:lot.seed,x:at.x,y:at.y});}});
-  for(const id of ['shop','market','smithy','dojo','arena']){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y});}
+  for(const id of VILLAGE_BUSINESSES){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y});}
   const sig=JSON.stringify(want);if(sig===this.villageSig)return;const first=this.villageSig===null;this.villageSig=sig;
   const old=this.villageProps,next=new Map();
   for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.style);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
@@ -489,7 +489,16 @@ export class GuildRenderer {
   a.x=p.x;a.y=p.y;const m=a.member,pose=this.poseFor(h,moved,this.realTime||0,hash(m.id)%5);
   this.placeBody(a.image,`actor-${m.id}-${m.class}`,h,p,pose,a.direction,Math.round(p.y)+.3);
  }
+ // The guild's caravan rolls out along the east road to the capital and back.
+ updateCaravan(){const c=this.state.trade?.caravan;if(!c){this.wagon?.setVisible(false);return;}
+  if(!this.scene.textures.exists('caravan-wagon')){const sp=makeBreadWagon(0);this.texture('caravan-wagon',sp.canvas);this.wagonFoot={x:sp.footX,y:sp.footY};}
+  this.wagon??=this.scene.add.image(0,0,'caravan-wagon').setScale(.6);
+  const lot=this.villageLot('caravan')||{x:38.5,y:19.5},home={x:lot.x+1.4,y:lot.y+2.6},far={x:64,y:17.5},road={x:Math.max(home.x,36),y:17.5};
+  const k=1-c.left/c.total,out=k<.5,f=out?k*2:(1-k)*2,leg=Math.hypot(road.x-home.x,road.y-home.y),tot=leg+Math.hypot(far.x-road.x,far.y-road.y),d=f*tot;
+  const at=d<leg?{x:home.x+(road.x-home.x)*d/(leg||1),y:home.y+(road.y-home.y)*d/(leg||1)}:{x:road.x+(far.x-road.x)*(d-leg)/(tot-leg),y:17.5};
+  const p=gridPoint(at.x,at.y);this.wagon.setOrigin(this.wagonFoot.x/this.wagon.width,this.wagonFoot.y/this.wagon.height).setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y+2).setFlipX(!out).setVisible(at.x<60);}
  updateLife(dt,playing){
+  this.updateCaravan();
   const w=this.state.world;if(!w||!this.scene)return;const t=this.realTime||0;
   this.lifeSprites??=new Map();this.hpBars??=this.scene.add.graphics().setDepth(99990);this.hpBars.clear();
   const seen=new Set(),hunters=new Map(w.hunters.map(h=>[h.id,h]));
@@ -545,6 +554,7 @@ export class GuildRenderer {
    else if(e.type==='skill'){this.floatText(p.x,p.y-44,e.name,'#fff1c4',8);if(e.skill==='fireball'){const q=gridPoint(e.tx,e.ty);this.ring(q.x,q.y,0xf08a4b,22);}else this.ring(p.x,p.y,e.skill==='guard'?0x8eb6e0:e.skill==='blessing'?0x9fe08a:0xe8cd8c,e.skill==='blessing'?28:16);}
    else if(e.type==='ko')this.floatText(p.x,p.y-30,'สลบ!','#ffb0a0',10);
    else if(e.type==='kill')this.dustPuff(e.x-.4,e.y-.4,.8,.8);
+   else if(e.type==='sell')this.floatText(p.x,p.y-40,`ขายของ ${e.amount} ชิ้น`,'#ffe08a',9);
   }
   for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
  }

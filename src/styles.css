@@ -371,3 +371,20 @@ body.on-title .event-banner{visibility:hidden}
 .event-row b{font-size:12.5px;font-weight:600}
 .event-row small{font-size:10.5px;color:#8a7a68}
 .event-banner[hidden]{display:none}
+/* Trade tab */
+.trade-row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:8px 10px;margin-bottom:6px;background:#fffaee;border:1px solid #e3d3b0;border-radius:9px}
+.trade-row.locked{opacity:.6}
+.trade-row.treasure{border-color:#e2b55a;background:#fff8e6}
+.trade-row div{display:grid;gap:2px;min-width:0}
+.trade-row b{font-size:12.5px;font-weight:600}
+.trade-row small{font-size:10.5px;color:var(--muted);line-height:1.45}
+.trade-icon{font-size:22px;text-align:center}
+.trade-btns{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.trade-btns button{min-height:0;padding:6px 9px;font-size:11.5px}
+.trade-contract{padding:8px 11px;margin-bottom:6px;border-radius:9px;background:#f3ead2;border:1px dashed #b89a62;font-size:12px}
+.trade-contract .ok{color:#4f8a45;font-weight:600}
+.display-case{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:9px;border-radius:10px;background:linear-gradient(#6b4e36,#5a412c);border:2px solid #3f2d1f}
+.display-case span{display:grid;place-items:center;aspect-ratio:1;font-size:22px;background:#f8edd333;border:1px solid #f8edd355;border-radius:6px}
+.display-case span.empty{opacity:.4}
+.link-button{background:none;border:none;padding:0;min-height:0;font:inherit;font-size:11px;color:var(--muted);cursor:pointer}
+@media(max-width:620px){.trade-row{grid-template-columns:30px 1fr}.trade-btns{grid-column:1/-1;justify-content:flex-start}}

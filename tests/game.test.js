@@ -919,3 +919,12 @@ test('hunters sell parts and treasures at the guild counter; the guild makes goo
   assert.equal(act(state, 'sellTreasure', { index: 0 }).ok, true);
   assert.equal(state.gold, g4 + 120);
 });
+
+test('engine modules use plain named imports so the single-file export can bundle them', async () => {
+  const { readdir, readFile } = await import('node:fs/promises');
+  for (const file of (await readdir(new URL('../src/', import.meta.url))).filter(f => f.endsWith('.js'))) {
+    const source = await readFile(new URL('../src/' + file, import.meta.url), 'utf8');
+    assert.ok(!/import\s*\{[^}]*\bas\b[^}]*\}/.test(source), `${file} renames an import, which export.mjs cannot bundle`);
+    assert.ok(!/^export\s*\{/m.test(source), `${file} re-exports a list, which export.mjs cannot bundle`);
+  }
+});

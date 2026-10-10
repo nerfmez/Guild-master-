@@ -1,7 +1,8 @@
 /* The guild's trade: adventurers sell monster parts and treasures at the guild counter, the guild stores them,
    makes goods in the village workshops and sells to the town, by caravan to the capital, or to collectors.
    Pure logic; game.js passes a context of its own helpers. */
-import { PARTS, GOODS, TREASURES, BUY_RATES, TRADE_RULES as R } from './content.js';
+import { PARTS, GOODS, TREASURES, BUY_RATES, TRADE_RULES } from './content.js';
+const R = TRADE_RULES;
 
 export function createTrade() {
   return { buyRate: 'fair', autoWholesale: true, store: {}, goods: {}, treasures: [], displayed: [], work: {}, halt: {}, demand: {},
