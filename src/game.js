@@ -95,7 +95,7 @@ export function createGame(seed = 123, options = {}) {
     settings: { speed: 1, sound: true, paused: false },
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0,
-    policy: { memberHunting: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
+    policy: { memberHunting: true, autoPetitions: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
     record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, trade: 0 }, idleBank: 0,
   };
   if (options.opening) {
@@ -844,6 +844,7 @@ function dailyUpdate(state) {
 const IMPORTANT_QUESTS = new Set(['patrol', ...Object.values(RANK_REQUIREMENTS).map(r => r.quest).filter(Boolean), ...QUESTS.filter(q => q.story).map(q => q.id), ...QUESTS.map(q => q.requires).filter(Boolean)]);
 const PETITION_WALK = 0.9;
 const BOARD_LIFETIME = 720;
+export const AUTO_PETITION_WAIT = 25;
 /** Story and rank steps stay "important" (reserved for the player) until first cleared. */
 export function isImportantQuest(state, questId) { return IMPORTANT_QUESTS.has(questId) && !state.completedQuests[questId]; }
 function petitionRandom(state) {
@@ -1000,6 +1001,9 @@ function tickPetitions(state, step) {
     } else if (petition.status === 'waiting') {
       const posted = state.petitions.filter(p => p.status === 'posted' && !p.important).length;
       if ((state.upgrades?.clerk || 0) > 0 && posted < info.maxPosted) { postPetition(state, petition, state.payoutPlan); addLog(state, `เสมียนรับคำร้อง “${QUEST_BY_ID[petition.questId].name}” ขึ้นกระดานแล้ว`, 'petition'); continue; }
+      // Routine work: the guild master takes it at the usual pay after a moment, unless the player steps in first.
+      petition.waited = (petition.waited || 0) + step;
+      if (state.policy?.autoPetitions !== false && !petition.important && petition.waited >= AUTO_PETITION_WAIT && posted < info.maxPosted) { postPetition(state, petition, state.payoutPlan); addLog(state, `รับคำร้องของ${petition.client}: ${QUEST_BY_ID[petition.questId].name} ขึ้นกระดานตามค่าตอบแทนปกติ`, 'petition'); continue; }
       petition.patience -= step;
       if (petition.patience <= 0) { state.petitions = state.petitions.filter(p => p !== petition); addLog(state, `${petition.client}รอนานเกินไปเลยกลับบ้านก่อน`, 'info'); }
     } else if (petition.status === 'posted') {
@@ -1602,7 +1606,12 @@ function command(state, type, payload = {}) {
     case 'declineApplicant': return declineApplicant(state, payload);
     case 'inviteFree': return inviteFree(state, payload);
     case 'resolveEvent': return resolveDecision(state, directorContext(state), payload.choiceId);
-    case 'setPolicy': { state.policy = { ...(state.policy || {}) }; if (payload.memberHunting !== undefined) state.policy.memberHunting = Boolean(payload.memberHunting); return success(state.policy.memberHunting ? 'สมาชิกออกล่ามอนเองได้' : 'สมาชิกอยู่ประจำกิลด์ รอรับงาน'); }
+    case 'setPolicy': {
+      state.policy = { ...(state.policy || {}) };
+      if (payload.autoPetitions !== undefined) { state.policy.autoPetitions = Boolean(payload.autoPetitions); return success(state.policy.autoPetitions ? 'คำร้องทั่วไปจะขึ้นกระดานเองตามค่าตอบแทนปกติ' : 'คุณจะรับคำร้องทุกใบด้วยตัวเอง'); }
+      if (payload.memberHunting !== undefined) state.policy.memberHunting = Boolean(payload.memberHunting);
+      return success(state.policy.memberHunting ? 'สมาชิกออกล่ามอนเองได้' : 'สมาชิกอยู่ประจำกิลด์ รอรับงาน');
+    }
     case 'setTask': {
       const member = memberById(state, payload.memberId);
       if (!member) return failure('ไม่พบสมาชิก');
@@ -1777,7 +1786,7 @@ export function deserializeGame(source) {
       home: p.home === 'inn' || p.home === 'bakery' || p.home === 'elder' || (Number.isInteger(p.home) && p.home >= 0 && p.home < VILLAGE_LOTS.houses.length) ? p.home : 'inn',
       important: Boolean(p.important), reserved: Boolean(p.reserved || p.important), fee: Math.round(p.fee), plan: p.plan,
       status: p.status === 'taken' && !mission ? 'posted' : p.status, eta: finiteNumber(p.eta) ? clamp(p.eta, 0, 600) : 0, etaTotal: finiteNumber(p.etaTotal) ? clamp(p.etaTotal, 1, 600) : 20,
-      patience: finiteNumber(p.patience) ? clamp(p.patience, 0, 1000) : 80, age: finiteNumber(p.age) ? clamp(p.age, 0, 100000) : 0, missionId: mission ? mission.id : null };
+      patience: finiteNumber(p.patience) ? clamp(p.patience, 0, 1000) : 80, age: finiteNumber(p.age) ? clamp(p.age, 0, 100000) : 0, ...(finiteNumber(p.waited) ? { waited: clamp(p.waited, 0, 1000) } : {}), missionId: mission ? mission.id : null };
   });
   for (const mission of state.missions) {
     if (mission.petition && (!finiteNumber(mission.petition.fee) || mission.petition.fee < 0 || !PAYOUT_PLANS[mission.petition.plan])) throw new Error('ค่าจ้างภารกิจไม่ถูกต้อง');
@@ -1805,7 +1814,7 @@ export function deserializeGame(source) {
   const stock = n => Number.isInteger(n) && n >= 0 && n < 1000 ? n : 0;
   state.shops = { ration: stock(data.shops?.ration), potion: stock(data.shops?.potion), gear: Object.fromEntries(Object.entries(data.shops?.gear || {}).filter(([id, n]) => EQUIPMENT_BY_ID[id] && !EQUIPMENT_BY_ID[id].loot && stock(n) > 0)) };
   state.world = sanitizeWorld(data.world, state, ids);
-  state.policy = { memberHunting: data.policy?.memberHunting !== false };
+  state.policy = { memberHunting: data.policy?.memberHunting !== false, autoPetitions: data.policy?.autoPetitions !== false };
   state.director = sanitizeDirector(data.director, state.elapsed);
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
   // Older saves count the quests they already cleared as their record of work.

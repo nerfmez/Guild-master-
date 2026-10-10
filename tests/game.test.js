@@ -5,7 +5,7 @@ import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
 // Most tests check one system at a time, so members stay at the guild instead of wandering off to hunt.
-function createGame(...args) { const state = createLivingGame(...args); state.policy.memberHunting = false; return state; }
+function createGame(...args) { const state = createLivingGame(...args); state.policy.memberHunting = false; state.policy.autoPetitions = false; return state; }
 // Villagers bring petitions over time; tests post one straight to the board when none is waiting.
 function ensurePetition(state, questId) {
   if (!state.petitions.some(p => p.questId === questId && p.status === 'posted' && !p.missionId)) addPetition(state, questId, { status: 'posted' });
@@ -845,4 +845,19 @@ test('the storyteller paces small happenings, choices and big events, and big ev
   assert.equal(boss.director.active, null);
   assert.ok(boss.gold > gold, 'the association pays a bounty');
   assert.equal(boss.director.history[0].outcome, 'สำเร็จ');
+});
+
+test('routine petitions go up on the board by themselves unless the player turns that off; important letters still wait', () => {
+  const state = createLivingGame(91);
+  state.policy.memberHunting = false;
+  const routine = addPetition(state, 'patrol', { status: 'waiting' });
+  tick(state, 10);
+  assert.equal(routine.status, 'waiting', 'the player has a moment to set the pay first');
+  tick(state, 20);
+  assert.equal(routine.status, 'posted');
+  assert.equal(act(state, 'setPolicy', { autoPetitions: false }).ok, true);
+  const manual = addPetition(state, 'patrol', { status: 'waiting' });
+  tick(state, 40);
+  assert.equal(manual.status, 'waiting');
+  assert.equal(deserializeGame(serializeGame(state)).policy.autoPetitions, false);
 });
