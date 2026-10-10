@@ -5,10 +5,13 @@
  // Files opened from Android downloads (content://) have lost their GPU canvases, leaving
  // a blank scene. Software-backed 2D canvases keep their pixels, so request those there.
  var cpu=location.protocol==='content:';
- if(cpu){
+ // Elsewhere the game's many baked sprite canvases are kept in main memory too: on tablets, GPU-backed
+ // 2D canvases (hundreds of them) exhaust GPU memory and the whole page goes black or blank.
+ // Only the game's own drawing surface stays on the GPU.
+ {
   var getContext=HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext=function(type,options){
-   if(type==='2d'){options=Object.assign({willReadFrequently:true},options||{});}
+   if(type==='2d'&&(cpu||this.id!=='guild-world')){options=Object.assign({willReadFrequently:true},options||{});}
    return getContext.call(this,type,options);
   };
  }
@@ -32,5 +35,5 @@
  window.guildBoot={version:'R32',cpuCanvas:cpu,fail:fail,note:note,show:show,detail:detail,ready:function(){complete=true;clearTimeout(timer);note('ready');var node=document.getElementById('scene-status');if(node)node.hidden=true;}};
  window.addEventListener('error',function(event){note('error: '+(event.error&&event.error.message||event.message));if(!complete)fail(event.error||event.message);});
  window.addEventListener('unhandledrejection',function(event){note('rejection: '+(event.reason&&event.reason.message||event.reason));if(!complete)fail(event.reason);});
- timer=setTimeout(function(){fail('การเริ่มฉากใช้เวลานานเกินไป');},15000);
+ timer=setTimeout(function(){fail('การเริ่มฉากใช้เวลานานเกินไป');},45000);
 })();

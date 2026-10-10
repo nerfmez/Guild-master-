@@ -49,7 +49,7 @@ export class GuildRenderer {
    create(){owner.scene=this;try{owner.setup();}catch(error){owner.ready=false;owner.recoverCanvas(error);}}
    update(_time,delta){owner.update(Math.min(.05,delta/1000));}
   }
-  this.bootTimer=setTimeout(()=>{if(!this.ready)this.recoverCanvas();},10000);
+  this.bootTimer=setTimeout(()=>{if(!this.ready)this.recoverCanvas();},30000);
   try{this.game=new Phaser.Game({type,context,canvas,parent:canvas.parentElement,width:this.width,height:this.height,
    backgroundColor:'#9cac7d',pixelArt:true,roundPixels:true,antialias:false,transparent:false,
    scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.NO_CENTER},
