@@ -27,7 +27,7 @@ for(const mode of ['restricted-canvas','webgl']){
   // R11 opens on a title screen; start a new guild and skip the prologue.
   const enter=async()=>{if(await page.locator('#title-continue').isVisible())await page.locator('#title-continue').click();else{await page.locator('#title-new').click();await page.locator('#setup-master').fill('ทดสอบ');await page.locator('[data-setup="next"]').click();await page.locator('#setup-guild').fill('กิลด์ใบอ่อน');await page.locator('[data-setup="done"]').click();await page.locator('[data-story-skip]').click();}};
   await enter();
-  assert.equal(await page.title(),'กิลด์ใบอ่อน · R12');
+  assert.equal(await page.title(),'กิลด์ใบอ่อน · R13');
   assert.equal(await page.locator('#scene-status').isVisible(),false);
   const info=await page.evaluate(()=>window.guildDebug.getRendererInfo());
   assert.equal(info.renderer,mode==='restricted-canvas'?'Canvas':'WebGL');
@@ -47,7 +47,7 @@ for(const mode of ['restricted-canvas','webgl']){
   await page.screenshot({path:root+'/docs/images/r7-'+mode+'.png'});
   await page.locator('[data-dock="build"]').click();await page.locator('[data-build-tab="rooms"]').click();
   await page.locator('#room-width').fill('3');await page.locator('#room-height').fill('3');await page.locator('[data-room-type="dorm"]').click();
-  const p=await page.evaluate(()=>window.guildDebug.getScenePoint(10,4));await page.mouse.click(p.x,p.y);
+  const p=await page.evaluate(()=>window.guildDebug.getScenePoint(11.5,5.5));await page.mouse.click(p.x,p.y);await page.locator('[data-confirm-placement]').click();
   assert.equal((await page.evaluate(()=>window.guildDebug.getState())).rooms.length,1);
   await page.reload();await page.waitForFunction(()=>window.guildDebug?.getRendererInfo()?.ready);await enter();assert.equal((await page.evaluate(()=>window.guildDebug.getState())).rooms.length,1);
   if(mode==='restricted-canvas'){

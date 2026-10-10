@@ -33,7 +33,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R12',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R13',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -58,7 +58,7 @@ export class GuildRenderer {
   const canvas=this.canvas.cloneNode(false);this.canvas.replaceWith(canvas);
   // A failed boot has no next frame to process Phaser's deferred destruction.
   if(this.game){this.game.destroy(false);this.game.runDestroy();}
-  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.pointers.clear();this.drag=null;this.pinch=null;
+  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.pointers.clear();this.drag=null;this.pinch=null;
   this.start(Phaser.CANVAS);
  }
  texture(key,canvas){const t=this.scene.textures;if(t.exists(key))t.remove(key);t.addCanvas(key,canvas).setFilter(Phaser.Textures.FilterMode.NEAREST);return key;}
@@ -76,7 +76,7 @@ export class GuildRenderer {
   clearTimeout(this.bootTimer);window.guildBoot?.ready();const status=document.getElementById('scene-status');if(status)status.hidden=true;
   this.readyAt=Date.now();if(this.renderType===Phaser.CANVAS){this.canvas.addEventListener('contextlost',()=>window.guildBoot?.note('context lost'),{once:true});}if(this.renderType===Phaser.CANVAS)this.canvas.addEventListener('contextrestored',()=>this.recoverCanvas(undefined,true),{once:true});
   if(this.renderType===Phaser.WEBGL)this.canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();queueMicrotask(()=>this.recoverCanvas());},{once:true});
-  this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
+  this.refreshPlacement();this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
  }
  decorate(){
   const N=window.VillageNature;
@@ -98,6 +98,7 @@ export class GuildRenderer {
   for(const part of makeBuilding(this.state).layers){const p=gridPoint(part.x,part.y),key='building-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
   for(const room of this.state.rooms||[])for(const part of makePartition(room,this.state).layers){const p=gridPoint(part.x,part.y),key='partition-'+room.id+'-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
   for(const f of this.state.facilities)for(const part of makeRoom(f).layers){const p=gridPoint(f.x+part.x,f.y+part.y),key='furniture-'+f.id+'-'+part.name;const image=this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort);this.rooms.push(image);this.furnitureSprites.push({f,image,canvas:part.sprite.canvas,alpha:part.sprite.canvas.getContext('2d').getImageData(0,0,part.sprite.canvas.width,part.sprite.canvas.height).data});}
+  for(const a of this.furnitureSprites)if(a.f.id===this.moveId)a.image.setAlpha(.25);
   if(!this.userPanned){const b=buildingRect(this.state),p=gridPoint(b.x+b.w/2,b.y+b.h/2);this.focusX=p.x;this.focusY=p.y+22;this.applyView();}
  }
 
@@ -155,6 +156,7 @@ export class GuildRenderer {
    const frame=walking&&playing?1+Math.floor(this.elapsed*6)%3:0;a.image.setTexture(`actor-${a.member.id}-${a.member.class}-${a.direction}-${frame}`).setPosition(Math.round(a.x),Math.round(a.y)).setDepth(a.y);
   }
 
+  if(this.pending&&this.pendingDraw){const k=1-Math.pow(.0004,Math.min(dt,.1));this.pendingDraw.x+=(this.pending.x-this.pendingDraw.x)*k;this.pendingDraw.y+=(this.pending.y-this.pendingDraw.y)*k;if(Math.abs(this.pending.x-this.pendingDraw.x)+Math.abs(this.pending.y-this.pendingDraw.y)<.01)this.pendingDraw={...this.pending};this.positionGhost();}
   this.drawGhost();
  }
  applyView(){if(!this.ready)return;const b=buildingRect(this.state),span=(b.w+b.h)*24,tall=(b.w+b.h)*12+40;this.baseZoom=this.width<620?Math.min(1.7,(this.width-28)/(span+110),(this.height-180)/(tall+90)):Math.max(.45,Math.min(3,(this.width-100)/(span+320),(this.height-145)/(tall+110)));this.camera.setViewport(0,0,this.width,this.height);this.camera.setZoom(this.baseZoom*this.zoom);this.camera.centerOn(this.focusX??548,this.focusY??294);}
@@ -162,29 +164,75 @@ export class GuildRenderer {
 
  resetView(){this.center();}
  setZoom(z){this.zoom=Math.max(.6,Math.min(2.4,Number(z)||1));this.applyView();}
- rotatePlacement(){this.rotation=(this.rotation+1)%4;this.drawGhost();return this.rotation;}
- setBuildMode(type){this.roomMode=null;this.roomMoveId=null;this.buildType=type;this.moveId=null;this.rotation=0;this.canvas.style.cursor=type?'crosshair':'grab';}
- setMoveMode(id){this.roomMode=null;this.roomMoveId=null;this.moveId=id;this.buildType=null;this.rotation=this.state.facilities.find(f=>f.id===id)?.rotation||0;this.canvas.style.cursor=id?'crosshair':'grab';}
- setRoomMode(room,id=null){this.buildType=null;this.moveId=null;this.roomMode=room?{...room}:null;this.roomMoveId=id;this.rotation=room?.rotation||0;this.canvas.style.cursor=room?'crosshair':'grab';}
+ rotatePlacement(){this.rotation=(this.rotation+1)%4;this.buildGhost();this.placementChanged();return this.rotation;}
+ setBuildMode(type){this.roomMode=null;this.roomMoveId=null;this.buildType=type;this.moveId=null;this.rotation=0;this.canvas.style.cursor=type?'crosshair':'grab';this.refreshPlacement();}
+ setMoveMode(id){this.roomMode=null;this.roomMoveId=null;this.moveId=id;this.buildType=null;this.rotation=this.state.facilities.find(f=>f.id===id)?.rotation||0;this.canvas.style.cursor=id?'crosshair':'grab';this.refreshPlacement();}
+ setRoomMode(room,id=null){this.buildType=null;this.moveId=null;this.roomMode=room?{...room}:null;this.roomMoveId=id;this.rotation=room?.rotation||0;this.canvas.style.cursor=room?'crosshair':'grab';this.refreshPlacement();}
+
+ // Placement session: a pending spot the player drags around, then confirms from the app's bar.
+ placementMode(){return this.buildType?'b:'+this.buildType:this.moveId?'m:'+this.moveId:this.roomMode?'r:'+(this.roomMoveId||'new')+':'+this.roomMode.type+':'+this.roomMode.width+'x'+this.roomMode.height:null;}
+ refreshPlacement(){
+  if(!this.ready)return;const mode=this.placementMode();if(mode===this.placementKey)return;this.placementKey=mode;
+  for(const a of this.furnitureSprites)a.image.setAlpha(1);
+  if(!mode){this.pending=null;this.pendingDraw=null;this.ghostBox?.destroy();this.ghostBox=null;this.placementChanged();return;}
+  const f=this.moveId&&this.state.facilities.find(f=>f.id===this.moveId),room=this.roomMoveId&&(this.state.rooms||[]).find(r=>r.id===this.roomMoveId);
+  if(f){this.pending={x:f.x,y:f.y};for(const a of this.furnitureSprites)if(a.f.id===f.id)a.image.setAlpha(.25);}
+  else if(room)this.pending={x:room.x,y:room.y};
+  else this.pending=this.findOpenSpot();
+  this.pendingDraw={...this.pending};this.buildGhost();this.placementChanged();
+ }
+ footprint(){const f=this.state.facilities.find(f=>f.id===this.moveId),type=this.buildType||f?.type;return this.roomMode?partitionSize({...this.roomMode,rotation:this.rotation}):FACILITIES[type]?getRoomSize(type,this.rotation):{w:1,h:1};}
+ checkAt(x,y){const f=this.state.facilities.find(f=>f.id===this.moveId),type=this.buildType||f?.type;
+  if(this.roomMode){const c={...this.roomMode,x,y,rotation:this.rotation};return this.roomMoveId?previewPartitionMove(this.state,{roomId:this.roomMoveId,x,y,rotation:this.rotation}):canPlacePartition(this.state,c);}
+  return canPlaceFacility(this.state,type,x,y,this.moveId,this.rotation);}
+ findOpenSpot(){const b=buildingRect(this.state),d=this.footprint(),cx=b.x+(b.w-d.w)/2,cy=b.y+(b.h-d.h)/2,spots=[];
+  for(let y=b.y;y<=b.y+b.h-d.h;y+=.5)for(let x=b.x;x<=b.x+b.w-d.w;x+=.5)spots.push({x,y});
+  spots.sort((a,c)=>Math.hypot(a.x-cx,a.y-cy)-Math.hypot(c.x-cx,c.y-cy));
+  for(const p of spots.slice(0,160))if(this.checkAt(p.x,p.y).ok)return p;
+  return{x:Math.round(cx*4)/4,y:Math.round(cy*4)/4};}
+ buildGhost(){
+  this.ghostBox?.destroy();this.ghostBox=null;if(!this.pending||this.roomMode)return;
+  const f=this.state.facilities.find(f=>f.id===this.moveId),type=this.buildType||f?.type;if(!FACILITIES[type])return;
+  const origin=gridPoint(0,0),box=this.scene.add.container(0,0).setDepth(9998);
+  for(const part of makeRoom({id:'ghost',type,x:0,y:0,rotation:this.rotation,level:f?.level||1}).layers){const key=`ghost-${type}-${this.rotation}-${f?.level||1}-${part.name}`;if(!this.scene.textures.exists(key))this.texture(key,part.sprite.canvas);const p=gridPoint(part.x,part.y);box.add(this.scene.add.image(p.x-origin.x-part.sprite.footX,p.y-origin.y-part.sprite.footY,key).setOrigin(0));}
+  this.ghostBox=box;this.positionGhost();}
+ positionGhost(){if(!this.ghostBox||!this.pendingDraw)return;const p=gridPoint(this.pendingDraw.x,this.pendingDraw.y);this.ghostBox.setPosition(p.x,p.y).setAlpha(this.getPlacement().ok?.88:.5);}
+ setPending(x,y){const g=this.state.grid,d=this.footprint();x=Math.max(0,Math.min(g.width-d.w,Math.round(x*4)/4));y=Math.max(0,Math.min(g.height-d.h,Math.round(y*4)/4));if(this.pending&&this.pending.x===x&&this.pending.y===y)return;this.pending={x,y};this.placementChanged();}
+ getPlacement(){
+  if(!this.pending)return{active:false};const {x,y}=this.pending,key=this.signature+'|'+this.placementKey+'|'+x+'|'+y+'|'+this.rotation;
+  if(this.ghostCheck?.key!==key){const place=this.checkAt(x,y);this.ghostCheck={key,ok:place.ok,message:place.message||''};}
+  const kind=this.roomMode?(this.roomMoveId?'moveRoom':'room'):this.buildType?'build':'move';
+  return{active:true,kind,x,y,rotation:this.rotation,ok:this.ghostCheck.ok,message:this.ghostCheck.message,facilityId:this.moveId,roomId:this.roomMoveId};}
+ placementChanged(){this.onPlacement?.(this.getPlacement());}
+ hitPending(p){if(!this.pending)return false;const t=gridPosition(p.x,p.y),d=this.footprint(),c=gridPoint(this.pending.x+d.w/2,this.pending.y+d.h/2);
+  return(t.x>=this.pending.x-.4&&t.x<=this.pending.x+d.w+.4&&t.y>=this.pending.y-.4&&t.y<=this.pending.y+d.h+.4)||(Math.abs(p.x-c.x)<30&&p.y>c.y-48&&p.y<c.y+14);}
+ hitFacility(p){const tile=gridPosition(p.x,p.y);
+  for(const a of [...this.furnitureSprites].sort((a,b)=>b.image.depth-a.image.depth)){const x=Math.floor(p.x-a.image.x),y=Math.floor(p.y-a.image.y);if(x>=0&&y>=0&&x<a.canvas.width&&y<a.canvas.height&&a.alpha[(y*a.canvas.width+x)*4+3]>50)return a.f.id;}
+  for(const f of this.state.facilities){const d=getRoomSize(f.type,f.rotation||0);if(tile.x>=f.x&&tile.x<f.x+d.w&&tile.y>=f.y&&tile.y<f.y+d.h)return f.id;}return null;}
+ grabPending(drag,p){const t=gridPosition(p.x,p.y);drag.item=true;drag.offset={x:t.x-this.pending.x,y:t.y-this.pending.y};this.canvas.style.cursor='grabbing';}
  worldToScreen(x,y){const p=gridPoint(x/32,y/32),z=this.camera?.zoom||1;return{x:(p.x-(this.focusX??548))*z+this.width/2,y:(p.y-(this.focusY??294))*z+this.height/2};}
  screenPoint(e){const b=this.canvas.getBoundingClientRect();return{x:(e.clientX-b.left)*this.width/b.width,y:(e.clientY-b.top)*this.height/b.height};}
  worldPoint(p){const z=this.camera.zoom;return{x:(p.x-this.width/2)/z+this.focusX,y:(p.y-this.height/2)/z+this.focusY};}
  bindInput(){
   const bind=(name,fn,options)=>this.canvas.addEventListener(name,fn,options);
   bind('pointerdown',e=>{const p=this.screenPoint(e);this.canvas.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,p);
-   if(this.pointers.size===1)this.drag={id:e.pointerId,start:p,last:p,moved:false};
-   if(this.pointers.size===2){const[a,b]=[...this.pointers.values()];this.pinch={dist:Math.hypot(a.x-b.x,a.y-b.y),zoom:this.zoom};this.drag.moved=true;}});
+   if(this.pointers.size===1){const drag=this.drag={id:e.pointerId,start:p,last:p,moved:false},w=this.worldPoint(p);
+    if(this.pending&&this.hitPending(w))this.grabPending(drag,w);
+    else if(!this.pending){const id=this.hitFacility(w);if(id)drag.hold=setTimeout(()=>{if(this.drag!==drag||drag.moved||this.pointers.size!==1)return;
+     // Press and hold lifts a placed item straight into a drag.
+     this.onSelect({kind:'pickup',id});this.setMoveMode(id);if(this.pending){this.grabPending(drag,this.worldPoint(drag.last));navigator.vibrate?.(12);}},380);}}
+   if(this.pointers.size===2){const[a,b]=[...this.pointers.values()];this.pinch={dist:Math.hypot(a.x-b.x,a.y-b.y),zoom:this.zoom};this.drag.moved=true;this.drag.item=false;clearTimeout(this.drag.hold);}});
   bind('pointermove',e=>{const p=this.screenPoint(e);this.hover=this.worldPoint(p);if(!this.pointers.has(e.pointerId))return;this.pointers.set(e.pointerId,p);
    if(this.pointers.size===2&&this.pinch){const[a,b]=[...this.pointers.values()];this.setZoom(this.pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/this.pinch.dist);return;}
-   if(this.drag?.id===e.pointerId){const d=this.drag;if(Math.hypot(p.x-d.start.x,p.y-d.start.y)>6)d.moved=true;if(d.moved){this.userPanned=true;this.focusX-=(p.x-d.last.x)/this.camera.zoom;this.focusY-=(p.y-d.last.y)/this.camera.zoom;this.applyView();}d.last=p;}});
-  bind('pointerup',e=>{const p=this.screenPoint(e);if(this.drag?.id===e.pointerId&&!this.drag.moved)this.select(this.worldPoint(p));this.pointers.delete(e.pointerId);if(this.pointers.size<2)this.pinch=null;if(!this.pointers.size)this.drag=null;});
-  bind('pointercancel',e=>{this.pointers.delete(e.pointerId);this.drag=null;this.pinch=null;});bind('pointerleave',()=>{if(!this.drag)this.hover=null;});
+   if(this.drag?.id===e.pointerId&&this.drag.item){const d=this.drag,t=gridPosition(this.worldPoint(p).x,this.worldPoint(p).y);d.moved=true;d.last=p;this.setPending(t.x-d.offset.x,t.y-d.offset.y);return;}
+   if(this.drag?.id===e.pointerId){const d=this.drag;if(Math.hypot(p.x-d.start.x,p.y-d.start.y)>6){d.moved=true;clearTimeout(d.hold);}if(d.moved){this.userPanned=true;this.focusX-=(p.x-d.last.x)/this.camera.zoom;this.focusY-=(p.y-d.last.y)/this.camera.zoom;this.applyView();}d.last=p;}});
+  bind('pointerup',e=>{const p=this.screenPoint(e);if(this.drag?.id===e.pointerId){clearTimeout(this.drag.hold);if(this.drag.item)this.canvas.style.cursor='crosshair';else if(!this.drag.moved)this.select(this.worldPoint(p));}this.pointers.delete(e.pointerId);if(this.pointers.size<2)this.pinch=null;if(!this.pointers.size)this.drag=null;});
+  bind('pointercancel',e=>{clearTimeout(this.drag?.hold);this.pointers.delete(e.pointerId);this.drag=null;this.pinch=null;});bind('pointerleave',()=>{if(!this.drag)this.hover=null;});
   bind('wheel',e=>{e.preventDefault();const p=this.screenPoint(e),before=this.worldPoint(p);this.setZoom(this.zoom*Math.exp(-e.deltaY*.001));const after=this.worldPoint(p);this.focusX+=before.x-after.x;this.focusY+=before.y-after.y;this.applyView();},{passive:false});
  }
  select(p){
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
-  if(this.roomMode){this.onSelect({kind:this.roomMoveId?'moveRoom':'room',x,y,roomId:this.roomMoveId,rotation:this.rotation});return;}
-  if(this.buildType){this.onSelect({kind:'build',x,y,rotation:this.rotation});return;}if(this.moveId){this.onSelect({kind:'move',x,y,facilityId:this.moveId,rotation:this.rotation});return;}
+  if(this.pending){const d=this.footprint();this.setPending(tile.x-d.w/2,tile.y-d.h/2);return;}
   for(const a of [...this.actors.values()].sort((a,b)=>b.y-a.y))if(!a.away&&Math.abs(p.x-a.x)<11&&p.y>a.y-44&&p.y<a.y+4){this.onSelect({kind:'member',id:a.member.id});return;}
   for(const a of [...this.furnitureSprites].sort((a,b)=>b.image.depth-a.image.depth)){const x=Math.floor(p.x-a.image.x),y=Math.floor(p.y-a.image.y);if(x>=0&&y>=0&&x<a.canvas.width&&y<a.canvas.height&&a.alpha[(y*a.canvas.width+x)*4+3]>50){this.onSelect({kind:'facility',id:a.f.id});return;}}
   for(const f of this.state.facilities){const d=getRoomSize(f.type,f.rotation||0);if(tile.x>=f.x&&tile.x<f.x+d.w&&tile.y>=f.y&&tile.y<f.y+d.h){this.onSelect({kind:'facility',id:f.id});return;}}
@@ -195,9 +243,8 @@ export class GuildRenderer {
   const f=this.state.facilities.find(f=>f.id===this.moveId),type=this.buildType||f?.type,d=this.roomMode?partitionSize({...this.roomMode,rotation:this.rotation}):FACILITIES[type]&&getRoomSize(type,this.rotation);if(!d)return;
   const {width:w,height:h}=this.state.grid,g=this.ghost;g.lineStyle(1,0xf4e4b8,.3);
   for(let x=0;x<=w;x++){const a=gridPoint(x,0),b=gridPoint(x,h);g.lineBetween(a.x,a.y,b.x,b.y);}for(let y=0;y<=h;y++){const a=gridPoint(0,y),b=gridPoint(w,y);g.lineBetween(a.x,a.y,b.x,b.y);}
-  if(!this.hover)return;const tile=gridPosition(this.hover.x,this.hover.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4,polygon=gridPolygon(x,y,d.w,d.h);
-  const key=this.signature+'|'+type+'|'+x+'|'+y+'|'+this.rotation+'|'+this.moveId+'|'+JSON.stringify(this.roomMode);if(this.ghostCheck?.key!==key){const candidate=this.roomMode&&{...this.roomMode,x,y,rotation:this.rotation};const place=candidate?this.roomMoveId?previewPartitionMove(this.state,{roomId:this.roomMoveId,x,y,rotation:this.rotation}):canPlacePartition(this.state,candidate):canPlaceFacility(this.state,type,x,y,this.moveId,this.rotation);this.ghostCheck={key,ok:place.ok};}
-  const good=this.ghostCheck.ok,color=good?0x92c583:0xdb8468;g.fillStyle(color,.45);g.fillPoints(polygon,true);g.lineStyle(2,color,1);g.strokePoints(polygon,true);if(this.roomMode){const r=this.rotation,p=r===0?gridPoint(x+d.w/2,y+d.h):r===1?gridPoint(x,y+d.h/2):r===2?gridPoint(x+d.w/2,y):gridPoint(x+d.w,y+d.h/2);g.fillStyle(0xffefd0,1);g.fillCircle(p.x,p.y,4);}
+  if(!this.pending)return;const {x,y}=this.pending,polygon=gridPolygon(x,y,d.w,d.h);
+  const good=this.getPlacement().ok,color=good?0x92c583:0xdb8468;g.fillStyle(color,.45);g.fillPoints(polygon,true);g.lineStyle(2,color,1);g.strokePoints(polygon,true);if(this.roomMode){const r=this.rotation,p=r===0?gridPoint(x+d.w/2,y+d.h):r===1?gridPoint(x,y+d.h/2):r===2?gridPoint(x+d.w/2,y):gridPoint(x+d.w,y+d.h/2);g.fillStyle(0xffefd0,1);g.fillCircle(p.x,p.y,4);}
  }
 
  getInfo(){return{engine:'Phaser',version:Phaser.VERSION,renderer:this.game?.renderer?.type===Phaser.WEBGL?'WebGL':this.game?.renderer?.type===Phaser.CANVAS?'Canvas':'starting',ready:this.ready,viewport:[this.width,this.height],zoom:this.camera?.zoom,projection:'isometric 2:1',roomCount:(this.state.rooms||[]).length,facilityCount:this.state.facilities.length,building:{...this.state.building},drawnParts:this.rooms.length,camera:{width:this.camera?.width,height:this.camera?.height,scrollX:this.camera?.scrollX,scrollY:this.camera?.scrollY,focus:[this.focusX,this.focusY]},canvas:[this.canvas.width,this.canvas.height]};}

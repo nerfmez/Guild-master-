@@ -138,3 +138,17 @@ body.on-title .topbar,body.on-title .screen-bottom,body.on-title .world-actions,
 body.sheet-open .goal-card{visibility:hidden}
 @media(max-width:620px){.management-dialog{bottom:calc(max(15px,env(safe-area-inset-bottom)) + 66px);height:min(66dvh,600px);border-bottom:1px solid #967b49;border-radius:16px}body.sheet-open .screen-bottom .time-controls{visibility:hidden}}
 .setup-dialog .pill.on,.setup-dialog .pill.on:hover{background:var(--sage);border-color:var(--sage);color:#fff}
+/* R13: placement bar replaces the dock while an item is being placed or moved. */
+.placement-bar{position:absolute;z-index:6;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:14px;width:min(620px,calc(100% - 24px));padding:10px 12px 10px 18px;background:#f8edd3f7;border:1px solid #967b49;border-radius:14px;box-shadow:0 4px 0 #65513060,0 10px 26px #2a22162e;animation:chip-pop .2s ease-out}
+.placement-bar[hidden]{display:none!important}
+.pb-info{flex:1;min-width:0;display:grid;gap:2px}
+.pb-info b{font-size:15px;color:#5a4a36;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-info small{font-size:11.5px;color:#7a6a58;line-height:1.5}
+.pb-info small.bad{color:#c0705c;font-weight:600}
+.pb-actions{display:flex;gap:6px;flex:none}
+.pb-actions button{display:grid;justify-items:center;gap:0;min-width:58px;min-height:52px;padding:5px 8px;font-size:18px;line-height:1.1;border-radius:10px;background:#fffaee;border:1px solid #d8c7a2;color:#6f5a3a}
+.pb-actions button span{font-size:11px;font-weight:600}
+.pb-actions button.primary{min-width:92px;background:var(--sage);border-color:#6e8e68;color:#fff;box-shadow:0 3px 0 #5d7a57}
+.pb-actions button.primary:disabled{background:#cfc6b2;border-color:#bdb39d;box-shadow:none;color:#fff;opacity:1}
+body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
+@media(max-width:620px){.placement-bar{flex-direction:column;align-items:stretch;gap:8px;padding:10px}.pb-actions{justify-content:stretch}.pb-actions button{flex:1}.pb-actions button.primary{flex:1.6}}
