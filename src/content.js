@@ -34,7 +34,7 @@ export const FACILITIES = {
   garden: { id: 'garden', name: 'แปลงสมุนไพร', description: 'เก็บสมุนไพรวันละครั้ง และช่วยให้กิลด์ร่มรื่น', w: 2, h: 2, cost: { gold: 180, wood: 8, stone: 2 }, unlockRank: 'E', color: '#aac3a0', maxLevel: 3 },
   library: { id: 'library', name: 'ชั้นตำรา', description: 'ฝึกได้เร็วขึ้นและรับมือภารกิจเวทได้ดี', w: 2, h: 0.75, cost: { gold: 420, wood: 18, stone: 8 }, unlockRank: 'D', color: '#acb8d0', maxLevel: 3 },
   lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'เพิ่มขวัญกำลังใจ เปิดมื้อเลี้ยงกิลด์', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
-  board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยที่ว่างมาหยิบงานเอง ระดับ 2 และ 3 เพิ่มทีมที่ออกงานพร้อมกันได้อีกทีมละ 1', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
+  board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยที่ว่างมาหยิบงานเอง ออกงานเองได้พร้อมกัน 1 ทีมต่อระดับ แยกจากทีมที่คุณส่ง', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
   dispatch: { id: 'dispatch', name: 'โต๊ะวางแผน', description: 'เปิดทีมภารกิจที่สองเมื่อกิลด์ถึงระดับ E', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'E', color: '#9ebdb9', maxLevel: 3 },
 };
 export const ROOM_TYPES={

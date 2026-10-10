@@ -63,7 +63,7 @@ npm run export
 
 `build` เตรียมเว็บหลายไฟล์ใน `dist/`; `export` สร้างไฟล์เดี่ยว `play.html` ใหม่จาก source ปัจจุบัน เมื่อแก้ source ต้องรัน export ก่อนส่งไฟล์เดี่ยวให้ผู้เล่น
 
-ชุดตรวจ engine 29 รายการผ่าน รวมเล่นจากสมาชิกเริ่มต้นถึงตอนจบด้วยทรัพยากรที่หาได้จริง มี browser smoke test เสริม:
+ชุดตรวจ engine 31 รายการผ่าน รวมจำลองการเล่นด้วยกระดานคำร้องตั้งแต่ต้นจนจบ 5 seed (`npm run balance` ดูรายงานสมดุล) รวมเล่นจากสมาชิกเริ่มต้นถึงตอนจบด้วยทรัพยากรที่หาได้จริง มี browser smoke test เสริม:
 
 ```bash
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs BROWSER_EXECUTABLE=/path/to/chromium node tests/ui-smoke.mjs

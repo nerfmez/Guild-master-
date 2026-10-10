@@ -606,3 +606,44 @@ test('version four saves gain an empty board, important letters and a starting v
   assert.equal(state.members[0].purse, 0);
   complete(state, dispatch(state));
 });
+
+test('board teams use their own slots, so the player can still send important work', () => {
+  const state = createGame(17);
+  state.gold = 5000; state.wood = 200; state.stone = 200;
+  let placed = false;
+  for (let y = 4.5; y < 9.5 && !placed; y += 0.25) for (let x = 5.5; x < 12.5 && !placed; x += 0.25) placed = act(state, 'build', { type: 'board', x, y }).ok;
+  // Noa stays home for the player's important job.
+  act(state, 'setAutoWork', { memberId: 'noa', autoWork: false });
+  const job = addPetition(state, 'herbs', { status: 'posted', plan: 'generous' });
+  tick(state, 10);
+  assert.ok(job.missionId, 'free adventurers took the board job');
+  const stats = getGuildStats(state);
+  assert.equal(stats.boardMissions, 1);
+  assert.equal(stats.activeMissions, 0, 'the player slot stays open');
+  const second = addPetition(state, 'herbs', { status: 'posted', plan: 'generous' });
+  tick(state, 10);
+  assert.equal(second.missionId, null, 'a level 1 board sends one team at a time');
+  const important = state.petitions.find(p => p.important);
+  const result = act(state, 'sendMission', { questId: 'patrol', memberIds: ['noa'], petitionId: important.id });
+  assert.equal(result.ok, true, result.message);
+  assert.equal(getGuildStats(state).activeMissions, 1);
+  assert.doesNotThrow(() => deserializeGame(serializeGame(state)));
+});
+
+test('a plain player finishes the story with the board running, never goes broke, and grows the village', async () => {
+  const { simulate } = await import('./simulate.js');
+  for (const seed of [1, 2, 3, 4, 5]) {
+    const { state, metrics: m } = simulate(seed, { freePlay: 3600 });
+    assert.ok(m.finishedAt !== null, `seed ${seed} finishes the story`);
+    assert.ok(m.finishedAt >= 25 * 60 && m.finishedAt <= 90 * 60, `seed ${seed} story takes 25-90 game minutes, took ${m.finishedAt}s`);
+    assert.equal(m.bankruptDays, 0, `seed ${seed} never misses upkeep`);
+    assert.ok(m.boardRuns >= 20, `seed ${seed} adventurers took board work by themselves (${m.boardRuns})`);
+    assert.equal(m.failures, 0, `seed ${seed} teams only take work they can handle`);
+    assert.ok(getVillageInfo(state).level >= 3 && (m.village[3] ?? Infinity) <= m.finishedAt, `seed ${seed} village is busy by the ending`);
+    assert.ok(m.village[5] !== undefined && m.village[5] > m.finishedAt * 0.8, `seed ${seed} the last village level takes investment, not just quests`);
+    assert.ok(m.upgrades >= 5 && m.projects >= 5, `seed ${seed} earned money buys upgrades (${m.upgrades}) and projects (${m.projects})`);
+    const idle = m.ledger['ดอกผลกองทุนและค่าแผงตลาด'] || 0, commission = m.ledger['ค่านายหน้า'] || 0;
+    assert.ok(idle > commission * 0.1 && idle < commission, `seed ${seed} idle income matters but does not replace work (${idle} vs ${commission})`);
+    assert.doesNotThrow(() => serializeGame(state));
+  }
+});

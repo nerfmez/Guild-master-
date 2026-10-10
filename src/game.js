@@ -190,8 +190,10 @@ export function getGuildStats(state) {
   const today = state.ledger.filter(entry => entry.day === state.day);
   const memberCap = Math.min(12, roomLevel(state, 'dorm') * 4);
   return { power: state.members.reduce((sum, member) => sum + getMemberStats(state, member).power, 0),
-    memberCount: state.members.length, memberCap, teamCap: (hasRank(state, 'E') && roomLevel(state, 'dispatch') ? 2 : 1) + (bestRoomLevel(state, 'board') >= 2 ? 1 : 0) + (bestRoomLevel(state, 'board') >= 3 ? 1 : 0),
-    activeMissions: state.missions.filter(mission => mission.status === 'active').length,
+    memberCount: state.members.length, memberCap, teamCap: hasRank(state, 'E') && roomLevel(state, 'dispatch') ? 2 : 1,
+    // Teams that took board work by themselves use the board's own slots, never the player's.
+    activeMissions: state.missions.filter(mission => mission.status === 'active' && !mission.auto).length,
+    boardCap: bestRoomLevel(state, 'board'), boardMissions: state.missions.filter(mission => mission.status === 'active' && mission.auto).length,
     recoveryRate: 0.16 + bestRoomLevel(state, 'dorm') * 0.045 + bestRoomLevel(state, 'kitchen') * 0.025,
     restSlots: roomLevel(state, 'dorm') * 2, trainingSlots: roomLevel(state, 'training') * 2,
     healingSlots: roomLevel(state, 'infirmary') * 2,
@@ -333,7 +335,7 @@ function autoEquip(state) {
   }
   return changes ? success(`จัดอุปกรณ์ใหม่ ${changes} ชิ้น`) : failure('ทุกคนใส่ของที่ดีที่สุดอยู่แล้ว');
 }
-export function previewMission(state, questId, memberIds = [], policy = 'balanced') {
+export function previewMission(state, questId, memberIds = [], policy = 'balanced', options = {}) {
   const quest = QUEST_BY_ID[questId];
   const selectedPolicy = MISSION_POLICIES[policy];
   if (!quest) return { ok: false, reason: 'ไม่พบภารกิจ', power: 0, difficulty: 0, readiness: 0, roles: [], missingRoles: [], duration: 0, cost: {}, energy: 0, verdict: 'ยังจัดทีมไม่ได้' };
@@ -351,7 +353,8 @@ export function previewMission(state, questId, memberIds = [], policy = 'balance
   if (!reason && (!Array.isArray(memberIds) || memberIds.length < 1 || memberIds.length > 3 || new Set(memberIds).size !== memberIds.length || members.length !== memberIds.length)) reason = 'เลือกสมาชิก 1–3 คน';
   if (!reason && members.some(member => isBusy(state, member.id))) reason = 'สมาชิกบางคนกำลังทำภารกิจ';
   if (!reason && members.some(member => member.energy < 25 || member.injury > 40)) reason = 'สมาชิกต้องพักให้พลังอย่างน้อย 25 และบาดเจ็บไม่เกิน 40';
-  if (!reason && getGuildStats(state).activeMissions >= getGuildStats(state).teamCap) reason = 'ทีมภารกิจเต็มแล้ว';
+  const slots = getGuildStats(state);
+  if (!reason && (options.auto ? slots.boardMissions >= slots.boardCap : slots.activeMissions >= slots.teamCap)) reason = options.auto ? 'ช่องทีมจากกระดานเต็มแล้ว' : 'ทีมภารกิจเต็มแล้ว';
   if (!reason && !canAfford(state, quest.cost)) reason = 'เสบียงไม่เพียงพอ';
   if (!reason && state.missions.some(mission => mission.status === 'active' && mission.questId === quest.id)) reason = 'ภารกิจนี้มีทีมเดินทางอยู่แล้ว';
   const luck = getTeamLuck(state, Array.isArray(memberIds) ? memberIds : [], policy, readiness);
@@ -495,7 +498,7 @@ export function getExpansionCost(state) {
 }
 
 function sendMission(state, payload) {
-  const preview = previewMission(state, payload.questId, payload.memberIds, payload.policy || 'balanced');
+  const preview = previewMission(state, payload.questId, payload.memberIds, payload.policy || 'balanced', { auto: payload.auto });
   if (!preview.ok) return failure(preview.reason);
   const quest = QUEST_BY_ID[payload.questId];
   state.petitions ??= [];
@@ -603,10 +606,11 @@ function resolveMission(state, mission) {
       const pay = getPayout(state, Math.floor(mission.petition.fee * multiplier), mission.petition.plan);
       rewards.gold = pay.guild; wages = pay.adventurers;
       mission.memberIds.forEach(id => { const member = memberById(state, id); member.purse = (member.purse || 0) + wages / mission.memberIds.length; });
-      state.village.prosperity += pay.fee * 0.15;
+      state.village.prosperity += pay.fee * 0.05;
     }
     transact(state, rewards, mission.petition ? `ค่านายหน้า: ${quest.name}` : `รางวัล: ${quest.name}`, 1);
-    const rep = Math.max(2, Math.round(quest.reward.rep * multiplier * (1 + roomLevel(state, 'reception') * 0.05)));
+    // Work the adventurers picked up by themselves earns the guild half the renown of work it sends.
+    const rep = Math.max(2, Math.round(quest.reward.rep * multiplier * (mission.auto ? 0.5 : 1) * (1 + roomLevel(state, 'reception') * 0.05)));
     state.rep += rep;
     state.completedQuests[quest.id] = (state.completedQuests[quest.id] || 0) + 1;
     state.questRuns[quest.id] = (state.questRuns[quest.id] || 0) + 1;
@@ -803,14 +807,14 @@ function pickBoardTeam(state, quest, planId) {
   if (!pool.length) return null;
   const score = member => getMemberStats(state, member).power;
   const team = [];
-  const ready = () => previewMission(state, quest.id, team.map(m => m.id), 'balanced').readiness >= plan.readiness + 0.1;
+  const ready = () => previewMission(state, quest.id, team.map(m => m.id), 'balanced', { auto: true }).readiness >= plan.readiness + 0.1;
   for (const role of quest.tags) {
     if (team.length >= 3 || (team.length && ready())) break;
     const pick = pool.filter(m => !team.includes(m) && getMemberStats(state, m).role === role).sort((a, b) => score(b) - score(a))[0];
     if (pick) team.push(pick);
   }
   for (const member of pool.filter(m => !team.includes(m)).sort((a, b) => score(b) - score(a))) { if (team.length >= 3 || (team.length && ready())) break; team.push(member); }
-  const preview = previewMission(state, quest.id, team.map(m => m.id), 'balanced');
+  const preview = previewMission(state, quest.id, team.map(m => m.id), 'balanced', { auto: true });
   return preview.ok && preview.readiness >= plan.readiness ? team.map(m => m.id) : null;
 }
 function tickPetitions(state, step) {
@@ -843,7 +847,7 @@ function tickPetitions(state, step) {
   // Adventurers with nothing to do walk to the board and take work they can handle.
   if (!roomLevel(state, 'board')) return;
   const stats = getGuildStats(state);
-  if (stats.activeMissions >= stats.teamCap) return;
+  if (stats.boardMissions >= stats.boardCap) return;
   const board = state.petitions.filter(p => p.status === 'posted' && !p.reserved && !p.missionId && p.age >= 8 / (PAYOUT_PLANS[p.plan]?.eager || 1))
     .sort((a, b) => (PAYOUT_PLANS[b.plan]?.share || 0) * b.fee - (PAYOUT_PLANS[a.plan]?.share || 0) * a.fee);
   for (const petition of board) {
@@ -872,7 +876,7 @@ function tickVillage(state, step) {
     const spend = Math.min(member.purse, (0.25 + shop * 0.15) * step);
     member.purse -= spend;
     member.morale = clamp(member.morale + spend * 0.12, 0, 100);
-    state.village.prosperity += spend * 0.6;
+    state.village.prosperity += spend * 0.2;
   }
 }
 function buyUpgrade(state, payload) {
