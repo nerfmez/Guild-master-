@@ -33,7 +33,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R16',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R17',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -130,7 +130,9 @@ export class GuildRenderer {
   for(const m of this.state.members){const room=this.roomFor(m),b=room&&getRoomSize(room.type,room.rotation||0),n=hash(m.id);
    if(!b)continue;const roommates=this.state.members.filter(other=>this.roomFor(other)?.id===room.id),slot=roommates.findIndex(other=>other.id===m.id);
    const entry=getFacilityEntry(room),hall=buildingRect(this.state),idle=m.energy>=95&&!m.injury&&m.task==='rest',index=this.state.members.findIndex(other=>other.id===m.id);
-   const logical=idle?this.idleSpots[index]:{x:entry.x+(slot-(roommates.length-1)/2)*.22,y:entry.y};
+   // Spread people sharing a room point into a small cluster so nobody stands inside anybody else.
+   const spread=[[0,0],[.5,0],[-.5,0],[.25,.45],[-.25,.45],[.75,.45],[-.75,.45],[0,.9]][slot%8],shift=roommates.length===2?-.25:0;
+   const logical=idle?this.idleSpots[index]:{x:entry.x+spread[0]+shift,y:entry.y+spread[1]};
    const target=gridPoint(logical.x,logical.y);
    let a=this.actors.get(m.id);if(!a){
     this.bakeActor(m);
@@ -151,7 +153,8 @@ export class GuildRenderer {
   if(!p){if(old){old.image.destroy();this.actors.delete('master');}return;}
   const m={id:'master',name:p.masterName,class:'master',hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle},look=[p.hair,p.outfit,p.skin,p.hairStyle].join();
   const desk=this.state.facilities.find(f=>f.type==='reception'),hall=buildingRect(this.state);
-  const logical=desk?(()=>{const e=getFacilityEntry(desk);return{x:e.x+.35,y:e.y+.2};})():{x:hall.x+hall.w/2,y:hall.y+hall.h-.8};
+  // Behind the counter, on the far side from where visitors stand.
+  const logical=desk?(()=>{const e=getFacilityEntry(desk),d=getRoomSize(desk.type,desk.rotation||0),cx=desk.x+d.w/2,cy=desk.y+d.h/2;return{x:cx+(cx-e.x)*.9,y:cy+(cy-e.y)*.9};})():{x:hall.x+hall.w/2,y:hall.y+hall.h-.8};
   const target=gridPoint(logical.x,logical.y);let a=old;
   if(!a){this.bakeActor(m);a={image:this.scene.add.image(target.x,target.y,'actor-master-master-south-idle').setOrigin(.5,48/52),x:target.x,y:target.y,clock:0,direction:'south',look};this.actors.set('master',a);}
   else if(a.look!==look){this.bakeActor(m);a.look=look;}
@@ -185,10 +188,10 @@ export class GuildRenderer {
    else if(home&&m.task==='rest'&&m.energy<95&&!m.waitingReason&&!m.injury)pose='sleep';
    else pose=t%4.3<.15?'blink':Math.floor(t*1.5)%2?'breath':'idle';
    const facing=pose.startsWith('walk')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
-   a.image.setTexture(`actor-${m.id}-${m.class}-${facing}-${pose}`).setPosition(Math.round(a.x),Math.round(a.y)).setDepth(a.y);
+   a.image.setTexture(`actor-${m.id}-${m.class}-${facing}-${pose}`).setPosition(Math.round(a.x),Math.round(a.y)).setDepth(Math.round(a.y)+(hash(m.id)%89)/100);
    const emote=pose==='sleep'?'z':home&&m.injury>0?'heal':null;
    if(emote){if(!a.emote)a.emote=this.scene.add.image(0,0,this.emoteTexture(emote)).setOrigin(.5,1);if(a.emoteKind!==emote){a.emote.setTexture(this.emoteTexture(emote));a.emoteKind=emote;}
-    const float=Math.sin(t*2.2)*1.5;a.emote.setVisible(true).setPosition(Math.round(a.x+7),Math.round(a.y-24+float)).setDepth(a.y+1).setAlpha(.75+Math.sin(t*2.2)*.25);}
+    const float=Math.sin(t*2.2)*1.5;a.emote.setVisible(true).setPosition(Math.round(a.x+7),Math.round(a.y-24+float)).setDepth(Math.round(a.y)+1).setAlpha(.75+Math.sin(t*2.2)*.25);}
    else a.emote?.setVisible(false);
   }
 
