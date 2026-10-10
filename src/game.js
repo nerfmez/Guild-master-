@@ -838,6 +838,7 @@ export function petitionHome(home) {
   if (home === 'inn') return { x: -2.2, y: 10.8 };
   if (home === 'bakery') return { x: 24.3, y: 15.8 };
   if (home === 'elder') return { x: 0.3, y: -0.5 };
+  if (home === 'road') return { x: -12, y: 17.5 };
   const lot = VILLAGE_LOTS.houses[home];
   return lot ? { x: lot.x + 1.2, y: lot.y + 2.4 } : { x: 2, y: 18 };
 }

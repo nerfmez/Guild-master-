@@ -1,7 +1,7 @@
 import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,buildingRect,partitionSize,partitionRect,pointInRect } from './site.js';
 import { FACILITIES,VILLAGE_LOTS } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
-import { makeActorTexture,villagerLook } from './render.js';
+import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { QUESTS } from './content.js';
 import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,monsterSpawns,inWater,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
@@ -363,9 +363,11 @@ export class GuildRenderer {
   const desk=this.state.facilities.find(f=>f.type==='reception'),b=buildingRect(this.state),spot=desk?getFacilityEntry(desk):{x:b.x+b.w/2,y:b.y+b.h-1.2};let queue=0;
   const along=(route,d)=>{let left=d;for(let k=1;k<route.length;k++){const p=route[k-1],q=route[k],len=Math.hypot(q.x-p.x,q.y-p.y);if(left<=len||k===route.length-1){const f=len?Math.max(0,Math.min(1,left/len)):0;return{x:p.x+(q.x-p.x)*f,y:p.y+(q.y-p.y)*f};}left-=len;}return route[route.length-1];};
   const length=route=>route.slice(1).reduce((sum,p,k)=>sum+Math.hypot(p.x-route[k].x,p.y-route[k].y),0);
-  for(const p of this.state.petitions||[]){if(p.status!=='coming'&&p.status!=='waiting')continue;live.add(p.id);let v=this.villagers.get(p.id);
-   if(!v){const look=villagerLook(p);if(!this.scene.textures.exists(`actor-${look.id}-villager-south-idle`))this.bakeVillager(look);const start=gridPoint(...Object.values(petitionHome(p.home)));
-    v={look,home:p.home,image:this.scene.add.image(start.x,start.y,`actor-${look.id}-villager-south-idle`).setOrigin(.5,48/52),x:start.x,y:start.y,direction:'south',path:[],phase:Math.random()*6};this.villagers.set(p.id,v);}
+  // Villagers with petitions and adventurers applying to join share the walk and the queue at the desk.
+  const visitors=[...(this.state.petitions||[]).map(p=>({...p,look:null})),...(this.state.applicants||[]).map(a=>({...a,home:'road',look:applicantLook(a)}))];
+  for(const p of visitors){if(p.status!=='coming'&&p.status!=='waiting')continue;live.add(p.id);let v=this.villagers.get(p.id);
+   if(!v){const look=p.look||villagerLook(p),key=`actor-${look.id}-${look.class}`;if(!this.scene.textures.exists(key+'-south-idle'))p.look?this.bakeActor(look):this.bakeVillager(look);const start=gridPoint(...Object.values(petitionHome(p.home)));
+    v={look,key,home:p.home,image:this.scene.add.image(start.x,start.y,key+'-south-idle').setOrigin(.5,48/52),x:start.x,y:start.y,direction:'south',path:[],phase:Math.random()*6};this.villagers.set(p.id,v);}
    let goal;
    if(p.status==='coming'){const route=this.villagerRoute(p.home),f=1-Math.max(0,p.eta)/(p.etaTotal||1);goal=gridPoint(...Object.values(along(route,length(route)*Math.max(0,Math.min(1,f)))));v.path=[];v.queued=false;}
    else{const slot=queue++,target=gridPoint(spot.x+(slot%2?.45:0)*(slot>0?1:0),spot.y+.15+slot*.5);if(!v.queued||Math.hypot(v.target.x-target.x,v.target.y-target.y)>2){v.path=this.pathBetween(v.x,v.y,target.x,target.y);if(!v.path.length)v.path=[target];v.queued=true;v.target=target;}goal=v.path[0]||target;}
@@ -373,6 +375,8 @@ export class GuildRenderer {
   }
   for(const [id,v] of this.villagers){if(live.has(id))continue;
    // A villager whose request was answered walks back home and fades out.
+   // An applicant who was hired is now a member; their own actor takes over.
+   if(!v.leaving&&this.state.members.some(m=>m.id===v.look.id)){v.image.destroy();this.villagers.delete(id);continue;}
    if(!v.leaving){v.leaving=true;v.ttl=30;const route=[...this.villagerRoute(v.home)].reverse().map(p=>gridPoint(p.x,p.y)),inside=gridPoint(...Object.values(this.villagerRoute(v.home)[4]));v.path=[...this.pathBetween(v.x,v.y,inside.x,inside.y),...route.slice(1)];}
    v.ttl-=dt;if(v.path[0]&&Math.hypot(v.path[0].x-v.x,v.path[0].y-v.y)<=1)v.path.shift();
    if(!v.path.length||v.ttl<=0){v.image.setAlpha(Math.max(0,v.image.alpha-dt*2));if(v.image.alpha<=0){v.image.destroy();this.villagers.delete(id);}continue;}
@@ -383,7 +387,7 @@ export class GuildRenderer {
   if(d>.6){walking=true;if(direct&&d>60){v.x=goal.x;v.y=goal.y;}else{const step=Math.min(d,elapsed*(direct?Math.max(22,d*3):24));v.x+=dx/d*step;v.y+=dy/d*step;}v.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}
   else if(!direct&&!walkPath&&v.path?.length)v.path.shift();
   const t=(this.realTime||0)+v.phase,pose=walking&&elapsed>0?'walk'+(Math.floor(this.elapsed*8)%4):Math.floor(t*1.5)%2?'breath':'idle',facing=!walking&&v.queued?'north':v.direction;
-  v.image.setTexture(`actor-${v.look.id}-villager-${facing}-${pose}`).setPosition(Math.round(v.x),Math.round(v.y)).setDepth(Math.round(v.y)+.5);
+  v.image.setTexture(`${v.key}-${facing}-${pose}`).setPosition(Math.round(v.x),Math.round(v.y)).setDepth(Math.round(v.y)+.5);
  }
  clampFocus(){const a=gridPoint(WORLD.x0,WORLD.y1),b=gridPoint(WORLD.x1,WORLD.y0),c=gridPoint(WORLD.x0,WORLD.y0),d=gridPoint(WORLD.x1,WORLD.y1);this.focusX=Math.max(a.x+300,Math.min(b.x-300,this.focusX));this.focusY=Math.max(c.y+200,Math.min(d.y-200,this.focusY));}
  focusGrid(x,y,zoom){const p=gridPoint(x,y);this.focusX=p.x;this.focusY=p.y;this.userPanned=true;if(zoom)this.zoom=zoom;this.applyView();}

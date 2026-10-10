@@ -414,6 +414,8 @@ export function drawBattleScene(canvas,mission,quest,state,options={}) {
 const VILLAGER_OUTFITS=['#c9a77c','#9cb59a','#d6a08f','#a9b7c9','#e0c58f','#b7aec9'],VILLAGER_HAIR=['#5b4637','#8b5a3c','#d9b26f','#a66c59','#6f6a8f','#e9e2d0'],VILLAGER_SKIN=['#f7d4ae','#e8b88c','#b9805a'];
 export function villagerLook(p={}){if(p.home==='elder')return{id:'elder',name:p.client,class:'villager',hair:'#e9e2d0',outfit:'#8a7a68',skin:VILLAGER_SKIN[0],hairStyle:'short',hat:2,letter:true};
   const s=(p.seed||1)%12;return{id:'v'+s,name:p.client,class:'villager',hair:VILLAGER_HAIR[(s*5)%6],outfit:VILLAGER_OUTFITS[(s*7+1)%6],skin:VILLAGER_SKIN[s%3],hairStyle:s%2?'long':'short',hat:s%3,letter:true};}
+/** How an applicant at the door looks: a named adventurer's own look, or a rookie's stored one. */
+export function applicantLook(a={}){if(a.memberId){const m=MEMBER_ART[a.memberId];return{id:m.id,name:m.name,class:m.class,hair:m.hair};}return{id:a.rookieId,name:a.bio?.name,class:a.bio?.class||'warrior',hair:a.bio?.hair};}
 export function makeActorTexture(member={},phase=0,walking=false,facing=1,direction='south',pose='idle') {
  const canvas=document.createElement('canvas');canvas.width=44;canvas.height=52;
  const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
