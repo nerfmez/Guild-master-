@@ -48,7 +48,7 @@ dialog{border:2px solid #937443;border-radius:7px;background:var(--paper);color:
     <div class="notebook-top"><div><small>LITTLE LEAF GUILD</small><h1 id="panel-heading">เมนูกิลด์</h1></div><button id="menu-close" class="close-dialog" aria-label="กลับสู่ฉาก">×</button></div>
     <div class="menu-body">
      <nav class="bottom-nav" aria-label="เมนูกิลด์">
-      <button data-tab="home"><span>⌂</span>ภาพรวม</button><button data-tab="quests"><span>▤</span>คำร้อง</button><button data-tab="members"><span>♟</span>สมาชิก</button><button data-tab="build"><span>▧</span>ห้องและที่ดิน</button><button data-tab="workshop"><span>⚒</span>คราฟต์</button><button data-tab="journal"><span>✦</span>บันทึก</button>
+      <button data-tab="home"><span>⌂</span>ภาพรวม</button><button data-tab="quests"><span>▤</span>คำร้อง</button><button data-tab="members"><span>♟</span>สมาชิก</button><button data-tab="build"><span>▧</span>จัดของและต่อเติม</button><button data-tab="workshop"><span>⚒</span>คราฟต์</button><button data-tab="journal"><span>✦</span>บันทึก</button>
       <button id="settings-button"><span>⚙</span>บันทึก / ตั้งค่า</button>
      </nav>
      <div id="panel-content" class="panel-content"></div>
@@ -1037,6 +1037,26 @@ await new Promise((resolve,reject)=>{const s=document.createElement('script');s.
 
   window.VillageProps = Object.freeze({ makeProp, makeFenceSegment });
 })();
+const Site=(()=>{
+// Shared physical layout: placement, navigation and artwork read the same geometry.
+const START_BUILDING={x:5,y:4,width:8,height:6,level:0};
+const SITE_COTTAGES=[{x:-3.5,y:8,w:2.6,h:2.5,seed:21},{x:23,y:13,w:2.6,h:2.5,seed:36}];
+const SITE_TREES=[[-4,1,101,0],[-3,6,102,0],[1,-2,103,1],[8,-3,104,0],[17,-2,105,1],[23,1,106,0],[-4,14,107,0],[25,8,109,0],[28,20,110,0],[-2,22,111,1],[18,23,112,1],[10,24,113,0],[24,22,114,1]];
+const SITE_BUSHES=[[-3,1,201,0],[19,-1,202,1],[23,5,203,0],[-3,20,204,0],[27,14,205,0],[20,22,206,0]];
+function intersects(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function buildingRect(state){const b=state.building||START_BUILDING;return{x:b.x,y:b.y,w:b.width,h:b.height};}
+function siteRoads(state){const b=buildingRect(state),door=b.x+b.w/2;return[
+ {x:-12,y:16.75,w:54,h:1.5,kind:'stone'},
+ {x:1.25,y:-12,w:1.5,h:30.25,kind:'earth'},
+ {x:door-.6,y:b.y+b.h,w:1.2,h:17.5-(b.y+b.h),kind:'stone'},
+ ...SITE_COTTAGES.map(c=>({x:c.x+c.w/2-.45,y:c.y+c.h,w:.9,h:17.5-c.y-c.h,kind:'earth'})),
+];}
+function siteDecorations(state){const b=buildingRect(state),door=b.x+b.w/2;return[{type:'banner',x:door-1.3,y:b.y+b.h+.35,w:.45,h:.45},{type:'planter',x:door+.9,y:b.y+b.h+.35,w:1.25,h:.5},{type:'well',x:-3,y:3,w:1,h:1}];}
+function protectedAreas(state){return[...siteRoads(state),...SITE_COTTAGES,...siteDecorations(state),...SITE_TREES.map(([x,y])=>({x:x-.2,y:y-.2,w:.5,h:.5})),...SITE_BUSHES.map(([x,y])=>({x:x-.25,y:y-.25,w:.7,h:.7}))];}
+function isInsideBuilding(state,x,y){const b=buildingRect(state);return x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h;}
+
+return {START_BUILDING,SITE_COTTAGES,SITE_TREES,SITE_BUSHES,intersects,buildingRect,siteRoads,siteDecorations,protectedAreas,isInsideBuilding};
+})();
 const Content=(()=>{
 /** All authored game content. Times are prototype seconds, not real-world hours. */
 const RANKS = ['F', 'E', 'D', 'C', 'B', 'A'];
@@ -1065,16 +1085,16 @@ const JOBS = {
   bard: { id: 'bard', name: 'นักขับขาน', role: 'support', color: '#d5b39e', power: 20, health: 75, parent: 'healer', icon: '♪', next: [] },
 };
 const FACILITIES = {
-  reception: { id: 'reception', name: 'โถงกิลด์', description: 'รับคำร้อง เพิ่มชื่อเสียงจากภารกิจ 5% ต่อระดับ', w: 4, h: 3, cost: { gold: 180, wood: 8, stone: 4 }, unlockRank: 'F', color: '#dec6a1', maxLevel: 3 },
-  dorm: { id: 'dorm', name: 'ห้องพัก', description: 'รับสมาชิก 4 คนและมีเตียงพักพร้อมกัน 2 คนต่อระดับ', w: 4, h: 3, cost: { gold: 220, wood: 12, stone: 3 }, unlockRank: 'F', color: '#bbaac9', maxLevel: 3 },
-  infirmary: { id: 'infirmary', name: 'ห้องพยาบาล', description: 'รักษาบาดเจ็บพร้อมกัน 2 คนต่อระดับ คนเจ็บมากได้เตียงก่อน', w: 3, h: 3, cost: { gold: 240, wood: 8, stone: 6, herb: 4 }, unlockRank: 'F', color: '#b9cfbf', maxLevel: 3 },
-  kitchen: { id: 'kitchen', name: 'โรงครัว', description: 'เพิ่มความสดชื่นและเร่งพักฟื้นสมาชิก', w: 4, h: 3, cost: { gold: 200, wood: 10, stone: 4 }, unlockRank: 'F', color: '#e6b799', maxLevel: 3 },
-  training: { id: 'training', name: 'ห้องฝึก', description: 'ฝึกได้พร้อมกัน 2 คนต่อระดับ สมาชิกผลัดกันใช้ห้อง', w: 4, h: 3, cost: { gold: 250, wood: 10, stone: 8 }, unlockRank: 'F', color: '#d1bd96', maxLevel: 3 },
-  workshop: { id: 'workshop', name: 'โรงซ่อม', description: 'สร้างอาวุธและเครื่องรางจากวัตถุดิบ', w: 3, h: 3, cost: { gold: 260, wood: 12, stone: 8 }, unlockRank: 'F', color: '#aebec2', maxLevel: 3 },
-  garden: { id: 'garden', name: 'สวนสมุนไพร', description: 'เก็บสมุนไพรวันละครั้ง และช่วยให้กิลด์ร่มรื่น', w: 3, h: 3, cost: { gold: 180, wood: 8, stone: 2 }, unlockRank: 'E', color: '#aac3a0', maxLevel: 3 },
-  library: { id: 'library', name: 'ห้องสมุด', description: 'ฝึกได้เร็วขึ้นและรับมือภารกิจเวทได้ดี', w: 3, h: 3, cost: { gold: 420, wood: 18, stone: 8 }, unlockRank: 'D', color: '#acb8d0', maxLevel: 3 },
-  lounge: { id: 'lounge', name: 'ห้องสังสรรค์', description: 'เพิ่มขวัญกำลังใจ เปิดมื้อเลี้ยงกิลด์', w: 4, h: 3, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
-  dispatch: { id: 'dispatch', name: 'ห้องวางแผน', description: 'เปิดทีมภารกิจที่สองเมื่อกิลด์ถึงระดับ E', w: 3, h: 3, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'E', color: '#9ebdb9', maxLevel: 3 },
+  reception: { id: 'reception', name: 'โต๊ะรับคำร้อง', description: 'รับคำร้อง เพิ่มชื่อเสียงจากภารกิจ 5% ต่อระดับ', w: 2, h: 1, cost: { gold: 180, wood: 8, stone: 4 }, unlockRank: 'F', color: '#dec6a1', maxLevel: 3 },
+  dorm: { id: 'dorm', name: 'เตียงพัก', description: 'เพิ่มพื้นที่พักให้สมาชิก 4 คนและรองรับการพัก 2 คนต่อระดับ', w: 1, h: 2, cost: { gold: 220, wood: 12, stone: 3 }, unlockRank: 'F', color: '#bbaac9', maxLevel: 3 },
+  infirmary: { id: 'infirmary', name: 'เตียงรักษา', description: 'รักษาบาดเจ็บพร้อมกัน 2 คนต่อระดับ คนเจ็บมากได้เตียงก่อน', w: 1, h: 2, cost: { gold: 240, wood: 8, stone: 6, herb: 4 }, unlockRank: 'F', color: '#b9cfbf', maxLevel: 3 },
+  kitchen: { id: 'kitchen', name: 'เตาทำอาหาร', description: 'เพิ่มความสดชื่นและเร่งพักฟื้นสมาชิก', w: 1, h: 1, cost: { gold: 200, wood: 10, stone: 4 }, unlockRank: 'F', color: '#e6b799', maxLevel: 3 },
+  training: { id: 'training', name: 'หุ่นฝึก', description: 'ฝึกได้พร้อมกัน 2 คนต่อระดับ สมาชิกผลัดกันใช้จุดฝึก', w: 1, h: 1, cost: { gold: 250, wood: 10, stone: 8 }, unlockRank: 'F', color: '#d1bd96', maxLevel: 3 },
+  workshop: { id: 'workshop', name: 'โต๊ะช่าง', description: 'สร้างอาวุธและเครื่องรางจากวัตถุดิบ', w: 2, h: 1, cost: { gold: 260, wood: 12, stone: 8 }, unlockRank: 'F', color: '#aebec2', maxLevel: 3 },
+  garden: { id: 'garden', name: 'แปลงสมุนไพร', description: 'เก็บสมุนไพรวันละครั้ง และช่วยให้กิลด์ร่มรื่น', w: 2, h: 2, cost: { gold: 180, wood: 8, stone: 2 }, unlockRank: 'E', color: '#aac3a0', maxLevel: 3 },
+  library: { id: 'library', name: 'ชั้นตำรา', description: 'ฝึกได้เร็วขึ้นและรับมือภารกิจเวทได้ดี', w: 2, h: 0.75, cost: { gold: 420, wood: 18, stone: 8 }, unlockRank: 'D', color: '#acb8d0', maxLevel: 3 },
+  lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'เพิ่มขวัญกำลังใจ เปิดมื้อเลี้ยงกิลด์', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
+  dispatch: { id: 'dispatch', name: 'โต๊ะวางแผน', description: 'เปิดทีมภารกิจที่สองเมื่อกิลด์ถึงระดับ E', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'E', color: '#9ebdb9', maxLevel: 3 },
 };
 const MEMBERS = [
   { id: 'mira', name: 'มิรา', class: 'warrior', trait: 'ใจเย็น', description: 'อดีตคนเฝ้าประตูที่อยากปกป้องผู้คนมากกว่าประตู', hair: '#a66c59', starter: true, unlockRank: 'F', cost: 0 },
@@ -1126,9 +1146,10 @@ const MISSION_POLICIES = {
 return {RANKS,RANK_REQUIREMENTS,REGIONS,JOBS,FACILITIES,MEMBERS,QUESTS,EQUIPMENT,GUILD_EVENTS,MISSION_POLICIES};
 })();
 const Engine=(()=>{
+const { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding }=Site;
 const { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, GUILD_EVENTS, MISSION_POLICIES }=Content;
 
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 const DAY_LENGTH = 240;
 const RESOURCE_KEYS = ['gold', 'wood', 'stone', 'herb'];
 const MAX_LEVEL = 20;
@@ -1148,7 +1169,8 @@ const TRAIT_BONUSES = {
 const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
 const rankIndex = rank => RANKS.indexOf(rank);
 const getRankIndex = rankIndex;
-const getRoomSize = type => ({ w: FACILITIES[type]?.w ?? 0, h: FACILITIES[type]?.h ?? 0 });
+function getRoomSize(type,rotation=0){const d=FACILITIES[type];return rotation%2?{w:d?.h??0,h:d?.w??0}:{w:d?.w??0,h:d?.h??0};}
+function getFacilityEntry(f){const d=getRoomSize(f.type,f.rotation||0),r=f.rotation||0;return r===0?{x:f.x+d.w/2,y:f.y+d.h+.5}:r===1?{x:f.x-.5,y:f.y+d.h/2}:r===2?{x:f.x+d.w/2,y:f.y-.5}:{x:f.x+d.w+.5,y:f.y+d.h/2};}
 const hasRank = (state, rank) => rankIndex(state.rank) >= rankIndex(rank);
 const success = message => ({ ok: true, message });
 const failure = message => ({ ok: false, message });
@@ -1193,15 +1215,15 @@ function createGame(seed = 123) {
   const state = {
     version: SAVE_VERSION, seed: seed >>> 0 || 123, rng: seed >>> 0 || 123, nextId: 10,
     gold: 1200, wood: 32, stone: 20, herb: 12, rep: 0, day: 1, clock: 0, elapsed: 0,
-    rank: 'F', landLevel: 0, grid: { width: 20, height: 16 },
+    rank: 'F', landLevel: 0, grid: { width: 20, height: 16 }, building:{...START_BUILDING},
     members: MEMBERS.filter(member => member.starter).map(member => createMember(member)),
     facilities: [
-      { id: 'room-1', type: 'reception', x: 4, y: 3, level: 1 },
-      { id: 'room-2', type: 'dorm', x: 8, y: 3, level: 1 },
-      { id: 'room-3', type: 'infirmary', x: 12, y: 3, level: 1 },
-      { id: 'room-4', type: 'kitchen', x: 4, y: 7, level: 1 },
-      { id: 'room-5', type: 'training', x: 8, y: 7, level: 1 },
-      { id: 'room-6', type: 'workshop', x: 12, y: 7, level: 1 },
+      {id:'room-1',type:'reception',x:5.5,y:4.5,rotation:0,level:1},
+      {id:'room-2',type:'dorm',x:10.5,y:4.5,rotation:0,level:1},
+      {id:'room-3',type:'infirmary',x:11.75,y:4.5,rotation:0,level:1},
+      {id:'room-4',type:'kitchen',x:5.75,y:7.75,rotation:1,level:1},
+      {id:'room-5',type:'training',x:7.25,y:7.75,rotation:0,level:1},
+      {id:'room-6',type:'workshop',x:9.5,y:8.25,rotation:2,level:1},
     ],
     missions: [], completedQuests: {}, questRuns: {}, bonds: {}, inventory: {}, log: [], ledger: [],
     goals: { firstMission: false, firstCraft: false, firstUpgrade: false, firstRecruit: false, firstExpansion: false },
@@ -1274,14 +1296,14 @@ function questLockReason(state, quest) {
   if (quest.id === 'rescue') {
     const needs = [];
     if (state.members.length < 6) needs.push('มีสมาชิกอย่างน้อย 6 คน');
-    if (!roomLevel(state, 'dispatch')) needs.push('สร้างห้องวางแผนเพื่อรองรับ 2 ทีม');
+    if (!roomLevel(state, 'dispatch')) needs.push('วางโต๊ะวางแผนเพื่อรองรับ 2 ทีม');
     if (state.landLevel < 1) needs.push('ขยายที่ดินอย่างน้อย 1 ครั้ง');
     if (needs.length) return `เตรียมกิลด์ช่วยทีมสำรวจ: ${needs.join(' · ')}`;
   }
   if (quest.final) {
     const missingStories = ['hollow', 'ruins', 'rescue'].filter(id => !state.completedQuests[id]);
     if (missingStories.length) return `ต้องผ่าน ${missingStories.map(id => QUEST_BY_ID[id].name).join(' · ')} ก่อน`;
-    if (state.facilities.filter(room => room.level >= 2).length < 2) return 'เตรียมกิลด์รับทุกคนกลับบ้าน: อัปเกรดห้องที่เลือกอย่างน้อย 2 ห้องเป็นระดับ 2';
+    if (state.facilities.filter(room => room.level >= 2).length < 2) return 'เตรียมกิลด์รับทุกคนกลับบ้าน: อัปเกรดจุดใช้งานที่เลือกอย่างน้อย 2 จุดใช้งานเป็นระดับ 2';
   }
   if (quest.final && state.story.finished) return 'ผ่านบทสรุปแล้ว';
   return '';
@@ -1300,7 +1322,7 @@ function getAvailableRecruits(state) {
   return MEMBERS.filter(member => !member.starter && !memberById(state, member.id)).map(member => {
     let reason = '';
     if (!hasRank(state, member.unlockRank)) reason = `ต้องมีกิลด์ระดับ ${member.unlockRank}`;
-    else if (stats.memberCount >= stats.memberCap) reason = 'ห้องพักเต็มแล้ว';
+    else if (stats.memberCount >= stats.memberCap) reason = 'พื้นที่พักเต็มแล้ว';
     else if (state.gold < member.cost) reason = 'เหรียญไม่เพียงพอ';
     return { ...member, available: !reason, reason };
   });
@@ -1329,7 +1351,7 @@ function previewMission(state, questId, memberIds = [], policy = 'balanced') {
   const roles = [...new Set(members.map(member => getMemberStats(state, member).role))];
   const missingRoles = quest.tags.filter(role => !roles.includes(role));
   const roleBonus = (quest.tags.length - missingRoles.length) * 0.07;
-  const bondBonus = Math.min(0.18, teamBonds(state, memberIds) * 0.0008);
+  const bondBonus = Math.min(0.18, teamBonds(state, Array.isArray(memberIds)?memberIds:[]) * 0.0008);
   const libraryBonus = quest.tags.includes('magic') ? bestRoomLevel(state, 'library') * 0.035 : 0;
   const traitBonus = members.reduce((sum, member) => sum + (quest.tags.includes('scout') ? traitOf(member).scouting || 0 : 0) + (quest.tags.includes('heal') ? traitOf(member).healing || 0 : 0), 0);
   const power = Math.round(members.reduce((sum, member) => sum + getMemberStats(state, member).power, 0) * (1 + roleBonus + bondBonus + libraryBonus + traitBonus) * (selectedPolicy?.power || 1));
@@ -1353,55 +1375,66 @@ function previewMission(state, questId, memberIds = [], policy = 'balanced') {
 function overlaps(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
-function canPlaceFacility(state, type, x, y, ignoreId = null) {
-  const definition = FACILITIES[type];
-  if (!definition) return failure('ไม่พบห้องชนิดนี้');
-  if (!Number.isInteger(x) || !Number.isInteger(y)) return failure('ตำแหน่งต้องอยู่บนช่องกริด');
-  const area = { x, y, w: definition.w, h: definition.h };
-  if (x < 0 || y < 0 || x + area.w > state.grid.width || y + area.h > state.grid.height) return failure('พื้นที่อยู่นอกที่ดินกิลด์');
-  if (overlaps(area, { x: 1, y: 1, w: 3, h: 3 })) return failure('เก็บพื้นที่ต้นไม้กลางกิลด์ไว้');
-  if (state.facilities.some(room => room.id !== ignoreId && overlaps(area, { ...room, ...getRoomSize(room.type) }))) return failure('ตำแหน่งนี้ทับห้องที่มีอยู่');
-  const rooms = state.facilities.filter(room => room.id !== ignoreId);
-  const planned = [...rooms, { type, x, y }];
-  if (!hasWalkableEntries(state.grid, planned)) return failure('ต้องเว้นทางเดินจากประตูกิลด์ถึงทุกห้องอย่างน้อย 1 ช่อง');
-  return success('วางห้องได้');
+function canPlaceFacility(state,type,x,y,ignoreId=null,rotation=0,checkAccess=true){
+ if(!FACILITIES[type])return failure('ไม่พบเฟอร์นิเจอร์');
+ if(!finiteNumber(x)||!finiteNumber(y)||!Number.isInteger(x*4)||!Number.isInteger(y*4))return failure('วางได้ครั้งละหนึ่งในสี่ช่อง');
+ if(!Number.isInteger(rotation)||rotation<0||rotation>3)return failure('ทิศทางไม่ถูกต้อง');
+ const size=getRoomSize(type,rotation),area={x,y,...size},b=buildingRect(state);
+ if(x<0||y<0||x+size.w>state.grid.width||y+size.h>state.grid.height)return failure('อยู่นอกที่ดินกิลด์');
+ if(type!=='garden'&&(x<b.x+.25||y<b.y+.25||x+size.w>b.x+b.w-.25||y+size.h>b.y+b.h-.25))return failure('วางภายในอาคาร หรือขยายอาคารก่อน');
+ if(type==='garden'&&intersects(area,b))return failure('แปลงสมุนไพรต้องอยู่กลางแจ้ง');
+ const entrance={x:b.x+b.w/2-.5,y:b.y+b.h-.75,w:1,h:1.5};
+ if(intersects(area,entrance)||protectedAreas(state).some(p=>intersects(area,p)))return failure('ต้องเว้นถนนและทางเข้าอาคาร');
+ if(state.facilities.some(f=>f.id!==ignoreId&&intersects(area,{...f,...getRoomSize(f.type,f.rotation||0)})))return failure('ตำแหน่งนี้ทับเฟอร์นิเจอร์');
+ const planned=[...state.facilities.filter(f=>f.id!==ignoreId),{type,x,y,rotation}];
+ if(checkAccess&&!hasWalkableEntries(state,planned))return failure('ต้องมีทางเดินถึงด้านใช้งานของทุกชิ้น');
+ return success('วางได้');
 }
 
-/** Flood-fill only on construction/import, never every animation frame. */
-function hasWalkableEntries(grid, rooms) {
-  const blocked = new Uint8Array(grid.width * grid.height);
-  const at = (x, y) => y * grid.width + x;
-  const inGrid = (x, y) => x >= 0 && y >= 0 && x < grid.width && y < grid.height;
-  for (let x = 1; x <= 3; x++) for (let y = 1; y <= 3; y++) blocked[at(x, y)] = 1;
-  for (const room of rooms) {
-    const { w, h } = FACILITIES[room.type];
-    for (let x = room.x; x < room.x + w; x++) for (let y = room.y; y < room.y + h; y++) {
-      if (inGrid(x, y)) blocked[at(x, y)] = 1;
-    }
+const NAV_STEP=.5;
+function navigation(state,facilities,start){
+ const w=state.grid.width*2,h=state.grid.height*2,at=(x,y)=>y*w+x;
+ const valid=(x,y)=>x>=0&&y>=0&&x<w&&y<h;
+ const point=(x,y)=>({x:(x+.5)*NAV_STEP,y:(y+.5)*NAV_STEP});
+ const blocked=new Uint8Array(w*h),visited=new Uint8Array(w*h),parent=new Int32Array(w*h);parent.fill(-1);
+ const areas=facilities.map(f=>({...f,...getRoomSize(f.type,f.rotation||0)}));
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=point(x,y);if(areas.some(a=>p.x>a.x-.08&&p.x<a.x+a.w+.08&&p.y>a.y-.08&&p.y<a.y+a.h+.08))blocked[at(x,y)]=1;}
+ const b=buildingRect(state),door=b.x+b.w/2;
+ const sx=Math.floor(start.x*2),sy=Math.floor(start.y*2),queue=[];
+ if(valid(sx,sy)&&!blocked[at(sx,sy)]){queue.push([sx,sy]);visited[at(sx,sy)]=1;}
+ for(let i=0;i<queue.length;i++){
+  const[x,y]=queue[i],p=point(x,y);
+  for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(!valid(nx,ny))continue;const id=at(nx,ny);if(blocked[id]||visited[id])continue;
+   const q=point(nx,ny);if(isInsideBuilding(state,p.x,p.y)!==isInsideBuilding(state,q.x,q.y)&&!(Math.abs(q.x-door)<=.55&&Math.abs(p.x-door)<=.55&&Math.max(p.y,q.y)>=b.y+b.h&&Math.min(p.y,q.y)<b.y+b.h))continue;
+   visited[id]=1;parent[id]=at(x,y);queue.push([nx,ny]);
   }
-  // Gate is on the bottom edge, using the nearest open tile to its center.
-  const gateX = [...Array(grid.width).keys()].sort((a, b) => Math.abs(a - Math.floor(grid.width / 2)) - Math.abs(b - Math.floor(grid.width / 2))).find(x => !blocked[at(x, grid.height - 1)]);
-  if (gateX === undefined) return false;
-  const visited = new Uint8Array(blocked.length);
-  const queue = [[gateX, grid.height - 1]];
-  visited[at(gateX, grid.height - 1)] = 1;
-  for (let i = 0; i < queue.length; i++) {
-    const [x, y] = queue[i];
-    for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
-      const nx = x + dx, ny = y + dy;
-      if (inGrid(nx, ny) && !blocked[at(nx, ny)] && !visited[at(nx, ny)]) {
-        visited[at(nx, ny)] = 1; queue.push([nx, ny]);
-      }
-    }
-  }
-  return rooms.every(room => {
-    const { w, h } = FACILITIES[room.type];
-    const entries = [];
-    for (let x = room.x; x < room.x + w; x++) entries.push([x, room.y - 1], [x, room.y + h]);
-    for (let y = room.y; y < room.y + h; y++) entries.push([room.x - 1, y], [room.x + w, y]);
-    return entries.some(([x, y]) => inGrid(x, y) && visited[at(x, y)]);
-  });
+ }
+ return{w,h,visited,parent,point,at,valid};
 }
+function hasWalkableEntries(state,facilities){
+ const b=buildingRect(state),nav=navigation(state,facilities,{x:b.x+b.w/2,y:b.y+b.h-.25});
+ return facilities.every(f=>{const p=getFacilityEntry(f);if(f.type!=='garden'&&!isInsideBuilding(state,p.x,p.y))return false;const x=Math.floor(p.x*2),y=Math.floor(p.y*2);return nav.valid(x,y)&&nav.visited[nav.at(x,y)];});
+}
+function findWalkPath(state,start,goal){
+ const nav=navigation(state,state.facilities,start),gx=Math.floor(goal.x*2),gy=Math.floor(goal.y*2);if(!nav.valid(gx,gy)||!nav.visited[nav.at(gx,gy)])return[];
+ const path=[];let id=nav.at(gx,gy);while(id!==-1){path.unshift(nav.point(id%nav.w,Math.floor(id/nav.w)));id=nav.parent[id];}return path;
+}
+function getWalkableSpots(state){
+ const b=buildingRect(state),nav=navigation(state,state.facilities,{x:b.x+b.w/2,y:b.y+b.h-.25}),spots=[];
+ for(let y=0;y<nav.h;y++)for(let x=0;x<nav.w;x++)if(nav.visited[nav.at(x,y)]){const p=nav.point(x,y);if(p.x>b.x+.5&&p.x<b.x+b.w-.5&&p.y>b.y+.5&&p.y<b.y+b.h-.5)spots.push(p);}
+ return spots.length?spots:[{x:b.x+b.w/2,y:b.y+b.h-.25}];
+}
+function getBuildingExpansionCost(state){const level=state.building.level;return{gold:300+level*200,wood:12+level*6,stone:8+level*4};}
+function expandBuilding(state){
+ const b=state.building;if(b.level>=3)return failure('อาคารขยายเต็มแล้ว');
+ const next={...b,width:b.width+2,height:b.height+2,level:b.level+1},area={x:next.x,y:next.y,w:next.width,h:next.height};
+ if(area.x+area.w>state.grid.width||area.y+area.h>state.grid.height||protectedAreas({...state,building:next}).some(p=>intersects(area,p)))return failure('ซื้อที่ดินเพิ่มก่อนขยายอาคาร');
+ if(state.facilities.some(f=>f.type==='garden'&&intersects(area,{...f,...getRoomSize(f.type,f.rotation||0)})))return failure('ย้ายแปลงสมุนไพรออกจากพื้นที่ต่อเติมก่อน');
+ const cost=getBuildingExpansionCost(state);if(!canAfford(state,cost))return failure('วัสดุต่อเติมอาคารไม่เพียงพอ');
+ const planned={...state,building:next};if(!hasWalkableEntries(planned,state.facilities))return failure('ทางเข้าใหม่ถูกบัง ต้องย้ายของก่อน');
+ transact(state,cost,'ต่อเติมอาคารกิลด์');state.building=next;addLog(state,'ต่อเติมพื้นอาคารแล้ว จัดวางของในพื้นที่ใหม่ได้','build');return success('ขยายอาคารแล้ว');
+}
+function rotate(state,payload){const f=state.facilities.find(f=>f.id===payload.facilityId);if(!f)return failure('ไม่พบเฟอร์นิเจอร์');return move(state,{facilityId:f.id,x:f.x,y:f.y,rotation:((f.rotation||0)+1)%4});}
 
 function getUpgradeCost(state, facilityId) {
   const room = typeof facilityId === 'object' ? facilityId : state.facilities.find(facility => facility.id === facilityId);
@@ -1606,7 +1639,7 @@ function tick(state, seconds) {
         addXp(state, member, (0.16 + training * 0.06 + bestRoomLevel(state, 'library') * 0.04 + (traitOf(member).training || 0)) * step);
         if (member.energy <= 12) { member.task = 'rest'; addLog(state, `${member.name} เหนื่อยจากการฝึกและกลับไปพัก`, 'info'); }
       } else if (member.task === 'train') {
-        member.waitingReason = 'รอผลัดเข้าห้องฝึก';
+        member.waitingReason = 'รอผลัดเข้าหุ่นฝึก';
         member.energy = clamp(member.energy + 0.07 * step, 0, 100);
       } else if (member.task === 'work') {
         const worked = state.daily.work[member.id] || 0;
@@ -1664,51 +1697,51 @@ function recruit(state, payload) {
 
 function build(state, payload) {
   const content = FACILITIES[payload.type];
-  if (!content) return failure('ไม่พบห้องชนิดนี้');
+  if (!content) return failure('ไม่พบของชนิดนี้');
   if (!hasRank(state, content.unlockRank)) return failure(`ต้องมีกิลด์ระดับ ${content.unlockRank}`);
-  if (['reception', 'dispatch'].includes(payload.type) && state.facilities.some(room => room.type === payload.type)) return failure('ห้องชนิดนี้มีได้หนึ่งห้อง');
-  const place = canPlaceFacility(state, payload.type, payload.x, payload.y);
+  if (['reception', 'dispatch'].includes(payload.type) && state.facilities.some(room => room.type === payload.type)) return failure('ของชนิดนี้มีได้หนึ่งชิ้น');
+  const place = canPlaceFacility(state,payload.type,payload.x,payload.y,null,payload.rotation??0);
   if (!place.ok) return place;
-  if (!canAfford(state, content.cost)) return failure('ทรัพยากรสำหรับสร้างห้องไม่เพียงพอ');
+  if (!canAfford(state, content.cost)) return failure('ทรัพยากรสำหรับวางของไม่เพียงพอ');
   transact(state, content.cost, `สร้าง${content.name}`);
-  state.facilities.push({ id: `room-${state.nextId++}`, type: content.id, x: payload.x, y: payload.y, level: 1 });
+  state.facilities.push({ id: `room-${state.nextId++}`, type: content.id, x: payload.x, y: payload.y, rotation:payload.rotation??0, level: 1 });
   addLog(state, `สร้าง${content.name}แล้ว สมาชิกเริ่มเข้าใช้พื้นที่ใหม่`, 'build');
   return success(`สร้าง${content.name}แล้ว`);
 }
 
 function move(state, payload) {
   const room = state.facilities.find(item => item.id === payload.facilityId);
-  if (!room) return failure('ไม่พบห้อง');
-  const place = canPlaceFacility(state, room.type, payload.x, payload.y, room.id);
+  if (!room) return failure('ไม่พบจุดใช้งาน');
+  const place = canPlaceFacility(state,room.type,payload.x,payload.y,room.id,payload.rotation??room.rotation??0);
   if (!place.ok) return place;
-  room.x = payload.x; room.y = payload.y;
+  room.x=payload.x;room.y=payload.y;room.rotation=payload.rotation??room.rotation??0;
   return success(`ย้าย${FACILITIES[room.type].name}แล้ว`);
 }
 
 function upgrade(state, payload) {
   const room = state.facilities.find(item => item.id === payload.facilityId);
-  if (!room) return failure('ไม่พบห้อง');
-  if (room.level >= FACILITIES[room.type].maxLevel) return failure('ห้องนี้อยู่ระดับสูงสุดแล้ว');
+  if (!room) return failure('ไม่พบจุดใช้งาน');
+  if (room.level >= FACILITIES[room.type].maxLevel) return failure('ของชิ้นนี้อยู่ระดับสูงสุดแล้ว');
   const cost = getUpgradeCost(state, room.id);
   if (!canAfford(state, cost)) return failure('ทรัพยากรสำหรับอัปเกรดไม่เพียงพอ');
   transact(state, cost, `อัปเกรด${FACILITIES[room.type].name}`);
   room.level += 1;
   state.goals.firstUpgrade = true;
   addLog(state, `${FACILITIES[room.type].name} เป็นระดับ ${room.level}`, 'build');
-  return success(`อัปเกรดห้องเป็นระดับ ${room.level} แล้ว`);
+  return success(`อัปเกรดจุดใช้งานเป็นระดับ ${room.level} แล้ว`);
 }
 
 function demolish(state, payload) {
   const room = state.facilities.find(item => item.id === payload.facilityId);
-  if (!room) return failure('ไม่พบห้อง');
-  if (room.type === 'reception') return failure('โถงกิลด์เป็นหัวใจของบ้าน ย้ายได้แต่รื้อไม่ได้');
+  if (!room) return failure('ไม่พบจุดใช้งาน');
+  if (room.type === 'reception') return failure('โต๊ะรับคำร้องเป็นหัวใจของบ้าน ย้ายได้แต่รื้อไม่ได้');
   if (room.type === 'dorm' && (roomLevel(state, 'dorm') - room.level) * 4 < state.members.length) return failure('สมาชิกจะไม่มีที่พักเพียงพอ');
-  if (room.type === 'dispatch' && getGuildStats(state).activeMissions > 1) return failure('รอให้ทีมที่สองกลับก่อนรื้อห้องวางแผน');
+  if (room.type === 'dispatch' && getGuildStats(state).activeMissions > 1) return failure('รอให้ทีมที่สองกลับก่อนรื้อโต๊ะวางแผน');
   const refund = Object.fromEntries(RESOURCE_KEYS.map(key => [key, Math.floor((FACILITIES[room.type].cost[key] || 0) * 0.4)]));
   transact(state, refund, `รื้อ${FACILITIES[room.type].name} คืนวัสดุบางส่วน`, 1);
   state.facilities = state.facilities.filter(item => item.id !== room.id);
   if (room.type === 'training' && !roomLevel(state, 'training')) state.members.filter(member => member.task === 'train').forEach(member => { member.task = 'rest'; });
-  return success('รื้อห้องและคืนวัสดุ 40% แล้ว');
+  return success('รื้อของและคืนวัสดุ 40% แล้ว');
 }
 
 function expand(state) {
@@ -1721,7 +1754,7 @@ function expand(state) {
   state.grid.width += 6;
   state.grid.height += 4;
   state.goals.firstExpansion = true;
-  addLog(state, 'รั้วกิลด์ขยับออกแล้ว มีพื้นที่ใหม่ให้จัดห้องและสวน', 'build');
+  addLog(state, 'รั้วกิลด์ขยับออกแล้ว มีพื้นที่ใหม่ให้จัดของและสวน', 'build');
   return success('ขยายที่ดินกิลด์แล้ว');
 }
 
@@ -1729,13 +1762,13 @@ function craft(state, payload) {
   const item = EQUIPMENT_BY_ID[payload.equipmentId];
   if (!item) return failure('ไม่พบสูตรอุปกรณ์');
   if (!hasRank(state, item.unlockRank)) return failure(`สูตรนี้ต้องมีกิลด์ระดับ ${item.unlockRank}`);
-  if (bestRoomLevel(state, 'workshop') < item.workshopLevel) return failure(`ต้องมีโรงซ่อมระดับ ${item.workshopLevel}`);
+  if (bestRoomLevel(state, 'workshop') < item.workshopLevel) return failure(`ต้องมีโต๊ะช่างระดับ ${item.workshopLevel}`);
   if (!canAfford(state, item.cost)) return failure('วัตถุดิบไม่เพียงพอ');
   if ((state.inventory[item.id] || 0) >= 24) return failure('มีอุปกรณ์ชนิดนี้มากเพียงพอแล้ว');
   transact(state, item.cost, `สร้าง${item.name}`);
   state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
   state.goals.firstCraft = true;
-  addLog(state, `โรงซ่อมสร้าง${item.name}แล้ว เลือกสมาชิกเพื่อสวมใส่ได้`, 'craft');
+  addLog(state, `โต๊ะช่างสร้าง${item.name}แล้ว เลือกสมาชิกเพื่อสวมใส่ได้`, 'craft');
   return success(`สร้าง${item.name}แล้ว`);
 }
 
@@ -1814,13 +1847,15 @@ function act(state, type, payload = {}) {
       if (!member) return failure('ไม่พบสมาชิก');
       if (isBusy(state, member.id)) return failure('สมาชิกกำลังทำภารกิจ');
       if (!['rest', 'train', 'work'].includes(payload.task)) return failure('งานไม่ถูกต้อง');
-      if (payload.task === 'train' && !roomLevel(state, 'training')) return failure('ต้องมีห้องฝึก');
+      if (payload.task === 'train' && !roomLevel(state, 'training')) return failure('ต้องมีหุ่นฝึก');
       if (payload.task === 'train' && (member.energy <= 12 || member.injury > 40)) return failure('สมาชิกต้องพักก่อนฝึก');
       member.task = payload.task; member.trainingProgress = 0;
       return success('เปลี่ยนงานสมาชิกแล้ว');
     }
     case 'build': return build(state, payload);
     case 'move': return move(state, payload);
+    case 'rotate': return rotate(state,payload);
+    case 'expandBuilding': return expandBuilding(state);
     case 'upgrade': return upgrade(state, payload);
     case 'demolish': return demolish(state, payload);
     case 'expand': return expand(state);
@@ -1851,7 +1886,7 @@ function deserializeGame(source) {
   const savedChecksum = data.checksum;
   delete data.checksum;
   if (savedChecksum !== undefined && (typeof savedChecksum !== 'string' || savedChecksum !== saveChecksum(JSON.stringify(data)))) throw new Error('ไฟล์เซฟเสียหายหรือข้อมูลถูกเปลี่ยนหลังบันทึก');
-  if (![1, SAVE_VERSION].includes(data.version)) throw new Error('เวอร์ชันเซฟนี้ยังไม่รองรับ');
+  if (![1,2,SAVE_VERSION].includes(data.version)) throw new Error('เวอร์ชันเซฟนี้ยังไม่รองรับ');
   // Clone through JSON above; imports can never change the caller's previous state.
   const defaults = createGame(data.seed || 123);
   const state = { ...defaults, ...data };
@@ -1884,14 +1919,32 @@ function deserializeGame(source) {
     return normalized;
   });
   if (!Array.isArray(state.facilities) || state.facilities.length < 1 || state.facilities.length > 100) throw new Error('รายชื่อห้องไม่ถูกต้อง');
+  if(data.version<3&&!data.building){
+    state.building={x:5,y:4,width:Math.min(12,state.grid.width-6),height:Math.min(10,state.grid.height-5),level:2};
+    const oldAreas=[];for(const f of state.facilities){const w=['reception','dorm','kitchen','training','lounge'].includes(f?.type)?4:3;const area={x:f?.x,y:f?.y,w,h:3};if(!f||!FACILITIES[f.type]||!Number.isInteger(f.x)||!Number.isInteger(f.y)||f.x<0||f.y<0||f.x+w>state.grid.width||f.y+3>state.grid.height||oldAreas.some(a=>intersects(a,area)))throw new Error('ผังในเซฟเดิมไม่ถูกต้อง');oldAreas.push(area);}
+    const packed=[];
+    for(const original of state.facilities){
+      if(!original||!FACILITIES[original.type])throw new Error('เฟอร์นิเจอร์ในเซฟไม่ถูกต้อง');
+      let placed=null;
+      for(let y=original.type==='garden'?1:4.5;y<state.grid.height&&!placed;y+=.5)for(let x=original.type==='garden'?3:5.5;x<state.grid.width&&!placed;x+=.5){
+        const f={...original,x,y,rotation:0};
+        if(canPlaceFacility({...state,facilities:packed},f.type,x,y,null,0,true).ok)placed=f;
+      }
+      if(!placed)throw new Error('อาคารไม่พอสำหรับเซฟเดิม');packed.push(placed);
+    }
+    state.facilities=packed;
+  }
+  const b=state.building;
+  if(!b||b.x!==5||b.y!==4||!Number.isInteger(b.level)||b.level<0||b.level>3||b.width!==8+b.level*2||b.height!==6+b.level*2||b.x+b.width>state.grid.width||b.y+b.height>state.grid.height)throw new Error('ขนาดอาคารไม่ถูกต้อง');
   const roomIds = new Set();
   for (const room of state.facilities) {
     if (!room || typeof room.id !== 'string' || roomIds.has(room.id) || !FACILITIES[room.type]) throw new Error('ห้องไม่ถูกต้อง');
     roomIds.add(room.id);
     validateNumber(room, 'level', 1, 3, true);
-    if (!canPlaceFacility(state, room.type, room.x, room.y, room.id).ok) throw new Error('ห้องในเซฟวางทับกันหรืออยู่นอกพื้นที่');
+    if (!canPlaceFacility(state, room.type,room.x,room.y,room.id,room.rotation??0,false).ok) throw new Error('ห้องในเซฟวางทับกันหรืออยู่นอกพื้นที่');
   }
-  if (!state.facilities.some(room => room.type === 'reception') || roomLevel(state, 'dorm') * 4 < state.members.length) throw new Error('ห้องกิลด์หรือห้องพักไม่เพียงพอ');
+  if(!hasWalkableEntries(state,state.facilities))throw new Error('ทางใช้งานเฟอร์นิเจอร์ถูกบัง');
+  if (!state.facilities.some(room => room.type === 'reception') || roomLevel(state, 'dorm') * 4 < state.members.length) throw new Error('โต๊ะรับคำร้องหรือเตียงพักไม่เพียงพอ');
   if (!Array.isArray(state.missions) || state.missions.length > 22) throw new Error('รายการภารกิจไม่ถูกต้อง');
   const missionIds = new Set(), assigned = new Set();
   for (const mission of state.missions) {
@@ -1965,7 +2018,7 @@ function saveChecksum(text) {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-return {SAVE_VERSION,DAY_LENGTH,getRankIndex,getRoomSize,createGame,getMemberStats,getGuildStats,getAvailableQuests,getAvailableRecruits,previewMission,canPlaceFacility,getUpgradeCost,getExpansionCost,tick,act,deserializeGame,serializeGame};
+return {SAVE_VERSION,DAY_LENGTH,getRankIndex,getRoomSize,getFacilityEntry,createGame,getMemberStats,getGuildStats,getAvailableQuests,getAvailableRecruits,previewMission,canPlaceFacility,findWalkPath,getWalkableSpots,getBuildingExpansionCost,getUpgradeCost,getExpansionCost,tick,act,deserializeGame,serializeGame};
 })();
 const Artwork=(()=>{
 /* Original pixel artwork drawn at runtime. All world coordinates use 32px tiles. */
@@ -2164,32 +2217,57 @@ function drawRoom(c,f) {
 
 const CHAR_COLORS = [P.coral,P.blue,P.sage,P.lavender,'#d8b572','#9cbbc1','#bf9da1','#8ea28f'];
 function roleOf(member) { return String(member.class||member.job||'warrior').toLowerCase(); }
-function sprite(c,x,y,member,phase=0,walking=false,facing=1) {
-  const n=hash(member.id||member.name), role=roleOf(member), color=JOBS[member.class]?.color||CHAR_COLORS[n%CHAR_COLORS.length];
-  const hair=member.hair||MEMBER_ART[member.id]?.hair||['#7a6154','#b58264','#dcc28a','#695f71','#8c7b63','#d9b9ae'][n%6];
-  c.save(); c.translate(Math.round(x),Math.round(y)); if(facing<0)c.scale(-1,1);
-  const step=walking?Math.round(Math.sin(phase)*2):0;
-  // 18×27 sprite, a two-tone fringe and visible coats rather than abstract colored blocks.
-  rect(c,-7,1,14,3,'#a9a88f'); rect(c,-5,-3+step,4,5,P.deep); rect(c,1,-3-step,4,5,P.deep);
-  rect(c,-4,-2+step,3,2,P.woodDark); rect(c,2,-2-step,3,2,P.woodDark);
-  poly(c,[[-5,-15],[4,-15],[6,-5],[2,-3],[-5,-5]],color); rect(c,-4,-13,3,7,'#ffffff30');
-  rect(c,-2,-13,2,7,P.cream); rect(c,-5,-6,10,2,P.woodDark); rect(c,1,-6,2,2,P.gold);
-  rect(c,-7,-13,3,7,color); rect(c,5,-12,3,7,color); rect(c,-7,-7,3,3,P.skin); rect(c,5,-6,3,3,P.skin);
-  rect(c,-6,-25,12,12,P.deep);rect(c,-7,-22,14,7,P.deep);
-  rect(c,-5,-24,10,10,hair); rect(c,-6,-22,12,7,hair); rect(c,-4,-21,8,8,P.skin);
-  rect(c,-4,-22,8,3,hair); rect(c,-5,-21,3,5,hair); rect(c,2,-21,3,3,hair); rect(c,-3,-24,6,2,'#ffffff25');
-  rect(c,-2,-17,1,2,P.deep); rect(c,2,-17,1,2,P.deep); rect(c,-1,-14,3,1,'#cd9b82');
-  rect(c,-4,-15,2,1,'#e9b7a0'); rect(c,3,-15,1,1,'#e9b7a0');
-  if(/mage|wizard|sorcer|sage|elementalist|เวท/.test(role)) {
-    poly(c,[[-7,-24],[-1,-32],[3,-24],[7,-22],[-8,-22]],color); rect(c,-5,-24,8,2,P.cream); rect(c,9,-19,2,20,P.woodDark); rect(c,8,-23,4,5,P.blue); rect(c,9,-23,2,2,P.white);
-  } else if(/heal|cleric|priest|bard|รักษา/.test(role)) {
-    rect(c,-5,-24,10,3,P.cream); rect(c,-1,-24,3,2,P.coral); rect(c,8,-17,2,17,P.gold); rect(c,5,-16,8,2,P.gold);
-  } else if(/arch|ranger|scout|sharpshooter|ธนู/.test(role)) {
-    rect(c,-5,-25,10,3,P.sage); rect(c,3,-29,2,6,P.cream); rect(c,5,-31,2,5,P.cream);
-    rect(c,9,-17,2,18,P.woodDark); rect(c,11,-14,2,12,P.wood); rect(c,9,-14,1,12,P.cream); rect(c,-8,-16,2,12,P.woodDark);
-  } else {
-    rect(c,-5,-14,3,4,'#bfc9c4'); rect(c,3,-14,3,4,'#bfc9c4'); rect(c,9,-14,2,12,'#bfc9c4'); rect(c,7,-4,6,2,P.gold); rect(c,9,-2,2,4,P.woodDark);
-    box(c,-10,-11,6,9,color,P.deep); rect(c,-8,-9,2,5,P.cream);
+function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south') {
+  const n=hash(member.id||member.name),role=roleOf(member),color=JOBS[member.class]?.color||CHAR_COLORS[n%CHAR_COLORS.length];
+  const hair=member.hair||MEMBER_ART[member.id]?.hair||['#795b50','#ad785e','#d9be87','#706175','#8b7760','#cfaaa4'][n%6];
+  const mage=/mage|wizard|sorcer|sage|elementalist/.test(role),healer=/heal|cleric|priest|bard/.test(role),archer=/arch|ranger|scout|sharpshooter/.test(role);
+  const back=direction==='north',side=direction==='east'||direction==='west',step=walking?Math.round(Math.sin(phase)*2):0,bob=walking&&Math.abs(step)>1?-1:0;
+  c.save();c.translate(Math.round(x),Math.round(y));if(facing<0||direction==='west')c.scale(-1,1);
+  rect(c,-9,0,18,3,'#868b703d');
+  // Separate boots and opposite strides keep the feet planted at the sorting anchor.
+  rect(c,-5,-7+step,4,7,P.deep);rect(c,2,-7-step,4,7,P.deep);
+  rect(c,-6,-2+step,6,2,'#675b50');rect(c,2,-2-step,6,2,'#675b50');
+  rect(c,-4,-6+step,2,3,P.woodLight);rect(c,3,-6-step,2,3,P.woodLight);
+  c.translate(0,bob);
+  if(mage||healer)poly(c,[[-6,-23],[5,-23],[9,-7],[3,-5],[-8,-7]],P.deep);
+  poly(c,[[-5,-23],[4,-23],[7,-9],[2,-7],[-6,-9]],color);
+  rect(c,-4,-21,3,11,'#ffffff30');rect(c,4,-20,2,10,'#69625930');
+  if(back){rect(c,-4,-22,8,13,color);rect(c,-2,-20,2,8,P.cream);rect(c,1,-17,3,3,P.gold);}
+  else {rect(c,side?2:-1,-21,2,12,P.cream);rect(c,0,-18,1,1,P.gold);rect(c,0,-14,1,1,P.gold);}
+  rect(c,-6,-10,12,2,P.woodDark);rect(c,1,-10,3,2,P.gold);
+  rect(c,-8,-22+step,3,11,color);rect(c,6,-21-step,3,10,color);
+  rect(c,-8,-13+step,3,3,P.skin);rect(c,6,-13-step,3,3,P.skin);
+  // Twelve-pixel face, stepped hair silhouette, warm cheeks and a three-quarter fringe.
+  poly(c,[[-5,-36],[4,-36],[7,-33],[7,-24],[3,-21],[-5,-23],[-8,-28],[-7,-33]],P.deep);
+  poly(c,[[-5,-35],[4,-35],[6,-32],[6,-25],[2,-23],[-5,-24],[-7,-28],[-6,-32]],hair);
+  rect(c,-4,-34,7,2,'#ffffff25');
+  if(back){rect(c,-5,-29,10,6,hair);rect(c,-4,-25,8,3,hair);rect(c,4,-31,2,6,'#69625930');}
+  else {
+    rect(c,side?0:-4,-31,side?7:10,8,P.skin);rect(c,side?2:-3,-31,side?5:8,2,'#ffe3bf');
+    rect(c,-5,-33,9,3,hair);rect(c,-5,-31,3,6,hair);rect(c,0,-32,2,3,hair);rect(c,4,-32,2,2,hair);
+    if(side){rect(c,4,-28,2,3,P.deep);rect(c,4,-28,1,1,P.white);rect(c,6,-26,2,2,P.skin);rect(c,2,-25,2,1,P.coralLight);}
+    else {rect(c,-2,-28,2,3,P.deep);rect(c,3,-28,2,3,P.deep);rect(c,-2,-28,1,1,P.white);rect(c,3,-28,1,1,P.white);rect(c,-4,-25,2,1,P.coralLight);rect(c,5,-25,1,1,P.coralLight);rect(c,0,-23,3,1,'#b77e69');}
+  }
+  if(mage){
+    poly(c,[[-7,-35],[-3,-44],[3,-42],[5,-35],[10,-33],[6,-31],[-8,-32],[-10,-33]],P.deep);
+    poly(c,[[-6,-35],[-2,-42],[2,-40],[4,-35],[8,-33],[-8,-33]],color);
+    rect(c,-5,-35,10,2,P.cream);rect(c,3,-35,2,2,P.gold);
+    rect(c,11,-27,2,22,P.woodDark);poly(c,[[12,-33],[16,-29],[12,-24],[8,-29]],P.blue);rect(c,11,-31,2,4,P.white);rect(c,9,-24,6,2,P.gold);
+  }else if(healer){
+    rect(c,-5,-35,11,3,P.cream);rect(c,-1,-35,3,3,P.coral);rect(c,-2,-34,5,1,P.coral);
+    rect(c,11,-28,2,23,P.woodDark);poly(c,[[12,-34],[16,-30],[12,-26],[8,-30]],P.gold);rect(c,11,-31,2,3,P.white);
+    box(c,-10,-14,6,7,P.cream,P.woodDark);rect(c,-8,-12,2,3,P.coral);
+  }else if(archer){
+    poly(c,[[-7,-34],[-3,-39],[5,-36],[7,-32],[-7,-32]],P.sage);rect(c,-5,-34,9,1,P.mint);
+    poly(c,[[3,-36],[6,-43],[8,-42],[5,-36]],P.cream);rect(c,5,-41,1,4,P.gold);
+    poly(c,[[10,-26],[15,-22],[17,-15],[15,-8],[10,-5],[11,-9],[14,-15],[12,-23]],P.woodDark);rect(c,10,-25,1,20,P.cream);
+    rect(c,-9,-26,3,14,P.woodDark);rect(c,-10,-30,1,9,P.cream);rect(c,-7,-29,1,8,P.cream);
+    rect(c,side?3:-3,-23,2,13,P.wood);
+  }else{
+    rect(c,-6,-23,4,5,'#aabbb6');rect(c,4,-22,4,4,'#aabbb6');rect(c,-5,-23,3,1,P.white);
+    rect(c,-4,-24,9,3,P.coralLight);poly(c,[[3,-23],[8,-22],[7,-17],[4,-20]],P.coral);
+    rect(c,11,-25,2,18,'#aabbb6');rect(c,11,-25,1,16,P.white);rect(c,8,-9,8,2,P.gold);rect(c,11,-7,2,5,P.woodDark);
+    poly(c,[[-11,-19],[-3,-18],[-4,-10],[-8,-7],[-12,-11]],P.deep);poly(c,[[-10,-18],[-4,-17],[-5,-11],[-8,-9],[-11,-12]],color);rect(c,-8,-16,2,5,P.cream);
   }
   c.restore();
 }
@@ -2197,7 +2275,7 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1) {
 function drawPortrait(canvas,member={},size=64) {
   canvas.width=size; canvas.height=size; const c=canvas.getContext('2d'); c.imageSmoothingEnabled=false;
   rect(c,0,0,size,size,P.paper); rect(c,3,3,size-6,size-6,'#e9d7b9');
-  const scale=size/34; c.save(); c.translate(size/2,size-7); c.scale(scale,scale); sprite(c,0,0,member); c.restore();
+  const scale=size/48; c.save(); c.translate(size/2,size-7); c.scale(scale,scale); sprite(c,0,0,member); c.restore();
 }
 
 function drawItemIcon(canvas,type='sword',size=40) {
@@ -2327,15 +2405,16 @@ function drawBattleScene(canvas,mission,quest,state,options={}) {
 }
 
 // Texture baking only; the in-game world is rendered by Phaser/WebGL.
-function makeActorTexture(member={},phase=0,walking=false,facing=1) {
- const canvas=document.createElement('canvas');canvas.width=40;canvas.height=46;
+function makeActorTexture(member={},phase=0,walking=false,facing=1,direction='south') {
+ const canvas=document.createElement('canvas');canvas.width=44;canvas.height=52;
  const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
- sprite(ctx,20,40,member,phase,walking,facing);return canvas;
+ sprite(ctx,22,46,member,phase,walking,facing,direction);return canvas;
 }
 
 return {drawPortrait,drawItemIcon,drawBattleScene,makeActorTexture};
 })();
 const GuildArtwork=(()=>{
+const { buildingRect,siteRoads,siteDecorations }=Site;
 const { FACILITIES }=Content;
 
 // Original pixel artwork. Every floor and object uses the same 2:1 projection.
@@ -2348,14 +2427,17 @@ const gridPoint=(x,y)=>({x:ORIGIN_X+(x-y)*CELL_W,y:ORIGIN_Y+(x+y)*CELL_H});
 function gridPosition(x,y){const a=(x-ORIGIN_X)/CELL_W,b=(y-ORIGIN_Y)/CELL_H;return{x:(a+b)/2,y:(b-a)/2};}
 function gridPolygon(x,y,w,h){return [[x,y],[x+w,y],[x+w,y+h],[x,y+h]].map(([a,b])=>gridPoint(a,b));}
 const C={ink:'#695345',edge:'#85634c',wood:'#b98a60',light:'#e5bc87',cream:'#f4e5c9',plaster:'#e0d8bc',stone:'#b8b7a2',green:'#879f73'};
-const q=(x,y,z=0)=>[(x-y)*CELL_W,(x+y)*CELL_H-z];
+let projection=null;
+const q=(x,y,z=0)=>{if(projection){const p=projection;[x,y]=p.r===1?[p.h-y,x]:p.r===2?[p.w-x,p.h-y]:p.r===3?[y,p.w-x]:[x,y];}return[(x-y)*CELL_W,(x+y)*CELL_H-z];};
 function face(c,points,color,edge){const p=points.map(v=>q(...v));P(c,p,color);if(edge)for(let i=0;i<p.length;i++)L(c,...p[i],...p[(i+1)%p.length],edge);}
 function top(c,x,y,w,h,z,color,edge){face(c,[[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],color,edge);}
 function cube(c,x,y,w,h,z,height,color=C.wood,light=C.light,dark=C.edge){
- face(c,[[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+height],[x,y+h,z+height]],color,C.ink);
- face(c,[[x+w,y,z],[x+w,y+h,z],[x+w,y+h,z+height],[x+w,y,z+height]],dark,C.ink);
+ const r=projection?.r||0,yy=r===1||r===2?y:y+h,xx=r===2||r===3?x:x+w;
+ face(c,[[x,yy,z],[x+w,yy,z],[x+w,yy,z+height],[x,yy,z+height]],color,C.ink);
+ face(c,[[xx,y,z],[xx,y+h,z],[xx,y+h,z+height],[xx,y,z+height]],dark,C.ink);
  top(c,x,y,w,h,z+height,light,C.ink);
 }
+
 function stroke(c,a,b,color,width=1){L(c,...q(...a),...q(...b),color,width);}
 function stamp(width,height,footX,footY,paint){const canvas=createCanvas(width,height),c=canvas.getContext('2d');c.translate(footX,footY);paint(c);return{canvas,width,height,footX,footY};}
 function object(paint,width=112,height=104,footX=54,footY=52){return stamp(width,height,footX,footY,paint);}
@@ -2380,7 +2462,7 @@ function windowOn(c,axis){
 function shelf(c,w=1.4){
  cube(c,0,0,w,.28,0,26,'#a5805d','#d8b68a','#806d58');
  const colors=['#bb7f75','#90a799','#c8b689','#a99eba','#e0cfa6'];
- for(let z=4;z<25;z+=10){face(c,[[.08,.29,z],[w-.08,.29,z],[w-.08,.29,z+8],[.08,.29,z+8]],'#736252');
+ if(!projection||[0,3].includes(projection.r))for(let z=4;z<25;z+=10){face(c,[[.08,.29,z],[w-.08,.29,z],[w-.08,.29,z+8],[.08,.29,z+8]],'#736252');
   for(let j=0;j<Math.floor(w*7);j++){const x=.12+j*.13;face(c,[[x,.3,z],[x+.085,.3,z],[x+.085,.3,z+6+j%2],[x,.3,z+6+j%2]],colors[j%5]);stroke(c,[x,.3,z+5],[x+.08,.3,z+5],'#e8d8b7');}
   stroke(c,[0,.32,z-1],[w,.32,z-1],C.light,2);
  }
@@ -2407,74 +2489,66 @@ function plant(c,flowers=false){
  if(flowers){R(c,x-5,y-9,3,3,'#eab7ae');R(c,x+4,y-7,3,3,'#f4d49a');}
 }
 function stool(c){cube(c,0,0,.36,.36,0,9,'#b6926f','#ddbc8c','#957758');}
-function furnace(c){cube(c,0,0,.65,.65,0,15,'#b2b5a8','#ded6bc','#8c968a');face(c,[[.13,.66,4],[.5,.66,4],[.5,.66,12],[.13,.66,12]],'#666b62',C.ink);stroke(c,[.19,.67,5],[.44,.67,8],'#dd9e6b',3);stroke(c,[.25,.67,5],[.37,.67,10],'#f2d595',2);}
+function furnace(c){cube(c,0,0,.65,.65,0,15,'#b2b5a8','#ded6bc','#8c968a');if(!projection||[0,3].includes(projection.r)){face(c,[[.13,.66,4],[.5,.66,4],[.5,.66,12],[.13,.66,12]],'#666b62',C.ink);stroke(c,[.19,.67,5],[.44,.67,8],'#dd9e6b',3);stroke(c,[.25,.67,5],[.37,.67,10],'#f2d595',2);}}
 function dummy(c){
  cube(c,0,0,.65,.35,0,2,'#b79a70','#dec194','#8b7156');const[x,y]=q(.32,.18);R(c,x-1,y-26,3,25,C.edge);L(c,x-10,y-18,x+10,y-18,C.edge,3);E(c,x,y-30,6,7,'#a07d57');E(c,x-1,y-32,5,5,'#d4b687');R(c,x-5,y-23,10,8,'#bc9363');R(c,x-4,y-22,8,2,'#e2c89c');
 }
 function makeRoom(f){
- const d=FACILITIES[f.type],w=d.w,h=d.h,layers=[];
- const add=(name,x,y,paint,sort=0,spec)=>layers.push({name,x,y,sort,sprite:spec||object(paint)});
- add('floor',0,0,null,-9500,stamp((w+h)*24+10,(w+h)*12+14,h*24+5,4,c=>{
-  cube(c,0,0,w,h,-5,5,'#ae9c80','#e0c194','#8d806b');plank(c,0,0,w,h);
-  if(f.type==='infirmary')top(c,.15,.2,w-.3,h-.4,.1,'#c9d2bb48');
- }));
- if(f.type!=='garden'){
-  for(let i=0;i<w;i++)add('wall-x-'+i,i,0,c=>{wall(c,'x',1);if(i===Math.floor(w/2))windowOn(c,'x');},6);
-  for(let j=0;j<h;j++)add('wall-y-'+j,0,j,c=>{wall(c,'y',1);if(j===1)windowOn(c,'y');},6);
- }
- const furniture=(name,x,y,paint,w=1,h=1)=>add(name,x,y,paint,(w+h)*6);
- const pot=(x,y,flowers=false)=>furniture('plant-'+x+'-'+y,x,y,c=>plant(c,flowers),.32,.32);
- if(f.type==='reception'){
-  add('rug',1,1.12,c=>rug(c,2,1.45,'#c69487'),-9000);
-  furniture('records',.20,.12,c=>shelf(c,1.2),1.2,.3);
-  furniture('desk',1.45,.35,c=>{table(c,1.95,.86);top(c,.5,.12,.6,.45,17.2,'#f7ead0',C.edge);stroke(c,[.59,.19,17.3],[.98,.19,17.3],'#c2ab8b');stroke(c,[.59,.3,17.3],[.86,.3,17.3],'#c2ab8b');cube(c,1.35,.25,.17,.17,17,5,'#b28c62','#e2bc85','#8d6a54');},1.95,.86);
-  furniture('chair',1.9,1.45,stool,.36,.36);pot(3.3,2.3,true);
- }else if(f.type==='dorm'){
-  furniture('bed-a',.28,.3,c=>bed(c,'#b5abc9'),.92,1.55);furniture('bed-b',2.62,.3,c=>bed(c,'#a8bbc4'),.92,1.55);
-  furniture('nightstand',1.6,.25,c=>{table(c,.52,.48);const[x,y]=q(.25,.23,17);R(c,x-1,y-8,2,7,C.edge);P(c,[[x-5,y-5],[x-3,y-10],[x+3,y-10],[x+5,y-5]],'#f1dfbb');},.52,.48);
-  add('rug',1.35,1.5,c=>rug(c,1.3,.75,'#c4aea5'),-9000);
- }else if(f.type==='infirmary'){
-  furniture('medical-bed',.28,.3,c=>bed(c,'#a0baa5',true),.92,1.55);furniture('medicine',1.5,.15,c=>shelf(c,1.12),1.12,.3);pot(2.22,1.25);
- }else if(f.type==='kitchen'||f.type==='lounge'){
-  furniture('cabinet',.25,.15,c=>shelf(c,1.2),1.2,.3);furniture('stove',.3,1.1,furnace,.65,.65);
-  furniture('dining',1.6,1.05,c=>{table(c,1.6,.9);top(c,.18,.14,1.22,.55,17.2,'#f2e5cb');for(const[x,y]of[[.36,.3],[1.18,.4]]){const[p,t]=q(x,y,18);E(c,p,t,4,2,'#fff0d6');E(c,p,t,2,1,'#c3a876');}cube(c,.7,.26,.25,.19,17.3,3,'#d4a575','#f1cb8e','#aa805a');},1.6,.9);
-  furniture('bench',1.65,2.12,c=>{cube(c,0,0,1.5,.25,0,8,'#bc956d','#e3bd8b','#997858');},1.5,.25);pot(3.35,.3);
- }else if(f.type==='training'){
-  add('rug',.6,1.08,c=>rug(c,2.65,1.55,'#bfbd96'),-9000);furniture('dummy-a',.6,.55,dummy,.65,.35);furniture('dummy-b',2.6,.55,dummy,.65,.35);
-  furniture('weapons',1.6,.2,c=>{cube(c,0,0,.48,.32,0,5);for(let i=0;i<3;i++){const[x,y]=q(.1+i*.15,.18,6);R(c,x,y-24,1,23,'#b8c5b5');R(c,x-3,y-8,7,2,C.edge);R(c,x,y-6,2,5,'#ad8563');}},.48,.32);
- }else if(f.type==='workshop'){
-  furniture('tools',.25,.12,c=>shelf(c,2.25),2.25,.3);furniture('workbench',.35,1.0,c=>{table(c,1.65,.65);cube(c,.6,.18,.6,.28,17,5,'#929b94','#c5ccc0','#717f79');const[x,y]=q(1.22,.33,18);L(c,x,y,x+5,y-5,C.edge,2);L(c,x+3,y-6,x+7,y-3,'#a3aaa0',3);},1.65,.65);furniture('forge',2.05,1.85,furnace,.65,.65);
- }else if(f.type==='garden'){
-  for(let y=.3;y<2.5;y+=.8)for(let x=.3;x<2.5;x+=.8)furniture('herbs-'+x+'-'+y,x,y,c=>{cube(c,0,0,.6,.5,0,4,'#a18b6b','#c5b092','#8d8065');for(let i=0;i<3;i++){const[a,b]=q(.1+i*.17,.22,6);P(c,[[a-3,b],[a-4,b-4],[a,b-3],[a+2,b-7],[a+4,b-2],[a+3,b]],'#87a076');R(c,a,b-5,2,2,'#dec6a1');}},.6,.5);
- }else if(f.type==='library'){
-  furniture('books',.25,.1,c=>shelf(c,2.35),2.35,.3);furniture('reading',.8,1.25,c=>{table(c,1.45,.8);top(c,.3,.18,.68,.43,17.2,'#f0e4c8',C.edge);stroke(c,[.64,.18,17.4],[.64,.61,17.4],C.edge);},1.45,.8);furniture('chair',1.22,2.26,stool,.36,.36);
- }else{
-  furniture('maps',.3,.12,c=>shelf(c,2.2),2.2,.3);furniture('planning-table',.6,1.1,c=>{table(c,1.65,.95);top(c,.22,.17,1.15,.56,17.2,'#dbe0bd',C.edge);stroke(c,[.35,.25,17.3],[1.18,.57,17.3],'#9caf9b');},1.65,.95);pot(2.4,2.3);
- }
- // Low near cuts expose the room; the gap on y=h is its usable doorway.
- for(let i=0;i<w;i++)if(i!==Math.floor(w/2))add('cut-x-'+i,i,h,c=>wall(c,'x',1,5),6);
- for(let j=0;j<h;j++)add('cut-y-'+j,w,j,c=>wall(c,'y',1,5),6);
+ const d=FACILITIES[f.type],w=d.w,h=d.h;
+ const sprite=object(c=>{const previous=projection;projection={r:f.rotation||0,w,h};try{
+  if(f.type==='reception'){table(c,1.95,.9);top(c,.35,.12,.7,.46,17.2,'#f6ead0',C.edge);stroke(c,[.43,.2,17.4],[.89,.2,17.4],'#bba787');cube(c,1.38,.22,.2,.2,17,5);}
+  else if(f.type==='dorm')bed(c,'#b5adc9');
+  else if(f.type==='infirmary')bed(c,'#a6bfae',true);
+  else if(f.type==='kitchen'){furnace(c);cube(c,.67,.1,.3,.64,0,12,'#b99370','#e6c697','#94745a');const[x,y]=q(.35,.3,17);E(c,x,y,6,3,'#8d998f');E(c,x,y-2,4,2,'#d6c7a5');}
+  else if(f.type==='training')dummy(c);
+  else if(f.type==='workshop'){table(c,1.9,.85);cube(c,.6,.2,.65,.3,17,5,'#929c95','#c5ccc0','#727f78');const[x,y]=q(1.45,.45,18);L(c,x,y,x+6,y-5,C.edge,2);L(c,x+4,y-6,x+9,y-3,'#9da99f',3);}
+  else if(f.type==='library')shelf(c,1.92);
+  else if(f.type==='lounge'){table(c,1.8,.8);top(c,.2,.1,1.3,.5,17.2,'#f1e5ce');for(const[x,y]of[[.4,.3],[1.3,.3]]){const[a,b]=q(x,y,18);E(c,a,b,4,2,'#e9d5b0');}cube(c,.2,1.05,1.5,.25,0,8);}
+  else if(f.type==='dispatch'){table(c,1.9,.9);top(c,.22,.14,1.36,.57,17.3,'#c8d7bd',C.edge);stroke(c,[.35,.2,17.4],[1.4,.6,17.4],'#8aa5a2');cube(c,1.5,.22,.14,.14,17.4,5);}
+  else if(f.type==='garden'){for(let y=.08;y<1.7;y+=.85){cube(c,.05,y,1.85,.65,0,4,'#a88d6c','#c4b08e','#8f7b61');for(let x=.2;x<1.8;x+=.34){const[a,b]=q(x,y+.3,7);P(c,[[a-4,b],[a-3,b-5],[a,b-3],[a+2,b-8],[a+5,b-3],[a+3,b+1]],'#82a078');R(c,a-1,b-6,3,2,'#d9c2a0');}}}
+ }finally{projection=previous;}});
+ return{layers:[{name:'furniture',x:0,y:0,sort:(w+h)*6,sprite}]};
+}
+function makeBuilding(state){
+ const b=buildingRect(state),w=b.w,h=b.h,layers=[];
+ const add=(name,x,y,sprite,sort)=>layers.push({name,x:b.x+x,y:b.y+y,sort,sprite});
+ add('floor',0,0,stamp((w+h)*24+12,(w+h)*12+20,h*24+6,5,c=>{cube(c,0,0,w,h,-7,7,'#b7aa8e','#d9bd93','#968b76');plank(c,0,0,w,h);}),-9600);
+ add('carpet',2.6,2.3,object(c=>rug(c,2.2,1.5,'#c0b3a3'),128,110,65,46),-9500);
+ for(let x=0;x<w;x++)add('back-x-'+x,x,0,object(c=>{wall(c,'x',1,34);if(x%3===1)windowOn(c,'x');}),6);
+ for(let y=0;y<h;y++)add('back-y-'+y,0,y,object(c=>{wall(c,'y',1,34);if(y%3===1)windowOn(c,'y');}),6);
+ for(let x=0;x<w;x++)if(Math.abs(x+.5-w/2)>.75)add('cut-x-'+x,x,h,object(c=>wall(c,'x',1,6)),6);
+ for(let y=0;y<h;y++)add('cut-y-'+y,w,y,object(c=>wall(c,'y',1,6)),6);
+ add('entrance',w/2-.75,h,object(c=>{cube(c,0,0,1.5,.38,-3,3,'#ae9e82','#dac49e','#8f8b76');cube(c,0,.38,1.5,.34,-6,3,'#a99b7f','#d6c09c','#908c76');}),8);
  return{layers};
 }
-function earthPath(c,points,width){const p=points.map(([x,y])=>gridPoint(x,y));c.lineJoin='round';c.lineCap='round';c.beginPath();p.forEach((v,i)=>i?c.lineTo(v.x,v.y):c.moveTo(v.x,v.y));c.strokeStyle='#a5a47c';c.lineWidth=width+6;c.stroke();c.strokeStyle='#d9c6a0';c.lineWidth=width;c.stroke();c.strokeStyle='#e4d1ac';c.lineWidth=width-5;c.stroke();}
+function contains(rect,x,y){return x>=rect.x&&x<rect.x+rect.w&&y>=rect.y&&y<rect.y+rect.h;}
 function makeGround(state){
  const canvas=createCanvas(1200,900),c=canvas.getContext('2d'),r=rng(730);
  R(c,0,0,1200,900,'#9cac7d');
- for(let i=0;i<2100;i++){const x=r()*1200,y=r()*900;E(c,x,y,5+r()*18,2+r()*6,i%3?'#97a776':'#a8b586');}
- for(let i=0;i<6500;i++){const x=r()*1200,y=r()*900;R(c,x,y,1+r()*3,1,i%5===0?'#c2ca9a':'#8fa477');if(i%31===0){R(c,x,y-2,1,3,'#879b6b');R(c,x+2,y-1,1,2,'#b9c68d');}}
- earthPath(c,[[-8,12],[2,12],[8,12],[17,12],[25,12]],30);earthPath(c,[[17,-9],[17,2],[17,12],[17,24]],28);earthPath(c,[[1,-7],[1,4],[1,12],[1,22]],24);
- const fs=state.facilities;if(fs.length){
-  const x=Math.min(...fs.map(f=>f.x))-.2,y=Math.min(...fs.map(f=>f.y))-.2,w=Math.max(...fs.map(f=>f.x+FACILITIES[f.type].w))-x+.2,h=Math.max(...fs.map(f=>f.y+FACILITIES[f.type].h))-y+.2;
-  c.save();c.translate(ORIGIN_X,ORIGIN_Y);cube(c,x,y,w,h,-6,6,'#aca78c','#d6c29d','#8e927b');plank(c,x,y,w,h);c.restore();
-  earthPath(c,[[x+1.8,y+h+.3],[x+1.8,12]],19);
+ for(let i=0;i<2000;i++){const x=r()*1200,y=r()*900;E(c,x,y,5+r()*18,2+r()*6,i%3?'#97a776':'#a8b586');}
+ for(let i=0;i<6000;i++){const x=r()*1200,y=r()*900;R(c,x,y,1+r()*3,1,i%5===0?'#c2ca9a':'#8fa477');if(i%31===0){R(c,x,y-2,1,3,'#879b6b');R(c,x+2,y-1,1,2,'#b9c68d');}}
+ const roads=siteRoads(state),roadAt=(x,y)=>roads.find(p=>contains(p,x,y));
+ c.save();c.translate(ORIGIN_X,ORIGIN_Y);
+ for(const road of roads)top(c,road.x,road.y,road.w,road.h,-1,'#aaa78c');
+ c.save();c.beginPath();for(const road of roads){for(const[i,[x,y]]of [[road.x,road.y],[road.x+road.w,road.y],[road.x+road.w,road.y+road.h],[road.x,road.y+road.h]].entries()){const[a,b]=q(x,y);if(i)c.lineTo(a,b);else c.moveTo(a,b);}c.closePath();}c.clip();
+ // Shared road union: curbs are only drawn on the outer edge, never across a junction.
+ for(let y=-12;y<30;y+=.5)for(let x=-12;x<42;x+=.5){const road=roadAt(x+.25,y+.25);if(!road)continue;
+  if(road.kind==='stone'){
+   top(c,x+.025,y+.025,.45,.45,0,r()>.5?'#d1c8ab':'#c4bea4');stroke(c,[x+.045,y+.05,.1],[x+.42,y+.05,.1],'#e6ddc2');stroke(c,[x+.45,y+.05,.1],[x+.45,y+.44,.1],'#a9aa93');
+   if(r()<.14)stroke(c,[x+.08,y+.28,.2],[x+.28,y+.12,.2],'#b4b39c');
+  }else{
+   top(c,x,y,.5,.5,0,r()>.5?'#d9c5a1':'#deccab');if(r()<.3){const[a,b]=q(x+.1+r()*.3,y+.1+r()*.3);R(c,a,b,2,1,'#b8ab8b');}
+  }
+  for(const[dx,dy,a,b]of[[.5,0,[x+.5,y],[x+.5,y+.5]],[-.5,0,[x,y],[x,y+.5]],[0,.5,[x,y+.5],[x+.5,y+.5]],[0,-.5,[x,y],[x+.5,y]]])if(!roadAt(x+.25+dx,y+.25+dy)){stroke(c,[...a,-1],[...b,-1],'#969b7b',2);stroke(c,[...a,0],[...b,0],'#d4d0ad');}
  }
- // A shallow pond has a stepped, irregular shoreline and reed clusters.
- const pond=[[88,380],[132,362],[184,378],[215,407],[200,448],[153,473],[98,461],[65,429]];
- P(c,pond,'#8f9f7c');P(c,pond.map(([x,y])=>[142+(x-142)*.93,415+(y-415)*.9]),'#a8c1b2');P(c,[[93,386],[136,376],[180,391],[198,414],[181,441],[150,456],[105,444],[83,420]],'#94b4aa');
- for(let i=0;i<28;i++){const x=100+r()*86,y=390+r()*52;R(c,x,y,5+r()*10,1,'#c9d8bd');}
- for(const[x,y]of[[83,394],[101,463],[202,418]]){L(c,x,y,x-3,y-12,'#788f69');L(c,x+3,y,x+5,y-16,'#829868');R(c,x+4,y-17,3,5,'#ad9170');}
- return{canvas};
+ c.restore();
+ // Empty plot corners mark future space without filling it with immovable decorations.
+ for(const[x,y]of[[.25,.25],[state.grid.width-.25,.25],[.25,state.grid.height-.25],[state.grid.width-.25,state.grid.height-.25]]){
+  const[a,b]=q(x,y);R(c,a-1,b-8,3,9,'#aa9673');R(c,a-1,b-8,3,2,'#e0c9a0');
+ }
+ c.restore();return{canvas};
 }
+
 function makeCottage({roof='#8fa0b1',seed=1}={}){
  return stamp(170,166,78,92,c=>{
   const w=2.6,h=2.5,z=35;top(c,.1,.2,w+.3,h+.3,0,'#7f917048');cube(c,0,0,w,h,0,z,'#e0cdaa','#f0e1be','#c0bda0');
@@ -2509,19 +2583,20 @@ function makeOutdoor(type){
  });
 }
 
-return {CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y,gridPoint,gridPosition,gridPolygon,makeRoom,makeGround,makeCottage,makeOutdoor};
+return {CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y,gridPoint,gridPosition,gridPolygon,makeRoom,makeBuilding,makeGround,makeCottage,makeOutdoor};
 })();
 const World=(()=>{
+const { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,buildingRect }=Site;
 const { FACILITIES }=Content;
-const { canPlaceFacility }=Engine;
+const { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility }=Engine;
 const { makeActorTexture }=Artwork;
-const { makeRoom,makeGround,makeCottage,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y }=GuildArtwork;
+const { makeBuilding,makeRoom,makeGround,makeCottage,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y }=GuildArtwork;
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 class GuildRenderer {
  constructor(canvas,onSelect=()=>{}){
   this.canvas=canvas;this.onSelect=onSelect;this.state={facilities:[],members:[],missions:[]};
-  this.zoom=1;this.actors=new Map();this.rooms=[];this.signature='';this.buildType=null;this.moveId=null;
+  this.zoom=1;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.signature='';this.buildType=null;this.moveId=null;this.rotation=0;this.siteProps=[];
   this.pointers=new Map();this.elapsed=0;this.ready=false;this.frozen=new URLSearchParams(location.search).has('still');
   const owner=this;
   class GuildScene extends Phaser.Scene{
@@ -2542,8 +2617,8 @@ class GuildRenderer {
  setup(){
   this.ready=true;this.camera=this.scene.cameras.main;this.camera.roundPixels=true;
   this.width=this.game.scale.width;this.height=this.game.scale.height;
-  const base=makeGround(this.state),grass=document.createElement('canvas');grass.width=64;grass.height=64;
-  grass.getContext('2d').drawImage(base.canvas,1000,700,64,64,0,0,64,64);this.texture('meadow',grass);
+  const base=makeGround(this.state),grass=document.createElement('canvas');grass.width=128;grass.height=128;
+  const gc=grass.getContext('2d');gc.fillStyle='#9cac7d';gc.fillRect(0,0,128,128);let grassSeed=3187;const randomGrass=()=>{grassSeed=(Math.imul(grassSeed,1664525)+1013904223)>>>0;return grassSeed/4294967296;};for(let i=0;i<280;i++){gc.fillStyle=['#97a776','#a8b586','#8fa477','#b9c68d'][i%4];gc.fillRect(Math.floor(randomGrass()*128),Math.floor(randomGrass()*128),1+Math.floor(randomGrass()*5),1);}this.texture('meadow',grass);
   this.scene.add.tileSprite(-512,-512,2048,1664,'meadow').setOrigin(0).setDepth(-10000);
   this.groundImage=this.scene.add.image(0,0,this.texture('ground',base.canvas)).setOrigin(0).setDepth(-9999);
   this.decorate();this.ghost=this.scene.add.graphics().setDepth(9999);this.bindInput();
@@ -2552,34 +2627,25 @@ class GuildRenderer {
   this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
  }
  decorate(){
-  const {VillageNature:N}=window;
-  const trees=[[-2,2,101,0],[1,-1,102,0],[5,-2,103,1],[10,-2,104,0],[17,-1,105,1],[22,3,106,0],
-   [-1,8,107,0],[-2,13,108,0],[20,7,109,1],[23,13,110,0],[6,17,111,1],[18,19,112,1],[10,21,113,0],
-   [1,19,114,1],[24,20,115,0],[12,-6,116,0]];
-  for(const[x,y,seed,gold]of trees){const p=gridPoint(x,y);this.put('tree-'+seed,N.makeTree({seed,season:gold?'gold':'green',kind:seed%4===0?'oak':'birch'}),p.x,p.y);}
-  for(const[x,y,seed]of [[-1,5,21],[20,1,36],[20,16,42],[7,18,47]]){const p=gridPoint(x,y);this.put('cottage-'+seed,makeCottage({seed}),p.x,p.y,p.y+30);}
-  for(const[type,x,y]of [['well',16.5,8],['table',8,13.3],['banner',3.4,6.2],['planter',3.4,9.2],['planter',14.8,10.5],['crates',18.8,4.6],['plant',3.3,2.5]]){
-   const p=gridPoint(x,y);this.put('outside-'+type+'-'+x,makeOutdoor(type),p.x,p.y,p.y+12);
-  }
-  for(const[x,y,seed,gold]of [[2,2,201,0],[8,-1,202,1],[18,6,203,0],[-3,9,204,0],[18,14,205,0],[2,15,206,0],[11,16,207,0],[14,20,208,1],[21,10,209,0]]){
-   const p=gridPoint(x,y);this.put('bush-'+seed,N.makeBush({seed,gold:!!gold}),p.x,p.y);
-  }
-  for(const[x,y,seed]of [[2.1,8.5,301],[16,16,302],[22,8,303],[4,17,304]]){const p=gridPoint(x,y);this.put('rock-'+seed,N.makeRock({seed,size:20}),p.x,p.y);}
+  const N=window.VillageNature;
+  for(const[x,y,seed,gold]of SITE_TREES){const p=gridPoint(x,y);this.put('tree-'+seed,N.makeTree({seed,season:gold?'gold':'green',kind:seed%4===0?'oak':'birch'}),p.x,p.y);}
+  for(const c of SITE_COTTAGES){const p=gridPoint(c.x,c.y);this.put('cottage-'+c.seed,makeCottage({seed:c.seed}),p.x,p.y,p.y+30);}
+  for(const[x,y,seed,gold]of SITE_BUSHES){const p=gridPoint(x,y);this.put('bush-'+seed,N.makeBush({seed,gold:!!gold}),p.x,p.y);}
  }
 
  setState(state){
-  this.state=state;const signature=JSON.stringify([state.grid,state.facilities.map(f=>[f.id,f.type,f.x,f.y,f.level])]);
+  this.state=state;const signature=JSON.stringify([state.grid,state.building,state.facilities.map(f=>[f.id,f.type,f.x,f.y,f.level,f.rotation])]);
   if(signature!==this.signature){this.signature=signature;if(this.ready)this.rebuild();}
   if(this.ready)this.syncActors();
  }
  rebuild(){
-  if(!this.ready)return;for(const image of this.rooms)image.destroy();this.rooms=[];
+  if(!this.ready)return;for(const image of this.rooms)image.destroy();this.rooms=[];this.furnitureSprites=[];
   const terrain=makeGround(this.state);this.groundImage.setTexture(this.texture('ground',terrain.canvas));
-  for(const f of this.state.facilities){const room=makeRoom(f);
-   for(const part of room.layers){const p=gridPoint(f.x+part.x,f.y+part.y),key='room-'+f.id+'-'+part.name;
-    this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));
-   }
-  }
+  for(const image of this.siteProps)image.destroy();this.siteProps=[];
+  for(const d of siteDecorations(this.state)){const p=gridPoint(d.x,d.y);this.siteProps.push(this.put('outside-'+d.type,makeOutdoor(d.type),p.x,p.y,p.y+12));}
+  for(const part of makeBuilding(this.state).layers){const p=gridPoint(part.x,part.y),key='building-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
+  for(const f of this.state.facilities)for(const part of makeRoom(f).layers){const p=gridPoint(f.x+part.x,f.y+part.y),key='furniture-'+f.id+'-'+part.name;const image=this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort);this.rooms.push(image);this.furnitureSprites.push({f,image,canvas:part.sprite.canvas,alpha:part.sprite.canvas.getContext('2d').getImageData(0,0,part.sprite.canvas.width,part.sprite.canvas.height).data});}
+  if(!this.userPanned){const b=buildingRect(this.state),p=gridPoint(b.x+b.w/2,b.y+b.h/2);this.focusX=p.x;this.focusY=p.y+22;this.applyView();}
  }
 
  roomFor(m){let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
@@ -2588,35 +2654,25 @@ class GuildRenderer {
 
  syncActors(){
   const ids=new Set(this.state.members.map(m=>m.id));for(const [id,a] of this.actors)if(!ids.has(id)){a.image.destroy();this.actors.delete(id);}
+  const idleKey=this.signature+'|'+this.state.members.map(m=>m.id).join(',');if(this.idleKey!==idleKey){this.idleKey=idleKey;const hall=buildingRect(this.state),spots=getWalkableSpots(this.state),claimed=[];this.idleSpots=this.state.members.map((m,i)=>{const desired=[{x:2.5,y:2.5},{x:4.25,y:2},{x:5,y:3.5},{x:1.75,y:2.75}][i%4],tx=hall.x+desired.x,ty=hall.y+desired.y+(Math.floor(i/4)*.6);const p=spots.filter(p=>claimed.every(q=>Math.hypot(p.x-q.x,p.y-q.y)>=.8)).sort((a,b)=>(a.x-tx)**2+(a.y-ty)**2-((b.x-tx)**2+(b.y-ty)**2))[0]||spots[i%spots.length];claimed.push(p);return p;});}
   const away=new Set(this.state.missions.filter(m=>['active','decision'].includes(m.status)).flatMap(m=>m.memberIds));
-  for(const m of this.state.members){const room=this.roomFor(m),b=room&&FACILITIES[room.type],n=hash(m.id);
+  for(const m of this.state.members){const room=this.roomFor(m),b=room&&getRoomSize(room.type,room.rotation||0),n=hash(m.id);
    if(!b)continue;const roommates=this.state.members.filter(other=>this.roomFor(other)?.id===room.id),slot=roommates.findIndex(other=>other.id===m.id);
-   const target=gridPoint(room.x+.45+(slot+.5)*(b.w-.9)/Math.max(1,roommates.length),room.y+b.h-.45-slot%2*.15);
+   const entry=getFacilityEntry(room),hall=buildingRect(this.state),idle=m.energy>=95&&!m.injury&&m.task==='rest',index=this.state.members.findIndex(other=>other.id===m.id);
+   const logical=idle?this.idleSpots[index]:{x:entry.x+(slot-(roommates.length-1)/2)*.22,y:entry.y};
+   const target=gridPoint(logical.x,logical.y);
    let a=this.actors.get(m.id);if(!a){
-    for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${frame}`,makeActorTexture(m,frame*Math.PI/2,frame>0));
-    a={image:this.scene.add.image(target.x,target.y,`actor-${m.id}-${m.class}-0`).setOrigin(.5,40/46),x:target.x,y:target.y,clock:n%6,roomId:room.id,class:m.class};this.actors.set(m.id,a);
+    this.bakeActor(m);
+    a={image:this.scene.add.image(target.x,target.y,`actor-${m.id}-${m.class}-south-0`).setOrigin(.5,46/52),x:target.x,y:target.y,clock:n%6,roomId:room.id,class:m.class,direction:['south','east','south','west'][n%4]};this.actors.set(m.id,a);
    }
-   if(a.class!==m.class){for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${frame}`,makeActorTexture(m,frame*Math.PI/2,frame>0));a.class=m.class;}
-   if(a.roomId!==room.id){a.path=this.pathBetween(a.x,a.y,target.x,target.y);a.roomId=room.id;}
-   const anchor=room.x+','+room.y;if(a.roomAnchor&&a.roomAnchor!==anchor){a.x=target.x;a.y=target.y;a.path=[];}a.roomAnchor=anchor;
-   a.member=m;a.home=target;a.away=away.has(m.id);a.image.setVisible(!a.away);if(this.frozen){a.x=target.x;a.y=target.y;}
+   if(a.class!==m.class){this.bakeActor(m);a.class=m.class;}
+   if(a.roomId!==room.id||(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>3)){a.path=this.pathBetween(a.x,a.y,target.x,target.y);a.roomId=room.id;}
+   const anchor=room.x+','+room.y+','+room.rotation;if(a.roomAnchor&&a.roomAnchor!==anchor){a.x=target.x;a.y=target.y;a.path=[];}a.roomAnchor=anchor;
+   a.member=m;a.home=target;a.logicalHome=logical;a.away=away.has(m.id);a.image.setVisible(!a.away);if(this.frozen){a.x=target.x;a.y=target.y;}
   }
  }
- pathBetween(sx,sy,tx,ty){
-  const {width:w,height:h}=this.state.grid,fs=this.state.facilities;
-  const at=(x,y)=>fs.find(f=>{const d=FACILITIES[f.type];return x>=f.x&&x<f.x+d.w&&y>=f.y&&y<f.y+d.h;});
-  const source=gridPosition(sx,sy),target=gridPosition(tx,ty),sr=at(source.x,source.y),er=at(target.x,target.y);
-  const door=f=>{const d=FACILITIES[f.type];return{x:f.x+Math.floor(d.w/2)+.5,y:f.y+d.h+.5};};
-  const a=sr?door(sr):source,b=er?door(er):target,start={x:Math.floor(a.x),y:Math.floor(a.y)},end={x:Math.floor(b.x),y:Math.floor(b.y)};
-  const open=(x,y)=>x>=0&&y>=0&&x<w&&y<h&&!at(x,y);
-  const q=[start],visited=new Map([[`${start.x},${start.y}`,null]]);let found=false;
-  for(let i=0;i<q.length;i++){const p=q[i];if(p.x===end.x&&p.y===end.y){found=true;break;}
-   for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const x=p.x+dx,y=p.y+dy,key=`${x},${y}`;if(open(x,y)&&!visited.has(key)){visited.set(key,p);q.push({x,y});}}
-  }
-  if(!found)return[];const path=[];let p=end;while(p){path.unshift(gridPoint(p.x+.5,p.y+.5));p=visited.get(`${p.x},${p.y}`);}
-  if(sr)path.unshift(gridPoint(a.x,sr.y+FACILITIES[sr.type].h-.25));
-  if(er)path.push(gridPoint(b.x,er.y+FACILITIES[er.type].h-.25));path.push({x:tx,y:ty});return path;
- }
+ bakeActor(m){for(const direction of ['south','east','north','west'])for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${direction}-${frame}`,makeActorTexture(m,frame*Math.PI/2,frame>0,1,direction));}
+ pathBetween(sx,sy,tx,ty){return findWalkPath(this.state,gridPosition(sx,sy),gridPosition(tx,ty)).map(p=>gridPoint(p.x,p.y));}
 
  update(dt){
   if(!this.ready)return;const playing=!this.frozen&&!document.hidden&&!this.state.settings?.paused&&!document.getElementById('confirm-dialog').open&&!document.getElementById('settings-dialog').open;
@@ -2625,20 +2681,21 @@ class GuildRenderer {
    if(a.away)continue;a.clock+=elapsed;
    if(!a.path?.length&&a.clock>6){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
    const p=a.path?.[0];let walking=false;if(p){const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy);walking=d>1;
-    if(d<=1)a.path.shift();else{const step=Math.min(d,elapsed*22);a.x+=dx/d*step;a.y+=dy/d*step;if(Math.abs(dx)>.5)a.image.setFlipX(dx<0);}}
-   const frame=walking&&playing?1+Math.floor(this.elapsed*6)%3:0;a.image.setTexture(`actor-${a.member.id}-${a.member.class}-${frame}`).setPosition(Math.round(a.x),Math.round(a.y)).setDepth(a.y);
+    if(d<=1)a.path.shift();else{const step=Math.min(d,elapsed*22);a.x+=dx/d*step;a.y+=dy/d*step;a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}}
+   const frame=walking&&playing?1+Math.floor(this.elapsed*6)%3:0;a.image.setTexture(`actor-${a.member.id}-${a.member.class}-${a.direction}-${frame}`).setPosition(Math.round(a.x),Math.round(a.y)).setDepth(a.y);
   }
 
   this.drawGhost();
  }
- applyView(){if(!this.ready)return;this.baseZoom=this.width<620?Math.min(1.7,(this.width-28)/465,(this.height-180)/315):Math.max(.65,Math.min(3.3,(this.width-100)/620,(this.height-145)/310));this.camera.setViewport(0,0,this.width,this.height);this.camera.setZoom(this.baseZoom*this.zoom);this.camera.centerOn(this.focusX??572,this.focusY??260);}
- center(){this.zoom=1;this.focusX=572;this.focusY=260;this.userPanned=false;this.applyView();}
+ applyView(){if(!this.ready)return;const b=buildingRect(this.state),span=(b.w+b.h)*24,tall=(b.w+b.h)*12+40;this.baseZoom=this.width<620?Math.min(1.7,(this.width-28)/(span+110),(this.height-180)/(tall+90)):Math.max(.45,Math.min(3,(this.width-100)/(span+320),(this.height-145)/(tall+110)));this.camera.setViewport(0,0,this.width,this.height);this.camera.setZoom(this.baseZoom*this.zoom);this.camera.centerOn(this.focusX??548,this.focusY??294);}
+ center(){this.zoom=1;const b=buildingRect(this.state),p=gridPoint(b.x+b.w/2,b.y+b.h/2);this.focusX=p.x;this.focusY=p.y+22;this.userPanned=false;this.applyView();}
 
  resetView(){this.center();}
  setZoom(z){this.zoom=Math.max(.6,Math.min(2.4,Number(z)||1));this.applyView();}
- setBuildMode(type){this.buildType=type;this.moveId=null;this.canvas.style.cursor=type?'crosshair':'grab';}
- setMoveMode(id){this.moveId=id;this.buildType=null;this.canvas.style.cursor=id?'crosshair':'grab';}
- worldToScreen(x,y){const p=gridPoint(x/32,y/32),z=this.camera?.zoom||1;return{x:(p.x-(this.focusX??572))*z+this.width/2,y:(p.y-(this.focusY??260))*z+this.height/2};}
+ rotatePlacement(){this.rotation=(this.rotation+1)%4;this.drawGhost();return this.rotation;}
+ setBuildMode(type){this.buildType=type;this.moveId=null;this.rotation=0;this.canvas.style.cursor=type?'crosshair':'grab';}
+ setMoveMode(id){this.moveId=id;this.buildType=null;this.rotation=this.state.facilities.find(f=>f.id===id)?.rotation||0;this.canvas.style.cursor=id?'crosshair':'grab';}
+ worldToScreen(x,y){const p=gridPoint(x/32,y/32),z=this.camera?.zoom||1;return{x:(p.x-(this.focusX??548))*z+this.width/2,y:(p.y-(this.focusY??294))*z+this.height/2};}
  screenPoint(e){const b=this.canvas.getBoundingClientRect();return{x:(e.clientX-b.left)*this.width/b.width,y:(e.clientY-b.top)*this.height/b.height};}
  worldPoint(p){const z=this.camera.zoom;return{x:(p.x-this.width/2)/z+this.focusX,y:(p.y-this.height/2)/z+this.focusY};}
  bindInput(){
@@ -2654,27 +2711,29 @@ class GuildRenderer {
   bind('wheel',e=>{e.preventDefault();const p=this.screenPoint(e),before=this.worldPoint(p);this.setZoom(this.zoom*Math.exp(-e.deltaY*.001));const after=this.worldPoint(p);this.focusX+=before.x-after.x;this.focusY+=before.y-after.y;this.applyView();},{passive:false});
  }
  select(p){
-  const tile=gridPosition(p.x,p.y),x=Math.floor(tile.x),y=Math.floor(tile.y);
-  if(this.buildType){this.onSelect({kind:'build',x,y});return;}if(this.moveId){this.onSelect({kind:'move',x,y,facilityId:this.moveId});return;}
-  for(const a of [...this.actors.values()].sort((a,b)=>b.y-a.y))if(!a.away&&Math.abs(p.x-a.x)<11&&p.y>a.y-32&&p.y<a.y+4){this.onSelect({kind:'member',id:a.member.id});return;}
-  for(const f of this.state.facilities){const d=FACILITIES[f.type];if(tile.x>=f.x&&tile.x<f.x+d.w&&tile.y>=f.y&&tile.y<f.y+d.h){this.onSelect({kind:'facility',id:f.id});return;}}
+  const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
+  if(this.buildType){this.onSelect({kind:'build',x,y,rotation:this.rotation});return;}if(this.moveId){this.onSelect({kind:'move',x,y,facilityId:this.moveId,rotation:this.rotation});return;}
+  for(const a of [...this.actors.values()].sort((a,b)=>b.y-a.y))if(!a.away&&Math.abs(p.x-a.x)<11&&p.y>a.y-44&&p.y<a.y+4){this.onSelect({kind:'member',id:a.member.id});return;}
+  for(const a of [...this.furnitureSprites].sort((a,b)=>b.image.depth-a.image.depth)){const x=Math.floor(p.x-a.image.x),y=Math.floor(p.y-a.image.y);if(x>=0&&y>=0&&x<a.canvas.width&&y<a.canvas.height&&a.alpha[(y*a.canvas.width+x)*4+3]>50){this.onSelect({kind:'facility',id:a.f.id});return;}}
+  for(const f of this.state.facilities){const d=getRoomSize(f.type,f.rotation||0);if(tile.x>=f.x&&tile.x<f.x+d.w&&tile.y>=f.y&&tile.y<f.y+d.h){this.onSelect({kind:'facility',id:f.id});return;}}
  }
  drawGhost(){
   this.ghost.clear();if(!this.buildType&&!this.moveId)return;
-  const f=this.state.facilities.find(f=>f.id===this.moveId),type=this.buildType||f?.type,d=FACILITIES[type];if(!d)return;
+  const f=this.state.facilities.find(f=>f.id===this.moveId),type=this.buildType||f?.type,d=FACILITIES[type]&&getRoomSize(type,this.rotation);if(!d)return;
   const {width:w,height:h}=this.state.grid,g=this.ghost;g.lineStyle(1,0xf4e4b8,.3);
   for(let x=0;x<=w;x++){const a=gridPoint(x,0),b=gridPoint(x,h);g.lineBetween(a.x,a.y,b.x,b.y);}for(let y=0;y<=h;y++){const a=gridPoint(0,y),b=gridPoint(w,y);g.lineBetween(a.x,a.y,b.x,b.y);}
-  if(!this.hover)return;const tile=gridPosition(this.hover.x,this.hover.y),x=Math.floor(tile.x),y=Math.floor(tile.y),polygon=gridPolygon(x,y,d.w,d.h);
-  const good=canPlaceFacility(this.state,type,x,y,this.moveId).ok,color=good?0x92c583:0xdb8468;g.fillStyle(color,.45);g.fillPoints(polygon,true);g.lineStyle(2,color,1);g.strokePoints(polygon,true);
+  if(!this.hover)return;const tile=gridPosition(this.hover.x,this.hover.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4,polygon=gridPolygon(x,y,d.w,d.h);
+  const key=this.signature+'|'+type+'|'+x+'|'+y+'|'+this.rotation+'|'+this.moveId;if(this.ghostCheck?.key!==key)this.ghostCheck={key,ok:canPlaceFacility(this.state,type,x,y,this.moveId,this.rotation).ok};
+  const good=this.ghostCheck.ok,color=good?0x92c583:0xdb8468;g.fillStyle(color,.45);g.fillPoints(polygon,true);g.lineStyle(2,color,1);g.strokePoints(polygon,true);
  }
 
- getInfo(){return{engine:'Phaser',version:Phaser.VERSION,renderer:this.game.renderer.type===Phaser.WEBGL?'WebGL':'unknown',ready:this.ready,viewport:[this.width,this.height],zoom:this.camera?.zoom,projection:'isometric 2:1',roomCount:this.state.facilities.length,drawnParts:this.rooms.length,camera:{width:this.camera?.width,height:this.camera?.height,scrollX:this.camera?.scrollX,scrollY:this.camera?.scrollY,focus:[this.focusX,this.focusY]},canvas:[this.canvas.width,this.canvas.height]};}
+ getInfo(){return{engine:'Phaser',version:Phaser.VERSION,renderer:this.game.renderer.type===Phaser.WEBGL?'WebGL':'unknown',ready:this.ready,viewport:[this.width,this.height],zoom:this.camera?.zoom,projection:'isometric 2:1',roomCount:this.state.facilities.length,building:{...this.state.building},drawnParts:this.rooms.length,camera:{width:this.camera?.width,height:this.camera?.height,scrollX:this.camera?.scrollX,scrollY:this.camera?.scrollY,focus:[this.focusX,this.focusY]},canvas:[this.canvas.width,this.canvas.height]};}
  destroy(){this.game.destroy(false);}
 }
 
 return {GuildRenderer};
 })();
-const {createGame,tick,act,serializeGame,deserializeGame,getGuildStats,getMemberStats,previewMission,getAvailableQuests,getAvailableRecruits,getUpgradeCost,getExpansionCost,DAY_LENGTH}=Engine;
+const {createGame,tick,act,serializeGame,deserializeGame,getGuildStats,getMemberStats,previewMission,getAvailableQuests,getAvailableRecruits,getUpgradeCost,getExpansionCost,getBuildingExpansionCost,getRoomSize,DAY_LENGTH}=Engine;
 const {FACILITIES,MEMBERS,QUESTS,EQUIPMENT,JOBS,RANKS,REGIONS,GUILD_EVENTS,MISSION_POLICIES,RANK_REQUIREMENTS}=Content;
 const {drawPortrait,drawItemIcon,drawBattleScene}=Artwork;
 const {GuildRenderer}=World;
@@ -2719,40 +2778,44 @@ const clock=Number(state.clock)||0;const minute=Math.floor(clock/DAY_LENGTH*1440
 const chapter=state.story?.chapter||1;$('chapter-label').innerHTML=`<span>CHAPTER ${chapter}</span><b>${['','บ้านหลังเล็ก','เสียงระฆังในป่า','เส้นทางในหมอก','ทุกคนต้องกลับบ้าน','ใต้ร่มใบไม้'][chapter]||'ใต้ร่มใบไม้'}</b>`;
 let objective,meta;if(state.story?.finished){objective='บ้านที่ทุกคนได้กลับมา';meta='แคมเปญสำเร็จ · สำรวจและพัฒนากิลด์ต่อได้';}else if(!state.completedQuests?.patrol){objective='ส่งทีมลาดตระเวนครั้งแรก';meta='เลือกคำร้อง → สมาชิก 3 คน → ส่งทีม';}else{objective=stats.nextRank?`เติบโตสู่กิลด์ระดับ ${stats.nextRank}`:'รักษาหัวใจป่า';const q=QUESTS.find(q=>q.id===stats.nextRankQuest);meta=stats.nextRank?`ชื่อเสียง ${n(state.rep)}/${n(stats.nextRankRep)}${q?' · '+q.name:''}`:'รับคำร้องสุดท้ายที่ป่าหมอกจันทร์';}$('objective').innerHTML=`<small>OUR NEXT LITTLE STEP</small><p>${h(objective)}</p><div class="objective-meta">${h(meta)}</div>`;
 $('pause-button').textContent=ui.paused?'▶':'Ⅱ';$('pause-button').setAttribute('aria-label',ui.paused?'เดินเวลา':'หยุดเวลา');document.querySelectorAll('[data-speed]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.speed)===ui.speed&&!ui.paused);b.setAttribute('aria-pressed',String(Number(b.dataset.speed)===ui.speed&&!ui.paused));});
-const missions=activeMissions();$('journey-count').textContent=missions.length?`เดินทาง ${missions.length} ทีม${missions.some(m=>missionEventPending(m))?' · มีเหตุการณ์':''}`:'เริ่มการเดินทาง';let cards=missions.map(m=>{const q=QUESTS.find(q=>q.id===m.questId);return `<div class="journey-card ${missionEventPending(m)?'ready':''}" role="button" tabindex="0" data-open-mission="${h(m.id)}"><div class="journey-art">${m.memberIds.map(id=>state.members.find(x=>x.id===id)).filter(Boolean).map(m=>portrait(m)).join('')}</div><div class="journey-data"><b>${h(q?.name||m.questId)}</b><small>${missionEventPending(m)?'มีเหตุการณ์ · กดดูทีม':m.phase==='battle'?'กำลังต่อสู้ · กดดูทีม':`กำลังสำรวจ · ${Math.max(0,Math.ceil(m.duration-m.progress))} วินาที`}</small><div class="progress"><i style="width:${pct(missionRatio(m),1)}%"></i></div></div></div>`;});for(let i=missions.length;i<Math.min(2,stats.teamCap);i++)cards.push(`<div class="journey-card empty" role="button" tabindex="0" data-tab="quests">+ จัดทีมออกเดินทาง</div>`);if(stats.teamCap<2)cards.push('<div class="journey-card empty" data-tab="build" role="button" tabindex="0">สร้างห้องวางแผนเพื่อเปิดทีมที่สอง</div>');$('mission-strip').innerHTML=cards.join('');injectIcons($('mission-strip'));
-if(ui.buildType||ui.moveId){const label=ui.buildType?FACILITIES[ui.buildType]?.name:'ห้องที่เลือก';$('build-hint').hidden=false;$('build-hint').innerHTML=`${ui.moveId?'ย้าย':'วาง'}${h(label)} · กดพื้นที่สีเขียว <button data-cancel-build>ยกเลิก</button>`;}else $('build-hint').hidden=true;
+const missions=activeMissions();$('journey-count').textContent=missions.length?`เดินทาง ${missions.length} ทีม${missions.some(m=>missionEventPending(m))?' · มีเหตุการณ์':''}`:'เริ่มการเดินทาง';let cards=missions.map(m=>{const q=QUESTS.find(q=>q.id===m.questId);return `<div class="journey-card ${missionEventPending(m)?'ready':''}" role="button" tabindex="0" data-open-mission="${h(m.id)}"><div class="journey-art">${m.memberIds.map(id=>state.members.find(x=>x.id===id)).filter(Boolean).map(m=>portrait(m)).join('')}</div><div class="journey-data"><b>${h(q?.name||m.questId)}</b><small>${missionEventPending(m)?'มีเหตุการณ์ · กดดูทีม':m.phase==='battle'?'กำลังต่อสู้ · กดดูทีม':`กำลังสำรวจ · ${Math.max(0,Math.ceil(m.duration-m.progress))} วินาที`}</small><div class="progress"><i style="width:${pct(missionRatio(m),1)}%"></i></div></div></div>`;});for(let i=missions.length;i<Math.min(2,stats.teamCap);i++)cards.push(`<div class="journey-card empty" role="button" tabindex="0" data-tab="quests">+ จัดทีมออกเดินทาง</div>`);if(stats.teamCap<2)cards.push('<div class="journey-card empty" data-tab="build" role="button" tabindex="0">วางโต๊ะวางแผนเพื่อเปิดทีมที่สอง</div>');$('mission-strip').innerHTML=cards.join('');injectIcons($('mission-strip'));
+if(ui.buildType||ui.moveId){const label=ui.buildType?FACILITIES[ui.buildType]?.name:FACILITIES[state.facilities.find(f=>f.id===ui.moveId)?.type]?.name||'ของที่เลือก';$('build-hint').hidden=false;$('build-hint').innerHTML=`${ui.moveId?'ย้าย':'วาง'}${h(label)} · แตะพื้นที่วาง <button data-rotate-placement>หมุน ↻</button><button data-cancel-build>ยกเลิก</button>`;}else $('build-hint').hidden=true;
 }
-function syncUI(){syncHUD();document.querySelectorAll('.bottom-nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===ui.tab));const headings={home:'เมนูกิลด์',quests:'กระดานคำร้อง',members:'เหล่านักผจญภัย',build:'บ้านของกิลด์',workshop:'โรงซ่อมและคราฟต์',journal:'สมุดบันทึกกิลด์'};$('panel-heading').textContent=headings[ui.tab];const scroller=$('panel-content');const top=scroller.scrollTop;const selectValues=new Map([...scroller.querySelectorAll('select[data-equip-select]')].map(e=>[e.dataset.equipSelect,e.value]));const next=({home:renderHome,quests:renderQuests,members:renderMembers,build:renderBuild,workshop:renderWorkshop,journal:renderJournal})[ui.tab]();const changed=scroller.__view!==next;if(changed){scroller.innerHTML=next;scroller.__view=next;}scroller.scrollTop=top;scroller.querySelectorAll('select[data-equip-select]').forEach(e=>{const old=selectValues.get(e.dataset.equipSelect);if([...e.options].some(o=>o.value===old))e.value=old;});if(changed)injectIcons(scroller);drawMissionScene();}
+function syncUI(){syncHUD();document.querySelectorAll('.bottom-nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===ui.tab));const headings={home:'เมนูกิลด์',quests:'กระดานคำร้อง',members:'เหล่านักผจญภัย',build:'บ้านของกิลด์',workshop:'โต๊ะช่างและคราฟต์',journal:'สมุดบันทึกกิลด์'};$('panel-heading').textContent=headings[ui.tab];const scroller=$('panel-content');const top=scroller.scrollTop;const selectValues=new Map([...scroller.querySelectorAll('select[data-equip-select]')].map(e=>[e.dataset.equipSelect,e.value]));const next=({home:renderHome,quests:renderQuests,members:renderMembers,build:renderBuild,workshop:renderWorkshop,journal:renderJournal})[ui.tab]();const changed=scroller.__view!==next;if(changed){scroller.innerHTML=next;scroller.__view=next;}scroller.scrollTop=top;scroller.querySelectorAll('select[data-equip-select]').forEach(e=>{const old=selectValues.get(e.dataset.equipSelect);if([...e.options].some(o=>o.value===old))e.value=old;});if(changed)injectIcons(scroller);drawMissionScene();}
 
 function openMenu(){if(!$('management-dialog').open)$('management-dialog').showModal();}
 function closeMenu(){$('management-dialog').close();}
 $('menu-button').addEventListener('click',()=>navigate('home'));
 $('menu-close').addEventListener('click',closeMenu);
 $('management-dialog').addEventListener('click',event=>{if(event.target===$('management-dialog')){const b=event.target.getBoundingClientRect();if(event.clientX<b.left||event.clientX>b.right||event.clientY<b.top||event.clientY>b.bottom)closeMenu();}});
-function renderHome(){const stats=getGuildStats(state);return `<div class="home-intro"><small>บ้านของเหล่านักผจญภัย</small><h2>กิลด์ใบอ่อน</h2><p>ระดับ ${h(state.rank)} · วันที่ ${n(state.day)} · สมาชิก ${stats.memberCount}/${stats.memberCap} คน</p></div><div class="home-resources">${[['gold','เงินกิลด์','G'],['wood','ไม้',''],['stone','หิน',''],['herb','สมุนไพร','']].map(([key,label,unit])=>`<div><small>${label}</small><b>${n(state[key])} ${unit}</b></div>`).join('')}</div><div class="home-objective">${$('objective').innerHTML}</div><div class="menu-grid">${[['quests','▤','กระดานคำร้อง','จัดทีมและออกสำรวจ'],['members','♟','นักผจญภัย','พัก ฝึก และรับสมาชิก'],['build','▧','ห้องและที่ดิน','สร้าง ย้าย และอัปเกรด'],['workshop','⚒','โรงคราฟต์','เตรียมอาวุธและอุปกรณ์'],['journal','✦','สมุดกิลด์','เรื่องราว บัญชี และกิจกรรม']].map(([tab,icon,title,copy])=>`<button data-tab="${tab}"><span>${icon}</span><b>${title}</b><small>${copy}</small></button>`).join('')}</div>`;}
+function renderHome(){const stats=getGuildStats(state);return `<div class="home-intro"><small>บ้านของเหล่านักผจญภัย</small><h2>กิลด์ใบอ่อน</h2><p>ระดับ ${h(state.rank)} · วันที่ ${n(state.day)} · สมาชิก ${stats.memberCount}/${stats.memberCap} คน</p></div><div class="home-resources">${[['gold','เงินกิลด์','G'],['wood','ไม้',''],['stone','หิน',''],['herb','สมุนไพร','']].map(([key,label,unit])=>`<div><small>${label}</small><b>${n(state[key])} ${unit}</b></div>`).join('')}</div><div class="home-objective">${$('objective').innerHTML}</div><div class="menu-grid">${[['quests','▤','กระดานคำร้อง','จัดทีมและออกสำรวจ'],['members','♟','นักผจญภัย','พัก ฝึก และรับสมาชิก'],['build','▧','จัดของและต่อเติม','วาง ย้าย หมุน และต่อเติม'],['workshop','⚒','โรงคราฟต์','เตรียมอาวุธและอุปกรณ์'],['journal','✦','สมุดกิลด์','เรื่องราว บัญชี และกิจกรรม']].map(([tab,icon,title,copy])=>`<button data-tab="${tab}"><span>${icon}</span><b>${title}</b><small>${copy}</small></button>`).join('')}</div>`;}
 
 function renderQuests(){if(ui.missionId)return renderMission();if(ui.questId)return renderQuestDetail();const quests=getAvailableQuests(state);return `${activeMissions().length?'<div class="section-title">ทีมที่ออกเดินทาง</div><div class="menu-journeys">'+$('mission-strip').innerHTML+'</div>':''}${ui.tutorial&&!state.completedQuests?.patrol?`<div class="help-card"><b>ยินดีต้อนรับสู่บ้านหลังเล็ก</b><br>เริ่มจากคำร้องลาดตระเวน เลือกฟินน์กับเพื่อนร่วมทีมอีกสองคน แล้วส่งออกไป ระหว่างรอคุณจัดห้องและเตรียมคนที่อยู่บ้านได้<button data-dismiss-tutorial>เข้าใจแล้ว</button></div>`:''}<p class="panel-intro">ทุกการเดินทาง เริ่มจากบ้านที่อบอุ่น<br>เลือกคนให้ตรงกับงาน แล้วเตรียมทีมให้พร้อม</p><div class="region-tabs">${REGIONS.map(r=>`<button data-region="${r.id}" class="${ui.region===r.id?'active':''}">${h(r.name)}</button>`).join('')}</div>${quests.filter(q=>q.region===ui.region).map(q=>`<button class="quest-card ${q.locked?'locked':''}" data-quest="${q.id}"><div class="quest-top"><b>${h(q.name)}</b><span class="badge ${q.locked?'locked':q.story?'story':''}">${q.locked?'ระดับ '+q.rank:q.final?'บทสุดท้าย':q.story?'เรื่องราว':'คำร้อง'}</span></div><p>${h(q.locked?q.lockReason:q.description)}</p><div class="quest-meta"><span>◷ ${Math.ceil(q.duration/60)} นาที · ${q.tags.map(roleName).join(' / ')}</span><span>${n(q.reward.gold)} G <span class="quest-arrow">›</span></span></div></button>`).join('')}<p class="tiny-note">เวลาบนคำร้องเป็นเวลาในเกม ปุ่ม ×2 / ×4 ช่วยเร่งได้ งานพื้นฐานไม่ใช้เงินเตรียมทีม</p>`;}
 function renderQuestDetail(){const q=getAvailableQuests(state).find(q=>q.id===ui.questId);if(!q){ui.questId=null;return renderQuests();}const preview=previewMission(state,q.id,[...ui.selected],ui.policy);return `<button class="back-button" data-back>‹ กลับกระดานคำร้อง</button><div class="quest-illustration"><span>${h(REGIONS.find(r=>r.id===q.region)?.name)}</span></div><h2 class="detail-title">${h(q.name)}</h2><p class="detail-copy">${h(q.description)}</p><div class="tag-list">${q.tags.map(tag=>`<span>เหมาะกับ${h(roleName(tag))}</span>`).join('')}${q.story?'<span>เหตุการณ์ระหว่างทาง</span>':''}</div><div class="rewards">${Object.entries(q.reward).filter(([k])=>k!=='xp').map(([k,v])=>`<span class="reward">${h(({gold:'เงิน',rep:'ชื่อเสียง',wood:'ไม้',stone:'หิน',herb:'สมุนไพร'})[k])} +${n(v)}</span>`).join('')}</div>${q.locked?`<div class="readiness warn">${h(q.lockReason)}</div>`:''}<div class="section-title">จัดทีมเดินทาง<small>${ui.selected.size}/3 คน</small></div><div class="team-grid">${state.members.map(m=>`<button class="team-pick ${ui.selected.has(m.id)?'selected':''} ${isAway(m.id)||m.injury>40?'unavailable':''}" data-pick-member="${h(m.id)}" aria-pressed="${ui.selected.has(m.id)}" ${isAway(m.id)||m.injury>40?'disabled':''}>${portrait(m)}<b>${h(m.name)}</b><small>${h(jobName(m.class))} · Lv.${m.level}<br>${isAway(m.id)?'ออกภารกิจ':m.injury>40?'ต้องรักษา':'พลัง '+n(m.energy)}</small><div class="mini-energy"><i style="width:${pct(m.energy)}%"></i></div></button>`).join('')}</div><div class="section-title">แนวทางเดินทาง</div><div class="segmented">${Object.entries(MISSION_POLICIES).map(([id,p])=>`<button data-policy="${id}" class="${ui.policy===id?'active':''}">${h(p.name)}</button>`).join('')}</div><div class="readiness ${!preview.ok||preview.readiness<1?'warn':''}">${h(ui.selected.size?(preview.ok?preview.verdict:preview.reason||'ตรวจความพร้อมทีม'):'เลือกสมาชิกให้ครบสามคน')}<p>${ui.selected.size?`พลังทีม ${n(preview.power)} / ความยาก ${n(preview.difficulty)} · ใช้พลัง ${n(preview.energy)}`:'งานสำรวจเหมาะกับนักธนู งานคุ้มกันเหมาะกับนักรบ'}</p>${preview.missingRoles?.length?`<p>ขาดบทบาท: ${preview.missingRoles.map(roleName).join(' · ')}</p>`:''}<p>เสบียง: ${h(moneyCost(preview.cost||q.cost))} · เวลา ${n(preview.duration)} วินาที</p></div><button class="primary full-button" data-send-mission ${!preview.ok||q.locked?'disabled':''}>ส่งทีมออกเดินทาง →</button><p class="tiny-note">กลับมาแล้วสมาชิกจะพักฟื้นเอง เตรียมทีมสำรองไว้ช่วยงานรอบต่อไป</p>`;}
 function renderMission(){const m=state.missions.find(m=>m.id===ui.missionId);if(!m){ui.missionId=null;return renderQuests();}const q=QUESTS.find(q=>q.id===m.questId);const ongoing=m.status==='active'||m.status==='decision';return `<button class="back-button" data-back>‹ กลับกระดานคำร้อง</button><h2 class="detail-title">${h(q?.name||m.questId)}</h2><p class="detail-copy">${h(q?.description)}</p><canvas id="mission-scene" width="280" height="145" style="width:100%;height:auto;image-rendering:pixelated;border-radius:7px;border:1px solid #ded8c1"></canvas><div class="mission-detail-members">${m.memberIds.map(id=>state.members.find(x=>x.id===id)).filter(Boolean).map(member=>portrait(member)).join('')}</div><div class="section-title">${ongoing?'ความคืบหน้าการเดินทาง':m.status==='completed'?'ทีมกลับถึงบ้านแล้ว':m.status==='recalled'?'เรียกทีมกลับแล้ว':'ทีมถอยกลับมาพัก'}<small>${n(missionRatio(m)*100)}%</small></div><div class="progress"><i style="width:${pct(missionRatio(m),1)}%"></i></div>${missionEventPending(m)?`<div class="event-card" style="margin-top:15px"><h3>${h(m.event.title)}</h3><p>${h(m.event.text)}</p>${m.event.choices.map(c=>`<button data-event-choice="${h(c.id)}" data-mission="${h(m.id)}">${h(c.label)}<small>${h(c.description||'')}</small></button>`).join('')}</div>`:`<p class="detail-copy">${h(ongoing?(m.phase==='battle'?`พบ${q?.enemy} · การเตรียมทีมและอุปกรณ์มีผลกับการต่อสู้`:'สมาชิกกำลังสำรวจเส้นทาง คุณกลับไปจัดกิลด์ระหว่างรอได้'):(m.result?.message||'บันทึกการเดินทางอยู่ในสมุดกิลด์'))}</p>`}${ongoing?`<button class="secondary full-button" data-recall="${h(m.id)}">เรียกทีมกลับก่อน</button><p class="tiny-note">หยุดความเสี่ยงและกลับมาพัก เสบียงที่ใช้ไปไม่คืน และยังไม่ได้รางวัลคำร้อง</p>`:''}`;}
 function renderMembers(){const stats=getGuildStats(state);if(ui.memberId)return renderMemberDetail();const recruits=getAvailableRecruits(state);return `<p class="panel-intro">สมาชิก ${stats.memberCount}/${stats.memberCap} คน · บ้านที่ทุกคนมีที่พัก<br>ฝึก พัก หรือช่วยงาน เลือกตารางให้เหมาะกับทีม</p>${state.members.map(m=>`<button class="member-card" data-member="${h(m.id)}">${portrait(m)}<div class="member-data"><b>${h(m.name)}</b><small>${h(jobName(m.class))} · Lv.${m.level} · ${h(taskText(m))}</small><div class="progress"><i style="width:${pct(m.energy)}%"></i></div></div><span class="member-tag">${n(m.energy)} / 100</span></button>`).join('')}<div class="section-title">ผู้สมัครเข้ากิลด์<small>ชื่อเสียงช่วยให้คนใหม่รู้จักเรา</small></div>${recruits.length?recruits.map(m=>`<div class="recruit-card"><div class="recruit-card-top">${portrait(m)}<div><b>${h(m.name)}</b><small>${h(jobName(m.class))} · ${h(m.trait)}</small></div></div><p class="tiny-note">${h(m.description)}</p><button data-recruit="${h(m.id)}" ${!m.available?'disabled':''}>${m.available?'รับเข้ากิลด์ · '+n(m.cost)+' G':h(m.reason||'ยังไม่เปิดรับ')}</button></div>`).join(''):'<p class="tiny-note">สมาชิกทุกคนเข้ากิลด์แล้ว</p>'}`;}
 function renderMemberDetail(){const m=state.members.find(m=>m.id===ui.memberId);if(!m){ui.memberId=null;return renderMembers();}const def=MEMBERS.find(x=>x.id===m.id),stats=getMemberStats(state,m);const bondList=Object.entries(state.bonds||{}).filter(([key])=>key.split('|').includes(m.id)||key.split(':').includes(m.id)||key.split('-').includes(m.id));const next=JOBS[m.class]?.next||[];return `<button class="back-button" data-back>‹ สมาชิกกิลด์</button><div class="member-hero">${portrait(m)}<div><h2>${h(m.name)}</h2><p>${h(jobName(m.class))} · Lv.${m.level}</p><p>${h(taskText(m))}</p>${stats.waitingReason?'<p>'+h(stats.waitingReason)+'</p>':''}</div></div><div class="trait">${h(def?.trait||m.trait)} · ${h(def?.description||m.description)}</div><div class="stat-grid"><div class="stat-box">พลังต่อสู้<b>${n(stats.power)}</b></div><div class="stat-box">พลังพร้อมออกงาน<b>${n(m.energy)} / 100</b></div><div class="stat-box">ขวัญกำลังใจ<b>${n(m.morale)} / 100</b></div><div class="stat-box">ความคืบหน้าเลเวล<b>${n(m.xp)} XP</b></div></div>${m.injury>0?`<div class="inline-tip">กำลังรักษาบาดเจ็บ · อาการบาดเจ็บ ${n(m.injury)}/100</div>`:''}<div class="section-title">ตารางที่กิลด์</div><div class="segmented">${[['rest','พักฟื้น'],['train','ฝึกฝน'],['work','ช่วยงาน']].map(([id,label])=>`<button data-task="${id}" data-member-id="${h(m.id)}" class="${m.task===id?'active':''}" ${isAway(m.id)?'disabled':''}>${label}</button>`).join('')}</div><p class="tiny-note">ฝึกใช้พลังและเพิ่ม XP · ช่วยงานได้ไม้และสมุนไพร · เมื่อเหนื่อยจะพักก่อน</p><div class="section-title">อุปกรณ์ประจำตัว</div>${['weapon','accessory'].map(slot=>{const e=item(m.equipment?.[slot]);return`<div class="equipment-row">${e?itemIcon(e.id):'<span class="build-icon" style="width:28px;height:28px;font-size:14px">'+(slot==='weapon'?'⚔':'✧')+'</span>'}<span>${h(e?.name||(slot==='weapon'?'ยังไม่มีอาวุธ':'ยังไม่มีเครื่องราง'))}<small>${e?'พลัง +'+e.power:(slot==='weapon'?'อาวุธ':'เครื่องประดับ')}</small></span>${e?`<button data-unequip="${slot}" data-member-id="${h(m.id)}" ${isAway(m.id)?'disabled':''} style="font-size:9px;padding:3px 6px">ถอด</button>`:''}</div>`;}).join('')}<button class="secondary full-button" data-tab="workshop">คราฟต์และเลือกอุปกรณ์ →</button>${next.length?`<div class="section-title">เลือกสายเชี่ยวชาญ<small>Lv.5 และกิลด์ D</small></div>${next.map(id=>`<button class="build-card" data-specialize="${id}" data-member-id="${h(m.id)}" ${m.level<5||!rankEnough('D')||isAway(m.id)?'disabled':''}><span class="build-icon">${h(JOBS[id].icon)}</span><div class="build-info"><b>${h(JOBS[id].name)}</b><p>บทบาท${h(roleName(JOBS[id].role))} · พลังพื้นฐาน ${JOBS[id].power}</p></div></button>`).join('')}`:''}${bondList.length?`<div class="section-title">เพื่อนร่วมทาง</div>${bondList.slice(0,5).map(([key,value])=>{const ids=key.split(/[|:\-]/);const names=ids.map(id=>state.members.find(x=>x.id===id)?.name||id);return`<div class="bond-row">${h(names.join(' & '))}<span>ความไว้ใจ ${n(typeof value==='number'?value:value.value||value.level||0)}</span></div>`;}).join('')}`:''}`;}
-function renderBuild(){if(ui.facilityId){const f=state.facilities.find(f=>f.id===ui.facilityId);if(f){const def=FACILITIES[f.type];return `<button class="back-button" data-back>‹ ห้องและที่ดิน</button><h2 class="detail-title">${h(def.name)}</h2><p class="detail-copy">${h(def.description)}</p><div class="stat-grid"><div class="stat-box">ระดับห้อง<b>${f.level} / ${def.maxLevel||3}</b></div><div class="stat-box">พื้นที่<b>${def.w} × ${def.h} ช่อง</b></div></div><button class="primary full-button" data-upgrade="${h(f.id)}" ${f.level>=(def.maxLevel||3)?'disabled':''}>${f.level>=(def.maxLevel||3)?'ห้องระดับสูงสุดแล้ว':'อัปเกรดห้อง →'}</button><p class="tiny-note">${f.level<(def.maxLevel||3)?h(moneyCost(getUpgradeCost(state,f.id))):'โบนัสห้องถึงระดับสูงสุดแล้ว'}</p><div class="facility-actions"><button data-move="${h(f.id)}">ย้ายห้อง</button><button class="danger" data-demolish="${h(f.id)}">รื้อห้อง</button></div><div class="inline-tip">วางห้องให้อยู่ในพื้นที่ของกิลด์และไม่ทับห้องอื่น การย้ายไม่เสียค่าใช้จ่าย</div>`;}}
-const stats=getGuildStats(state);return `<p class="panel-intro">เลือกห้อง แล้วกดวางในพื้นที่ว่างของกิลด์<br>กิลด์ชั้นเดียว ขยายออกด้านข้างได้</p>${Object.entries(FACILITIES).map(([type,f])=>`<button class="build-card ${ui.buildType===type?'ui-pulse':''}" data-build="${type}" ${!rankEnough(f.unlockRank)||!canAfford(f.cost)||(['reception','dispatch'].includes(type)&&state.facilities.some(room=>room.type===type))?'disabled':''}><span class="build-icon">${({reception:'▤',dorm:'▱',infirmary:'✚',kitchen:'♨',training:'⚔',workshop:'⚒',garden:'❧',library:'▥',lounge:'♡',dispatch:'⚑'})[type]||'⌂'}</span><div class="build-info"><b>${h(f.name)} ${['reception','dispatch'].includes(type)&&state.facilities.some(room=>room.type===type)?'· มีแล้ว':rankEnough(f.unlockRank)?'':'· ระดับ '+f.unlockRank}</b><p>${h(f.description)}</p><div class="build-cost">${h(moneyCost(f.cost))} · ${f.w}×${f.h}</div></div></button>`).join('')}<div class="expansion-card"><b>ซื้อที่ดินรอบบ้าน</b><p>พื้นที่ปัจจุบัน ${state.grid.width}×${state.grid.height} ช่อง · ขยายแล้ววางห้องใหม่ได้<br>สมาชิก ${stats.memberCount}/${stats.memberCap} คน · พักเร็ว ${stats.restSlots} คน · ฝึก ${stats.trainingSlots} คน · รักษา ${stats.healingSlots} คน</p><p class="build-cost">${state.landLevel<2?h(moneyCost(getExpansionCost(state))):'ขยายเต็มพื้นที่แล้ว'}</p><button class="primary" data-expand ${state.landLevel>=2||!rankEnough(state.landLevel===0?'E':'C')||!canAfford(getExpansionCost(state))?'disabled':''}>${state.landLevel>=2?'ขยายเต็มแล้ว':!rankEnough(state.landLevel===0?'E':'C')?'ต้องการกิลด์ '+(state.landLevel===0?'E':'C'):'ขยายที่ดิน →'}</button></div><div class="section-title">ห้องที่สร้างแล้ว<small>กดห้องในฉากเพื่อจัดการได้</small></div>${state.facilities.map(f=>`<button class="equipment-row" style="width:100%;text-align:left" data-facility="${h(f.id)}"><span>${h(FACILITIES[f.type]?.name)}</span><small>Lv.${f.level} ›</small></button>`).join('')}`;}
-function renderWorkshop(){const maxWorkshop=Math.max(0,...state.facilities.filter(f=>f.type==='workshop').map(f=>f.level));return `<p class="panel-intro">ของจากการเดินทาง กลายเป็นอุปกรณ์ชิ้นใหม่<br>คราฟต์ก่อน แล้วเลือกสมาชิกเพื่อสวมใส่</p>${EQUIPMENT.map(e=>{const eligible=state.members.filter(m=>!isAway(m.id)&&(!e.classes.length||e.classes.includes(baseJob(m.class))));const count=availableCount(e.id);const locked=!rankEnough(e.unlockRank)||maxWorkshop<e.workshopLevel;return `<div class="item-card"><div class="item-top">${itemIcon(e.id)}<div><b>${h(e.name)}</b><small>${e.slot==='weapon'?'อาวุธ':'เครื่องราง'} · พลัง +${e.power} · ในคลัง ${count}</small></div></div><p>${h(e.description)}${e.classes.length?' · '+e.classes.map(jobName).join('/'):' · ทุกอาชีพ'}</p><div class="build-cost">${h(moneyCost(e.cost))}</div><div class="item-actions" style="margin-top:8px"><button class="${locked?'secondary':'primary'}" data-craft="${e.id}" ${locked||!canAfford(e.cost)?'disabled':''}>${locked?'ต้องการกิลด์ '+e.unlockRank+' / โรงซ่อม '+e.workshopLevel:'คราฟต์'}</button>${count>0&&eligible.length?`<select aria-label="สมาชิกที่สวม ${h(e.name)}" data-equip-select="${e.id}">${eligible.map(m=>`<option value="${h(m.id)}">${h(m.name)}</option>`).join('')}</select><button data-equip="${e.id}">ใส่</button>`:''}</div></div>`;}).join('')}`;}
+function renderBuild(){
+ const faces=['↘','↙','↖','↗'];
+ if(ui.facilityId){const f=state.facilities.find(f=>f.id===ui.facilityId);if(f){const d=FACILITIES[f.type],size=getRoomSize(f.type,f.rotation||0);return `<button class="back-button" data-back>‹ จัดของและต่อเติม</button><h2 class="detail-title">${h(d.name)}</h2><p class="detail-copy">${h(d.description)}</p><div class="stat-grid"><div class="stat-box">ระดับ<b>${f.level} / 3</b></div><div class="stat-box">พื้นที่ / ทิศ<b>${size.w} × ${size.h} ${faces[f.rotation||0]}</b></div></div><button class="primary full-button" data-upgrade="${h(f.id)}" ${f.level>=3?'disabled':''}>อัปเกรด</button><p class="tiny-note">${h(moneyCost(getUpgradeCost(state,f.id)))}</p><div class="facility-actions"><button data-move="${h(f.id)}">ย้าย / จัดวาง</button><button data-rotate="${h(f.id)}">หมุน 90°</button><button class="danger" data-demolish="${h(f.id)}">เก็บออก</button></div><div class="inline-tip">จัดวางทีละหนึ่งในสี่ช่อง เว้นทางเข้ากับด้านใช้งานของแต่ละชิ้น</div>`;}}
+ const b=state.building;return `<p class="panel-intro">จัดเฟอร์นิเจอร์ในอาคารหลังเดียว<br>ย้ายได้ หมุนได้ และต่อเติมพื้นอาคารเมื่อพื้นที่ไม่พอ</p><div class="expansion-card"><b>อาคารกิลด์ ${b.width} × ${b.height}</b><p>ต่อเติมแล้ว ${b.level} / 3 ครั้ง · เพิ่มพื้นที่ต่อเนื่องครั้งละ 2 × 2 ด้าน</p><p class="build-cost">${h(moneyCost(getBuildingExpansionCost(state)))}</p><button class="primary" data-expand-building ${b.level>=3||!canAfford(getBuildingExpansionCost(state))?'disabled':''}>ต่อเติมอาคาร →</button></div>${Object.entries(FACILITIES).map(([type,f])=>`<button class="build-card" data-build="${type}" ${!rankEnough(f.unlockRank)||!canAfford(f.cost)||(['reception','dispatch'].includes(type)&&state.facilities.some(o=>o.type===type))?'disabled':''}><span class="build-icon">${({reception:'▤',dorm:'▱',infirmary:'✚',kitchen:'♨',training:'⚔',workshop:'⚒',garden:'❧',library:'▥',lounge:'♡',dispatch:'⚑'})[type]}</span><div class="build-info"><b>${h(f.name)}</b><p>${h(f.description)}</p><div class="build-cost">${h(moneyCost(f.cost))} · ${f.w}×${f.h}${rankEnough(f.unlockRank)?'':' · กิลด์ '+f.unlockRank}</div></div></button>`).join('')}<div class="expansion-card"><b>ที่ดิน ${state.grid.width}×${state.grid.height}</b><p>แปลงสมุนไพรวางกลางแจ้งได้ ถนนและทางเข้าต้องโล่ง</p><p class="build-cost">${h(moneyCost(getExpansionCost(state)))}</p><button data-expand ${state.landLevel>=2||!rankEnough(state.landLevel===0?'E':'C')||!canAfford(getExpansionCost(state))?'disabled':''}>ซื้อที่ดินเพิ่ม →</button></div><div class="section-title">ของที่วางอยู่</div>${state.facilities.map(f=>`<button class="facility-row" data-facility="${h(f.id)}"><span>${h(FACILITIES[f.type].name)}</span><span>Lv.${f.level} ${faces[f.rotation||0]} →</span></button>`).join('')}`;
+}
+
+function renderWorkshop(){const maxWorkshop=Math.max(0,...state.facilities.filter(f=>f.type==='workshop').map(f=>f.level));return `<p class="panel-intro">ของจากการเดินทาง กลายเป็นอุปกรณ์ชิ้นใหม่<br>คราฟต์ก่อน แล้วเลือกสมาชิกเพื่อสวมใส่</p>${EQUIPMENT.map(e=>{const eligible=state.members.filter(m=>!isAway(m.id)&&(!e.classes.length||e.classes.includes(baseJob(m.class))));const count=availableCount(e.id);const locked=!rankEnough(e.unlockRank)||maxWorkshop<e.workshopLevel;return `<div class="item-card"><div class="item-top">${itemIcon(e.id)}<div><b>${h(e.name)}</b><small>${e.slot==='weapon'?'อาวุธ':'เครื่องราง'} · พลัง +${e.power} · ในคลัง ${count}</small></div></div><p>${h(e.description)}${e.classes.length?' · '+e.classes.map(jobName).join('/'):' · ทุกอาชีพ'}</p><div class="build-cost">${h(moneyCost(e.cost))}</div><div class="item-actions" style="margin-top:8px"><button class="${locked?'secondary':'primary'}" data-craft="${e.id}" ${locked||!canAfford(e.cost)?'disabled':''}>${locked?'ต้องการกิลด์ '+e.unlockRank+' / โต๊ะช่าง '+e.workshopLevel:'คราฟต์'}</button>${count>0&&eligible.length?`<select aria-label="สมาชิกที่สวม ${h(e.name)}" data-equip-select="${e.id}">${eligible.map(m=>`<option value="${h(m.id)}">${h(m.name)}</option>`).join('')}</select><button data-equip="${e.id}">ใส่</button>`:''}</div></div>`;}).join('')}`;}
 function renderJournal(){const stats=getGuildStats(state);const nextRequirement=RANK_REQUIREMENTS[stats.nextRank];const nextQuest=QUESTS.find(q=>q.id===nextRequirement?.quest);let goals=state.story?.finished?['ช่วยทีมสำรวจกลับบ้าน','รักษาหัวใจป่า','มีบ้านให้ทุกคนกลับมา']:[stats.nextRank?`ชื่อเสียง ${n(state.rep)} / ${n(nextRequirement?.rep||0)}`:'กิลด์ระดับ A',nextQuest?`สำเร็จคำร้อง ${nextQuest.name}`:'สำเร็จคำร้องรักษาหัวใจป่า'];const ledger=(state.ledger||[]).slice(0,8);return `${state.story?.finished?'<div class="finished-banner"><b>ทุกคนกลับบ้านแล้ว ❧</b><br>กิลด์ใบอ่อนคืนแสงให้ป่าได้สำเร็จ ขอบคุณที่ดูแลนักผจญภัยทุกคน คุณเล่นต่อ รับคนใหม่ และตกแต่งกิลด์ได้</div>':''}<div class="chapter-card"><small>OUR GUILD STORY · CHAPTER ${state.story?.chapter||1}</small><h2>${state.story?.finished?'บ้านใต้ร่มใบไม้':stats.nextRank?'ก้าวต่อไป · กิลด์ระดับ '+stats.nextRank:'รักษาหัวใจป่า'}</h2><p>จากบ้านเล็กท้ายเมือง สู่สถานที่ที่ผู้คนฝากความหวัง</p><ul>${goals.map(goal=>`<li>${h(goal)}</li>`).join('')}</ul><div class="progress"><i style="width:${pct(stats.rankProgress,1)}%"></i></div></div><div class="stat-grid"><div class="stat-box">คำร้องที่สำเร็จ<b>${n(Object.values(state.completedQuests||{}).reduce((s,v)=>s+Number(v||0),0))} งาน</b></div><div class="stat-box">ค่าดูแลต่อวัน<b>${n(stats.upkeep)} G</b></div><div class="stat-box">รายรับวันนี้<b>${n(stats.incomeToday)} G</b></div><div class="stat-box">รายจ่ายวันนี้<b>${n(stats.expenseToday)} G</b></div></div><div class="section-title">ช่วงเวลาดี ๆ ในกิลด์</div>${GUILD_EVENTS.map(e=>`<div class="item-card"><b style="font-size:12px">${h(e.name)}</b><p>${h(e.description)}</p><div class="build-cost">${h(moneyCost(e.cost))}</div><button class="secondary full-button" data-host-event="${e.id}" ${!state.facilities.some(f=>f.type===e.requires)||!canAfford(e.cost)?'disabled':''}>${state.facilities.some(f=>f.type===e.requires)?'จัดกิจกรรม':'ต้องมี'+FACILITIES[e.requires].name}</button></div>`).join('')}<div class="section-title">บัญชีล่าสุด</div>${ledger.length?ledger.map(entry=>{const amount=Number(entry.amount||entry.gold||0);return`<div class="ledger-row"><span>${h(entry.label||entry.text||entry.reason||entry.type)} · วันที่ ${entry.day}</span><b class="${amount<0?'negative':''}">${amount>0?'+':''}${n(amount)} G</b></div>`;}).join(''):'<p class="tiny-note">เริ่มรับคำร้องเพื่อเพิ่มรายรับของกิลด์</p>'}<div class="section-title">เรื่องราวที่เกิดขึ้น</div>${(state.log||[]).slice(0,14).map(entry=>`<div class="log-entry"><small>วันที่ ${h(entry.day)} · GUILD MEMORY</small>${h(entry.text)}</div>`).join('')}`;}
 function navigate(tab){ui.tab=tab;openMenu();ui.questId=null;ui.memberId=null;ui.facilityId=null;ui.missionId=null;ui.selected.clear();syncUI();$('panel-content').scrollTop=0;}
 function cancelBuild(){ui.buildType=null;ui.moveId=null;renderer?.setBuildMode(null);renderer?.setMoveMode(null);syncHUD();}
-function onSceneSelect(selection){if(selection.kind==='build'&&ui.buildType){if(dispatch('build',{type:ui.buildType,x:selection.x,y:selection.y})){cancelBuild();syncUI();}}else if(selection.kind==='move'&&ui.moveId){if(dispatch('move',{facilityId:ui.moveId,x:selection.x,y:selection.y})){cancelBuild();syncUI();}}else if(selection.kind==='member'){cancelBuild();navigate('members');ui.memberId=selection.id;syncUI();}else if(selection.kind==='facility'){cancelBuild();navigate('build');ui.facilityId=selection.id;syncUI();}}
+function onSceneSelect(selection){if(selection.kind==='build'&&ui.buildType){if(dispatch('build',{type:ui.buildType,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='move'&&ui.moveId){if(dispatch('move',{facilityId:ui.moveId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='member'){cancelBuild();navigate('members');ui.memberId=selection.id;syncUI();}else if(selection.kind==='facility'){cancelBuild();navigate('build');ui.facilityId=selection.id;syncUI();}}
 let confirmCallback;
 function confirmAction(title,message,callback){$('confirm-title').textContent=title;$('confirm-message').textContent=message;confirmCallback=callback;$('confirm-dialog').showModal();}
 $('confirm-cancel').addEventListener('click',()=>{$('confirm-dialog').close();confirmCallback=null;});$('confirm-ok').addEventListener('click',()=>{$('confirm-dialog').close();const callback=confirmCallback;confirmCallback=null;callback?.();});
-function openSettings(){$('management-dialog').close();$('settings-content').innerHTML=`<h2>บ้านหลังนี้ บันทึกไว้ได้</h2><p>เซฟอยู่ในเบราว์เซอร์ของเครื่องนี้ ส่งออกไฟล์เพื่อสำรองหรือย้ายไปเครื่องอื่นได้</p>${saveFailure?`<div class="save-warning">${h(saveFailure)}</div>`:''}<div class="settings-row"><button class="primary" data-save-now>บันทึกตอนนี้</button><button data-export-save>ส่งออกเซฟ</button><button data-import-save>นำเข้าเซฟ</button></div><div class="settings-divider"></div><h3>เสียงและการควบคุม</h3><div class="settings-row"><button data-toggle-sound>${ui.sound?'♪ เสียงเปิด':'♪ เสียงปิด'}</button></div><p>ลากฉากเพื่อเลื่อน · ใช้ + / − หรือสองนิ้วเพื่อซูม<br>กดห้องเพื่อย้ายหรืออัปเกรด · กดคนเพื่อดูรายละเอียด<br>Space หยุดเวลา · 1 / 2 / 4 เร่งเวลา · Esc ยกเลิกการวางห้อง</p><div class="settings-divider"></div><h3>เริ่มการเดินทางใหม่</h3><p>เริ่มกิลด์ใหม่จะเขียนทับเซฟของเครื่องนี้ ส่งออกเซฟเดิมไว้ก่อนหากต้องการเก็บ</p><button class="danger" data-new-game>เริ่มกิลด์ใหม่</button><p class="tiny-note">เวอร์ชันแรกที่เล่นได้ · ความยาวแคมเปญยังอยู่ระหว่างปรับสมดุล</p>`;$('settings-dialog').showModal();}
+function openSettings(){$('management-dialog').close();$('settings-content').innerHTML=`<h2>บ้านหลังนี้ บันทึกไว้ได้</h2><p>เซฟอยู่ในเบราว์เซอร์ของเครื่องนี้ ส่งออกไฟล์เพื่อสำรองหรือย้ายไปเครื่องอื่นได้</p>${saveFailure?`<div class="save-warning">${h(saveFailure)}</div>`:''}<div class="settings-row"><button class="primary" data-save-now>บันทึกตอนนี้</button><button data-export-save>ส่งออกเซฟ</button><button data-import-save>นำเข้าเซฟ</button></div><div class="settings-divider"></div><h3>เสียงและการควบคุม</h3><div class="settings-row"><button data-toggle-sound>${ui.sound?'♪ เสียงเปิด':'♪ เสียงปิด'}</button></div><p>ลากฉากเพื่อเลื่อน · ใช้ + / − หรือสองนิ้วเพื่อซูม<br>กดของเพื่อย้าย หมุน หรืออัปเกรด · กดคนเพื่อดูรายละเอียด<br>Space หยุดเวลา · 1 / 2 / 4 เร่งเวลา · R หมุน · Esc ยกเลิกการวาง</p><div class="settings-divider"></div><h3>เริ่มการเดินทางใหม่</h3><p>เริ่มกิลด์ใหม่จะเขียนทับเซฟของเครื่องนี้ ส่งออกเซฟเดิมไว้ก่อนหากต้องการเก็บ</p><button class="danger" data-new-game>เริ่มกิลด์ใหม่</button><p class="tiny-note">เวอร์ชันแรกที่เล่นได้ · ความยาวแคมเปญยังอยู่ระหว่างปรับสมดุล</p>`;$('settings-dialog').showModal();}
 $('settings-button').addEventListener('click',openSettings);
 $('import-file').addEventListener('change',async event=>{const file=event.target.files[0];event.target.value='';if(!file)return;if(file.size>2000000){toast('ไฟล์เซฟใหญ่เกินไป',true);return;}try{const imported=deserializeGame(await file.text());$('settings-dialog').close();confirmAction('ใช้เซฟจากไฟล์นี้?',`กิลด์ระดับ ${imported.rank} วันที่ ${imported.day} · ข้อมูลปัจจุบันจะถูกแทนที่`,()=>{state=imported;state.settings.paused=false;ui={...ui,tab:'quests',region:'meadow',questId:null,memberId:null,missionId:null,facilityId:null,selected:new Set(),paused:false,speed:state.settings.speed||1,sound:!!state.settings.sound,tutorial:!state.completedQuests?.patrol};cancelBuild();renderer?.setState(state);renderer?.resetView?.();seenLog=state.log[0];save();syncUI();toast('นำเข้ากิลด์เรียบร้อย');});}catch(error){toast('ไฟล์เซฟไม่ถูกต้องหรือไม่รองรับ ข้อมูลปัจจุบันยังอยู่',true);}});
-document.addEventListener('click',event=>{const b=event.target.closest('button,[role="button"]');if(!b||b.disabled)return;const d=b.dataset;if(d.tab){navigate(d.tab);return;}if(d.region){ui.region=d.region;syncUI();return;}if(d.quest){ui.questId=d.quest;ui.missionId=null;ui.selected.clear();syncUI();return;}if(d.member){ui.memberId=d.member;ui.tab='members';syncUI();return;}if(d.facility){ui.facilityId=d.facility;ui.tab='build';syncUI();return;}if(d.openMission){openMenu();ui.tab='quests';ui.missionId=d.openMission;ui.questId=null;syncUI();return;}if('back'in d){ui.questId=null;ui.memberId=null;ui.facilityId=null;ui.missionId=null;ui.selected.clear();syncUI();return;}if(d.pickMember){if(ui.selected.has(d.pickMember))ui.selected.delete(d.pickMember);else if(ui.selected.size<3)ui.selected.add(d.pickMember);else toast('หนึ่งทีมจัดได้ไม่เกินสามคน',true);syncUI();return;}if(d.policy){ui.policy=d.policy;syncUI();return;}if('sendMission'in d){if(dispatch('sendMission',{questId:ui.questId,memberIds:[...ui.selected],policy:ui.policy})){ui.missionId=activeMissions().at(-1)?.id;ui.questId=null;ui.selected.clear();syncUI();}return;}if(d.eventChoice){dispatch('chooseEvent',{missionId:d.mission,choiceId:d.eventChoice});return;}if(d.recall){confirmAction('เรียกทีมกลับ?', 'ทีมจะหยุดภารกิจและกลับมาพักที่กิลด์',()=>dispatch('recallMission',{missionId:d.recall}));return;}if(d.recruit){dispatch('recruit',{memberId:d.recruit});return;}if(d.task){dispatch('setTask',{memberId:d.memberId,task:d.task});return;}if(d.build){ui.buildType=d.build;ui.moveId=null;ui.facilityId=null;renderer?.setMoveMode(null);renderer?.setBuildMode(d.build);closeMenu();syncUI();return;}if('cancelBuild'in d){cancelBuild();return;}if(d.move){ui.moveId=d.move;ui.buildType=null;renderer?.setBuildMode(null);renderer?.setMoveMode(d.move);closeMenu();syncHUD();return;}if(d.upgrade){const f=state.facilities.find(f=>f.id===d.upgrade);const def=FACILITIES[f.type];const cost=getUpgradeCost(state,f.id);confirmAction('อัปเกรด'+def.name,`ปรับปรุงเป็นระดับ ${f.level+1} · ${moneyCost(cost)}`,()=>dispatch('upgrade',{facilityId:d.upgrade}));return;}if(d.demolish){confirmAction('รื้อห้องนี้?', 'พื้นที่จะว่างให้สร้างใหม่ ได้ทรัพยากรคืนบางส่วน ความจุและโบนัสห้องจะลดลง',()=>{if(dispatch('demolish',{facilityId:d.demolish})){ui.facilityId=null;syncUI();}});return;}if('expand'in d){confirmAction('ขยายที่ดินกิลด์?',`${state.grid.width+6}×${state.grid.height+4} ช่อง · ${moneyCost(getExpansionCost(state))}`,()=>dispatch('expand'));return;}if(d.craft){dispatch('craft',{equipmentId:d.craft});return;}if(d.equip){const select=document.querySelector(`[data-equip-select="${CSS.escape(d.equip)}"]`);if(select)dispatch('equip',{memberId:select.value,equipmentId:d.equip});return;}if(d.unequip){dispatch('equip',{memberId:d.memberId,equipmentId:null,slot:d.unequip});return;}if(d.specialize){confirmAction('เลือกสาย'+JOBS[d.specialize].name+'?', 'สมาชิกจะเชี่ยวชาญสายนี้ การเลือกสายเป็นการตัดสินใจถาวรของรอบเล่น',()=>dispatch('specialize',{memberId:d.memberId,classId:d.specialize}));return;}if(d.hostEvent){dispatch('hostEvent',{eventId:d.hostEvent});return;}if(d.speed){ui.speed=Number(d.speed);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();return;}if('dismissTutorial'in d){ui.tutorial=false;syncUI();return;}if('saveNow'in d){save(true);return;}if('exportSave'in d){const blob=new Blob([serializeGame(state)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`little-leaf-guild-day-${state.day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('ส่งออกไฟล์เซฟแล้ว');return;}if('importSave'in d){$('import-file').click();return;}if('toggleSound'in d){ui.sound=!ui.sound;state.settings.sound=ui.sound;save();playChime();b.textContent=ui.sound?'♪ เสียงเปิด':'♪ เสียงปิด';return;}if('newGame'in d){$('settings-dialog').close();confirmAction('เริ่มกิลด์ใหม่?', 'เซฟปัจจุบันจะถูกแทนที่ เริ่มจากบ้านหลังเล็กและสมาชิกชุดแรก',()=>{state=createGame();ui={...ui,tab:'quests',questId:null,memberId:null,facilityId:null,missionId:null,selected:new Set(),tutorial:true,paused:false,speed:1,sound:!!state.settings.sound};cancelBuild();renderer?.setState(state);renderer?.resetView?.();save();syncUI();toast('ยินดีต้อนรับกลับสู่กิลด์ใบอ่อน');});}});
+document.addEventListener('click',event=>{const b=event.target.closest('button,[role="button"]');if(!b||b.disabled)return;const d=b.dataset;if(d.tab){navigate(d.tab);return;}if(d.region){ui.region=d.region;syncUI();return;}if(d.quest){ui.questId=d.quest;ui.missionId=null;ui.selected.clear();syncUI();return;}if(d.member){ui.memberId=d.member;ui.tab='members';syncUI();return;}if(d.facility){ui.facilityId=d.facility;ui.tab='build';syncUI();return;}if(d.openMission){openMenu();ui.tab='quests';ui.missionId=d.openMission;ui.questId=null;syncUI();return;}if('back'in d){ui.questId=null;ui.memberId=null;ui.facilityId=null;ui.missionId=null;ui.selected.clear();syncUI();return;}if(d.pickMember){if(ui.selected.has(d.pickMember))ui.selected.delete(d.pickMember);else if(ui.selected.size<3)ui.selected.add(d.pickMember);else toast('หนึ่งทีมจัดได้ไม่เกินสามคน',true);syncUI();return;}if(d.policy){ui.policy=d.policy;syncUI();return;}if('sendMission'in d){if(dispatch('sendMission',{questId:ui.questId,memberIds:[...ui.selected],policy:ui.policy})){ui.missionId=activeMissions().at(-1)?.id;ui.questId=null;ui.selected.clear();syncUI();}return;}if(d.eventChoice){dispatch('chooseEvent',{missionId:d.mission,choiceId:d.eventChoice});return;}if(d.recall){confirmAction('เรียกทีมกลับ?', 'ทีมจะหยุดภารกิจและกลับมาพักที่กิลด์',()=>dispatch('recallMission',{missionId:d.recall}));return;}if(d.recruit){dispatch('recruit',{memberId:d.recruit});return;}if(d.task){dispatch('setTask',{memberId:d.memberId,task:d.task});return;}if(d.build){ui.buildType=d.build;ui.moveId=null;ui.facilityId=null;renderer?.setMoveMode(null);renderer?.setBuildMode(d.build);closeMenu();syncUI();return;}if('cancelBuild'in d){cancelBuild();return;}if(d.rotate){dispatch('rotate',{facilityId:d.rotate});return;}if('rotatePlacement'in d){renderer?.rotatePlacement();return;}if('expandBuilding'in d){confirmAction('ต่อเติมอาคาร?',moneyCost(getBuildingExpansionCost(state)),()=>dispatch('expandBuilding'));return;}if(d.move){ui.moveId=d.move;ui.buildType=null;renderer?.setBuildMode(null);renderer?.setMoveMode(d.move);closeMenu();syncHUD();return;}if(d.upgrade){const f=state.facilities.find(f=>f.id===d.upgrade);const def=FACILITIES[f.type];const cost=getUpgradeCost(state,f.id);confirmAction('อัปเกรด'+def.name,`ปรับปรุงเป็นระดับ ${f.level+1} · ${moneyCost(cost)}`,()=>dispatch('upgrade',{facilityId:d.upgrade}));return;}if(d.demolish){confirmAction('รื้อของชิ้นนี้?', 'พื้นที่จะว่างให้จัดวางใหม่ ได้ทรัพยากรคืนบางส่วน ความจุและโบนัสจะลดลง',()=>{if(dispatch('demolish',{facilityId:d.demolish})){ui.facilityId=null;syncUI();}});return;}if('expand'in d){confirmAction('ขยายที่ดินกิลด์?',`${state.grid.width+6}×${state.grid.height+4} ช่อง · ${moneyCost(getExpansionCost(state))}`,()=>dispatch('expand'));return;}if(d.craft){dispatch('craft',{equipmentId:d.craft});return;}if(d.equip){const select=document.querySelector(`[data-equip-select="${CSS.escape(d.equip)}"]`);if(select)dispatch('equip',{memberId:select.value,equipmentId:d.equip});return;}if(d.unequip){dispatch('equip',{memberId:d.memberId,equipmentId:null,slot:d.unequip});return;}if(d.specialize){confirmAction('เลือกสาย'+JOBS[d.specialize].name+'?', 'สมาชิกจะเชี่ยวชาญสายนี้ การเลือกสายเป็นการตัดสินใจถาวรของรอบเล่น',()=>dispatch('specialize',{memberId:d.memberId,classId:d.specialize}));return;}if(d.hostEvent){dispatch('hostEvent',{eventId:d.hostEvent});return;}if(d.speed){ui.speed=Number(d.speed);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();return;}if('dismissTutorial'in d){ui.tutorial=false;syncUI();return;}if('saveNow'in d){save(true);return;}if('exportSave'in d){const blob=new Blob([serializeGame(state)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`little-leaf-guild-day-${state.day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('ส่งออกไฟล์เซฟแล้ว');return;}if('importSave'in d){$('import-file').click();return;}if('toggleSound'in d){ui.sound=!ui.sound;state.settings.sound=ui.sound;save();playChime();b.textContent=ui.sound?'♪ เสียงเปิด':'♪ เสียงปิด';return;}if('newGame'in d){$('settings-dialog').close();confirmAction('เริ่มกิลด์ใหม่?', 'เซฟปัจจุบันจะถูกแทนที่ เริ่มจากบ้านหลังเล็กและสมาชิกชุดแรก',()=>{state=createGame();ui={...ui,tab:'quests',questId:null,memberId:null,facilityId:null,missionId:null,selected:new Set(),tutorial:true,paused:false,speed:1,sound:!!state.settings.sound};cancelBuild();renderer?.setState(state);renderer?.resetView?.();save();syncUI();toast('ยินดีต้อนรับกลับสู่กิลด์ใบอ่อน');});}});
 $('pause-button').addEventListener('click',()=>{ui.paused=!ui.paused;syncHUD();});
 $('zoom-in').addEventListener('click',()=>{ui.zoom=Math.min(2.4,(renderer?.zoom||1)+.15);renderer?.setZoom(ui.zoom);});$('zoom-out').addEventListener('click',()=>{ui.zoom=Math.max(.6,(renderer?.zoom||1)-.15);renderer?.setZoom(ui.zoom);});$('home-view').addEventListener('click',()=>{ui.zoom=1;renderer?.resetView?.();renderer?.setZoom(1);});
-document.addEventListener('keydown',event=>{if(event.target.matches('input,select,textarea,button')||document.querySelector('dialog[open]'))return;if(event.code==='Space'){event.preventDefault();ui.paused=!ui.paused;syncHUD();}if(['1','2','4'].includes(event.key)){ui.speed=Number(event.key);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();}if(event.key==='Escape'){cancelBuild();closeMenu();}if((event.key==='Enter'||event.key===' ')&&event.target.matches('[role="button"]'))event.target.click();});
+document.addEventListener('keydown',event=>{if(event.target.matches('input,select,textarea,button')||document.querySelector('dialog[open]'))return;if((event.key==='Enter'||event.key===' ')&&event.target.matches('[role="button"]')){event.preventDefault();event.target.click();return;}if(event.code==='KeyR'&&(ui.buildType||ui.moveId)){event.preventDefault();renderer?.rotatePlacement();return;}if(event.code==='Space'){event.preventDefault();ui.paused=!ui.paused;syncHUD();}if(['1','2','4'].includes(event.key)){ui.speed=Number(event.key);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();}if(event.key==='Escape'){cancelBuild();closeMenu();}});
 let lastFrame=performance.now(),uiTimer=0,saveTimer=0,seenLog=state.log[0];
 function frame(now){state.settings.paused=ui.paused;const dt=Math.max(0,Math.min((now-lastFrame)/1000,.25));lastFrame=now;if(!document.hidden&&!ui.paused&&!$('confirm-dialog').open&&!$('settings-dialog').open){tick(state,dt*ui.speed);renderer?.setState(state);uiTimer+=dt;saveTimer+=dt;if(state.log[0]!==seenLog){const latest=state.log[0];if(latest?.type!=='daily'){toast(latest.text);playChime();}seenLog=state.log[0];}if(uiTimer>.9){syncHUD();if(!document.activeElement?.matches('select')&&(ui.missionId||ui.questId||ui.tab==='journal'||ui.tab==='members'||ui.tab==='build'||ui.tab==='workshop'))syncUI();uiTimer=0;}if(saveTimer>12){save();saveTimer=0;}}if(ui.missionId)drawMissionScene();requestAnimationFrame(frame);}
 function drawMissionScene(){const canvas=$('mission-scene');if(!canvas||!ui.missionId)return;const mission=state.missions.find(m=>m.id===ui.missionId);const quest=QUESTS.find(q=>q.id===mission?.questId);if(mission&&quest)drawBattleScene(canvas,mission,quest,state,{paused:ui.paused||document.hidden||!$('management-dialog').open,time:performance.now()/1000});}

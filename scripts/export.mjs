@@ -1,6 +1,6 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import {gzipSync} from 'node:zlib';
-const modules={'content.js':'Content','game.js':'Engine','render.js':'Artwork','guild-art.js':'GuildArtwork','world.js':'World'};
+const modules={'site.js':'Site','content.js':'Content','game.js':'Engine','render.js':'Artwork','guild-art.js':'GuildArtwork','world.js':'World'};
 function replaceImports(source){return source.replace(/import\s*\{([^}]+)\}\s*from\s*['"]\.\/([^'"]+)['"];?/g,(_,names,file)=>`const {${names}}=${modules[file]};`);}
 const phaser=(await readFile('node_modules/phaser/dist/phaser.min.js','utf8'));
 const compressed=gzipSync(phaser,{level:9}).toString('base64');

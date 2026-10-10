@@ -1,6 +1,7 @@
+import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding } from './site.js';
 import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, GUILD_EVENTS, MISSION_POLICIES } from './content.js';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const DAY_LENGTH = 240;
 const RESOURCE_KEYS = ['gold', 'wood', 'stone', 'herb'];
 const MAX_LEVEL = 20;
@@ -20,7 +21,8 @@ const TRAIT_BONUSES = {
 const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
 const rankIndex = rank => RANKS.indexOf(rank);
 export const getRankIndex = rankIndex;
-export const getRoomSize = type => ({ w: FACILITIES[type]?.w ?? 0, h: FACILITIES[type]?.h ?? 0 });
+export function getRoomSize(type,rotation=0){const d=FACILITIES[type];return rotation%2?{w:d?.h??0,h:d?.w??0}:{w:d?.w??0,h:d?.h??0};}
+export function getFacilityEntry(f){const d=getRoomSize(f.type,f.rotation||0),r=f.rotation||0;return r===0?{x:f.x+d.w/2,y:f.y+d.h+.5}:r===1?{x:f.x-.5,y:f.y+d.h/2}:r===2?{x:f.x+d.w/2,y:f.y-.5}:{x:f.x+d.w+.5,y:f.y+d.h/2};}
 const hasRank = (state, rank) => rankIndex(state.rank) >= rankIndex(rank);
 const success = message => ({ ok: true, message });
 const failure = message => ({ ok: false, message });
@@ -65,15 +67,15 @@ export function createGame(seed = 123) {
   const state = {
     version: SAVE_VERSION, seed: seed >>> 0 || 123, rng: seed >>> 0 || 123, nextId: 10,
     gold: 1200, wood: 32, stone: 20, herb: 12, rep: 0, day: 1, clock: 0, elapsed: 0,
-    rank: 'F', landLevel: 0, grid: { width: 20, height: 16 },
+    rank: 'F', landLevel: 0, grid: { width: 20, height: 16 }, building:{...START_BUILDING},
     members: MEMBERS.filter(member => member.starter).map(member => createMember(member)),
     facilities: [
-      { id: 'room-1', type: 'reception', x: 4, y: 3, level: 1 },
-      { id: 'room-2', type: 'dorm', x: 8, y: 3, level: 1 },
-      { id: 'room-3', type: 'infirmary', x: 12, y: 3, level: 1 },
-      { id: 'room-4', type: 'kitchen', x: 4, y: 7, level: 1 },
-      { id: 'room-5', type: 'training', x: 8, y: 7, level: 1 },
-      { id: 'room-6', type: 'workshop', x: 12, y: 7, level: 1 },
+      {id:'room-1',type:'reception',x:5.5,y:4.5,rotation:0,level:1},
+      {id:'room-2',type:'dorm',x:10.5,y:4.5,rotation:0,level:1},
+      {id:'room-3',type:'infirmary',x:11.75,y:4.5,rotation:0,level:1},
+      {id:'room-4',type:'kitchen',x:5.75,y:7.75,rotation:1,level:1},
+      {id:'room-5',type:'training',x:7.25,y:7.75,rotation:0,level:1},
+      {id:'room-6',type:'workshop',x:9.5,y:8.25,rotation:2,level:1},
     ],
     missions: [], completedQuests: {}, questRuns: {}, bonds: {}, inventory: {}, log: [], ledger: [],
     goals: { firstMission: false, firstCraft: false, firstUpgrade: false, firstRecruit: false, firstExpansion: false },
@@ -146,14 +148,14 @@ function questLockReason(state, quest) {
   if (quest.id === 'rescue') {
     const needs = [];
     if (state.members.length < 6) needs.push('มีสมาชิกอย่างน้อย 6 คน');
-    if (!roomLevel(state, 'dispatch')) needs.push('สร้างห้องวางแผนเพื่อรองรับ 2 ทีม');
+    if (!roomLevel(state, 'dispatch')) needs.push('วางโต๊ะวางแผนเพื่อรองรับ 2 ทีม');
     if (state.landLevel < 1) needs.push('ขยายที่ดินอย่างน้อย 1 ครั้ง');
     if (needs.length) return `เตรียมกิลด์ช่วยทีมสำรวจ: ${needs.join(' · ')}`;
   }
   if (quest.final) {
     const missingStories = ['hollow', 'ruins', 'rescue'].filter(id => !state.completedQuests[id]);
     if (missingStories.length) return `ต้องผ่าน ${missingStories.map(id => QUEST_BY_ID[id].name).join(' · ')} ก่อน`;
-    if (state.facilities.filter(room => room.level >= 2).length < 2) return 'เตรียมกิลด์รับทุกคนกลับบ้าน: อัปเกรดห้องที่เลือกอย่างน้อย 2 ห้องเป็นระดับ 2';
+    if (state.facilities.filter(room => room.level >= 2).length < 2) return 'เตรียมกิลด์รับทุกคนกลับบ้าน: อัปเกรดจุดใช้งานที่เลือกอย่างน้อย 2 จุดใช้งานเป็นระดับ 2';
   }
   if (quest.final && state.story.finished) return 'ผ่านบทสรุปแล้ว';
   return '';
@@ -172,7 +174,7 @@ export function getAvailableRecruits(state) {
   return MEMBERS.filter(member => !member.starter && !memberById(state, member.id)).map(member => {
     let reason = '';
     if (!hasRank(state, member.unlockRank)) reason = `ต้องมีกิลด์ระดับ ${member.unlockRank}`;
-    else if (stats.memberCount >= stats.memberCap) reason = 'ห้องพักเต็มแล้ว';
+    else if (stats.memberCount >= stats.memberCap) reason = 'พื้นที่พักเต็มแล้ว';
     else if (state.gold < member.cost) reason = 'เหรียญไม่เพียงพอ';
     return { ...member, available: !reason, reason };
   });
@@ -201,7 +203,7 @@ export function previewMission(state, questId, memberIds = [], policy = 'balance
   const roles = [...new Set(members.map(member => getMemberStats(state, member).role))];
   const missingRoles = quest.tags.filter(role => !roles.includes(role));
   const roleBonus = (quest.tags.length - missingRoles.length) * 0.07;
-  const bondBonus = Math.min(0.18, teamBonds(state, memberIds) * 0.0008);
+  const bondBonus = Math.min(0.18, teamBonds(state, Array.isArray(memberIds)?memberIds:[]) * 0.0008);
   const libraryBonus = quest.tags.includes('magic') ? bestRoomLevel(state, 'library') * 0.035 : 0;
   const traitBonus = members.reduce((sum, member) => sum + (quest.tags.includes('scout') ? traitOf(member).scouting || 0 : 0) + (quest.tags.includes('heal') ? traitOf(member).healing || 0 : 0), 0);
   const power = Math.round(members.reduce((sum, member) => sum + getMemberStats(state, member).power, 0) * (1 + roleBonus + bondBonus + libraryBonus + traitBonus) * (selectedPolicy?.power || 1));
@@ -225,55 +227,66 @@ export function previewMission(state, questId, memberIds = [], policy = 'balance
 function overlaps(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
-export function canPlaceFacility(state, type, x, y, ignoreId = null) {
-  const definition = FACILITIES[type];
-  if (!definition) return failure('ไม่พบห้องชนิดนี้');
-  if (!Number.isInteger(x) || !Number.isInteger(y)) return failure('ตำแหน่งต้องอยู่บนช่องกริด');
-  const area = { x, y, w: definition.w, h: definition.h };
-  if (x < 0 || y < 0 || x + area.w > state.grid.width || y + area.h > state.grid.height) return failure('พื้นที่อยู่นอกที่ดินกิลด์');
-  if (overlaps(area, { x: 1, y: 1, w: 3, h: 3 })) return failure('เก็บพื้นที่ต้นไม้กลางกิลด์ไว้');
-  if (state.facilities.some(room => room.id !== ignoreId && overlaps(area, { ...room, ...getRoomSize(room.type) }))) return failure('ตำแหน่งนี้ทับห้องที่มีอยู่');
-  const rooms = state.facilities.filter(room => room.id !== ignoreId);
-  const planned = [...rooms, { type, x, y }];
-  if (!hasWalkableEntries(state.grid, planned)) return failure('ต้องเว้นทางเดินจากประตูกิลด์ถึงทุกห้องอย่างน้อย 1 ช่อง');
-  return success('วางห้องได้');
+export function canPlaceFacility(state,type,x,y,ignoreId=null,rotation=0,checkAccess=true){
+ if(!FACILITIES[type])return failure('ไม่พบเฟอร์นิเจอร์');
+ if(!finiteNumber(x)||!finiteNumber(y)||!Number.isInteger(x*4)||!Number.isInteger(y*4))return failure('วางได้ครั้งละหนึ่งในสี่ช่อง');
+ if(!Number.isInteger(rotation)||rotation<0||rotation>3)return failure('ทิศทางไม่ถูกต้อง');
+ const size=getRoomSize(type,rotation),area={x,y,...size},b=buildingRect(state);
+ if(x<0||y<0||x+size.w>state.grid.width||y+size.h>state.grid.height)return failure('อยู่นอกที่ดินกิลด์');
+ if(type!=='garden'&&(x<b.x+.25||y<b.y+.25||x+size.w>b.x+b.w-.25||y+size.h>b.y+b.h-.25))return failure('วางภายในอาคาร หรือขยายอาคารก่อน');
+ if(type==='garden'&&intersects(area,b))return failure('แปลงสมุนไพรต้องอยู่กลางแจ้ง');
+ const entrance={x:b.x+b.w/2-.5,y:b.y+b.h-.75,w:1,h:1.5};
+ if(intersects(area,entrance)||protectedAreas(state).some(p=>intersects(area,p)))return failure('ต้องเว้นถนนและทางเข้าอาคาร');
+ if(state.facilities.some(f=>f.id!==ignoreId&&intersects(area,{...f,...getRoomSize(f.type,f.rotation||0)})))return failure('ตำแหน่งนี้ทับเฟอร์นิเจอร์');
+ const planned=[...state.facilities.filter(f=>f.id!==ignoreId),{type,x,y,rotation}];
+ if(checkAccess&&!hasWalkableEntries(state,planned))return failure('ต้องมีทางเดินถึงด้านใช้งานของทุกชิ้น');
+ return success('วางได้');
 }
 
-/** Flood-fill only on construction/import, never every animation frame. */
-function hasWalkableEntries(grid, rooms) {
-  const blocked = new Uint8Array(grid.width * grid.height);
-  const at = (x, y) => y * grid.width + x;
-  const inGrid = (x, y) => x >= 0 && y >= 0 && x < grid.width && y < grid.height;
-  for (let x = 1; x <= 3; x++) for (let y = 1; y <= 3; y++) blocked[at(x, y)] = 1;
-  for (const room of rooms) {
-    const { w, h } = FACILITIES[room.type];
-    for (let x = room.x; x < room.x + w; x++) for (let y = room.y; y < room.y + h; y++) {
-      if (inGrid(x, y)) blocked[at(x, y)] = 1;
-    }
+const NAV_STEP=.5;
+function navigation(state,facilities,start){
+ const w=state.grid.width*2,h=state.grid.height*2,at=(x,y)=>y*w+x;
+ const valid=(x,y)=>x>=0&&y>=0&&x<w&&y<h;
+ const point=(x,y)=>({x:(x+.5)*NAV_STEP,y:(y+.5)*NAV_STEP});
+ const blocked=new Uint8Array(w*h),visited=new Uint8Array(w*h),parent=new Int32Array(w*h);parent.fill(-1);
+ const areas=facilities.map(f=>({...f,...getRoomSize(f.type,f.rotation||0)}));
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=point(x,y);if(areas.some(a=>p.x>a.x-.08&&p.x<a.x+a.w+.08&&p.y>a.y-.08&&p.y<a.y+a.h+.08))blocked[at(x,y)]=1;}
+ const b=buildingRect(state),door=b.x+b.w/2;
+ const sx=Math.floor(start.x*2),sy=Math.floor(start.y*2),queue=[];
+ if(valid(sx,sy)&&!blocked[at(sx,sy)]){queue.push([sx,sy]);visited[at(sx,sy)]=1;}
+ for(let i=0;i<queue.length;i++){
+  const[x,y]=queue[i],p=point(x,y);
+  for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(!valid(nx,ny))continue;const id=at(nx,ny);if(blocked[id]||visited[id])continue;
+   const q=point(nx,ny);if(isInsideBuilding(state,p.x,p.y)!==isInsideBuilding(state,q.x,q.y)&&!(Math.abs(q.x-door)<=.55&&Math.abs(p.x-door)<=.55&&Math.max(p.y,q.y)>=b.y+b.h&&Math.min(p.y,q.y)<b.y+b.h))continue;
+   visited[id]=1;parent[id]=at(x,y);queue.push([nx,ny]);
   }
-  // Gate is on the bottom edge, using the nearest open tile to its center.
-  const gateX = [...Array(grid.width).keys()].sort((a, b) => Math.abs(a - Math.floor(grid.width / 2)) - Math.abs(b - Math.floor(grid.width / 2))).find(x => !blocked[at(x, grid.height - 1)]);
-  if (gateX === undefined) return false;
-  const visited = new Uint8Array(blocked.length);
-  const queue = [[gateX, grid.height - 1]];
-  visited[at(gateX, grid.height - 1)] = 1;
-  for (let i = 0; i < queue.length; i++) {
-    const [x, y] = queue[i];
-    for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
-      const nx = x + dx, ny = y + dy;
-      if (inGrid(nx, ny) && !blocked[at(nx, ny)] && !visited[at(nx, ny)]) {
-        visited[at(nx, ny)] = 1; queue.push([nx, ny]);
-      }
-    }
-  }
-  return rooms.every(room => {
-    const { w, h } = FACILITIES[room.type];
-    const entries = [];
-    for (let x = room.x; x < room.x + w; x++) entries.push([x, room.y - 1], [x, room.y + h]);
-    for (let y = room.y; y < room.y + h; y++) entries.push([room.x - 1, y], [room.x + w, y]);
-    return entries.some(([x, y]) => inGrid(x, y) && visited[at(x, y)]);
-  });
+ }
+ return{w,h,visited,parent,point,at,valid};
 }
+function hasWalkableEntries(state,facilities){
+ const b=buildingRect(state),nav=navigation(state,facilities,{x:b.x+b.w/2,y:b.y+b.h-.25});
+ return facilities.every(f=>{const p=getFacilityEntry(f);if(f.type!=='garden'&&!isInsideBuilding(state,p.x,p.y))return false;const x=Math.floor(p.x*2),y=Math.floor(p.y*2);return nav.valid(x,y)&&nav.visited[nav.at(x,y)];});
+}
+export function findWalkPath(state,start,goal){
+ const nav=navigation(state,state.facilities,start),gx=Math.floor(goal.x*2),gy=Math.floor(goal.y*2);if(!nav.valid(gx,gy)||!nav.visited[nav.at(gx,gy)])return[];
+ const path=[];let id=nav.at(gx,gy);while(id!==-1){path.unshift(nav.point(id%nav.w,Math.floor(id/nav.w)));id=nav.parent[id];}return path;
+}
+export function getWalkableSpots(state){
+ const b=buildingRect(state),nav=navigation(state,state.facilities,{x:b.x+b.w/2,y:b.y+b.h-.25}),spots=[];
+ for(let y=0;y<nav.h;y++)for(let x=0;x<nav.w;x++)if(nav.visited[nav.at(x,y)]){const p=nav.point(x,y);if(p.x>b.x+.5&&p.x<b.x+b.w-.5&&p.y>b.y+.5&&p.y<b.y+b.h-.5)spots.push(p);}
+ return spots.length?spots:[{x:b.x+b.w/2,y:b.y+b.h-.25}];
+}
+export function getBuildingExpansionCost(state){const level=state.building.level;return{gold:300+level*200,wood:12+level*6,stone:8+level*4};}
+function expandBuilding(state){
+ const b=state.building;if(b.level>=3)return failure('อาคารขยายเต็มแล้ว');
+ const next={...b,width:b.width+2,height:b.height+2,level:b.level+1},area={x:next.x,y:next.y,w:next.width,h:next.height};
+ if(area.x+area.w>state.grid.width||area.y+area.h>state.grid.height||protectedAreas({...state,building:next}).some(p=>intersects(area,p)))return failure('ซื้อที่ดินเพิ่มก่อนขยายอาคาร');
+ if(state.facilities.some(f=>f.type==='garden'&&intersects(area,{...f,...getRoomSize(f.type,f.rotation||0)})))return failure('ย้ายแปลงสมุนไพรออกจากพื้นที่ต่อเติมก่อน');
+ const cost=getBuildingExpansionCost(state);if(!canAfford(state,cost))return failure('วัสดุต่อเติมอาคารไม่เพียงพอ');
+ const planned={...state,building:next};if(!hasWalkableEntries(planned,state.facilities))return failure('ทางเข้าใหม่ถูกบัง ต้องย้ายของก่อน');
+ transact(state,cost,'ต่อเติมอาคารกิลด์');state.building=next;addLog(state,'ต่อเติมพื้นอาคารแล้ว จัดวางของในพื้นที่ใหม่ได้','build');return success('ขยายอาคารแล้ว');
+}
+function rotate(state,payload){const f=state.facilities.find(f=>f.id===payload.facilityId);if(!f)return failure('ไม่พบเฟอร์นิเจอร์');return move(state,{facilityId:f.id,x:f.x,y:f.y,rotation:((f.rotation||0)+1)%4});}
 
 export function getUpgradeCost(state, facilityId) {
   const room = typeof facilityId === 'object' ? facilityId : state.facilities.find(facility => facility.id === facilityId);
@@ -478,7 +491,7 @@ export function tick(state, seconds) {
         addXp(state, member, (0.16 + training * 0.06 + bestRoomLevel(state, 'library') * 0.04 + (traitOf(member).training || 0)) * step);
         if (member.energy <= 12) { member.task = 'rest'; addLog(state, `${member.name} เหนื่อยจากการฝึกและกลับไปพัก`, 'info'); }
       } else if (member.task === 'train') {
-        member.waitingReason = 'รอผลัดเข้าห้องฝึก';
+        member.waitingReason = 'รอผลัดเข้าหุ่นฝึก';
         member.energy = clamp(member.energy + 0.07 * step, 0, 100);
       } else if (member.task === 'work') {
         const worked = state.daily.work[member.id] || 0;
@@ -536,51 +549,51 @@ function recruit(state, payload) {
 
 function build(state, payload) {
   const content = FACILITIES[payload.type];
-  if (!content) return failure('ไม่พบห้องชนิดนี้');
+  if (!content) return failure('ไม่พบของชนิดนี้');
   if (!hasRank(state, content.unlockRank)) return failure(`ต้องมีกิลด์ระดับ ${content.unlockRank}`);
-  if (['reception', 'dispatch'].includes(payload.type) && state.facilities.some(room => room.type === payload.type)) return failure('ห้องชนิดนี้มีได้หนึ่งห้อง');
-  const place = canPlaceFacility(state, payload.type, payload.x, payload.y);
+  if (['reception', 'dispatch'].includes(payload.type) && state.facilities.some(room => room.type === payload.type)) return failure('ของชนิดนี้มีได้หนึ่งชิ้น');
+  const place = canPlaceFacility(state,payload.type,payload.x,payload.y,null,payload.rotation??0);
   if (!place.ok) return place;
-  if (!canAfford(state, content.cost)) return failure('ทรัพยากรสำหรับสร้างห้องไม่เพียงพอ');
+  if (!canAfford(state, content.cost)) return failure('ทรัพยากรสำหรับวางของไม่เพียงพอ');
   transact(state, content.cost, `สร้าง${content.name}`);
-  state.facilities.push({ id: `room-${state.nextId++}`, type: content.id, x: payload.x, y: payload.y, level: 1 });
+  state.facilities.push({ id: `room-${state.nextId++}`, type: content.id, x: payload.x, y: payload.y, rotation:payload.rotation??0, level: 1 });
   addLog(state, `สร้าง${content.name}แล้ว สมาชิกเริ่มเข้าใช้พื้นที่ใหม่`, 'build');
   return success(`สร้าง${content.name}แล้ว`);
 }
 
 function move(state, payload) {
   const room = state.facilities.find(item => item.id === payload.facilityId);
-  if (!room) return failure('ไม่พบห้อง');
-  const place = canPlaceFacility(state, room.type, payload.x, payload.y, room.id);
+  if (!room) return failure('ไม่พบจุดใช้งาน');
+  const place = canPlaceFacility(state,room.type,payload.x,payload.y,room.id,payload.rotation??room.rotation??0);
   if (!place.ok) return place;
-  room.x = payload.x; room.y = payload.y;
+  room.x=payload.x;room.y=payload.y;room.rotation=payload.rotation??room.rotation??0;
   return success(`ย้าย${FACILITIES[room.type].name}แล้ว`);
 }
 
 function upgrade(state, payload) {
   const room = state.facilities.find(item => item.id === payload.facilityId);
-  if (!room) return failure('ไม่พบห้อง');
-  if (room.level >= FACILITIES[room.type].maxLevel) return failure('ห้องนี้อยู่ระดับสูงสุดแล้ว');
+  if (!room) return failure('ไม่พบจุดใช้งาน');
+  if (room.level >= FACILITIES[room.type].maxLevel) return failure('ของชิ้นนี้อยู่ระดับสูงสุดแล้ว');
   const cost = getUpgradeCost(state, room.id);
   if (!canAfford(state, cost)) return failure('ทรัพยากรสำหรับอัปเกรดไม่เพียงพอ');
   transact(state, cost, `อัปเกรด${FACILITIES[room.type].name}`);
   room.level += 1;
   state.goals.firstUpgrade = true;
   addLog(state, `${FACILITIES[room.type].name} เป็นระดับ ${room.level}`, 'build');
-  return success(`อัปเกรดห้องเป็นระดับ ${room.level} แล้ว`);
+  return success(`อัปเกรดจุดใช้งานเป็นระดับ ${room.level} แล้ว`);
 }
 
 function demolish(state, payload) {
   const room = state.facilities.find(item => item.id === payload.facilityId);
-  if (!room) return failure('ไม่พบห้อง');
-  if (room.type === 'reception') return failure('โถงกิลด์เป็นหัวใจของบ้าน ย้ายได้แต่รื้อไม่ได้');
+  if (!room) return failure('ไม่พบจุดใช้งาน');
+  if (room.type === 'reception') return failure('โต๊ะรับคำร้องเป็นหัวใจของบ้าน ย้ายได้แต่รื้อไม่ได้');
   if (room.type === 'dorm' && (roomLevel(state, 'dorm') - room.level) * 4 < state.members.length) return failure('สมาชิกจะไม่มีที่พักเพียงพอ');
-  if (room.type === 'dispatch' && getGuildStats(state).activeMissions > 1) return failure('รอให้ทีมที่สองกลับก่อนรื้อห้องวางแผน');
+  if (room.type === 'dispatch' && getGuildStats(state).activeMissions > 1) return failure('รอให้ทีมที่สองกลับก่อนรื้อโต๊ะวางแผน');
   const refund = Object.fromEntries(RESOURCE_KEYS.map(key => [key, Math.floor((FACILITIES[room.type].cost[key] || 0) * 0.4)]));
   transact(state, refund, `รื้อ${FACILITIES[room.type].name} คืนวัสดุบางส่วน`, 1);
   state.facilities = state.facilities.filter(item => item.id !== room.id);
   if (room.type === 'training' && !roomLevel(state, 'training')) state.members.filter(member => member.task === 'train').forEach(member => { member.task = 'rest'; });
-  return success('รื้อห้องและคืนวัสดุ 40% แล้ว');
+  return success('รื้อของและคืนวัสดุ 40% แล้ว');
 }
 
 function expand(state) {
@@ -593,7 +606,7 @@ function expand(state) {
   state.grid.width += 6;
   state.grid.height += 4;
   state.goals.firstExpansion = true;
-  addLog(state, 'รั้วกิลด์ขยับออกแล้ว มีพื้นที่ใหม่ให้จัดห้องและสวน', 'build');
+  addLog(state, 'รั้วกิลด์ขยับออกแล้ว มีพื้นที่ใหม่ให้จัดของและสวน', 'build');
   return success('ขยายที่ดินกิลด์แล้ว');
 }
 
@@ -601,13 +614,13 @@ function craft(state, payload) {
   const item = EQUIPMENT_BY_ID[payload.equipmentId];
   if (!item) return failure('ไม่พบสูตรอุปกรณ์');
   if (!hasRank(state, item.unlockRank)) return failure(`สูตรนี้ต้องมีกิลด์ระดับ ${item.unlockRank}`);
-  if (bestRoomLevel(state, 'workshop') < item.workshopLevel) return failure(`ต้องมีโรงซ่อมระดับ ${item.workshopLevel}`);
+  if (bestRoomLevel(state, 'workshop') < item.workshopLevel) return failure(`ต้องมีโต๊ะช่างระดับ ${item.workshopLevel}`);
   if (!canAfford(state, item.cost)) return failure('วัตถุดิบไม่เพียงพอ');
   if ((state.inventory[item.id] || 0) >= 24) return failure('มีอุปกรณ์ชนิดนี้มากเพียงพอแล้ว');
   transact(state, item.cost, `สร้าง${item.name}`);
   state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
   state.goals.firstCraft = true;
-  addLog(state, `โรงซ่อมสร้าง${item.name}แล้ว เลือกสมาชิกเพื่อสวมใส่ได้`, 'craft');
+  addLog(state, `โต๊ะช่างสร้าง${item.name}แล้ว เลือกสมาชิกเพื่อสวมใส่ได้`, 'craft');
   return success(`สร้าง${item.name}แล้ว`);
 }
 
@@ -686,13 +699,15 @@ export function act(state, type, payload = {}) {
       if (!member) return failure('ไม่พบสมาชิก');
       if (isBusy(state, member.id)) return failure('สมาชิกกำลังทำภารกิจ');
       if (!['rest', 'train', 'work'].includes(payload.task)) return failure('งานไม่ถูกต้อง');
-      if (payload.task === 'train' && !roomLevel(state, 'training')) return failure('ต้องมีห้องฝึก');
+      if (payload.task === 'train' && !roomLevel(state, 'training')) return failure('ต้องมีหุ่นฝึก');
       if (payload.task === 'train' && (member.energy <= 12 || member.injury > 40)) return failure('สมาชิกต้องพักก่อนฝึก');
       member.task = payload.task; member.trainingProgress = 0;
       return success('เปลี่ยนงานสมาชิกแล้ว');
     }
     case 'build': return build(state, payload);
     case 'move': return move(state, payload);
+    case 'rotate': return rotate(state,payload);
+    case 'expandBuilding': return expandBuilding(state);
     case 'upgrade': return upgrade(state, payload);
     case 'demolish': return demolish(state, payload);
     case 'expand': return expand(state);
@@ -723,7 +738,7 @@ export function deserializeGame(source) {
   const savedChecksum = data.checksum;
   delete data.checksum;
   if (savedChecksum !== undefined && (typeof savedChecksum !== 'string' || savedChecksum !== saveChecksum(JSON.stringify(data)))) throw new Error('ไฟล์เซฟเสียหายหรือข้อมูลถูกเปลี่ยนหลังบันทึก');
-  if (![1, SAVE_VERSION].includes(data.version)) throw new Error('เวอร์ชันเซฟนี้ยังไม่รองรับ');
+  if (![1,2,SAVE_VERSION].includes(data.version)) throw new Error('เวอร์ชันเซฟนี้ยังไม่รองรับ');
   // Clone through JSON above; imports can never change the caller's previous state.
   const defaults = createGame(data.seed || 123);
   const state = { ...defaults, ...data };
@@ -756,14 +771,32 @@ export function deserializeGame(source) {
     return normalized;
   });
   if (!Array.isArray(state.facilities) || state.facilities.length < 1 || state.facilities.length > 100) throw new Error('รายชื่อห้องไม่ถูกต้อง');
+  if(data.version<3&&!data.building){
+    state.building={x:5,y:4,width:Math.min(12,state.grid.width-6),height:Math.min(10,state.grid.height-5),level:2};
+    const oldAreas=[];for(const f of state.facilities){const w=['reception','dorm','kitchen','training','lounge'].includes(f?.type)?4:3;const area={x:f?.x,y:f?.y,w,h:3};if(!f||!FACILITIES[f.type]||!Number.isInteger(f.x)||!Number.isInteger(f.y)||f.x<0||f.y<0||f.x+w>state.grid.width||f.y+3>state.grid.height||oldAreas.some(a=>intersects(a,area)))throw new Error('ผังในเซฟเดิมไม่ถูกต้อง');oldAreas.push(area);}
+    const packed=[];
+    for(const original of state.facilities){
+      if(!original||!FACILITIES[original.type])throw new Error('เฟอร์นิเจอร์ในเซฟไม่ถูกต้อง');
+      let placed=null;
+      for(let y=original.type==='garden'?1:4.5;y<state.grid.height&&!placed;y+=.5)for(let x=original.type==='garden'?3:5.5;x<state.grid.width&&!placed;x+=.5){
+        const f={...original,x,y,rotation:0};
+        if(canPlaceFacility({...state,facilities:packed},f.type,x,y,null,0,true).ok)placed=f;
+      }
+      if(!placed)throw new Error('อาคารไม่พอสำหรับเซฟเดิม');packed.push(placed);
+    }
+    state.facilities=packed;
+  }
+  const b=state.building;
+  if(!b||b.x!==5||b.y!==4||!Number.isInteger(b.level)||b.level<0||b.level>3||b.width!==8+b.level*2||b.height!==6+b.level*2||b.x+b.width>state.grid.width||b.y+b.height>state.grid.height)throw new Error('ขนาดอาคารไม่ถูกต้อง');
   const roomIds = new Set();
   for (const room of state.facilities) {
     if (!room || typeof room.id !== 'string' || roomIds.has(room.id) || !FACILITIES[room.type]) throw new Error('ห้องไม่ถูกต้อง');
     roomIds.add(room.id);
     validateNumber(room, 'level', 1, 3, true);
-    if (!canPlaceFacility(state, room.type, room.x, room.y, room.id).ok) throw new Error('ห้องในเซฟวางทับกันหรืออยู่นอกพื้นที่');
+    if (!canPlaceFacility(state, room.type,room.x,room.y,room.id,room.rotation??0,false).ok) throw new Error('ห้องในเซฟวางทับกันหรืออยู่นอกพื้นที่');
   }
-  if (!state.facilities.some(room => room.type === 'reception') || roomLevel(state, 'dorm') * 4 < state.members.length) throw new Error('ห้องกิลด์หรือห้องพักไม่เพียงพอ');
+  if(!hasWalkableEntries(state,state.facilities))throw new Error('ทางใช้งานเฟอร์นิเจอร์ถูกบัง');
+  if (!state.facilities.some(room => room.type === 'reception') || roomLevel(state, 'dorm') * 4 < state.members.length) throw new Error('โต๊ะรับคำร้องหรือเตียงพักไม่เพียงพอ');
   if (!Array.isArray(state.missions) || state.missions.length > 22) throw new Error('รายการภารกิจไม่ถูกต้อง');
   const missionIds = new Set(), assigned = new Set();
   for (const mission of state.missions) {

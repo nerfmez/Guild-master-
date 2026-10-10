@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission } from '../src/game.js';
+import { createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
 import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
@@ -64,16 +64,16 @@ test('invalid and double booked commands are atomic', () => {
 
 test('placement, expansion and room upgrade enforce bounds and occupancy', () => {
   const state = createGame();
-  assert.equal(act(state, 'build', { type: 'dorm', x: 16, y: 11 }).ok, true);
+  assert.equal(act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 }).ok, true);
   const room = state.facilities.at(-1);
   assert.equal(act(state, 'move', { facilityId: room.id, x: 4, y: 3 }).ok, false);
-  assert.equal(act(state, 'move', { facilityId: room.id, x: 16, y: 12 }).ok, true);
+  assert.equal(act(state, 'move', { facilityId: room.id, x: 8.75, y: 4.5 }).ok, true);
   assert.equal(act(state, 'expand').ok, false);
   state.rank = 'E';
   state.gold = 3000; state.wood = 100; state.stone = 100;
   assert.equal(act(state, 'expand').ok, true);
   assert.deepEqual(state.grid, { width: 26, height: 20 });
-  assert.equal(act(state, 'build', { type: 'garden', x: 21, y: 4 }).ok, true);
+  assert.equal(act(state, 'build', { type: 'garden', x: 16, y: 4 }).ok, true);
   assert.equal(act(state, 'upgrade', { facilityId: room.id }).ok, true);
   assert.equal(room.level, 2);
   assert.equal(act(state, 'demolish', { facilityId: 'room-2' }).ok, true);
@@ -118,12 +118,12 @@ test('two teams require dispatch room, beds and six unique available members', (
   const state = createGame();
   state.rank = 'E'; state.gold = 6000; state.wood = 200; state.stone = 100;
   assert.equal(act(state, 'recruit', { memberId: 'sera' }).ok, false);
-  assert.equal(act(state, 'build', { type: 'dorm', x: 16, y: 4 }).ok, true);
+  assert.equal(act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 }).ok, true);
   assert.equal(act(state, 'recruit', { memberId: 'sera' }).ok, true);
   assert.equal(act(state, 'recruit', { memberId: 'toma' }).ok, true);
   dispatch(state);
   assert.equal(act(state, 'sendMission', { questId: 'herbs', memberIds: ['noa', 'sera', 'toma'] }).ok, false);
-  assert.equal(act(state, 'build', { type: 'dispatch', x: 16, y: 9 }).ok, true);
+  assert.equal(act(state, 'build', { type: 'dispatch', x: 5.5, y: 6.5, rotation:2 }).ok, true);
   assert.equal(getGuildStats(state).teamCap, 2);
   dispatch(state, 'herbs', ['noa', 'sera', 'toma']);
   assert.equal(getGuildStats(state).activeMissions, 2);
@@ -162,7 +162,7 @@ test('version one bookkeeping migrates safely and unavailable stories cannot be 
   data.version = 1;
   delete data.daily; delete data.goals; delete data.eventCooldowns; delete data.inventory;
   const state = deserializeGame(JSON.stringify(data));
-  assert.equal(state.version, 2);
+  assert.equal(state.version, 3);
   assert.ok(state.daily.missionCounts);
   assert.equal(act(state, 'sendMission', { questId: 'heart', memberIds: party }).ok, false);
   state.rep = 999;
@@ -183,8 +183,8 @@ test('authored campaign can reach all three regions and final rescue without mod
     // Invest only earned funds; later rescue needs a functional expanded guild.
     if (RANKS.indexOf(state.rank) >= 1) {
       if (state.landLevel < 1) act(state, 'expand');
-      if (getGuildStats(state).memberCap < 6) act(state, 'build', { type: 'dorm', x: 16, y: 4 });
-      if (!state.facilities.some(room => room.type === 'dispatch')) act(state, 'build', { type: 'dispatch', x: 16, y: 9 });
+      if (getGuildStats(state).memberCap < 6) act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 });
+      if (!state.facilities.some(room => room.type === 'dispatch')) act(state, 'build', { type: 'dispatch', x: 5.5, y: 6.5, rotation:2 });
       for (const memberId of ['sera', 'toma']) if (!state.members.some(member => member.id === memberId)) act(state, 'recruit', { memberId });
       for (const facilityId of ['room-2', 'room-5']) {
         const room = state.facilities.find(room => room.id === facilityId);
@@ -242,23 +242,23 @@ test('late story contracts require guild investment as well as a strong fighting
   let rescue = getAvailableQuests(state).find(quest => quest.id === 'rescue');
   assert.equal(rescue.locked, true);
   assert.match(rescue.lockReason, /6 คน/);
-  assert.match(rescue.lockReason, /ห้องวางแผน/);
+  assert.match(rescue.lockReason, /โต๊ะวางแผน/);
   assert.match(rescue.lockReason, /ขยายที่ดิน/);
   const before = JSON.stringify(state);
   assert.equal(act(state, 'sendMission', { questId: 'rescue', memberIds: party }).ok, false);
   assert.equal(JSON.stringify(state), before);
   state.gold = 9000; state.wood = 500; state.stone = 500;
   assert.equal(act(state, 'expand').ok, true);
-  assert.equal(act(state, 'build', { type: 'dorm', x: 16, y: 4 }).ok, true);
+  assert.equal(act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 }).ok, true);
   for (const memberId of ['sera', 'toma']) assert.equal(act(state, 'recruit', { memberId }).ok, true);
   rescue = getAvailableQuests(state).find(quest => quest.id === 'rescue');
-  assert.match(rescue.lockReason, /ห้องวางแผน/);
-  assert.equal(act(state, 'build', { type: 'dispatch', x: 16, y: 9 }).ok, true);
+  assert.match(rescue.lockReason, /โต๊ะวางแผน/);
+  assert.equal(act(state, 'build', { type: 'dispatch', x: 5.5, y: 6.5, rotation:2 }).ok, true);
   assert.equal(getAvailableQuests(state).find(quest => quest.id === 'rescue').locked, false);
   state.rank = 'A'; state.completedQuests.rescue = 1;
   assert.match(getAvailableQuests(state).find(quest => quest.id === 'heart').lockReason, /โพรง|หอระฆัง/);
   state.completedQuests.hollow = 1; state.completedQuests.ruins = 1;
-  assert.match(getAvailableQuests(state).find(quest => quest.id === 'heart').lockReason, /2 ห้อง/);
+  assert.match(getAvailableQuests(state).find(quest => quest.id === 'heart').lockReason, /2 จุดใช้งาน/);
   assert.equal(act(state, 'upgrade', { facilityId: 'room-4' }).ok, true);
   assert.equal(getAvailableQuests(state).find(quest => quest.id === 'heart').locked, true);
   assert.equal(act(state, 'upgrade', { facilityId: 'room-6' }).ok, true);
@@ -304,12 +304,45 @@ test('room capacity creates queues and construction cannot seal existing rooms f
   state.members.forEach(member => { member.energy = 100; member.injury = 0; act(state, 'setTask', { memberId: member.id, task: 'train' }); });
   tick(state, 1);
   assert.equal(state.members.filter(member => member.xp > 0).length, 2);
-  assert.equal(state.members.filter(member => member.waitingReason === 'รอผลัดเข้าห้องฝึก').length, 2);
+  assert.equal(state.members.filter(member => member.waitingReason === 'รอผลัดเข้าหุ่นฝึก').length, 2);
   state.gold = 5000; state.wood = 500; state.stone = 500;
-  for (const x of [0, 4, 8, 12]) assert.equal(act(state, 'build', { type: 'dorm', x, y: 11 }).ok, true);
   const before = JSON.stringify(state);
-  const sealed = act(state, 'build', { type: 'dorm', x: 16, y: 11 });
+  const sealed = act(state, 'build', {type:'dorm',x:8,y:8.75,rotation:1});
   assert.equal(sealed.ok, false);
-  assert.match(sealed.message, /ทางเดิน/);
+  assert.match(sealed.message, /ทางเข้า/);
   assert.equal(JSON.stringify(state), before);
 });
+
+test('free furnishings rotate and move at quarter tiles without blocking entrances',()=>{
+ const state=createGame(),before=JSON.stringify(state);
+ assert.equal(act(state,'move',{facilityId:'room-5',x:11.5,y:8.5,rotation:3}).ok,false,'Indoor furniture cannot face through the outer wall');
+ assert.equal(act(state,'rotate',{facilityId:'room-2'}).ok,false,'Bed cannot rotate through the neighboring medical bed');
+ assert.equal(JSON.stringify(state),before);
+ assert.equal(act(state,'move',{facilityId:'room-2',x:8.25,y:4.75,rotation:1}).ok,true);
+ const bed=state.facilities.find(f=>f.id==='room-2');assert.deepEqual(getRoomSize(bed.type,bed.rotation),{w:2,h:1});
+ assert.equal(act(state,'rotate',{facilityId:bed.id}).ok,true);
+ assert.equal(bed.rotation,2);assert.deepEqual(deserializeGame(serializeGame(state)),state);
+ const path=findWalkPath(state,{x:9.25,y:10.25},{x:8.75,y:4.25});assert.ok(path.length>0);
+ assert.ok(path.every(p=>state.facilities.every(f=>{const d=getRoomSize(f.type,f.rotation);return !(p.x>f.x&&p.x<f.x+d.w&&p.y>f.y&&p.y<f.y+d.h);})), 'Walk route stays clear of furniture');
+});
+
+test('building extension opens continuous floor and outdoor planting respects roads and trees',()=>{
+ const state=createGame(),cost=getBuildingExpansionCost(state),gold=state.gold;
+ assert.equal(act(state,'build',{type:'dorm',x:13.5,y:7}).ok,false);
+ assert.equal(act(state,'expandBuilding').ok,true);assert.equal(state.gold,gold-cost.gold);assert.deepEqual(state.building,{x:5,y:4,width:10,height:8,level:1});
+ assert.equal(act(state,'build',{type:'dorm',x:13.5,y:7}).ok,true);
+ state.rank='E';state.gold=10000;state.wood=500;state.stone=500;
+ for(const [x,y]of [[1,1],[8.25,12],[5.5,5]])assert.equal(canPlaceFacility(state,'garden',x,y).ok,false);
+ assert.equal(act(state,'build',{type:'garden',x:16,y:4}).ok,true);
+ assert.equal(act(state,'expand').ok,true);assert.equal(canPlaceFacility(state,'garden',23,1).ok,false,'Tree footprint remains protected after buying land');
+});
+
+test('old room saves migrate to furnishings while retaining progress and rejecting broken geometry',()=>{
+ const old=createGame(27);old.version=2;delete old.building;
+ const places=[[4,3],[8,3],[12,3],[4,6],[8,6],[12,6]];
+ old.facilities.forEach((f,i)=>{f.x=places[i][0];f.y=places[i][1];delete f.rotation;});old.facilities[1].level=2;old.gold=2314;old.members[0].level=4;
+ const migrated=deserializeGame(JSON.stringify(old));assert.equal(migrated.version,3);assert.equal(migrated.gold,2314);assert.equal(migrated.members[0].level,4);assert.equal(migrated.facilities[1].level,2);assert.equal(migrated.facilities.length,6);assert.doesNotThrow(()=>serializeGame(migrated));
+ old.facilities[1].x=old.facilities[0].x;assert.throws(()=>deserializeGame(JSON.stringify(old)),/ผัง/);
+});
+
+ test('mission preview accepts missing selections without throwing',()=>{assert.doesNotThrow(()=>previewMission(createGame(),'patrol',null));});

@@ -28,7 +28,7 @@ try {
   const click = async selector => {if(selector==='#settings-button'&&!(await page.locator('#management-dialog').evaluate(e=>e.open)))await page.locator('#menu-button').click();if(selector==='#pause-button'&&(await page.locator('#management-dialog').evaluate(e=>e.open)))await page.locator('#menu-close').click();await page.locator(selector).first().click();};
   const nav = async tab => {if(!(await page.locator('#management-dialog').evaluate(e=>e.open)))await click('#menu-button');await click(`.bottom-nav [data-tab="${tab}"]`);};
   const sceneClick = async (x, y) => {
-    const point = await page.evaluate(({ x, y }) => window.guildDebug.getScenePoint(x + 0.5, y + 0.5), { x, y });
+    const point = await page.evaluate(({ x, y }) => window.guildDebug.getScenePoint(x, y), { x, y });
     await page.mouse.click(point.x, point.y);
   };
 
@@ -78,10 +78,10 @@ try {
   await click('[data-facility="room-2"]');
   await click('[data-move="room-2"]');
   await sceneClick(5, 4);
-  assert.deepEqual((await state()).facilities.find(room => room.id === 'room-2'), { id: 'room-2', type: 'dorm', x: 8, y: 3, level: 1 }, 'Overlapping move is rejected');
-  await sceneClick(8, 11);
+  assert.deepEqual((await state()).facilities.find(room => room.id === 'room-2'), { id: 'room-2', type: 'dorm', x: 10.5, y: 4.5, rotation:0, level: 1 }, 'Overlapping move is rejected');
+  await sceneClick(8.5, 4.5);
   const moved = await state();
-  assert.equal(moved.facilities.find(room => room.id === 'room-2').y, 11);
+  assert.equal(moved.facilities.find(room => room.id === 'room-2').x, 8.5);
   assert.equal(moved.gold, afterUpgrade.gold, 'Moving a room is free');
 
   // Valid imported saves can have an engine pause flag. Import must resume the
