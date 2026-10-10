@@ -1,14 +1,32 @@
 /** All authored game content. Times are prototype seconds, not real-world hours. */
-export const RANKS = ['F', 'E', 'D', 'C', 'B', 'A'];
+export const RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
+/** A rank needs renown (rep) and a record of work (merits); then the association sends a promotion exam.
+ * The demo covers F-C; B and above open with the full game's new regions. */
 export const RANK_REQUIREMENTS = {
-  F: { rep: 0, quest: null }, E: { rep: 35, quest: 'patrol' },
-  D: { rep: 100, quest: 'escort' }, C: { rep: 210, quest: 'hollow' },
-  B: { rep: 370, quest: 'ruins' }, A: { rep: 580, quest: 'rescue' },
+  F: { rep: 0, quest: null, merits: [] },
+  E: { rep: 40, quest: 'escort', merits: [{ kind: 'jobs', n: 4 }, { kind: 'members', n: 4 }] },
+  D: { rep: 150, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'quests', n: 3 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }] },
+  C: { rep: 330, quest: 'ruins', merits: [{ kind: 'jobs', n: 24 }, { kind: 'quests', n: 5 }, { kind: 'members', n: 6 }, { kind: 'geared', n: 4 }, { kind: 'level', n: 3, level: 5 }] },
+  B: { rep: 800, quest: null, future: true, merits: [] },
+  A: { rep: 1600, quest: null, future: true, merits: [] },
+  S: { rep: 3000, quest: null, future: true, merits: [] },
+};
+export const MERIT_LABELS = {
+  jobs: n => `ทำคำร้องสำเร็จ ${n} งาน`, members: n => `มีสมาชิก ${n} คน`, quests: n => `สำเร็จคำร้องต่างชนิดกัน ${n} แบบ`,
+  board: () => 'มีกระดานคำร้องในกิลด์', village: n => `หมู่บ้านระดับ ${n}`, geared: n => `สมาชิกถืออาวุธ ${n} คน`,
+  level: (n, m) => `สมาชิกเลเวล ${m.level}+ อย่างน้อย ${n} คน`,
+};
+/** What each rank opens, shown on the promotion panel. */
+export const RANK_UNLOCKS = {
+  E: ['คำร้องคุ้มกันรถขนขนมปัง', 'โต๊ะวางแผน: ส่งได้ 2 ทีม', 'แปลงสมุนไพร และชุดโต๊ะน้ำชา', 'ผู้สมัครคนใหม่ที่เก่งขึ้น', 'ซื้อที่ดินเพิ่มได้'],
+  D: ['ซากหอระฆัง: คำร้องระดับ D', 'ชั้นตำรา', 'อาวุธขั้น 2 ในโรงตีเหล็ก', 'เปลี่ยนสายอาชีพเมื่อเลเวล 5'],
+  C: ['ป่าหมอกจันทร์: บทสุดท้ายของเดโม่', 'เครื่องรางหมอกจันทร์', 'นักผจญภัยมีชื่อเสียงอาจมาสมัคร'],
+  B: ['แผนที่ใหม่ในเกมเต็ม'],
 };
 export const REGIONS = [
   { id: 'meadow', name: 'ทุ่งใบชา', rank: 'F', color: '#a9c6a0', description: 'เส้นทางรอบหมู่บ้านและป่าอ่อนโยน' },
   { id: 'ruins', name: 'ซากหอระฆัง', rank: 'D', color: '#b7aed0', description: 'ค้นหาสาเหตุที่เสียงระฆังดังจากเมืองร้าง' },
-  { id: 'mist', name: 'ป่าหมอกจันทร์', rank: 'B', color: '#90babe', description: 'ตามหาทีมสำรวจที่หายไปและรักษาหัวใจของป่า' },
+  { id: 'mist', name: 'ป่าหมอกจันทร์', rank: 'C', color: '#90babe', description: 'ตามหาทีมสำรวจที่หายไปและรักษาหัวใจของป่า' },
 ];
 export const JOBS = {
   warrior: { id: 'warrior', name: 'นักรบ', role: 'tank', color: '#d89c8c', power: 14, health: 95, stat: 'ป้องกัน', icon: '🛡', next: ['guardian', 'duelist'] },
@@ -60,8 +78,8 @@ export const MEMBERS = [
   { id: 'alba', name: 'อัลบา', class: 'mage', trait: 'รอบคอบ', description: 'อดีตผู้ดูแลหอระฆัง ถือกุญแจเก่าไว้เสมอ', hair: '#b4bec1', unlockRank: 'D', cost: 420 },
   { id: 'ren', name: 'เรน', class: 'warrior', trait: 'กล้าหาญ', description: 'นักเดินทางที่กลับมาเพื่อช่วยเมืองบ้านเกิด', hair: '#73818d', unlockRank: 'C', cost: 520 },
   { id: 'poppy', name: 'ป๊อปปี้', class: 'healer', trait: 'ช่างพูด', description: 'นักร้องประจำโรงเตี๊ยมผู้ชอบช่วยคน', hair: '#c79894', unlockRank: 'C', cost: 480 },
-  { id: 'cedar', name: 'ซีดาร์', class: 'archer', trait: 'อดทน', description: 'พรานที่คอยส่งอาหารให้ทีมสำรวจในป่า', hair: '#82976a', unlockRank: 'B', cost: 650 },
-  { id: 'yuki', name: 'ยูกิ', class: 'mage', trait: 'สุขุม', description: 'นักวิจัยที่ตามหาความทรงจำในป่าหมอก', hair: '#b2a8cf', unlockRank: 'B', cost: 680 },
+  { id: 'cedar', name: 'ซีดาร์', class: 'archer', trait: 'อดทน', description: 'พรานที่คอยส่งอาหารให้ทีมสำรวจในป่า', hair: '#82976a', unlockRank: 'C', cost: 650 },
+  { id: 'yuki', name: 'ยูกิ', class: 'mage', trait: 'สุขุม', description: 'นักวิจัยที่ตามหาความทรงจำในป่าหมอก', hair: '#b2a8cf', unlockRank: 'C', cost: 680 },
 ];
 export const QUESTS = [
   { id: 'patrol', name: 'ลาดตระเวนทางหมู่บ้าน', title: 'ก้าวแรกของกิลด์', region: 'meadow', description: 'ตรวจเส้นทางและพาชาวบ้านกลับบ้านอย่างปลอดภัย', duration: 48, rank: 'F', difficulty: 30, tags: ['scout'], reward: { gold: 110, wood: 6, stone: 2, herb: 1, rep: 14, xp: 24 }, cost: {}, energy: 16, enemy: 'สไลม์ใบไม้' },
@@ -70,9 +88,9 @@ export const QUESTS = [
   { id: 'hollow', name: 'สำรวจโพรงใต้ต้นโอ๊ก', title: 'ระฆังที่ไม่มีใครตี', region: 'ruins', description: 'ตามเสียงระฆังใต้ดินเพื่อหาเบาะแสเมืองร้าง', duration: 98, rank: 'D', difficulty: 65, tags: ['scout', 'magic'], reward: { gold: 260, wood: 10, stone: 10, herb: 3, rep: 38, xp: 64 }, cost: { gold: 25, herb: 1 }, energy: 22, enemy: 'ผู้เฝ้าโพรง', requires: 'escort', story: true },
   { id: 'crystals', name: 'เก็บผลึกในทางเก่า', title: 'แสงใต้ซากหิน', region: 'ruins', description: 'ผลึกช่วยทำอุปกรณ์ใหม่ แต่อาจปลุกผู้เฝ้าซาก', duration: 90, rank: 'D', difficulty: 61, tags: ['magic'], reward: { gold: 235, wood: 4, stone: 14, herb: 2, rep: 31, xp: 58 }, cost: { gold: 22 }, energy: 21, enemy: 'โกเลมหินอ่อน' },
   { id: 'ruins', name: 'ปลดผนึกหอระฆัง', title: 'คำสัญญาของผู้ดูแล', region: 'ruins', description: 'ซ่อมผนึกเพื่อให้ชาวเมืองกลับไปยังบ้านเก่า', duration: 124, rank: 'C', difficulty: 87, tags: ['tank', 'magic'], reward: { gold: 365, wood: 12, stone: 12, herb: 6, rep: 58, xp: 88 }, cost: { gold: 35, herb: 2 }, energy: 24, enemy: 'ผู้พิทักษ์ระฆัง', requires: 'hollow', story: true },
-  { id: 'mistpath', name: 'เปิดเส้นทางป่าหมอก', title: 'รอยเท้าในหมอก', region: 'mist', description: 'ค้นเส้นทางที่ทีมสำรวจใช้ ก่อนหมอกปิดทับอีกครั้ง', duration: 118, rank: 'B', difficulty: 96, tags: ['scout', 'heal'], reward: { gold: 390, wood: 15, stone: 8, herb: 9, rep: 62, xp: 98 }, cost: { gold: 40, herb: 2 }, energy: 25, enemy: 'ภูตหมอก' },
-  { id: 'rescue', name: 'ช่วยทีมสำรวจที่หายไป', title: 'ทุกคนต้องกลับบ้าน', region: 'mist', description: 'ตามสัญญาณไฟจากกลางป่าและพาคนเจ็บออกมา', duration: 146, rank: 'B', difficulty: 110, tags: ['heal', 'tank'], reward: { gold: 480, wood: 16, stone: 12, herb: 10, rep: 82, xp: 120 }, cost: { gold: 45, herb: 3 }, energy: 28, enemy: 'รากไม้พันธนาการ', requires: 'mistpath', story: true },
-  { id: 'heart', name: 'รักษาหัวใจป่า', title: 'บ้านใต้ร่มใบไม้', region: 'mist', description: 'ทีมสำรวจชี้ทางแล้ว ถึงเวลาคืนแสงให้ต้นไม้กลางป่า', duration: 180, rank: 'A', difficulty: 136, tags: ['tank', 'magic', 'heal'], reward: { gold: 900, wood: 25, stone: 20, herb: 20, rep: 120, xp: 180 }, cost: { gold: 60, herb: 4 }, energy: 30, enemy: 'ผู้พิทักษ์หัวใจป่า', requires: 'rescue', story: true, final: true },
+  { id: 'mistpath', name: 'เปิดเส้นทางป่าหมอก', title: 'รอยเท้าในหมอก', region: 'mist', description: 'ค้นเส้นทางที่ทีมสำรวจใช้ ก่อนหมอกปิดทับอีกครั้ง', duration: 118, rank: 'C', difficulty: 96, tags: ['scout', 'heal'], reward: { gold: 390, wood: 15, stone: 8, herb: 9, rep: 62, xp: 98 }, cost: { gold: 40, herb: 2 }, energy: 25, enemy: 'ภูตหมอก' },
+  { id: 'rescue', name: 'ช่วยทีมสำรวจที่หายไป', title: 'ทุกคนต้องกลับบ้าน', region: 'mist', description: 'ตามสัญญาณไฟจากกลางป่าและพาคนเจ็บออกมา', duration: 146, rank: 'C', difficulty: 110, tags: ['heal', 'tank'], reward: { gold: 480, wood: 16, stone: 12, herb: 10, rep: 82, xp: 120 }, cost: { gold: 45, herb: 3 }, energy: 28, enemy: 'รากไม้พันธนาการ', requires: 'mistpath', story: true },
+  { id: 'heart', name: 'รักษาหัวใจป่า', title: 'บ้านใต้ร่มใบไม้', region: 'mist', description: 'ทีมสำรวจชี้ทางแล้ว ถึงเวลาคืนแสงให้ต้นไม้กลางป่า', duration: 180, rank: 'C', difficulty: 136, tags: ['tank', 'magic', 'heal'], reward: { gold: 900, wood: 25, stone: 20, herb: 20, rep: 120, xp: 180 }, cost: { gold: 60, herb: 4 }, energy: 30, enemy: 'ผู้พิทักษ์หัวใจป่า', requires: 'rescue', story: true, final: true },
 ];
 export const EQUIPMENT = [
   { id: 'oak-blade', name: 'ดาบไม้โอ๊ก', slot: 'weapon', classes: ['warrior'], power: 7, health: 8, cost: { gold: 85, wood: 6, stone: 2 }, unlockRank: 'F', workshopLevel: 1, color: '#c9a579', description: 'ดาบเริ่มต้นที่จับถนัดมือ' },
@@ -84,7 +102,7 @@ export const EQUIPMENT = [
   { id: 'wind-bow', name: 'ธนูลมอุ่น', slot: 'weapon', classes: ['archer'], power: 16, health: 5, cost: { gold: 210, wood: 16, stone: 5 }, unlockRank: 'D', workshopLevel: 2, color: '#84aca5', description: 'ปล่อยลูกธนูเงียบเหมือนใบไม้ร่วง' },
   { id: 'crystal-wand', name: 'ไม้เท้าผลึก', slot: 'weapon', classes: ['mage'], power: 18, health: 5, cost: { gold: 230, wood: 5, stone: 16 }, unlockRank: 'D', workshopLevel: 2, color: '#afa5cb', description: 'เวทสะท้อนแสงออกจากผลึก' },
   { id: 'bloom-staff', name: 'ไม้เท้าผลิบาน', slot: 'weapon', classes: ['healer'], power: 14, health: 20, cost: { gold: 210, wood: 9, herb: 12 }, unlockRank: 'D', workshopLevel: 2, color: '#a7c3ad', description: 'ดอกไม้ที่ปลายไม้เท้าไม่เคยเหี่ยว' },
-  { id: 'moon-charm', name: 'เครื่องรางหมอกจันทร์', slot: 'accessory', classes: [], power: 9, health: 22, cost: { gold: 220, stone: 10, herb: 10 }, unlockRank: 'B', workshopLevel: 3, color: '#bac8d4', description: 'ช่วยให้หาทางกลับได้แม้ในหมอก' },
+  { id: 'moon-charm', name: 'เครื่องรางหมอกจันทร์', slot: 'accessory', classes: [], power: 9, health: 22, cost: { gold: 220, stone: 10, herb: 10 }, unlockRank: 'C', workshopLevel: 3, color: '#bac8d4', description: 'ช่วยให้หาทางกลับได้แม้ในหมอก' },
   // Treasures: found only in mission chests, never crafted.
   { id: 'sprout-charm', name: 'เครื่องรางใบอ่อนนำโชค', slot: 'accessory', classes: [], power: 4, health: 14, luck: 0.08, loot: true, rarity: 'rare', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#a9c99a', description: 'ใบไม้ที่ไม่เคยร่วง ช่วยให้สังเกตหีบซ่อนได้ง่ายขึ้น' },
   { id: 'starlight-bow', name: 'ธนูแสงดาว', slot: 'weapon', classes: ['archer'], power: 12, health: 4, loot: true, rarity: 'rare', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#e7d394', description: 'สายธนูเรืองแสงจาง ๆ ยามค่ำ' },

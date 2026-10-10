@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addPetition, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
+import { addPetition, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
 import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
@@ -173,73 +173,9 @@ test('version one bookkeeping migrates safely and unavailable stories cannot be 
   assert.equal(act(state, 'sendMission', { questId: 'heart', memberIds: party }).ok, false);
   state.rep = 999;
   complete(state, dispatch(state));
-  assert.equal(state.rank, 'E', 'reputation alone cannot skip escort story gate');
+  assert.equal(state.rank, 'F', 'renown alone cannot promote without a record of work and the exam');
+  assert.equal(getAvailableQuests(state).find(quest => quest.id === 'escort').locked, true);
   assert.equal(getAvailableQuests(state).find(quest => quest.id === 'hollow').locked, true);
-});
-
-test('authored campaign can reach all three regions and final rescue without modifying resources or levels', () => {
-  const state = createGame(24);
-  for (const [memberId, equipmentId] of [['mira', 'oak-blade'], ['finn', 'leaf-bow'], ['lune', 'moon-wand']]) {
-    assert.equal(act(state, 'craft', { equipmentId }).ok, true);
-    assert.equal(act(state, 'equip', { memberId, equipmentId }).ok, true);
-  }
-  const seenRegions = new Set();
-  let completed = 0;
-  while (!state.story.finished && completed < 70) {
-    // Invest only earned funds; later rescue needs a functional expanded guild.
-    if (RANKS.indexOf(state.rank) >= 1) {
-      if (state.landLevel < 1) act(state, 'expand');
-      if (getGuildStats(state).memberCap < 6) act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 });
-      if (!state.facilities.some(room => room.type === 'dispatch')) act(state, 'build', { type: 'dispatch', x: 5.5, y: 6.5, rotation:2 });
-      for (const memberId of ['sera', 'toma']) if (!state.members.some(member => member.id === memberId)) act(state, 'recruit', { memberId });
-      for (const facilityId of ['room-2', 'room-5']) {
-        const room = state.facilities.find(room => room.id === facilityId);
-        if (room.level < 2) act(state, 'upgrade', { facilityId });
-      }
-    }
-    // Make room for progression, using earned materials rather than state edits.
-    if (RANKS.indexOf(state.rank) >= 2) {
-      for (const member of state.members) if (getMemberStats(state, member).canSpecialize) {
-        const classId = ({ warrior: 'guardian', archer: 'ranger', mage: 'sage', healer: 'cleric' })[member.class];
-        if (classId) act(state, 'specialize', { memberId: member.id, classId });
-      }
-    }
-    tick(state, 110);
-    const available = getAvailableQuests(state).filter(quest => !quest.locked && previewMission(state, quest.id, party, 'cautious').ok);
-    const nextStory = available.find(quest => !quest.completed && ['escort', 'hollow', 'ruins', 'mistpath', 'rescue', 'heart'].includes(quest.id));
-    let quest = nextStory || available.filter(quest => !quest.final).sort((a, b) => b.reward.rep - a.reward.rep)[0];
-    let preview = previewMission(state, quest.id, party, 'cautious');
-    if (preview.readiness < 0.9) {
-      party.forEach(memberId => act(state, 'setTask', { memberId, task: 'train' }));
-      tick(state, 200);
-      party.forEach(memberId => act(state, 'setTask', { memberId, task: 'rest' }));
-      tick(state, 200);
-      preview = previewMission(state, quest.id, party, 'cautious');
-    }
-    if (!preview.ok) {
-      quest = QUESTS.find(quest => quest.id === 'patrol');
-      preview = previewMission(state, quest.id, party, 'cautious');
-    }
-    const mission = dispatch(state, quest.id, party, 'cautious');
-    complete(state, mission);
-    assert.equal(mission.status, 'completed', `${quest.id} readiness ${preview.readiness}`);
-    seenRegions.add(quest.region);
-    completed += 1;
-    assert.ok(state.gold >= 0 && state.wood >= 0 && state.stone >= 0 && state.herb >= 0);
-    assert.doesNotThrow(() => serializeGame(state));
-  }
-  assert.ok(completed < 70, 'campaign should not require an endless repeat grind');
-  assert.deepEqual([...seenRegions].sort(), ['meadow', 'mist', 'ruins']);
-  assert.equal(state.rank, 'A');
-  assert.equal(state.story.finished, true);
-  assert.equal(state.completedQuests.heart, 1);
-  assert.ok(state.completedQuests.rescue > 0);
-  assert.equal(state.landLevel, 1);
-  assert.equal(state.members.length, 6);
-  assert.ok(state.facilities.some(room => room.type === 'dispatch'));
-  assert.ok(state.facilities.filter(room => room.level >= 2).length >= 2);
-  assert.equal(state.story.chapter, 5);
-  assert.ok(previewMission(state, 'patrol', party).ok, 'free play continues after final quest');
 });
 
 test('late story contracts require guild investment as well as a strong fighting party', () => {
@@ -646,4 +582,28 @@ test('a plain player finishes the story with the board running, never goes broke
     assert.ok(idle > commission * 0.1 && idle < commission, `seed ${seed} idle income matters but does not replace work (${idle} vs ${commission})`);
     assert.doesNotThrow(() => serializeGame(state));
   }
+});
+
+test('promotion needs renown and a record of work, then the exam letter arrives', () => {
+  const state = createGame(21);
+  state.rep = 60;
+  state.record.jobs = 3;
+  tick(state, 1);
+  assert.equal(getRankProgress(state).examReady, false);
+  assert.ok(!state.petitions.some(p => p.questId === 'escort'), 'no exam letter before the record is complete');
+  assert.equal(getAvailableQuests(state).find(q => q.id === 'escort').locked, true);
+  state.record.jobs = 4;
+  tick(state, 1);
+  const progress = getRankProgress(state);
+  assert.equal(progress.rank, 'E');
+  assert.ok(progress.merits.every(m => m.ok) && progress.examReady);
+  const exam = state.petitions.find(p => p.questId === 'escort' && p.important);
+  assert.ok(exam, 'the association sends the exam as an important letter');
+  state.members.forEach(m => { m.level = 6; });
+  complete(state, dispatch(state, 'escort', party, 'cautious'));
+  assert.equal(state.rank, 'E');
+  // Easy work far below the guild's rank earns little renown.
+  state.rank = 'C';
+  assert.equal(renownFactor(state, QUESTS.find(q => q.id === 'patrol')), 0.1);
+  assert.equal(getRankProgress(state).future, true, 'B opens with the full game');
 });

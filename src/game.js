@@ -1,5 +1,5 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS } from './content.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS } from './content.js';
 
 export const SAVE_VERSION = 5;
 export const DAY_LENGTH = 240;
@@ -83,7 +83,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, garden: false },
     bankruptcyDays: 0,
     petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0 }, idleBank: 0,
+    record: { jobs: 0 }, upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0 }, idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -207,8 +207,35 @@ export function getGuildStats(state) {
   };
 }
 
+// ---- Promotion: renown plus a record of work, then the association's exam. ----
+const EXAM_RANK = Object.fromEntries(Object.entries(RANK_REQUIREMENTS).filter(([, r]) => r.quest).map(([rank, r]) => [r.quest, rank]));
+function meritValue(state, merit) {
+  switch (merit.kind) {
+    case 'jobs': return state.record?.jobs || 0;
+    case 'members': return state.members.length;
+    case 'quests': return Object.keys(state.completedQuests).length;
+    case 'board': return roomLevel(state, 'board') ? 1 : 0;
+    case 'village': return getVillageInfo(state).level;
+    case 'geared': return state.members.filter(member => member.equipment?.weapon).length;
+    case 'level': return state.members.filter(member => member.level >= merit.level).length;
+    default: return 0;
+  }
+}
+/** The next rank's renown, merit checklist and exam, for the promotion panel and the rules below. */
+export function getRankProgress(state, rank = RANKS[rankIndex(state.rank) + 1]) {
+  const req = rank && RANK_REQUIREMENTS[rank];
+  if (!req) return null;
+  const merits = req.merits.map(merit => { const have = meritValue(state, merit); return { kind: merit.kind, label: MERIT_LABELS[merit.kind](merit.n, merit), have: Math.min(have, merit.n), need: merit.n, ok: have >= merit.n }; });
+  const ready = !req.future && state.rep >= req.rep && merits.every(m => m.ok);
+  return { rank, rep: state.rep, repNeeded: req.rep, merits, exam: req.quest, examReady: ready, examPassed: Boolean(req.quest && state.completedQuests[req.quest]), future: Boolean(req.future) };
+}
+const examReady = (state, quest) => { const rank = EXAM_RANK[quest.id]; return Boolean(rank) && rankIndex(rank) === rankIndex(state.rank) + 1 && getRankProgress(state, rank).examReady; };
+/** Renown fades for work far below the guild's rank, so easy jobs cannot carry a promotion. */
+export function renownFactor(state, quest) { const gap = rankIndex(state.rank) - rankIndex(quest.rank); return gap <= 0 ? 1 : gap === 1 ? 0.5 : gap === 2 ? 0.25 : 0.1; }
 function questLockReason(state, quest) {
-  if (!hasRank(state, quest.rank)) return `ต้องมีกิลด์ระดับ ${quest.rank}`;
+  const examRank = EXAM_RANK[quest.id];
+  if (examRank && !hasRank(state, quest.rank) && rankIndex(examRank) === rankIndex(state.rank) + 1 && !examReady(state, quest)) return `สอบเลื่อนเป็นกิลด์ ${examRank}: ทำชื่อเสียงและผลงานให้ครบก่อน`;
+  if (!hasRank(state, quest.rank) && !examReady(state, quest)) return `ต้องมีกิลด์ระดับ ${quest.rank}`;
   if (quest.requires && !state.completedQuests[quest.requires]) return `ต้องผ่าน ${QUEST_BY_ID[quest.requires].name} ก่อน`;
   if (quest.id === 'rescue') {
     const needs = [];
@@ -610,9 +637,10 @@ function resolveMission(state, mission) {
     }
     transact(state, rewards, mission.petition ? `ค่านายหน้า: ${quest.name}` : `รางวัล: ${quest.name}`, 1);
     // Work the adventurers picked up by themselves earns the guild half the renown of work it sends.
-    const rep = Math.max(2, Math.round(quest.reward.rep * multiplier * (mission.auto ? 0.5 : 1) * (1 + roomLevel(state, 'reception') * 0.05)));
+    const rep = Math.max(1, Math.round(quest.reward.rep * multiplier * renownFactor(state, quest) * (mission.auto ? 0.5 : 1) * (1 + roomLevel(state, 'reception') * 0.05)));
     state.rep += rep;
     state.completedQuests[quest.id] = (state.completedQuests[quest.id] || 0) + 1;
+    if (mission.petition) { state.record ??= { jobs: 0 }; state.record.jobs += 1; }
     state.questRuns[quest.id] = (state.questRuns[quest.id] || 0) + 1;
     mission.result = { success: true, reward: { ...rewards, rep }, wages: Math.round(wages), title: 'กลับบ้านอย่างปลอดภัย', message: mission.petition ? `${quest.name} สำเร็จ ${mission.petition.client}จ่าย ${Math.floor(mission.petition.fee * multiplier)} G · กิลด์ได้ค่านายหน้า ${rewards.gold} G · ทีมได้ ${Math.round(wages)} G` : `${quest.name} สำเร็จ ได้ ${rewards.gold} เหรียญ และชื่อเสียง ${rep}` };
     if (mission.petition) state.petitions = state.petitions.filter(p => p.id !== mission.petition.id);
@@ -626,7 +654,7 @@ function resolveMission(state, mission) {
       state.story.finished = true;
       state.story.chapter = 5;
       state.story.finishedAt = state.elapsed;
-      addLog(state, 'หมอกจางลง ทีมสำรวจกลับถึงบ้าน หัวใจป่าผลิใบใหม่ ชาวเมืองร่วมฉลองใต้ต้นไม้ของกิลด์ — จบฤดูกาลแรกแล้ว เล่นดูแลกิลด์ต่อได้', 'story');
+      addLog(state, 'หมอกจางลง ทีมสำรวจกลับถึงบ้าน หัวใจป่าผลิใบใหม่ ชาวเมืองร่วมฉลองใต้ต้นไม้ของกิลด์ — จบบทแรก (เดโม่) แล้ว เล่นดูแลกิลด์ต่อได้ ระดับ B ขึ้นไปจะเปิดพร้อมแผนที่ใหม่ในเกมเต็ม', 'story');
     }
     addLog(state, mission.result.message, 'success');
   } else {
@@ -665,7 +693,7 @@ function trimMissions(state) {
 
 function updateRank(state) {
   let nextRank = RANKS[rankIndex(state.rank) + 1];
-  while (nextRank && state.rep >= RANK_REQUIREMENTS[nextRank].rep && (!RANK_REQUIREMENTS[nextRank].quest || state.completedQuests[RANK_REQUIREMENTS[nextRank].quest])) {
+  while (nextRank && getRankProgress(state, nextRank).examReady && (!RANK_REQUIREMENTS[nextRank].quest || state.completedQuests[RANK_REQUIREMENTS[nextRank].quest])) {
     state.rank = nextRank;
     transact(state, { gold: 120 + rankIndex(nextRank) * 45 }, `เงินสนับสนุนกิลด์ระดับ ${nextRank}`, 1);
     addLog(state, `กิลด์เลื่อนเป็นระดับ ${nextRank}! เปิดคำร้องและสิ่งปลูกสร้างใหม่`, 'rank');
@@ -711,7 +739,7 @@ function petitionRandom(state) {
   state.petitionRng = x >>> 0 || 7;
   return state.petitionRng / 4294967296;
 }
-const questOpen = (state, quest) => hasRank(state, quest.rank) && (!quest.requires || state.completedQuests[quest.requires]);
+const questOpen = (state, quest) => (hasRank(state, quest.rank) || examReady(state, quest)) && (!quest.requires || state.completedQuests[quest.requires]);
 /** Where a client's home door is, for walking times; lots come from content, the inn and bakery stand by the guild. */
 export function petitionHome(home) {
   if (home === 'inn') return { x: -2.2, y: 10.8 };
@@ -1374,6 +1402,9 @@ export function deserializeGame(source) {
   for (const id of ['shop', 'market', 'smithy']) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
   state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy };
   state.idleBank = finiteNumber(data.idleBank) ? clamp(data.idleBank, 0, 1000000) : 0;
+  // Older saves count the quests they already cleared as their record of work.
+  const jobs = data.record?.jobs ?? Object.values(state.completedQuests).reduce((sum, n) => sum + n, 0);
+  state.record = { jobs: Number.isInteger(jobs) && jobs >= 0 && jobs < 10000000 ? jobs : 0 };
   if (data.foundTreasures !== undefined) state.foundTreasures = Array.isArray(data.foundTreasures) ? [...new Set(data.foundTreasures.filter(id => EQUIPMENT_BY_ID[id]?.loot))] : [];
   state.inventory = { ...(data.inventory || {}) };
   if (!state.inventory || typeof state.inventory !== 'object' || Array.isArray(state.inventory)) throw new Error('คลังอุปกรณ์ไม่ถูกต้อง');
