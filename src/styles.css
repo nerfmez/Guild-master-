@@ -210,3 +210,9 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .dungeon-view{display:block;width:100%;height:auto;aspect-ratio:40/22;image-rendering:pixelated;border-radius:10px;border:2px solid #5a463f;box-shadow:0 3px 0 #d8c7a2;background:#26301f}
 .mission-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:2px 0 8px}.mission-head b{font-size:17px}.mission-head small{font-size:11.5px;color:var(--muted)}
 .dungeon-view{width:auto;max-width:100%;max-height:min(46vh,420px);margin:0 auto 10px}
+.route{display:flex;align-items:center;gap:4px;margin:0 auto 10px;max-width:420px}
+.route i{flex:1;height:3px;border-radius:2px;background:#e3d6ba}
+.route span{display:grid;justify-items:center;font-size:16px;line-height:1.2;padding:3px 6px;border-radius:8px;background:#f3ead6;border:1px solid #e0d1b0;filter:grayscale(.7);opacity:.7}
+.route span small{font-size:9.5px;color:var(--muted)}
+.route span.done{filter:none;opacity:1;background:#e6edd6;border-color:#9fb68f}
+.route span.here{filter:none;opacity:1;background:#fff1c4;border-color:#e2b55a;animation:goal-glow 1.6s ease-in-out infinite}

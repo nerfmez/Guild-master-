@@ -1,5 +1,6 @@
 /* Top-down dungeon view of a mission: one generator, themed per region, laid out per quest. */
 import { drawSprite, drawFoe } from './render.js';
+import { JOBS } from './content.js';
 
 const T = 10, COLS = 40, ROWS = 22, W = COLS * T, H = ROWS * T;
 const THEMES = {
@@ -39,7 +40,10 @@ export function buildDungeon(quest) {
   const decor = [];
   for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) if (grid[y * COLS + x] === 1 && r() < .07) decor.push({ x, y, kind: Math.floor(r() * 3) });
   const walls = Array.from({ length: COLS * ROWS }, () => r());
-  const layout = { rooms, grid, seg, path, stops, total: length(), decor, walls };
+  // A chest tucked into a corner of each encounter room, opened as the party arrives.
+  const chests = [1, 2].map(i => { const room = rooms[i], top = r() < .5; return { room: i, x: room.x + .6 + (r() < .5 ? 0 : room.w - 2.2), y: top ? room.y + .4 : room.y + room.h - 1.4 }; });
+  const torches = rooms.slice(1).flatMap(room => [[room.x + 1, room.y - .4], [room.x + room.w - 2, room.y - .4]]);
+  const layout = { rooms, grid, seg, path, stops, total: length(), decor, walls, chests, torches };
   layouts.set(key, layout);
   return layout;
 }
@@ -113,6 +117,11 @@ export function missionStage(mission, layout) {
   return { d: s[3] * (1 - (ratio - .88) / .12), walking: true, fight: -1, target: 3, back: true, ratio };
 }
 
+function banner(c, x, y, text, color, size = 10) {
+  c.font = `bold ${size}px "Noto Sans Thai", sans-serif`; c.textBaseline = 'middle'; const w = Math.ceil(c.measureText(text).width) + 14, h = size + 8;
+  rect(c, x - w / 2 - 1, y - h / 2 - 1, w + 2, h + 2, '#4f4540'); rect(c, x - w / 2, y - h / 2, w, h, color); rect(c, x - w / 2, y - h / 2, w, 2, '#ffffff40');
+  c.fillStyle = '#fff8e7'; c.fillText(text, x - w / 2 + 7, y + 1);
+}
 function hpBar(c, x, y, w, ratio, color, label) {
   rect(c, x - 1, y - 1, w + 2, 6, '#4f4540'); rect(c, x, y, w, 4, '#e6dcc4'); rect(c, x, y, w * Math.max(0, Math.min(1, ratio)), 4, color);
   if (label) { c.fillStyle = '#fff8e7'; c.font = 'bold 8px "Noto Sans Thai", sans-serif'; c.textBaseline = 'bottom'; c.fillText(label, x, y - 2); }
@@ -131,8 +140,28 @@ export function drawDungeonScene(canvas, mission, quest, state, options = {}) {
   if (memory.strike !== (mission.combat?.lastStrike || 0)) { memory.strike = mission.combat?.lastStrike || 0; memory.strikeAt = memory.clock; }
   const t = memory.clock, stage = missionStage(mission, layout), combat = mission.combat || {}, won = mission.result?.success;
   memory.reveal = Math.max(memory.reveal, stage.target * 2, stage.back ? 6 : 0);
-  c.save(); c.scale(canvas.width / W, canvas.height / H);
+  memory.clearAt ??= {}; memory.openAt ??= {};
+  if (memory.fight > 0 && stage.fight !== memory.fight && !memory.clearAt[memory.fight]) memory.clearAt[memory.fight] = t;
+  if (stage.fight === 3 && memory.bossAt === undefined) memory.bossAt = t;
+  memory.fight = stage.fight;
+  const shake = memory.bossAt !== undefined && t - memory.bossAt < .45 ? Math.round(Math.sin(t * 60) * 2) : 0;
+  c.save(); c.scale(canvas.width / W, canvas.height / H); c.translate(shake, 0);
   c.drawImage(paintings.get(key), 0, 0);
+  // Ambient life per region: torches in the ruins, butterflies in the meadow, fireflies in the mist.
+  if (region === 'ruins') for (const [x, y] of layout.torches) { const f = Math.sin(t * 9 + x) > 0 ? 1 : 0; rect(c, x * T + 3, y * T + 2, 2, 6, '#6b5440'); rect(c, x * T + 2, y * T - 2 - f, 4, 4, '#f4b860'); rect(c, x * T + 3, y * T - 1 - f, 2, 2, '#fff1c4'); c.globalAlpha = .18; rect(c, x * T - 4, y * T - 6, 16, 14, '#f4d49a'); c.globalAlpha = 1; }
+  else for (let i = 0; i < 6; i++) { const room = layout.rooms[i % 4], x = (room.cx + Math.sin(t * .7 + i * 2.1) * room.w * .35) * T, y = (room.cy + Math.cos(t * .9 + i * 1.3) * room.h * .3) * T;
+    if (region === 'meadow') { const flap = Math.sin(t * 14 + i) > 0; rect(c, x - (flap ? 2 : 1), y, flap ? 2 : 1, 2, i % 2 ? '#f2b8a8' : '#fff3d6'); rect(c, x + 1, y, flap ? 2 : 1, 2, i % 2 ? '#f2b8a8' : '#fff3d6'); }
+    else { c.globalAlpha = .5 + Math.sin(t * 3 + i) * .4; rect(c, x, y, 2, 2, '#e8ffc4'); c.globalAlpha = .2; rect(c, x - 2, y - 2, 6, 6, '#e8ffc4'); c.globalAlpha = 1; } }
+  // Chests open when the party reaches their room; a sparkle marks the moment.
+  for (const chest of layout.chests) {
+    const opened = stage.back || stage.target > chest.room || memory.clearAt[chest.room] !== undefined;
+    if (opened && memory.openAt[chest.room] === undefined) memory.openAt[chest.room] = t;
+    const x = chest.x * T, y = chest.y * T;
+    rect(c, x - 1, y + 1, 14, 10, '#4f4540'); rect(c, x, y + 4, 12, 6, '#b5835a'); rect(c, x, y + 6, 12, 1, '#e7bd74'); rect(c, x + 5, y + 5, 2, 3, '#e7bd74');
+    if (opened) { rect(c, x, y - 2, 12, 4, '#8f6646'); rect(c, x + 2, y + 3, 8, 2, '#f4d49a'); } else { rect(c, x, y + 1, 12, 4, '#c8946a'); rect(c, x, y + 1, 12, 1, '#e3b487'); }
+    const age = t - (memory.openAt[chest.room] ?? -9);
+    if (age >= 0 && age < 1.2) { c.globalAlpha = 1 - age / 1.2; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + age * 3; rect(c, x + 6 + Math.cos(a) * (4 + age * 10), y - 2 + Math.sin(a) * (3 + age * 6) - age * 8, 2, 2, '#fff1c4'); } c.globalAlpha = 1; }
+  }
   // Enemies: two minions in each encounter room and the boss; cleared rooms are empty.
   const cleared = room => stage.back ? (room < 3 || won !== false) : stage.fight > 0 ? room < stage.fight : room < stage.target;
   const attackAge = t - memory.strikeAt, attacking = stage.fight > 0 && !paused && attackAge >= 0 && attackAge < .7, hit = attacking && attackAge > .28 && attackAge < .42;
@@ -153,7 +182,9 @@ export function drawDungeonScene(canvas, mission, quest, state, options = {}) {
   const strike = combat.log?.[0], striker = attacking ? party.find(p => p.member.id === strike?.memberId) : null;
   const actors = [...foes.map(f => ({ ...f, foe: true })), ...party].sort((a, b) => a.y - b.y);
   for (const a of actors) {
-    if (a.foe) { c.save(); c.translate(Math.round(a.x), Math.round(a.y)); c.scale(a.scale, a.scale); drawFoe(c, 0, 0, quest, t, a.flash); c.restore(); continue; }
+    if (a.foe) { if (a.room === 3) { c.globalAlpha = .28 + Math.sin(t * 4) * .1; c.fillStyle = '#d98978'; c.beginPath(); c.ellipse(a.x, a.y + 1, 22, 8, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; }
+      c.save(); c.translate(Math.round(a.x), Math.round(a.y)); c.scale(a.scale, a.scale); drawFoe(c, 0, 0, quest, t, a.flash); c.restore(); continue; }
+    if (stage.walking && !paused) { const k = (t * 4 + a.y / 7) % 1; c.globalAlpha = .45 * (1 - k); rect(c, a.x - 2 - (a.dir === 'east' ? 4 + k * 4 : a.dir === 'west' ? -4 - k * 4 : 0), a.y - 1 - k * 2, 3, 2, '#e8dcc0'); c.globalAlpha = 1; }
     let x = a.x, pose = stage.fight > 0 ? (Math.floor(t * 1.6 + a.y) % 2 ? 'breath' : 'idle') : 'idle';
     if (a === striker) { x += Math.round(Math.sin(Math.min(1, attackAge / .7) * Math.PI) * 9); pose = attackAge < .25 ? 'train0' : 'train1'; }
     drawSprite(c, x, a.y, a.member, t * 8 + a.y, stage.walking && !paused, 1, a.dir, pose);
@@ -161,7 +192,14 @@ export function drawDungeonScene(canvas, mission, quest, state, options = {}) {
   // Strike effects: a slash on the target and a floating damage number.
   if (attacking && foes.length) {
     const target = foes.find(f => f.room === stage.fight) || foes[0];
-    if (attackAge > .22 && attackAge < .45) { c.strokeStyle = '#fff8e7'; c.lineWidth = 2; c.beginPath(); c.arc(target.x - 2, target.y - 12, 9, -2.4, -.4); c.stroke(); }
+    const role = JOBS[striker?.member.class]?.role || 'damage', from = striker || party[0];
+    if (from && (role === 'scout' || role === 'magic' || role === 'heal') && attackAge > .1 && attackAge < .32) {
+      const k = (attackAge - .1) / .22, px = from.x + (target.x - from.x) * k, py = from.y - 10 + (target.y - 12 - from.y + 10) * k;
+      if (role === 'scout') { rect(c, px - 5, py, 6, 1, '#8a6a4a'); rect(c, px + 1, py - 1, 2, 3, '#e3e9e6'); }
+      else { const col = role === 'heal' ? '#f4d49a' : '#b7c9f2'; c.globalAlpha = .4; rect(c, px - 7, py - 1, 6, 3, col); c.globalAlpha = 1; rect(c, px - 2, py - 2, 4, 4, col); rect(c, px - 1, py - 1, 2, 2, '#ffffff'); }
+    }
+    if (role === 'heal' && attackAge > .3 && attackAge < .7) for (const p of party) { const k = (attackAge - .3) / .4; c.globalAlpha = 1 - k; rect(c, p.x - 1, p.y - 30 - k * 8, 3, 1, '#7fd18b'); rect(c, p.x, p.y - 31 - k * 8, 1, 3, '#7fd18b'); c.globalAlpha = 1; }
+    if (attackAge > .22 && attackAge < .45) { c.strokeStyle = role === 'magic' ? '#c9d8ff' : '#fff8e7'; c.lineWidth = 2; c.beginPath(); c.arc(target.x - 2, target.y - 12, 9, -2.4, -.4); c.stroke(); }
     if (attackAge > .28 && Number.isFinite(strike?.damage)) { c.fillStyle = '#4f4540'; c.font = 'bold 10px sans-serif'; c.textBaseline = 'bottom'; const y = target.y - 22 - attackAge * 14; c.fillText(String(strike.damage), target.x - 4, y + 1); c.fillStyle = '#fff1c4'; c.fillText(String(strike.damage), target.x - 5, y); }
   }
   // Fog of war: rooms and corridors ahead of the party stay dark.
@@ -172,6 +210,12 @@ export function drawDungeonScene(canvas, mission, quest, state, options = {}) {
   // Event marker and treasure.
   if (options.eventPending && party[0]) { const p = party[0]; rect(c, p.x - 4, p.y - 40, 9, 11, '#4f4540'); rect(c, p.x - 3, p.y - 39, 7, 9, '#fff1c4'); rect(c, p.x, p.y - 38, 1, 5, '#d98978'); rect(c, p.x, p.y - 32, 1, 1, '#d98978'); }
   if (stage.back && won) { const b = layout.rooms[3]; rect(c, b.cx * T - 7, b.cy * T - 6, 14, 10, '#4f4540'); rect(c, b.cx * T - 6, b.cy * T - 5, 12, 8, '#d9b27c'); rect(c, b.cx * T - 6, b.cy * T - 5, 12, 3, '#e7bd74'); }
+  // Cleared rooms puff into smoke with a short "clear" tag.
+  for (const [room, at] of Object.entries(memory.clearAt)) { const age = t - at, rm = layout.rooms[room]; if (age < 0 || age > 1.1) continue;
+    c.globalAlpha = Math.max(0, 1 - age / 1.1); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, d = 4 + age * 18; rect(c, (rm.cx + 1.4) * T + Math.cos(a) * d - 3, rm.cy * T + Math.sin(a) * d * .6 - 3 - age * 6, 6, 5, '#f3ead2'); }
+    banner(c, (rm.cx + 1.2) * T, rm.cy * T - 22 - age * 10, 'เคลียร์!', '#7fae6f'); c.globalAlpha = 1; }
+  if (memory.bossAt !== undefined && t - memory.bossAt < 1.4) { c.globalAlpha = Math.min(1, (1.4 - (t - memory.bossAt)) * 2); banner(c, W / 2, H / 2 - 10, 'บอสปรากฏ!', '#d98978', 14); c.globalAlpha = 1; }
+  if (mission.status === 'completed' || mission.status === 'failed' || mission.status === 'recalled') banner(c, W / 2, H / 2 - 10, mission.status === 'completed' ? 'ภารกิจสำเร็จ!' : 'ถอยกลับบ้าน', mission.status === 'completed' ? '#7fae6f' : '#a59d8f', 14);
   // HUD.
   rect(c, 0, 0, W, 16, '#3d352cb0');
   hpBar(c, 6, 8, 90, (combat.partyHp || 0) / Math.max(1, combat.partyMaxHp || 1), '#90b89c', 'ทีม');
