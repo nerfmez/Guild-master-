@@ -327,3 +327,23 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .village-goal ul{margin:4px 0 0;padding-left:18px;display:grid;gap:3px;font-size:13px;color:#6f5a3a}
 
 .toast.clickable{pointer-events:auto;cursor:pointer;text-decoration:underline;text-decoration-color:#a58c6166;text-underline-offset:3px}
+/* Roster (living world) */
+.roster-tabs button{font-size:12px}
+.roster-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}
+.roster-summary span{display:grid;justify-items:center;padding:6px 4px;border-radius:9px;background:#f5ecd7;font-size:11px;color:var(--muted)}.roster-summary b{font-size:18px;color:var(--ink)}
+.roster-summary .out b{color:#b07a2a}.roster-summary .hurt b{color:#b0503c}
+.roster-policy{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}.roster-policy button{min-height:0;padding:6px 10px;font-size:12px}.roster-policy button.on{background:#e6ead6;border-color:#b1c1a0}
+.roster-list{display:grid;gap:5px}
+.roster-row{display:grid;grid-template-columns:1fr auto;gap:4px;align-items:stretch;border-radius:10px;background:#fffaee;border:1px solid #e3d3b0;border-left:4px solid #b1c1a0}
+.roster-row.out{border-left-color:#d9b26f}.roster-row.hurt{border-left-color:#d98978;background:#fbf1ea}
+.roster-main{display:grid;grid-template-columns:40px minmax(0,1.1fr) minmax(0,1fr);gap:9px;align-items:center;min-height:0;padding:6px 8px;border:0;background:transparent;text-align:left;box-shadow:none}
+.roster-main .portrait{width:40px;height:45px;border-radius:7px}
+.roster-id b{display:block;font-size:13px}.roster-id small{font-size:10.5px;color:var(--muted)}.roster-id em.ready{font-style:normal;color:#5b663e;font-weight:700}
+.roster-state{display:grid;gap:3px}.roster-state small{font-size:11px;color:#6f5f4c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.roster-bars{display:grid;gap:2px}
+.bar{display:block;height:4px;border-radius:2px;background:#e6dcc4;overflow:hidden;font-style:normal}.bar>i{display:block;height:100%}
+.bar.energy>i{background:#8fb07a}.bar.hp>i{background:#6fb2d6}.bar.injury>i{background:#d98978}.bar.morale>i{background:#e2b65a}.bar.xp>i{background:#9a8fc4}.bar.like>i{background:#d99ab0}
+.roster-watch,.roster-invite{min-height:0;align-self:center;margin-right:6px;padding:6px 9px;font-size:12px}
+.hero-bars{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 12px;margin:6px 0 10px}.hero-bars span{display:grid;grid-template-columns:52px 1fr auto;gap:6px;align-items:center;font-size:11px;color:var(--muted)}.hero-bars b{font-size:11px;color:var(--ink)}
+.hero-activity{font-size:12px}.tiny-watch{min-height:0;padding:2px 7px;font-size:10.5px;margin-left:4px}
+@media(max-width:620px){.roster-main{grid-template-columns:36px 1fr}.roster-state{grid-column:2}.hero-bars{grid-template-columns:1fr}}
