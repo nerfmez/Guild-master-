@@ -357,7 +357,7 @@ export class GuildRenderer {
   a.image.setVisible(true).setTexture(`actor-${m2.id}-${m2.class}-${facing}-${pose}`).setPosition(Math.round(p.x+(pose==='train1'?6:0)),Math.round(p.y)).setDepth(Math.round(p.y)+(i+1)/10);
   // The first member carries the quest tag.
   if(i===0&&party){if(!party.tag)party.tag=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'7px',fontStyle:'bold',color:'#5a4a36',backgroundColor:'#f8edd3',padding:{x:3,y:1}}).setOrigin(.5,1).setResolution(2);
-   const pending=m.event&&!m.event.resolved,text=`${pending?'! ':''}${quest.name} ${Math.round(ratio*100)}%`;if(party.tag.text!==text)party.tag.setText(text);party.tag.setBackgroundColor(pending?'#fff1c4':'#f8edd3').setPosition(Math.round(p.x),Math.round(p.y-27)).setDepth(p.y+200).setVisible(true);}
+   const pending=m.event&&!m.event.resolved,text=`${pending?'! ':''}${quest.name} ${Math.round(ratio*100)}%`;if(party.tag.text!==text)party.tag.setText(text);const tagScale=Math.min(1,1.3/(this.camera?.zoom||1));party.tag.setBackgroundColor(pending?'#fff1c4':'#f8edd3').setScale(tagScale).setPosition(Math.round(p.x),Math.round(p.y-27)).setDepth(p.y+200).setVisible(true);}
  }
  // ---- The village: homes appear on their lots as houses are built and grow with the village level. ----
  syncVillage(){
@@ -416,8 +416,27 @@ export class GuildRenderer {
  }
  clampFocus(){const a=gridPoint(WORLD.x0,WORLD.y1),b=gridPoint(WORLD.x1,WORLD.y0),c=gridPoint(WORLD.x0,WORLD.y0),d=gridPoint(WORLD.x1,WORLD.y1);this.focusX=Math.max(a.x+300,Math.min(b.x-300,this.focusX));this.focusY=Math.max(c.y+200,Math.min(d.y-200,this.focusY));}
  focusGrid(x,y,zoom){const p=gridPoint(x,y);this.focusX=p.x;this.focusY=p.y;this.userPanned=true;if(zoom)this.zoom=zoom;this.applyView();}
- focusMission(id){this.followMission=id;const a=[...this.actors.values()].find(a=>a.missionId===id&&a.image.visible)||[...this.actors.values()].find(a=>a.missionId===id);const m=(this.state.missions||[]).find(m=>m.id===id),quest=m&&QUESTS.find(q=>q.id===m.questId),site=quest&&QUEST_SITES[quest.id];
-  const p=a?.image.visible?{x:a.x,y:a.y}:site?gridPoint(site.x,site.y):null;if(!p)return;this.focusX=p.x;this.focusY=p.y;this.userPanned=true;this.applyView();}
+ // Follow camera: glides and zooms to a team or one adventurer and stays with them until the screen is touched.
+ focusMission(id){this.startFollow('mission',id);}
+ startFollow(kind,id){
+  this.follow={kind,id};this.userPanned=true;this.zoomTarget=Math.max(.3,Math.min(2.4,2.1/(this.baseZoom||1)));
+  const p=this.followPoint();if(!p){this.follow=null;this.zoomTarget=null;return;}
+  this.onFollow?.(this.followInfo());
+ }
+ stopFollow(){if(!this.follow)return;this.follow=null;this.zoomTarget=null;this.onFollow?.(null);}
+ followMissionFor(){const f=this.follow;if(!f)return null;if(f.kind==='mission')return(this.state.missions||[]).find(m=>m.id===f.id);return(this.state.missions||[]).find(m=>(m.status==='active'||m.status==='decision')&&m.memberIds.includes(f.id));}
+ followInfo(){
+  const f=this.follow;if(!f)return null;const m=this.followMissionFor(),quest=m&&QUESTS.find(q=>q.id===m.questId);
+  const names=f.kind==='member'?[(this.state.members||[]).find(x=>x.id===f.id)?.name]:(m?.memberIds||[]).map(id=>(this.state.members||[]).find(x=>x.id===id)?.name);
+  return{kind:f.kind,id:f.id,missionId:m?.id||null,name:names.filter(Boolean).join(' · ')||'ทีม',quest:quest?.name||null};
+ }
+ followPoint(){
+  const f=this.follow;if(!f)return null;
+  if(f.kind==='member'){const a=this.actors.get(f.id);return a&&a.image.visible?{x:a.x,y:a.y-10}:null;}
+  const team=[...this.actors.values()].filter(a=>a.missionId===f.id&&a.away&&a.image.visible);
+  if(team.length)return{x:team.reduce((s,a)=>s+a.x,0)/team.length,y:team.reduce((s,a)=>s+a.y,0)/team.length-10};
+  const m=(this.state.missions||[]).find(m=>m.id===f.id),quest=m&&QUESTS.find(q=>q.id===m.questId),site=quest&&QUEST_SITES[quest.id];return site?gridPoint(site.x,site.y):null;
+ }
  roomFor(m){if(this.prepping?.has(m.id)){const board=this.state.facilities.find(f=>f.type==='board');if(board)return board;}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
   if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','dorm'][hash(m.id)%4];
   return this.state.facilities.find(f=>f.type===type)||this.state.facilities[0];}
@@ -511,7 +530,13 @@ export class GuildRenderer {
   this.updateWorld(dt,playing);
   this.updateVillagers(dt,playing);
   // Follow a watched team until the player drags the view or the team is home.
-  if(this.followMission){const a=[...this.actors.values()].find(a=>a.missionId===this.followMission&&a.away&&a.image.visible);const live=(this.state.missions||[]).some(m=>m.id===this.followMission&&(m.status==='active'||m.status==='decision'));if(!live)this.followMission=null;else if(a){const k=1-Math.pow(.02,Math.min(dt,.1));this.focusX+=(a.x-this.focusX)*k;this.focusY+=(a.y-this.focusY)*k;this.applyView();}}
+  if(this.follow){
+   const m=this.follow.kind==='mission'?(this.state.missions||[]).find(m=>m.id===this.follow.id):null;
+   if(this.follow.kind==='mission'&&!(m&&(m.status==='active'||m.status==='decision')))this.stopFollow();
+   else{const p=this.followPoint();if(p){const k=1-Math.pow(.015,Math.min(dt,.1));this.focusX+=(p.x-this.focusX)*k;this.focusY+=(p.y-this.focusY)*k;}
+    if(this.zoomTarget){const k=1-Math.pow(.05,Math.min(dt,.1));this.zoom+=(this.zoomTarget-this.zoom)*k;if(Math.abs(this.zoomTarget-this.zoom)<.005)this.zoom=this.zoomTarget;}
+    this.applyView();const info=this.followInfo(),sig=JSON.stringify(info);if(sig!==this.followSig){this.followSig=sig;this.onFollow?.(info);}}
+  }
   if(this.pending&&this.pendingDraw){const k=1-Math.pow(.0004,Math.min(dt,.1));this.pendingDraw.x+=(this.pending.x-this.pendingDraw.x)*k;this.pendingDraw.y+=(this.pending.y-this.pendingDraw.y)*k;if(Math.abs(this.pending.x-this.pendingDraw.x)+Math.abs(this.pending.y-this.pendingDraw.y)<.01)this.pendingDraw={...this.pending};this.positionGhost();}
   this.drawGhost();
  }
@@ -519,7 +544,7 @@ export class GuildRenderer {
  center(){this.zoom=1;const b=buildingRect(this.state),p=gridPoint(b.x+b.w/2,b.y+b.h/2);this.focusX=p.x;this.focusY=p.y+22;this.userPanned=false;this.applyView();}
 
  resetView(){this.center();}
- setZoom(z){this.zoom=Math.max(.3,Math.min(2.4,Number(z)||1));this.applyView();}
+ setZoom(z){this.zoomTarget=null;this.zoom=Math.max(.3,Math.min(2.4,Number(z)||1));this.applyView();}
  rotatePlacement(){this.rotation=(this.rotation+1)%4;this.buildGhost();this.placementChanged();return this.rotation;}
  setBuildMode(type){this.roomMode=null;this.roomMoveId=null;this.buildType=type;this.moveId=null;this.rotation=0;this.canvas.style.cursor=type?'crosshair':'grab';this.refreshPlacement();}
  setMoveMode(id){this.roomMode=null;this.roomMoveId=null;this.moveId=id;this.buildType=null;this.rotation=this.state.facilities.find(f=>f.id===id)?.rotation||0;this.canvas.style.cursor=id?'crosshair':'grab';this.refreshPlacement();}
@@ -566,12 +591,14 @@ export class GuildRenderer {
   for(const a of [...this.furnitureSprites].sort((a,b)=>b.image.depth-a.image.depth)){const x=Math.floor(p.x-a.image.x),y=Math.floor(p.y-a.image.y);if(x>=0&&y>=0&&x<a.canvas.width&&y<a.canvas.height&&a.alpha[(y*a.canvas.width+x)*4+3]>50)return a.f.id;}
   for(const f of this.state.facilities){const d=getRoomSize(f.type,f.rotation||0);if(tile.x>=f.x&&tile.x<f.x+d.w&&tile.y>=f.y&&tile.y<f.y+d.h)return f.id;}return null;}
  grabPending(drag,p){const t=gridPosition(p.x,p.y);drag.item=true;drag.offset={x:t.x-this.pending.x,y:t.y-this.pending.y};this.canvas.style.cursor='grabbing';}
+ /** Screen positions of adventurers out in the world (for tests and debugging). */
+ travellerPoints(){const z=this.camera?.zoom||1;return[...this.actors.values()].filter(a=>a.away&&a.image.visible).map(a=>({id:a.member.id,x:(a.x-(this.focusX??548))*z+this.width/2,y:(a.y-12-(this.focusY??294))*z+this.height/2}));}
  worldToScreen(x,y){const p=gridPoint(x/32,y/32),z=this.camera?.zoom||1;return{x:(p.x-(this.focusX??548))*z+this.width/2,y:(p.y-(this.focusY??294))*z+this.height/2};}
  screenPoint(e){const b=this.canvas.getBoundingClientRect();return{x:(e.clientX-b.left)*this.width/b.width,y:(e.clientY-b.top)*this.height/b.height};}
  worldPoint(p){const z=this.camera.zoom;return{x:(p.x-this.width/2)/z+this.focusX,y:(p.y-this.height/2)/z+this.focusY};}
  bindInput(){
   const bind=(name,fn,options)=>this.canvas.addEventListener(name,fn,options);
-  bind('pointerdown',e=>{const p=this.screenPoint(e);this.canvas.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,p);
+  bind('pointerdown',e=>{this.stopFollow();const p=this.screenPoint(e);this.canvas.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,p);
    if(this.pointers.size===1){const drag=this.drag={id:e.pointerId,start:p,last:p,moved:false},w=this.worldPoint(p);
     if(this.pending&&this.hitPending(w))this.grabPending(drag,w);
     else if(!this.pending){const id=this.hitFacility(w);if(id)drag.hold=setTimeout(()=>{if(this.drag!==drag||drag.moved||this.pointers.size!==1)return;
@@ -581,7 +608,7 @@ export class GuildRenderer {
   bind('pointermove',e=>{const p=this.screenPoint(e);this.hover=this.worldPoint(p);if(!this.pointers.has(e.pointerId))return;this.pointers.set(e.pointerId,p);
    if(this.pointers.size===2&&this.pinch){const[a,b]=[...this.pointers.values()];this.setZoom(this.pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/this.pinch.dist);return;}
    if(this.drag?.id===e.pointerId&&this.drag.item){const d=this.drag,t=gridPosition(this.worldPoint(p).x,this.worldPoint(p).y);d.moved=true;d.last=p;this.setPending(t.x-d.offset.x,t.y-d.offset.y);return;}
-   if(this.drag?.id===e.pointerId){const d=this.drag;if(Math.hypot(p.x-d.start.x,p.y-d.start.y)>6){d.moved=true;clearTimeout(d.hold);}if(d.moved){this.userPanned=true;this.followMission=null;this.clampFocus?.();this.focusX-=(p.x-d.last.x)/this.camera.zoom;this.focusY-=(p.y-d.last.y)/this.camera.zoom;this.applyView();}d.last=p;}});
+   if(this.drag?.id===e.pointerId){const d=this.drag;if(Math.hypot(p.x-d.start.x,p.y-d.start.y)>6){d.moved=true;clearTimeout(d.hold);}if(d.moved){this.userPanned=true;this.clampFocus?.();this.focusX-=(p.x-d.last.x)/this.camera.zoom;this.focusY-=(p.y-d.last.y)/this.camera.zoom;this.applyView();}d.last=p;}});
   bind('pointerup',e=>{const p=this.screenPoint(e);if(this.drag?.id===e.pointerId){clearTimeout(this.drag.hold);if(this.drag.item)this.canvas.style.cursor='crosshair';else if(!this.drag.moved)this.select(this.worldPoint(p));}this.pointers.delete(e.pointerId);if(this.pointers.size<2)this.pinch=null;if(!this.pointers.size)this.drag=null;});
   bind('pointercancel',e=>{clearTimeout(this.drag?.hold);this.pointers.delete(e.pointerId);this.drag=null;this.pinch=null;});bind('pointerleave',()=>{if(!this.drag)this.hover=null;});
   bind('wheel',e=>{e.preventDefault();const p=this.screenPoint(e),before=this.worldPoint(p);this.setZoom(this.zoom*Math.exp(-e.deltaY*.001));const after=this.worldPoint(p);this.focusX+=before.x-after.x;this.focusY+=before.y-after.y;this.applyView();},{passive:false});
@@ -589,7 +616,9 @@ export class GuildRenderer {
  select(p){
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
   if(this.pending){const d=this.footprint();this.setPending(tile.x-d.w/2,tile.y-d.h/2);return;}
-  for(const a of [...this.actors.values()].sort((a,b)=>b.y-a.y))if(a.image.visible&&Math.abs(p.x-a.x)<9&&p.y>a.y-30&&p.y<a.y+4){if(a.away&&a.missionId){this.onSelect({kind:'mission',id:a.missionId});return;}if(!a.away){this.onSelect({kind:'member',id:a.member.id});return;}}
+  // Small figures get a finger-sized hit area at any zoom; tapping one out in the world follows them.
+  const reach=Math.max(9,20/(this.camera?.zoom||1));
+  for(const a of [...this.actors.values()].sort((a,b)=>Math.hypot(p.x-a.x,p.y-a.y+12)-Math.hypot(p.x-b.x,p.y-b.y+12)))if(a.image.visible&&Math.abs(p.x-a.x)<reach&&p.y>a.y-30-reach*.6&&p.y<a.y+4+reach*.4){if(a.away&&a.missionId){this.startFollow('member',a.member.id);return;}if(!a.away){this.onSelect({kind:'member',id:a.member.id});return;}}
   for(const a of [...this.furnitureSprites].sort((a,b)=>b.image.depth-a.image.depth)){const x=Math.floor(p.x-a.image.x),y=Math.floor(p.y-a.image.y);if(x>=0&&y>=0&&x<a.canvas.width&&y<a.canvas.height&&a.alpha[(y*a.canvas.width+x)*4+3]>50){this.onSelect({kind:'facility',id:a.f.id});return;}}
   for(const f of this.state.facilities){const d=getRoomSize(f.type,f.rotation||0);if(tile.x>=f.x&&tile.x<f.x+d.w&&tile.y>=f.y&&tile.y<f.y+d.h){this.onSelect({kind:'facility',id:f.id});return;}}
   for(const room of this.state.rooms||[])if(pointInRect(partitionRect(room),tile)){this.onSelect({kind:'partition',id:room.id});return;}

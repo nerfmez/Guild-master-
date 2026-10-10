@@ -277,6 +277,12 @@ $('management-dialog').addEventListener('close',()=>document.body.classList.remo
 // Placement bar: live validity from the renderer; nothing is placed until the player confirms.
 function updatePlacementBar(info){if(!info?.active)return;const status=$('pb-status'),text=info.ok?'ลากของเพื่อย้าย · แตะพื้นเพื่อย้ายไปตรงนั้น':(info.message||'วางตรงนี้ไม่ได้');if(status.textContent!==text)status.textContent=text;status.classList.toggle('bad',!info.ok);$('build-hint').querySelector('[data-confirm-placement]').disabled=!info.ok;}
 if(renderer)renderer.onPlacement=updatePlacementBar;
+// Follow camera chip: who is being followed, a shortcut to their quest, and a stop button.
+let followInfo=null;
+function updateFollowChip(info){followInfo=info;$('follow-chip').hidden=!info;if(!info)return;$('fc-name').textContent=(info.kind==='member'?'ติดตาม ':'ติดตามทีม ')+info.name;$('fc-sub').textContent=info.quest?'ภารกิจ: '+info.quest:'อยู่ในกิลด์';$('fc-mission').hidden=!info.missionId;}
+if(renderer)renderer.onFollow=updateFollowChip;
+$('fc-stop').addEventListener('click',()=>renderer?.stopFollow());
+$('fc-mission').addEventListener('click',()=>{if(followInfo?.missionId)onSceneSelect({kind:'mission',id:followInfo.missionId});});
 document.addEventListener('click',event=>{if(!event.target.closest('[data-confirm-placement]'))return;const p=renderer?.getPlacement();if(!p?.active)return;if(!p.ok){toast(p.message||'วางตรงนี้ไม่ได้',true);return;}onSceneSelect({kind:p.kind,x:p.x,y:p.y,rotation:p.rotation,facilityId:p.facilityId,roomId:p.roomId});});
 
 // Chest loot: what a quest can give, the team's luck, and what was found.
@@ -306,4 +312,4 @@ function drawMissionScene(){const canvas=$('mission-scene');if(!canvas||!ui.miss
 
 syncUI();injectIcons($('dock'));if(hasSave)save();showTitle();requestAnimationFrame(frame);if(loadNotice)setTimeout(()=>toast(loadNotice,true),800);if(idleNotice)setTimeout(()=>toast(idleNotice),1300);document.addEventListener('visibilitychange',()=>{lastFrame=performance.now();if(document.hidden)save();});window.addEventListener('pagehide',()=>save());
 // Read-only diagnostics, useful for reproducible bug reports without a cheat menu.
-window.guildDebug={focusGrid:(x,y,z)=>renderer?.focusGrid(x,y,z),getState:()=>JSON.parse(serializeGame(state)),getScenePoint:(x,y)=>{const r=renderer.worldToScreen(x*32,y*32),b=$('guild-world').getBoundingClientRect();return{x:b.left+r.x*b.width/renderer.width,y:b.top+r.y*b.height/renderer.height};},getRendererInfo:()=>renderer?.getInfo(),getSnapshot:()=>({rank:state.rank,day:state.day,members:state.members.length,quests:state.completedQuests,finished:state.story?.finished})};
+window.guildDebug={focusGrid:(x,y,z)=>renderer?.focusGrid(x,y,z),getState:()=>JSON.parse(serializeGame(state)),getScenePoint:(x,y)=>{const r=renderer.worldToScreen(x*32,y*32),b=$('guild-world').getBoundingClientRect();return{x:b.left+r.x*b.width/renderer.width,y:b.top+r.y*b.height/renderer.height};},getRendererInfo:()=>renderer?.getInfo(),getTravellers:()=>{const b=$('guild-world').getBoundingClientRect();return(renderer?.travellerPoints()||[]).map(t=>({...t,x:b.left+t.x*b.width/renderer.width,y:b.top+t.y*b.height/renderer.height}));},getSnapshot:()=>({rank:state.rank,day:state.day,members:state.members.length,quests:state.completedQuests,finished:state.story?.finished})};

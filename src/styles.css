@@ -302,3 +302,15 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .ct-branches{display:grid;grid-template-columns:1fr 1fr;gap:6px}.ct-branch{display:grid;gap:4px;align-content:start;padding-left:8px;border-left:2px solid #e0d2b2}
 .ct-node{padding:5px 8px;border-radius:8px;background:#fffaee;border:1px solid #e3d3b0}.ct-node b{display:block;font-size:12px}.ct-node small{font-size:10px;color:var(--muted)}
 .ct-node.current{background:var(--sage);border-color:var(--sage);color:#fff}.ct-node.current small{color:#eef4e6}.ct-node.done{background:#e6ead6}.ct-node.future{opacity:.6;border-style:dashed}
+
+/* Follow camera chip: who the camera is riding along with. */
+.follow-chip{position:absolute;z-index:6;left:50%;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 92px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);padding:6px 6px 6px 12px;background:#f8edd3f2;border:1px solid #967b49;border-radius:999px;box-shadow:0 3px 0 #65513050,0 8px 20px #2a221626;animation:chip-pop .2s ease-out}
+.follow-chip[hidden]{display:none!important}
+.fc-dot{width:9px;height:9px;flex:none;border-radius:50%;background:#d9584a;box-shadow:0 0 0 3px #d9584a33;animation:fc-pulse 1.4s ease-in-out infinite}
+.fc-text{display:grid;min-width:0;line-height:1.2}
+.fc-text b{font-size:13px;color:#5a4a36;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-text small{font-size:11px;color:#8a7458;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.follow-chip button{flex:none;min-height:36px;min-width:36px;padding:4px 12px;border-radius:999px;background:#fffaee;border:1px solid #d8c7a2;color:#6f5a3a;font-size:13px;font-weight:600}
+.follow-chip button#fc-stop{padding:4px 0;width:36px}
+@keyframes fc-pulse{50%{box-shadow:0 0 0 6px #d9584a14}}
+@media (prefers-reduced-motion:reduce){.fc-dot{animation:none}}
