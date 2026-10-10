@@ -175,7 +175,7 @@ export const VILLAGE_PROJECTS = {
 export const VILLAGE_LOTS = {
   houses: [
     { x: -2, y: 21.5, seed: 44, styles: ['thatch', 'cabin', 'brick'] },
-    { x: 8, y: 21.5, seed: 52, styles: ['cabin', 'thatch', 'stone'] },
+    { x: 8, y: 21.5, seed: 52, styles: ['stone', 'stone', 'tall'] },
     { x: 14, y: 22, seed: 63, styles: ['thatch', 'brick', 'tall'] },
     { x: 24, y: 21.5, seed: 75, styles: ['cabin', 'brick', 'stone'] },
     { x: -8, y: -3, seed: 88, styles: ['thatch', 'tall', 'tall'] },

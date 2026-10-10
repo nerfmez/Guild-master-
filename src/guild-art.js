@@ -89,6 +89,12 @@ export function makeRoom(f){
   else if(f.type==='library')shelf(c,1.92);
   else if(f.type==='lounge'){table(c,1.8,.8);top(c,.2,.1,1.3,.5,17.2,'#f1e5ce');for(const[x,y]of[[.4,.3],[1.3,.3]]){const[a,b]=q(x,y,18);E(c,a,b,4,2,'#e9d5b0');}cube(c,.2,1.05,1.5,.25,0,8);}
   else if(f.type==='dispatch'){table(c,1.9,.9);top(c,.22,.14,1.36,.57,17.3,'#c8d7bd',C.edge);stroke(c,[.35,.2,17.4],[1.4,.6,17.4],'#8aa5a2');cube(c,1.5,.22,.14,.14,17.4,5);}
+  else if(f.type==='board'){
+   for(const x of [.08,.84])cube(c,x,.2,.08,.08,0,34,'#8f6a4c','#b98a60','#6f5240');
+   const at=(u,z)=>[u,.3,z];face(c,[at(.02,12),at(.98,12),at(.98,33),at(.02,33)],'#7c5d45',C.ink);face(c,[at(.07,14),at(.93,14),at(.93,31),at(.07,31)],'#c99c68');
+   for(let k=0;k<4;k++){const u=.11+k*.205,z=k%2?15:21;face(c,[at(u,z),at(u+.16,z),at(u+.16,z+8),at(u,z+8)],k===2?'#f2dfb4':'#f8eedb',C.edge);stroke(c,at(u+.03,z+5),at(u+.13,z+5),'#b8a487');stroke(c,at(u+.03,z+3),at(u+.11,z+3),'#b8a487');const[px,py]=q(...at(u+.08,z+7));R(c,px,py,2,2,['#d98978','#6f9ad1','#7fae6f','#e2a93c'][k]);}
+   cube(c,-.03,.14,1.06,.3,33,3,'#a8775a','#c98a72','#87543f');
+  }
   else if(f.type==='garden'){for(let y=.08;y<1.7;y+=.85){cube(c,.05,y,1.85,.65,0,4,'#a88d6c','#c4b08e','#8f7b61');for(let x=.2;x<1.8;x+=.34){const[a,b]=q(x,y+.3,7);P(c,[[a-4,b],[a-3,b-5],[a,b-3],[a+2,b-8],[a+5,b-3],[a+3,b+1]],'#82a078');R(c,a-1,b-6,3,2,'#d9c2a0');}}}
  }finally{projection=previous;}});
  return{layers:[{name:'furniture',x:0,y:0,sort:(w+h)*6,sprite}]};
@@ -186,7 +192,23 @@ export const HOME_STYLES={
  smithy:{w:2.6,h:2.3,z:30,ridge:'y',roof:'dusk',wall:'stone',forge:true,sign:'anvil',chimney:[.45,.5],smoke:'dark'},
  brick:{w:2.6,h:2.2,z:32,ridge:'x',roof:'moss',wall:'brick',shutters:'#6f8fb0',chimney:[2.1,.6],dormer:true},
  tall:{w:2,h:2,z:56,ridge:'y',roof:'plum',wall:'timber',storeys:2,pitch:30,flowers:true,shutters:'#c98a72'},
+ store:{w:2.6,h:2.3,z:32,ridge:'x',roof:'moss',wall:'timber',awning:['#7fa37a','#f4e5c9'],sign:'bag',chimney:[2.1,.5],flowers:true},
 };
+/** A market stall: counter of goods under a striped canopy. */
+export function makeStall(seed=1,variant=0){
+ const [a,b]=[['#d77d6a','#f4e5c9'],['#7fa37a','#f4e5c9'],['#6f9ad1','#f4e5c9']][variant%3],goods=['#e2a93c','#d98978','#9fc27a','#e8cd8c','#c98a4a','#b7aec9'];
+ return object(c=>{
+  top(c,-.1,-.1,1.8,1.3,0,'#5f705040');
+  for(const [x,y] of [[0,0],[1.52,0]])cube(c,x,y,.08,.08,0,32,'#8f6a4c','#b98a60','#6f5240');
+  cube(c,.05,.1,1.5,.35,0,8,'#a88d6c','#c4b08e','#8f7b61');
+  cube(c,0,.6,1.6,.45,0,12,'#b98a60','#e5bc87','#85634c');
+  for(let k=0;k<5;k++){const[x,y]=q(.2+k*.3,.82,13);E(c,x-1,y-1,3,2,goods[(k+variant)%6]);E(c,x+2,y,2.5,1.8,goods[(k+variant+2)%6]);R(c,x-1,y-3,1,1,'#fff8e7');}
+  for(const [x,y] of [[0,.95],[1.52,.95]])cube(c,x,y,.08,.08,0,27,'#8f6a4c','#b98a60','#6f5240');
+  for(let k=0;k<6;k++){const u0=-.06+k*.285;face(c,[[u0,-.12,35],[u0+.285,-.12,35],[u0+.285,1.12,28],[u0,1.12,28]],k%2?b:a,C.ink);}
+  for(let k=0;k<6;k++){const u0=-.06+k*.285;face(c,[[u0,1.12,28],[u0+.285,1.12,28],[u0+.285,1.12,24],[u0,1.12,24]],k%2?a:b,C.edge);}
+  for(let k=0;k<2;k++){const[x,y]=q(1.75,.3+k*.4,0);R(c,x-4,y-9,9,9,'#85634c');R(c,x-3,y-8,7,7,'#c79b6a');R(c,x-3,y-5,7,1,'#a3805a');}
+ },120,110,56,66);
+}
 export function makeHome(name,seed=1){
  const s=HOME_STYLES[name]||HOME_STYLES.thatch,{w,h,z,ridge,storeys=1}=s,pitch=s.pitch||(ridge==='y'?w:h)*11,o=.16,[r0,r1,rl,rk]=ROOFS[s.roof],[w0,w1]=WALLS[s.wall],r=rng(seed),peak=z+pitch;
  let smoke=null;const footX=Math.ceil(h*24)+30,footY=peak+40,result=stamp(Math.ceil((w+h)*24)+60+(s.forge?40:0),footY+Math.ceil((w+h)*12)+30,footX,footY,c=>{
@@ -247,7 +269,7 @@ export function makeHome(name,seed=1){
   if(s.chimney){const [cx,cy]=s.chimney,base=ridge==='y'?z+pitch*(1-Math.abs(cx+.18-w/2)/(w/2+o)):z+pitch*(1-Math.abs(cy+.18-h/2)/(h/2+o));cube(c,cx,cy,.36,.36,base-8,22,'#b8b0a0','#d6cfbe','#948c7d');top(c,cx+.06,cy+.06,.24,.24,base+14.2,'#4f4540');smoke=q(cx+.18,cy+.18,base+16);}
   if(s.forge){cube(c,w+.15,.3,.9,1.5,0,18,'#a59e8b','#8f877a','#857d70');face(c,[[w+.1,.2,24],[w+1.15,.2,16],[w+1.15,1.9,16],[w+.1,1.9,24]],r1,C.ink);quad((u,zz)=>[w+1.05,u,zz],.55,1.25,0,11,'#3f3530');quad((u,zz)=>[w+1.06,u,zz],.7,1.1,1,6,'#e8935a');quad((u,zz)=>[w+1.07,u,zz],.8,1,1,4,'#fff1c4');cube(c,w+1.3,1.55,.35,.22,0,6,'#5f5a5a','#8a8484','#4a4545');cube(c,w+1.22,1.5,.5,.32,6,3,'#5f5a5a','#9a9494','#4a4545');}
   if(s.sign){const at=ridge==='x'?F:S,u=ridge==='x'?w-.12:.12,[sx,sy]=q(...(at===F?F(w+.05,z-6):S(-.05,z-6)));R(c,sx,sy,9,1,C.ink);R(c,sx+2,sy+1,1,3,C.ink);R(c,sx+7,sy+1,1,3,C.ink);R(c,sx,sy+4,10,9,C.edge);R(c,sx+1,sy+5,8,7,'#e8c99a');
-   if(s.sign==='bread'){E(c,sx+5,sy+9,3,2,'#c98a4a');R(c,sx+3,sy+8,1,1,'#f0c890');R(c,sx+6,sy+8,1,1,'#f0c890');}else if(s.sign==='anvil'){R(c,sx+2,sy+7,6,2,'#5f5a5a');R(c,sx+4,sy+9,2,2,'#5f5a5a');R(c,sx+3,sy+11,4,1,'#5f5a5a');}else{R(c,sx+3,sy+7,4,5,'#e8c070');R(c,sx+3,sy+6,4,1,'#fff7ea');R(c,sx+7,sy+8,1,3,'#b8946a');}}
+   if(s.sign==='bread'){E(c,sx+5,sy+9,3,2,'#c98a4a');R(c,sx+3,sy+8,1,1,'#f0c890');R(c,sx+6,sy+8,1,1,'#f0c890');}else if(s.sign==='bag'){R(c,sx+3,sy+7,4,5,'#c9a06a');R(c,sx+4,sy+6,2,1,'#8a6446');R(c,sx+3,sy+8,4,1,'#e8c070');}else if(s.sign==='anvil'){R(c,sx+2,sy+7,6,2,'#5f5a5a');R(c,sx+4,sy+9,2,2,'#5f5a5a');R(c,sx+3,sy+11,4,1,'#5f5a5a');}else{R(c,sx+3,sy+7,4,5,'#e8c070');R(c,sx+3,sy+6,4,1,'#fff7ea');R(c,sx+7,sy+8,1,3,'#b8946a');}}
   if(s.lantern){const [lx,ly]=q(...F(.15,z/2-4));R(c,lx-2,ly-6,5,6,'#5a463f');R(c,lx-1,ly-5,3,4,'#f4d48a');R(c,lx,ly-8,1,2,'#5a463f');}
   if(s.woodpile){for(let k=0;k<3;k++)for(let m=0;m<3-k;m++){const [lx,ly]=q(w+.18,.3+m*.28+k*.14,3+k*5);E(c,lx,ly,2.6,2.6,'#8a6446');E(c,lx,ly,1.4,1.4,'#d9b083');}}
  });

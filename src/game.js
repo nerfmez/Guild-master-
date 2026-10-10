@@ -725,6 +725,8 @@ export function getPayout(state, fee, planId = 'standard') {
 }
 function syncImportant(state) {
   state.petitions ??= [];
+  // Letters for steps already cleared some other way are taken down.
+  if (state.petitions.some(p => p.important && !p.missionId && !isImportantQuest(state, p.questId))) state.petitions = state.petitions.filter(p => !p.important || p.missionId || isImportantQuest(state, p.questId));
   for (const quest of QUESTS) {
     if (!isImportantQuest(state, quest.id) || !questOpen(state, quest)) continue;
     if (state.petitions.some(p => p.questId === quest.id && p.important)) continue;
@@ -1029,7 +1031,7 @@ function build(state, payload) {
   const content = FACILITIES[payload.type];
   if (!content) return failure('ไม่พบของชนิดนี้');
   if (!hasRank(state, content.unlockRank)) return failure(`ต้องมีกิลด์ระดับ ${content.unlockRank}`);
-  if (['reception', 'dispatch'].includes(payload.type) && state.facilities.some(room => room.type === payload.type)) return failure('ของชนิดนี้มีได้หนึ่งชิ้น');
+  if (['reception', 'dispatch', 'board'].includes(payload.type) && state.facilities.some(room => room.type === payload.type)) return failure('ของชนิดนี้มีได้หนึ่งชิ้น');
   const place = canPlaceFacility(state,payload.type,payload.x,payload.y,null,payload.rotation??0);
   if (!place.ok) return place;
   if (!canAfford(state, content.cost)) return failure('ทรัพยากรสำหรับวางของไม่เพียงพอ');

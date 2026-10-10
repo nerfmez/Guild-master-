@@ -212,7 +212,7 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
   const n=hash(member.id||member.name),role=roleOf(member),color=member.outfit||JOBS[member.class]?.color||CHAR_COLORS[n%CHAR_COLORS.length],skin=member.skin||P.skin;
   const hair=member.hair||MEMBER_ART[member.id]?.hair||['#795b50','#ad785e','#d9be87','#706175','#8b7760','#cfaaa4'][n%6];
   const base=JOBS[member.class]?.parent||member.class||role;
-  const master=role==='master',mage=base==='mage'||/mage|sage/.test(role),healer=base==='healer'||/heal|cleric|bard/.test(role),archer=base==='archer'||/arch|ranger|scout/.test(role);
+  const master=role==='master',villager=role==='villager',mage=base==='mage'||/mage|sage/.test(role),healer=base==='healer'||/heal|cleric|bard/.test(role),archer=base==='archer'||/arch|ranger|scout/.test(role);
   const back=direction==='north',side=direction==='east'||direction==='west',robe=mage||healer,long=member.hairStyle==='long';
   const stride=walking?Math.sin(phase):0,step=walking?(stride>.3?1:stride<-.3?-1:0):0,hop=walking&&Math.abs(stride)>.6?-1:0;
   const breathe=pose==='breath'?1:0,sleep=pose==='sleep',blink=pose==='blink'||sleep;
@@ -240,6 +240,7 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
   if(robe){rect(c,-5,-6,10,4,OUTLINE);rect(c,-4,-6,8,3,color);rect(c,-4,-4,8,1,dark);}
   rect(c,-4,-9+breathe,8,6-breathe,OUTLINE);rect(c,-3,-8+breathe,6,4-breathe,color);rect(c,-3,-8+breathe,1,3,light);rect(c,2,-8+breathe,1,4-breathe,dark);
   if(!back){if(master){rect(c,-2,-8+breathe,1,1,P.cream);rect(c,-1,-7+breathe,1,1,P.cream);rect(c,0,-6,1,1,P.cream);}
+   else if(villager){if(n%2)rect(c,-2,-7+breathe,4,3,P.cream);}
    else if(healer)rect(c,-1,-8+breathe,2,1,P.cream),rect(c,0,-8+breathe,1,3,P.cream);
    else if(!robe&&!archer)rect(c,-3,-8+breathe,6,1,'#dfe6e2');
    else if(archer){rect(c,-2,-8+breathe,1,1,P.woodDark);rect(c,-1,-7+breathe,1,1,P.woodDark);rect(c,0,-6,1,1,P.woodDark);}}
@@ -269,12 +270,14 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
   if(mage){rect(c,-7,-18,14,1,OUTLINE);rect(c,-6,-18,12,1,dark);poly(c,[[-4,-18],[4,-18],[1,-24],[-1,-25]],OUTLINE);poly(c,[[-3,-18],[3,-18],[0,-23]],color);rect(c,-3,-19,6,1,P.gold);}
   else if(healer){rect(c,-5,-20,10,3,OUTLINE);rect(c,-4,-20,8,2,P.cream);rect(c,0,-20,1,2,P.coral);rect(c,-1,-19,3,1,P.coral);}
   else if(archer){rect(c,-6,-19,12,3,OUTLINE);rect(c,-5,-19,10,2,P.sage);rect(c,-4,-19,4,1,P.mint);rect(c,3,-22,1,3,P.coralLight);rect(c,4,-23,1,2,P.coralLight);}
+  else if(villager){const hat=member.hat??n%3;if(hat===0){rect(c,-8,-17,16,2,OUTLINE);rect(c,-7,-17,14,1,'#e2c37e');rect(c,-4,-21,8,4,OUTLINE);rect(c,-3,-20,6,3,'#e8cd8c');rect(c,-3,-18,6,1,P.coral);}else if(hat===1){rect(c,-5,-19,10,3,OUTLINE);rect(c,-4,-19,8,2,tone(color,.2));if(!back)rect(c,4,-16,2,2,tone(color,.2));}}
   else if(!master){rect(c,-5,-17,10,1,P.cream);if(!back)rect(c,4,-17,2,1,P.gold);}
   else{rect(c,-1,-19,2,1,hairLight);}
   if(sleep){rect(c,-3,-12,2,1,'#3a2f2b');}
   c.translate(0,-breathe-(sleep?1:0));
   // Held gear in the working hand.
   if(work>=0){rect(c,hand.x+1,hand.y-(work===0?4:0),1,5,P.woodDark);rect(c,hand.x-1,hand.y-(work===0?6:-4),4,2,'#8f9a98');}
+  else if(villager){if(member.letter&&!back){rect(c,hand.x-1,hand.y-3,5,4,OUTLINE);rect(c,hand.x,hand.y-2,3,2,P.cream);rect(c,hand.x+1,hand.y-2,1,1,P.coral);}}
   else if(master){rect(c,hand.x,hand.y-2,3,4,OUTLINE);rect(c,hand.x+1,hand.y-1,1,2,P.white);if(!back)rect(c,-7,-6,2,2,P.woodLight);}
   else if(robe){const top=healer?P.gold:P.blue,glow=train>=0;rect(c,-7,-16,1,13,P.woodDark);rect(c,-8,-18,3,3,OUTLINE);rect(c,-7,-17,1,1,glow?P.white:top);if(glow){rect(c,-9-train,-20,1,1,tone(top,.5));rect(c,-5+train,-21,1,1,P.white);}}
   else if(archer){if(train>=0){rect(c,hand.x+2,hand.y-4,1,9,P.woodDark);rect(c,hand.x+1,hand.y-5,1,1,P.woodDark);rect(c,hand.x+1,hand.y+5,1,1,P.woodDark);if(train===1)rect(c,hand.x+4,hand.y,4,1,P.woodDark);}
@@ -311,6 +314,9 @@ export function drawItemIcon(canvas,type='sword',size=40) {
   } else if(name==='map') {
     box(c,-13,-11,26,22,P.paper,P.woodDark); rect(c,-11,-9,8,18,'#c9dcaa'); rect(c,-3,-9,7,18,'#d6cfbd'); rect(c,4,-9,7,18,'#a7bdb4');
     rect(c,-9,4,6,2,P.wood); rect(c,-4,1,6,2,P.wood); rect(c,1,-2,5,2,P.wood); rect(c,6,-6,3,3,P.coral); rect(c,-11,-4,3,3,P.coral);
+  } else if(name==='house') {
+    poly(c,[[-14,-1],[0,-14],[14,-1]],P.woodDark); poly(c,[[-11,-2],[0,-12],[11,-2]],P.coral); box(c,-10,-2,20,15,P.cream,P.woodDark);
+    rect(c,-3,4,6,9,P.wood); rect(c,-8,1,4,4,'#a5c0b8'); rect(c,4,1,4,4,'#a5c0b8'); rect(c,6,-12,3,6,P.woodDark);
   } else if(name==='hammer') {
     c.rotate(-.6); rect(c,-2,-4,4,19,P.woodDark); rect(c,-1,-4,2,18,P.wood); box(c,-10,-13,20,10,'#9aa6a4',P.deep); rect(c,-8,-11,16,2,'#c9d1cc'); c.rotate(.6);
   } else if(name==='scroll') {
@@ -404,6 +410,10 @@ export function drawBattleScene(canvas,mission,quest,state,options={}) {
 }
 
 // Texture baking only; the in-game world is rendered by Phaser/WebGL.
+/** A villager's look from their petition: a dozen looks rotate so sprite textures stay few. The elder is always the same. */
+const VILLAGER_OUTFITS=['#c9a77c','#9cb59a','#d6a08f','#a9b7c9','#e0c58f','#b7aec9'],VILLAGER_HAIR=['#5b4637','#8b5a3c','#d9b26f','#a66c59','#6f6a8f','#e9e2d0'],VILLAGER_SKIN=['#f7d4ae','#e8b88c','#b9805a'];
+export function villagerLook(p={}){if(p.home==='elder')return{id:'elder',name:p.client,class:'villager',hair:'#e9e2d0',outfit:'#8a7a68',skin:VILLAGER_SKIN[0],hairStyle:'short',hat:2,letter:true};
+  const s=(p.seed||1)%12;return{id:'v'+s,name:p.client,class:'villager',hair:VILLAGER_HAIR[(s*5)%6],outfit:VILLAGER_OUTFITS[(s*7+1)%6],skin:VILLAGER_SKIN[s%3],hairStyle:s%2?'long':'short',hat:s%3,letter:true};}
 export function makeActorTexture(member={},phase=0,walking=false,facing=1,direction='south',pose='idle') {
  const canvas=document.createElement('canvas');canvas.width=44;canvas.height=52;
  const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;

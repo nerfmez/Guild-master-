@@ -33,7 +33,7 @@ try {
   };
 
   await nav('quests');
-  await click('[data-quest="patrol"]');
+  await click('[data-assign]');
   await click('[data-pick-member="mira"]');
   assert.equal(await page.locator('[data-send-mission]').isDisabled(), true, 'Incomplete team cannot leave');
   assert.match(await page.locator('.readiness').textContent(), /3|สาม/, 'Disabled action explains the missing members');

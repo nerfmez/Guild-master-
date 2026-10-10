@@ -1,13 +1,13 @@
 import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,buildingRect,partitionSize,partitionRect,pointInRect } from './site.js';
-import { FACILITIES } from './content.js';
-import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove } from './game.js';
-import { makeActorTexture } from './render.js';
+import { FACILITIES,VILLAGE_LOTS } from './content.js';
+import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
+import { makeActorTexture,villagerLook } from './render.js';
 import { QUESTS } from './content.js';
-import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,monsterSpawns,inWater,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
+import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,monsterSpawns,inWater,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
 import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
-import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,HOME_STYLES,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
+import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,HOME_STYLES,makeOutdoor,makeStall,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 export class GuildRenderer {
@@ -38,7 +38,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R29',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R30',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -95,7 +95,7 @@ export class GuildRenderer {
  setState(state){
   this.state=state;const signature=JSON.stringify([state.grid,state.building,state.rooms,state.facilities.map(f=>[f.id,f.type,f.x,f.y,f.level,f.rotation])]);
   if(signature!==this.signature){this.signature=signature;if(this.ready)this.rebuild();}
-  if(this.ready)this.syncActors();
+  if(this.ready){this.syncActors();this.syncVillage();}
  }
  rebuild(){
   if(!this.ready)return;for(const image of this.rooms)image.destroy();this.rooms=[];this.furnitureSprites=[];
@@ -212,7 +212,7 @@ export class GuildRenderer {
    else tint('wg-'+item.seed,()=>makeTallGrass(item.seed));
   }
   this.chimneys=[];this.puffs=[];
-  for(const [x,y,seed,style] of VILLAGE_HOMES)this.worldProps.push(this.addHome(style,seed,x,y));
+  this.villageSig=null;this.villageProps=new Map();this.syncVillage();
   // Landmarks where quests happen.
   // Each quest has its own set piece; some of them breathe (sparkle, flicker, sway).
   this.animated=[];const anim=(key,make,frames,fps,x,y,depth)=>{for(let f=0;f<frames;f++)bake(`${key}-${f}`,()=>make(f));const image=place(`${key}-0`,()=>make(0),x,y,depth);this.animated.push({image,key,frames,fps,phase:Math.random()*frames});return image;};
@@ -335,18 +335,70 @@ export class GuildRenderer {
   if(i===0&&party){if(!party.tag)party.tag=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'7px',fontStyle:'bold',color:'#5a4a36',backgroundColor:'#f8edd3',padding:{x:3,y:1}}).setOrigin(.5,1).setResolution(2);
    const pending=m.event&&!m.event.resolved,text=`${pending?'! ':''}${quest.name} ${Math.round(ratio*100)}%`;if(party.tag.text!==text)party.tag.setText(text);party.tag.setBackgroundColor(pending?'#fff1c4':'#f8edd3').setPosition(Math.round(p.x),Math.round(p.y-27)).setDepth(p.y+200).setVisible(true);}
  }
+ // ---- The village: homes appear on their lots as houses are built and grow with the village level. ----
+ syncVillage(){
+  if(!this.scene||!this.state||!this.worldProps)return;const v=getVillageInfo(this.state),tier=v.level>=5?2:v.level>=3?1:0,want=[];
+  VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses)want.push({key:'h'+i,style:lot.styles[tier],seed:lot.seed,x:lot.x,y:lot.y});else if(i<v.maxHouses)want.push({key:'h'+i,lot:true,x:lot.x+.6,y:lot.y+1.6});});
+  for(const [id,need] of [['shop',1],['market',2],['smithy',3]]){const lot=VILLAGE_LOTS[id];if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:lot.x,y:lot.y}:{key:id,style:lot.style,seed:lot.seed,x:lot.x,y:lot.y});else if(v.level>=need)want.push({key:id,lot:true,x:lot.x+.8,y:lot.y+1.6});}
+  const sig=JSON.stringify(want);if(sig===this.villageSig)return;const first=this.villageSig===null;this.villageSig=sig;
+  const old=this.villageProps,next=new Map();
+  for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.style);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
+   const images=[],before=(this.chimneys||[]).length;
+   if(w.lot){const s=makeSignpost('ที่ดินว่าง');if(!this.scene.textures.exists('lot-sign'))this.texture('lot-sign',s.canvas);const p=gridPoint(w.x,w.y);images.push(this.scene.add.image(p.x-s.footX,p.y-s.footY,'lot-sign').setOrigin(0).setDepth(p.y).setAlpha(.9));}
+   else if(w.market){for(let k=0;k<w.market;k++){const key='stall-'+k,sp=makeStall(w.seed+k,k);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const at=[[0,0],[2.1,.3],[.9,2.1]][k],p=gridPoint(w.x+at[0],w.y+at[1]),c=gridPoint(w.x+at[0]+.8,w.y+at[1]+.6);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+4));}}
+   else images.push(this.addHome(w.style,w.seed,w.x,w.y));
+   const chimneys=(this.chimneys||[]).slice(before);
+   for(const image of images){this.worldProps.push(image);if(!first&&!w.lot){const y=image.y;image.y=y-18;this.scene.tweens.add({targets:image,y,duration:420,ease:'Bounce.easeOut'});}}
+   if(!first&&!w.lot)this.scene.time.delayedCall(220,()=>this.dustPuff(w.x,w.y,2.4,2.2));
+   next.set(id,{images,chimneys});}
+  for(const e of old.values()){for(const image of e.images){image.destroy();const i=this.worldProps.indexOf(image);if(i>=0)this.worldProps.splice(i,1);}this.chimneys=(this.chimneys||[]).filter(c=>!e.chimneys.includes(c));}
+  this.villageProps=next;this.cullClock=0;
+ }
+ // ---- Villagers bringing petitions: they walk from home along the road, in through the door, and wait at the desk. ----
+ bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
+  for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-villager-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
+ villagerRoute(home){const h=petitionHome(home),b=buildingRect(this.state),door=b.x+b.w/2,road=17.5;return[h,{x:h.x,y:road},{x:door,y:road},{x:door,y:b.y+b.h+.6},{x:door,y:b.y+b.h-.4}];}
+ updateVillagers(dt,playing){
+  if(!this.scene)return;this.villagers??=new Map();const elapsed=playing?dt*(this.state.settings?.speed||1):0,live=new Set();
+  const desk=this.state.facilities.find(f=>f.type==='reception'),b=buildingRect(this.state),spot=desk?getFacilityEntry(desk):{x:b.x+b.w/2,y:b.y+b.h-1.2};let queue=0;
+  const along=(route,d)=>{let left=d;for(let k=1;k<route.length;k++){const p=route[k-1],q=route[k],len=Math.hypot(q.x-p.x,q.y-p.y);if(left<=len||k===route.length-1){const f=len?Math.max(0,Math.min(1,left/len)):0;return{x:p.x+(q.x-p.x)*f,y:p.y+(q.y-p.y)*f};}left-=len;}return route[route.length-1];};
+  const length=route=>route.slice(1).reduce((sum,p,k)=>sum+Math.hypot(p.x-route[k].x,p.y-route[k].y),0);
+  for(const p of this.state.petitions||[]){if(p.status!=='coming'&&p.status!=='waiting')continue;live.add(p.id);let v=this.villagers.get(p.id);
+   if(!v){const look=villagerLook(p);if(!this.scene.textures.exists(`actor-${look.id}-villager-south-idle`))this.bakeVillager(look);const start=gridPoint(...Object.values(petitionHome(p.home)));
+    v={look,home:p.home,image:this.scene.add.image(start.x,start.y,`actor-${look.id}-villager-south-idle`).setOrigin(.5,48/52),x:start.x,y:start.y,direction:'south',path:[],phase:Math.random()*6};this.villagers.set(p.id,v);}
+   let goal;
+   if(p.status==='coming'){const route=this.villagerRoute(p.home),f=1-Math.max(0,p.eta)/(p.etaTotal||1);goal=gridPoint(...Object.values(along(route,length(route)*Math.max(0,Math.min(1,f)))));v.path=[];v.queued=false;}
+   else{const slot=queue++,target=gridPoint(spot.x+(slot%2?.45:0)*(slot>0?1:0),spot.y+.15+slot*.5);if(!v.queued||Math.hypot(v.target.x-target.x,v.target.y-target.y)>2){v.path=this.pathBetween(v.x,v.y,target.x,target.y);if(!v.path.length)v.path=[target];v.queued=true;v.target=target;}goal=v.path[0]||target;}
+   this.stepVillager(v,goal,elapsed,p.status==='coming');
+  }
+  for(const [id,v] of this.villagers){if(live.has(id))continue;
+   // A villager whose request was answered walks back home and fades out.
+   if(!v.leaving){v.leaving=true;v.ttl=30;const route=[...this.villagerRoute(v.home)].reverse().map(p=>gridPoint(p.x,p.y)),inside=gridPoint(...Object.values(this.villagerRoute(v.home)[4]));v.path=[...this.pathBetween(v.x,v.y,inside.x,inside.y),...route.slice(1)];}
+   v.ttl-=dt;if(v.path[0]&&Math.hypot(v.path[0].x-v.x,v.path[0].y-v.y)<=1)v.path.shift();
+   if(!v.path.length||v.ttl<=0){v.image.setAlpha(Math.max(0,v.image.alpha-dt*2));if(v.image.alpha<=0){v.image.destroy();this.villagers.delete(id);}continue;}
+   this.stepVillager(v,v.path[0],elapsed,false,true);}
+ }
+ stepVillager(v,goal,elapsed,direct,walkPath=false){
+  const dx=goal.x-v.x,dy=goal.y-v.y,d=Math.hypot(dx,dy);let walking=false;
+  if(d>.6){walking=true;if(direct&&d>60){v.x=goal.x;v.y=goal.y;}else{const step=Math.min(d,elapsed*(direct?Math.max(22,d*3):24));v.x+=dx/d*step;v.y+=dy/d*step;}v.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}
+  else if(!direct&&!walkPath&&v.path?.length)v.path.shift();
+  const t=(this.realTime||0)+v.phase,pose=walking&&elapsed>0?'walk'+(Math.floor(this.elapsed*8)%4):Math.floor(t*1.5)%2?'breath':'idle',facing=!walking&&v.queued?'north':v.direction;
+  v.image.setTexture(`actor-${v.look.id}-villager-${facing}-${pose}`).setPosition(Math.round(v.x),Math.round(v.y)).setDepth(Math.round(v.y)+.5);
+ }
  clampFocus(){const a=gridPoint(WORLD.x0,WORLD.y1),b=gridPoint(WORLD.x1,WORLD.y0),c=gridPoint(WORLD.x0,WORLD.y0),d=gridPoint(WORLD.x1,WORLD.y1);this.focusX=Math.max(a.x+300,Math.min(b.x-300,this.focusX));this.focusY=Math.max(c.y+200,Math.min(d.y-200,this.focusY));}
  focusGrid(x,y,zoom){const p=gridPoint(x,y);this.focusX=p.x;this.focusY=p.y;this.userPanned=true;if(zoom)this.zoom=zoom;this.applyView();}
  focusMission(id){this.followMission=id;const a=[...this.actors.values()].find(a=>a.missionId===id&&a.image.visible)||[...this.actors.values()].find(a=>a.missionId===id);const m=(this.state.missions||[]).find(m=>m.id===id),quest=m&&QUESTS.find(q=>q.id===m.questId),site=quest&&QUEST_SITES[quest.id];
   const p=a?.image.visible?{x:a.x,y:a.y}:site?gridPoint(site.x,site.y):null;if(!p)return;this.focusX=p.x;this.focusY=p.y;this.userPanned=true;this.applyView();}
- roomFor(m){let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
+ roomFor(m){if(this.prepping?.has(m.id)){const board=this.state.facilities.find(f=>f.type==='board');if(board)return board;}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
   if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','dorm'][hash(m.id)%4];
   return this.state.facilities.find(f=>f.type===type)||this.state.facilities[0];}
 
  syncActors(){
   const ids=new Set([...this.state.members.map(m=>m.id),'master']);for(const [id,a] of this.actors)if(!ids.has(id)){a.image.destroy();a.emote?.destroy();this.actors.delete(id);}
   const idleKey=this.signature+'|'+this.state.members.map(m=>m.id).join(',');if(this.idleKey!==idleKey){this.idleKey=idleKey;const hall=buildingRect(this.state),spots=getWalkableSpots(this.state),claimed=[];this.idleSpots=this.state.members.map((m,i)=>{const desired=[{x:2.5,y:2.5},{x:4.25,y:2},{x:5,y:3.5},{x:1.75,y:2.75}][i%4],tx=hall.x+desired.x,ty=hall.y+desired.y+(Math.floor(i/4)*.6);const p=spots.filter(p=>claimed.every(q=>Math.hypot(p.x-q.x,p.y-q.y)>=.8)).sort((a,b)=>(a.x-tx)**2+(a.y-ty)**2-((b.x-tx)**2+(b.y-ty)**2))[0]||spots[i%spots.length];claimed.push(p);return p;});}
-  const away=new Set(this.state.missions.filter(m=>['active','decision'].includes(m.status)).flatMap(m=>m.memberIds));
+  // Adventurers who just took a board job gather at the board for a moment before heading out.
+  this.prepping=new Set(this.state.missions.filter(m=>m.status==='active'&&m.prep>0).flatMap(m=>m.memberIds));
+  const away=new Set(this.state.missions.filter(m=>['active','decision'].includes(m.status)&&!(m.prep>0)).flatMap(m=>m.memberIds));
   for(const m of this.state.members){const room=this.roomFor(m),b=room&&getRoomSize(room.type,room.rotation||0),n=hash(m.id);
    if(!b)continue;const roommates=this.state.members.filter(other=>this.roomFor(other)?.id===room.id),slot=roommates.findIndex(other=>other.id===m.id);
    const entry=getFacilityEntry(room),hall=buildingRect(this.state),idle=m.energy>=95&&!m.injury&&m.task==='rest',index=this.state.members.findIndex(other=>other.id===m.id);
@@ -428,6 +480,7 @@ export class GuildRenderer {
   }
 
   this.updateWorld(dt,playing);
+  this.updateVillagers(dt,playing);
   // Follow a watched team until the player drags the view or the team is home.
   if(this.followMission){const a=[...this.actors.values()].find(a=>a.missionId===this.followMission&&a.away&&a.image.visible);const live=(this.state.missions||[]).some(m=>m.id===this.followMission&&(m.status==='active'||m.status==='decision'));if(!live)this.followMission=null;else if(a){const k=1-Math.pow(.02,Math.min(dt,.1));this.focusX+=(a.x-this.focusX)*k;this.focusY+=(a.y-this.focusY)*k;this.applyView();}}
   if(this.pending&&this.pendingDraw){const k=1-Math.pow(.0004,Math.min(dt,.1));this.pendingDraw.x+=(this.pending.x-this.pendingDraw.x)*k;this.pendingDraw.y+=(this.pending.y-this.pendingDraw.y)*k;if(Math.abs(this.pending.x-this.pendingDraw.x)+Math.abs(this.pending.y-this.pendingDraw.y)<.01)this.pendingDraw={...this.pending};this.positionGhost();}
