@@ -52,5 +52,13 @@
       "errors": []
     }
   ],
-  "actualAndroidDeviceTested": false
+  "actualAndroidDeviceTested": false,
+  "latestDelivery": {
+    "release": "R6",
+    "file": "play-r6-6c4044a9.html",
+    "sha256": "6c4044a9885b38049186156c0368c8d73d5b86a60a7a0a91985de744b8324f38",
+    "url": "https://little-leaf-guild-play.ballboy-lnw.chatgpt.site",
+    "brandingOnlyVariantVerified": true,
+    "deviceIssueConfirmedResolved": false
+  }
 }

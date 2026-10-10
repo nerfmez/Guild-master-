@@ -17,3 +17,9 @@
 ภาพ runtime ปัจจุบัน: [พื้นโล่ง](images/empty-floor.png) · [สร้างห้อง](images/room-layout.png) · [ต่อเติมและย้ายห้อง](images/rooms-expanded.png) · [เมนู](images/room-menu.png) · [วางห้องมือถือ](images/mobile-room-build.png) · [สองห้องบนมือถือ](images/mobile-rooms.png)
 
 รายละเอียดการตรวจภาพและ hash อยู่ใน [VISUAL-REVIEW.md](VISUAL-REVIEW.md) ไม่ใช่การวัด FPS บนโทรศัพท์จริงหรือ playtest กับผู้เล่นภายนอก
+
+## การส่งผ่านเว็บ R6
+
+หลังผู้ใช้รายงานว่าไฟล์ Canvas ยังแสดงเฉพาะของกับตัวละคร จึงส่งเกมผ่าน HTTPS ของ Sites เป็นอีกทางเลือก พร้อมรหัส R6 ที่ชื่อแท็บและแบรนด์ เกมและ renderer เท่ากับ export 3fe732e0 ทุกไบต์หลังแทนข้อความรุ่นกลับ; ไม่อ้างว่าอาการบนเครื่องผู้ใช้แก้แล้ว จนกว่าจะมีผลจากเครื่องจริง
+
+Native deployment สำเร็จ ดู [WEB-DELIVERY.json](WEB-DELIVERY.json) ไม่ได้ตรวจ browser บน hosted Site: สภาพแวดล้อม managed ไม่มี control-browser skill จึงใช้ข้อจำกัดการตรวจตาม Sites workflow

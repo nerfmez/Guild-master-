@@ -1,0 +1,14 @@
+{
+  "release": "R6",
+  "url": "https://little-leaf-guild-play.ballboy-lnw.chatgpt.site",
+  "status": "succeeded",
+  "siteProjectId": "appgprj_6ac9ba62dd5c8191b1f9b7a71a3eb225",
+  "siteSourceCommit": "ee629a6edc0552000b69c18e371a39518c005b9e",
+  "file": "play-r6-6c4044a9.html",
+  "sha256": "6c4044a9885b38049186156c0368c8d73d5b86a60a7a0a91985de744b8324f38",
+  "testedRendererExportSha256": "3fe732e08fb5a31dc204944718877b7e409decb0933dc152367dad708cba8b6b",
+  "brandingOnlyVariantVerified": true,
+  "browserQAOnHostedSite": false,
+  "actualAndroidDeviceTested": false,
+  "userLocalFileIssue": "Scene shows actors and furniture, but scenery is absent; Canvas fallback did not resolve the reported device case."
+}
