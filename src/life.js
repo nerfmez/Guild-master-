@@ -1,7 +1,7 @@
 /* The living world: adventurers (guild members and free adventurers) walk out to hunting grounds,
    fight monsters in real time, carry fallen friends home, and sell their loot in the village.
    Pure simulation: game.js calls tickLife with a small context of its own helpers. */
-import { HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES } from './content.js';
+import { HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES } from './content.js';
 
 const SUB = 0.25;          // seconds per combat step
 const WALK = 1.7;          // tiles per second
@@ -87,7 +87,7 @@ function makeHunter(state, ctx, who, kind, zoneId, party, start) {
   const path = [...zone.via.map(([x, y]) => ({ x, y })), pointIn(w, zone, .6)];
   return { id: who.id, kind, zone: zoneId, party, mode: 'go', x: start.x + (rand(w) - .5) * .4, y: start.y + (rand(w) - .5) * .4, path, hp: stats.health, maxHp: stats.health,
     power: stats.basePower, cls: rootOf(who.class), atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
-    bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0 }, quota: 7 + Math.floor(rand(w) * 4) };
+    bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 7 + Math.floor(rand(w) * 4) };
 }
 export function freeStats(f) {
   const job = JOBS[f.class], power = (job.power + (f.level - 1) * 2.7 + 4) * ({ F: 1, E: 1.04, D: 1.08, C: 1.13 }[f.rank] || 1);
@@ -139,6 +139,16 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   h.bag.gold += s.gold[0] + Math.floor(rand(state.world) * (s.gold[1] - s.gold[0] + 1));
   if (rand(state.world) < .7) h.bag[s.mat] += 1 + (s.boss ? 4 : 0);
   h.bag.kills += 1;
+  // Parts for the guild counter, and now and then a treasure; bosses always guard one.
+  const part = MONSTER_PART[m.species];
+  if (part && rand(state.world) < TRADE_RULES.partChance) { h.bag.parts ??= {}; h.bag.parts[part] = (h.bag.parts[part] || 0) + (s.boss ? 5 : 1); }
+  const zoneRank = rankIdx(HUNT_ZONES[m.zone]?.rank || 'F');
+  if (s.boss || rand(state.world) < TRADE_RULES.treasureChance * (1 + zoneRank * 0.5)) {
+    const pool = Object.entries(TREASURES).filter(([, t]) => !t.boss && rankIdx(t.rank) <= zoneRank).map(([id]) => id);
+    h.bag.treasures ??= [];
+    if (s.boss) h.bag.treasures.push('rustCrown');
+    else if (pool.length) h.bag.treasures.push(pool[Math.floor(rand(state.world) * pool.length) % pool.length]);
+  }
   for (const o of party) {
     const who = o.kind === 'member' ? state.members.find(x => x.id === o.id) : state.world.free.find(x => x.id === o.id);
     if (!who) continue;
@@ -253,6 +263,8 @@ function arriveHome(state, ctx, h) {
   for (const k of mats) if (bag[k]) ctx.marketAdd(k, bag[k]);
   const who = h.kind === 'member' ? state.members.find(m => m.id === h.id) : w.free.find(f => f.id === h.id);
   if (who) {
+    const sale = ctx.sellLoot?.(h, who) || { sold: 0, paid: 0 };
+    if (sale.sold) emit({ type: 'sell', id: h.id, x: h.x, y: h.y, amount: sale.sold, gold: sale.paid });
     const share = h.kind === 'member' ? HUNT_ECONOMY.guildCut : HUNT_ECONOMY.marketFee;
     const guild = Math.floor(income * share);
     who.purse = (who.purse || 0) + income - guild;
@@ -263,7 +275,7 @@ function arriveHome(state, ctx, h) {
       if (bag.kills) ctx.renown?.(h.zone, bag.kills);
       who.energy = clamp(who.energy - 8, 0, 100);
       if (h.mode === 'carried' || h.hp <= 0) { who.injury = clamp((who.injury || 0) + 30, 0, 100); who.morale = clamp(who.morale - 6, 0, 100); ctx.log(`${who.name}ถูกหามกลับถึงกิลด์ ต้องพักรักษาตัว`, 'warning'); }
-      else if (bag.kills) ctx.log(`${who.name}กลับจาก${HUNT_ZONES[h.zone].name} ล่าได้ ${bag.kills} ตัว ขายของได้ ${income} G (กิลด์ได้ ${guild} G)`, 'hunt');
+      else if (bag.kills) ctx.log(`${who.name}กลับจาก${HUNT_ZONES[h.zone].name} ล่าได้ ${bag.kills} ตัว ได้เงิน ${income} G (กิลด์ได้ ${guild} G)${sale.sold ? ` · ขายของให้กิลด์ ${sale.sold} ชิ้น` : ''}`, 'hunt');
     } else {
       who.mode = 'town'; who.x = INN.x; who.y = INN.y; who.tx = INN.x; who.ty = INN.y; who.wait = 6;
       who.affinity = clamp((who.affinity || 0) + (bag.kills ? 3 : 0), 0, 100);

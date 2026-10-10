@@ -748,7 +748,8 @@ test('the living world: members hunt in real time, carry the fallen home, sell l
   for (let t = 0; t < 120 && state.world.hunters.some(h => h.id === hunter.id); t++) tick(state, 5);
   assert.ok(!state.world.hunters.some(h => h.id === hunter.id), 'the party comes home');
   assert.ok(state.world.kills > kills, 'monsters were fought and beaten');
-  assert.ok(state.gold > gold - 200, 'the guild took its share of the hunt');
+  assert.ok(state.ledger.some(e => /ส่วนแบ่งการล่า/.test(e.label || e.reason || e.text || '')) || state.trade.stats.bought > 0, 'the guild took its share or bought the loot');
+  assert.ok(gold > 0);
   const member = state.members.find(m => m.id === hunter.id);
   assert.ok(member.purse > 0, 'the member keeps most of what they earned');
   // A knocked-out hunter is carried home by a friend, or by porters from the guild.
@@ -860,4 +861,61 @@ test('routine petitions go up on the board by themselves unless the player turns
   tick(state, 40);
   assert.equal(manual.status, 'waiting');
   assert.equal(deserializeGame(serializeGame(state)).policy.autoPetitions, false);
+});
+
+test('hunters sell parts and treasures at the guild counter; the guild makes goods, sells to town, by caravan or to collectors', async () => {
+  const { storeUsed, caravanLoad } = await import('../src/trade.js');
+  const state = createGame(101);
+  state.gold = 5000;
+  // A member comes home with parts and a treasure: the guild pays them and keeps the loot.
+  const m = state.members[0];
+  state.world.hunters.push({ id: m.id, kind: 'member', zone: 'meadow', party: 'pt-x', mode: 'return', x: -2, y: 13, path: [], hp: 50, maxHp: 50, power: 10, cls: 'warrior', atkCd: 0, skillCd: 0, guard: 0, target: null, carrying: null, carriedBy: null,
+    bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 3, merit: 0, parts: { pelt: 6, jelly: 3 }, treasures: ['oldCoin'] }, quota: 9 });
+  const purse = m.purse || 0, gold = state.gold;
+  tick(state, 2);
+  assert.ok(!state.world.hunters.some(h => h.id === m.id), 'home');
+  assert.equal(state.trade.store.pelt, 6); assert.equal(state.trade.store.jelly, 3);
+  assert.equal(state.trade.treasures[0].id, 'oldCoin');
+  assert.ok(m.purse > purse && state.gold < gold, 'the guild paid for the loot');
+  // A low buying price keeps more margin; free adventurers then sell elsewhere unless they love the guild.
+  assert.equal(act(state, 'setBuyRate', { rate: 'low' }).ok, true);
+  assert.equal(act(state, 'setBuyRate', { rate: 'nope' }).ok, false);
+  act(state, 'setBuyRate', { rate: 'fair' });
+  // Selling to the town's merchants: each unit a little cheaper than the last.
+  const before = state.gold;
+  assert.equal(act(state, 'wholesale', { id: 'jelly', count: 'all' }).ok, true);
+  assert.ok(state.gold > before && !state.trade.store.jelly);
+  // A tannery turns three hides into leather goods worth more than the hides.
+  state.village.tannery = 1;
+  tick(state, 60);
+  assert.ok(state.trade.goods.leather?.count >= 1, 'leather goods made');
+  assert.ok(state.trade.goods.leather.value / state.trade.goods.leather.count > 3 * 12, 'goods are worth more than their parts');
+  // Townsfolk buy goods at the end of the day.
+  state.trade.goods.leather.count += 2; state.trade.goods.leather.value += 120;
+  const day = state.day, g2 = state.gold;
+  tick(state, 240 - state.clock + 1);
+  assert.ok(state.day > day && state.gold > g2 - 400, 'the day turns');
+  assert.ok(state.ledger.some(e => e.text === 'ขายสินค้าให้ชาวเมือง'), 'goods sold to the town');
+  // Caravan: needs the yard, takes the contract first, comes back richer.
+  assert.equal(act(state, 'sendCaravan', {}).ok, false);
+  state.village.caravan = 1; state.trade.store.crystal = 20;
+  tick(state, 1);
+  assert.ok(state.trade.contract, 'a contract from the capital');
+  const plan = caravanLoad(state);
+  assert.ok(plan.count > 0 && plan.expect > plan.value);
+  assert.equal(act(state, 'sendCaravan', { escort: true }).ok, true);
+  assert.ok(storeUsed(state.trade) < 20);
+  const g3 = state.gold;
+  assert.ok(deserializeGame(serializeGame(state)).trade.caravan, 'a caravan on the road survives save and load');
+  tick(state, 370);
+  assert.equal(state.trade.caravan, null);
+  assert.ok(state.ledger.some(e => e.text === 'คาราวานกลับจากเมืองหลวง') && state.gold > g3);
+  // Treasures: display for renown, or sell to a collector.
+  const rep = state.rep;
+  state.trade.treasures = [{ id: 'jadeIdol', from: 'x' }, { id: 'oldCoin', from: 'y' }];
+  assert.equal(act(state, 'displayTreasure', { index: 0 }).ok, true);
+  assert.ok(state.rep > rep && state.trade.displayed.length === 1);
+  const g4 = state.gold;
+  assert.equal(act(state, 'sellTreasure', { index: 0 }).ok, true);
+  assert.equal(state.gold, g4 + 120);
 });

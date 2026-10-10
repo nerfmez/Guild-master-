@@ -1,7 +1,8 @@
 /** A plain, reasonable player for balance checks: answers petitions, lets the board run,
  * sends the important steps itself, and invests only what the guild has earned. */
 import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, suggestTeam, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress, classChoices, getAdventurerRank } from '../src/game.js';
-import { RANKS, GUILD_UPGRADES } from '../src/content.js';
+import { RANKS, GUILD_UPGRADES, GOODS, PARTS } from '../src/content.js';
+import { storeUsed, storeCapacity, caravanLoad } from '../src/trade.js';
 
 const STEP = 5;
 function placeSomewhere(state, type) {
@@ -75,8 +76,13 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
       if (hasBoard && member.task === 'train') act(state, 'setTask', { memberId: member.id, task: 'rest' });
       else if (!hasBoard && !getMemberStats(state, member).busy && member.task === 'rest' && member.energy > 95 && state.elapsed % 120 < STEP) act(state, 'setTask', { memberId: member.id, task: 'train' });
     }
+    // Trade: parts no workshop wants go to the town's merchants; a caravan leaves when the wagon would be well filled.
+    const t = state.trade, used = storeUsed(t);
+    if (used > storeCapacity(state) * 0.5) for (const id of Object.keys(t.store)) if (!(state.village[GOODS[Object.keys(GOODS).find(g => GOODS[g].kind === PARTS[id].kind)].workshop] > 0)) act(state, 'wholesale', { id, count: 'all' });
+    if (state.village.caravan && !t.caravan && caravanLoad(state).count >= 15) { act(state, 'sendCaravan', { escort: state.gold > 1500 }); m.caravans = (m.caravans || 0) + 1; }
+    for (const [i, x] of t.treasures.entries()) { act(state, t.displayed.length < 3 ? 'displayTreasure' : 'sellTreasure', { index: i }); break; }
     // 4. Spend surplus: village first, then idle upgrades, cheapest first.
-    const options = [...['house', 'shop', 'market', 'smithy'].map(id => ({ kind: 'project', id, status: getProjectStatus(state, id) })).filter(o => o.status.ok).map(o => ({ ...o, cost: o.status.cost })),
+    const options = [...['house', 'shop', 'market', 'smithy', 'tannery', 'apothecary', 'jeweler', 'caravan'].map(id => ({ kind: 'project', id, status: getProjectStatus(state, id) })).filter(o => o.status.ok).map(o => ({ ...o, cost: o.status.cost })),
       ...Object.keys(GUILD_UPGRADES).filter(id => state.upgrades[id] < GUILD_UPGRADES[id].max).map(id => ({ kind: 'upgrade', id, cost: getGuildUpgradeCost(state, id) }))].sort((a, b) => a.cost.gold - b.cost.gold);
     const option = options[0];
     if (option && canPay(state, option.cost, 600)) {

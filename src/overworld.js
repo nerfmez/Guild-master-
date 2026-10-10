@@ -332,7 +332,7 @@ export function monsterSpawns() {
 
 // ---- Where the player may put a village building ----
 /** Footprints (grid units) of village buildings, for placement and clearance. */
-export const VILLAGE_FOOTPRINT = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4] };
+export const VILLAGE_FOOTPRINT = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4] };
 /**
  * Why a building cannot stand on this rectangle, or null when it can.
  * blockers: rectangles {x,y,w,h} already taken (guild land, roads, other buildings, trees).

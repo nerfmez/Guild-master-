@@ -1,10 +1,11 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES } from './content.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
 import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, spawnMonster, pointIn, worldRandom } from './life.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
+import { createTrade, sellLoot, tickTrade, dailyTrade, wholesale, sendCaravan, treasureAction, sanitizeTrade } from './trade.js';
 export const SAVE_VERSION = 5;
 export const DAY_LENGTH = 240;
 const RESOURCE_KEYS = ['gold', 'wood', 'stone', 'herb'];
@@ -96,7 +97,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0,
     policy: { memberHunting: true, autoPetitions: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, trade: 0 }, idleBank: 0,
+    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, trade: 0 }, trade: createTrade(), idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -814,6 +815,7 @@ function updateRank(state) {
 }
 
 function dailyUpdate(state) {
+  dailyTrade(state, tradeContext(state));
   // New guilds are not charged before their first mission pays anything.
   const upkeep = state.goals?.firstMission ? getGuildStats(state).upkeep : 0;
   const paid = Math.min(state.gold, upkeep);
@@ -887,7 +889,7 @@ export function getVillageInfo(state) {
   for (let i = 0; i < VILLAGE_LEVELS.length; i++) if (v.prosperity >= VILLAGE_LEVELS[i].prosperity) index = i;
   const now = VILLAGE_LEVELS[index], next = VILLAGE_LEVELS[index + 1] || null;
   return { level: now.level, name: now.name, prosperity: Math.floor(v.prosperity), next, progress: next ? clamp((v.prosperity - now.prosperity) / (next.prosperity - now.prosperity), 0, 1) : 1,
-    houses: v.houses, maxHouses: Math.min(VILLAGE_LOTS.houses.length, 2 + now.level * 2), shop: v.shop || 0, market: v.market || 0, smithy: v.smithy || 0, dojo: v.dojo || 0, arena: v.arena || 0,
+    houses: v.houses, maxHouses: Math.min(VILLAGE_LOTS.houses.length, 2 + now.level * 2), ...Object.fromEntries(VILLAGE_BUSINESSES.map(id => [id, v[id] || 0])),
     interval: petitionInterval(state), maxWaiting: 2 + Math.floor(now.level / 2), maxPosted: 4 + roomLevel(state, 'reception'), idleRate: idleRate(state) };
 }
 function petitionInterval(state) {
@@ -1045,6 +1047,7 @@ function lifeContext(state) {
     freeToHunt: member => state.policy?.memberHunting !== false && !introActive(state) && !isBusy(state, member.id) && member.energy >= 70 && member.injury <= 15 && member.autoWork !== false && member.task !== 'train' && !member.waitingReason,
     // Word of the guild's hunters spreads: fair renown for work at the guild's own level.
     renown: (zone, kills) => { const z = HUNT_ZONES[zone]; if (z) state.rep += Math.round(kills * 0.15 * renownFactor(state, z) * 10) / 10; },
+    sellLoot: (hunter, who) => sellLoot(state, tradeContext(state), hunter, who),
     bossZone: () => bossAlive(state)?.zone || null,
     freeToDefend: member => !isBusy(state, member.id) && member.injury <= 40 && member.energy >= 20,
     onSpecialKill: (monster, hunter) => onSpecialKill(state, monster, hunter), onRaidReach: monster => onRaidReach(state, monster),
@@ -1089,6 +1092,15 @@ function directorContext(state) {
   };
 }
 export function getDirector(state) { return state.director; }
+// ---- Trade: helpers trade.js uses. ----
+function tradeContext(state) {
+  return {
+    income: (gold, reason) => { if (gold > 0) transact(state, { gold }, reason, 1); }, expense: (gold, reason) => { if (gold > 0) transact(state, { gold }, reason); },
+    log: (text, type) => addLog(state, text, type), random: () => worldRandom(state), villageLevel: () => getVillageInfo(state).level,
+    rep: n => { state.rep += n; }, prosperity: n => { state.village.prosperity += n; },
+    openParts: () => [...new Set(Object.values(HUNT_ZONES).filter(z => hasRank(state, z.rank)).flatMap(z => z.species.map(sp => MONSTER_PART[sp]).filter(Boolean)))],
+  };
+}
 /** Invite a free adventurer who has come to like the guild. */
 function inviteFree(state, payload) {
   const w = state.world, f = w?.free.find(x => x.id === payload.freeId && x.mode === 'town');
@@ -1115,6 +1127,10 @@ function sanitizeWorld(data, state, ids) {
     && Number.isInteger(f.level) && f.level >= 1 && f.level <= MAX_LEVEL && num(f.x) && num(f.y)).slice(0, 30);
   const freeIds = new Set(free.map(f => f.id));
   const hunters = (Array.isArray(data.hunters) ? data.hunters : []).filter(h => h && (h.kind === 'member' ? ids.has(h.id) : freeIds.has(h.id)) && num(h.x) && num(h.y) && num(h.hp) && h.bag && typeof h.party === 'string').slice(0, 60);
+  for (const h of hunters) {
+    h.bag.parts = Object.fromEntries(Object.entries(h.bag.parts && typeof h.bag.parts === 'object' ? h.bag.parts : {}).filter(([id, n]) => PARTS[id] && Number.isInteger(n) && n > 0 && n < 1000));
+    h.bag.treasures = (Array.isArray(h.bag.treasures) ? h.bag.treasures : []).filter(id => TREASURES[id]).slice(0, 10);
+  }
   const hunterIds = new Set(hunters.map(h => h.id));
   for (const f of free) if (f.mode === 'out' && !hunterIds.has(f.id)) f.mode = 'town';
   const porters = (Array.isArray(data.porters) ? data.porters : []).filter(p => p && hunterIds.has(p.target) && num(p.x) && num(p.y) && Array.isArray(p.path)).slice(0, 20);
@@ -1411,6 +1427,7 @@ export function tick(state, seconds) {
     tickVillage(state, step);
     tickLife(state, lifeContext(state), step);
     tickDirector(state, directorContext(state));
+    tickTrade(state, tradeContext(state), step);
     if (state.clock >= DAY_LENGTH - 0.00001) {
       state.clock = 0;
       state.day += 1;
@@ -1605,6 +1622,13 @@ function command(state, type, payload = {}) {
     case 'recruit': return recruit(state, payload);
     case 'declineApplicant': return declineApplicant(state, payload);
     case 'inviteFree': return inviteFree(state, payload);
+    case 'setBuyRate': if (!BUY_RATES[payload.rate]) return failure('ราคารับซื้อไม่ถูกต้อง'); state.trade.buyRate = payload.rate; return success(`ตั้งราคารับซื้อเป็น${BUY_RATES[payload.rate].name}`);
+    case 'setAutoWholesale': state.trade.autoWholesale = Boolean(payload.on); return success(state.trade.autoWholesale ? 'โกดังใกล้เต็มจะขายส่งเอง' : 'เก็บของไว้ทั้งหมด ไม่ขายเอง');
+    case 'toggleWorkshop': if (!VILLAGE_PROJECTS[payload.workshop] || !['tannery', 'apothecary', 'jeweler'].includes(payload.workshop)) return failure('ไม่พบโรงงานนี้'); state.trade.halt[payload.workshop] = !state.trade.halt[payload.workshop]; if (!state.trade.halt[payload.workshop]) delete state.trade.halt[payload.workshop]; return success(state.trade.halt[payload.workshop] ? `${VILLAGE_PROJECTS[payload.workshop].name}หยุดรับวัตถุดิบ` : `${VILLAGE_PROJECTS[payload.workshop].name}กลับมาทำงาน`);
+    case 'wholesale': return wholesale(state, tradeContext(state), payload);
+    case 'sendCaravan': return sendCaravan(state, tradeContext(state), payload);
+    case 'sellTreasure': return treasureAction(state, tradeContext(state), payload, false);
+    case 'displayTreasure': return treasureAction(state, tradeContext(state), payload, true);
     case 'resolveEvent': return resolveDecision(state, directorContext(state), payload.choiceId);
     case 'setPolicy': {
       state.policy = { ...(state.policy || {}) };
@@ -1799,9 +1823,9 @@ export function deserializeGame(source) {
   const village = { ...defaults.village, ...(data.village && typeof data.village === 'object' ? data.village : {}) };
   validateNumber(village, 'prosperity', 0, 1000000000);
   validateNumber(village, 'houses', 0, VILLAGE_LOTS.houses.length, true);
-  for (const id of ['shop', 'market', 'smithy', 'dojo', 'arena']) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
-  state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy, dojo: village.dojo, arena: village.arena, trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
-  const lots = Object.fromEntries(Object.entries(village.lots && typeof village.lots === 'object' ? village.lots : {}).filter(([key, lot]) => /^(h\d{1,2}|shop|market|smithy|dojo|arena)$/.test(key) && lot && finiteNumber(lot.x) && finiteNumber(lot.y) && Math.abs(lot.x) <= 90 && Math.abs(lot.y) <= 90).map(([key, lot]) => [key, { x: lot.x, y: lot.y }]));
+  for (const id of VILLAGE_BUSINESSES) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
+  state.village = { prosperity: village.prosperity, houses: village.houses, ...Object.fromEntries(VILLAGE_BUSINESSES.map(id => [id, village[id]])), trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
+  const lots = Object.fromEntries(Object.entries(village.lots && typeof village.lots === 'object' ? village.lots : {}).filter(([key, lot]) => (/^h\d{1,2}$/.test(key) || VILLAGE_BUSINESSES.includes(key)) && lot && finiteNumber(lot.x) && finiteNumber(lot.y) && Math.abs(lot.x) <= 90 && Math.abs(lot.y) <= 90).map(([key, lot]) => [key, { x: lot.x, y: lot.y }]));
   if (Object.keys(lots).length) state.village.lots = lots;
   state.idleBank = finiteNumber(data.idleBank) ? clamp(data.idleBank, 0, 1000000) : 0;
   const appIds = new Set();
@@ -1816,6 +1840,7 @@ export function deserializeGame(source) {
   state.world = sanitizeWorld(data.world, state, ids);
   state.policy = { memberHunting: data.policy?.memberHunting !== false, autoPetitions: data.policy?.autoPetitions !== false };
   state.director = sanitizeDirector(data.director, state.elapsed);
+  state.trade = sanitizeTrade(data.trade);
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
   // Older saves count the quests they already cleared as their record of work.
   const jobs = data.record?.jobs ?? Object.values(state.completedQuests).reduce((sum, n) => sum + n, 0);

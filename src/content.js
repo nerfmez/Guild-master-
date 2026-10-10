@@ -184,6 +184,7 @@ export const GUILD_UPGRADES = {
   signboard: { name: 'ป้ายประกาศกิลด์', icon: '📜', max: 10, base: { gold: 140, wood: 4 }, growth: 1.55, description: 'ชาวบ้านมาส่งคำร้องถี่ขึ้น 10% ต่อระดับ' },
   contracts: { name: 'สมุดสัญญา', icon: '✒', max: 10, base: { gold: 200, stone: 2 }, growth: 1.6, description: 'ค่านายหน้ากิลด์เพิ่ม 4% ของค่าจ้างต่อระดับ' },
   clerk: { name: 'เสมียนต้อนรับ', icon: '🛎', max: 5, base: { gold: 260, wood: 6 }, growth: 1.8, description: 'รับคำร้องทั่วไปขึ้นกระดานทันทีที่ชาวบ้านมาถึง และชาวบ้านรอนานขึ้น' },
+  storehouse: { name: 'โกดังกิลด์', icon: '📦', max: 8, base: { gold: 160, wood: 12 }, growth: 1.55, description: 'เก็บของที่รับซื้อจากนักผจญภัยได้เพิ่มอีก 40 ชิ้นต่อระดับ' },
   coffer: { name: 'กองทุนกิลด์', icon: '◈', max: 12, base: { gold: 180 }, growth: 1.6, description: 'ดอกผล 0.25 G ต่อวินาทีต่อระดับ เก็บต่อแม้ปิดเกม (สูงสุด 2 ชั่วโมง)' },
 };
 
@@ -193,7 +194,7 @@ export const VILLAGE_LEVELS = [
   { level: 2, prosperity: 250, name: 'หมู่บ้านอบอุ่น' },
   { level: 3, prosperity: 900, name: 'หมู่บ้านคึกคัก' },
   { level: 4, prosperity: 2600, name: 'ตำบลริมทาง' },
-  { level: 5, prosperity: 7000, name: 'เมืองใบอ่อน' },
+  { level: 5, prosperity: 8500, name: 'เมืองใบอ่อน' },
 ];
 export const VILLAGE_PROJECTS = {
   house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง' },
@@ -201,6 +202,10 @@ export const VILLAGE_PROJECTS = {
   market: { name: 'ตลาดนัด', icon: '🧺', max: 3, villageLevel: 2, base: { gold: 420, wood: 20, stone: 14 }, growth: 1.9, prosperity: 200, description: 'แผงค้าส่งไม้ หิน สมุนไพรให้กิลด์ทุกวัน และเก็บค่าแผง 0.15 G/วินาทีต่อระดับ' },
   dojo: { name: 'โรงฝึก', icon: '🥋', max: 3, villageLevel: 1, base: { gold: 280, wood: 20, stone: 8 }, growth: 2, prosperity: 160, description: 'นักผจญภัยจ่ายค่าเรียนเองเพื่อฝึกกับครู ได้ XP มาก (วันละ 1 คอร์สต่อระดับ) · พิธีเปลี่ยนคลาสขั้น 2 ระดับ 3 สำหรับคลาสขั้น 3 ในเกมเต็ม' },
   arena: { name: 'สนามสอบ', icon: '🏟', max: 3, villageLevel: 1, base: { gold: 220, wood: 16, stone: 12 }, growth: 2.2, prosperity: 140, description: 'สมาคมกิลด์จัดสอบเลื่อนแรงค์นักผจญภัย ระดับ 1 สอบได้ถึงแรงค์ D ระดับ 2 ถึง C ระดับ 3 ถึง B ในเกมเต็ม' },
+  tannery: { name: 'โรงฟอกหนัง', icon: '🧶', max: 3, villageLevel: 1, base: { gold: 260, wood: 18, stone: 6 }, growth: 1.9, prosperity: 150, description: 'แปรรูปหนังและเส้นใยจากมอนในโกดังกิลด์เป็นเครื่องหนัง ขายได้ราคากว่าวัตถุดิบมาก · ระดับเพิ่มความเร็ว' },
+  apothecary: { name: 'โรงปรุงยา', icon: '⚗', max: 3, villageLevel: 2, base: { gold: 320, wood: 14, stone: 10 }, growth: 1.9, prosperity: 170, description: 'ปรุงเยือก น้ำผึ้ง สปอร์ และผงหมอกเป็นยาบำรุง · ระดับเพิ่มความเร็ว' },
+  jeweler: { name: 'ร้านเจียระไน', icon: '💍', max: 3, villageLevel: 2, base: { gold: 380, wood: 10, stone: 18 }, growth: 2, prosperity: 190, description: 'เจียเขา เปลือก ผลึก และแกนหินเป็นเครื่องประดับ · ระดับเพิ่มความเร็ว' },
+  caravan: { name: 'ลานคาราวาน', icon: '🐎', max: 3, villageLevel: 2, base: { gold: 450, wood: 26, stone: 10 }, growth: 2, prosperity: 200, description: 'ส่งคาราวานขนของในโกดังไปขายเมืองหลวง ได้ราคาสูงกว่าขายในเมือง และรับใบสั่งซื้อโบนัส · ระดับเพิ่มความจุ' },
   smithy: { name: 'โรงตีเหล็ก', icon: '⚒', max: 3, villageLevel: 1, base: { gold: 320, wood: 12, stone: 18 }, growth: 2, prosperity: 180, description: 'ขายและซ่อมอาวุธให้นักผจญภัย อาวุธขั้นสูงขึ้นตามระดับ (ใช้ไม้และหินจากตลาด) · ลดเงินคราฟต์ของกิลด์ 10% ต่อระดับ' },
 };
 /** Where homes and businesses stand on the world map (grid units, top-left of the footprint). */
@@ -222,7 +227,13 @@ export const VILLAGE_LOTS = {
   smithy: { x: -9, y: 20.5, seed: 31, style: 'smithy' },
   dojo: { x: -13, y: 4, seed: 149, style: 'dojo' },
   arena: { x: 34.5, y: 5, seed: 151 },
+  tannery: { x: -15, y: 20.5, seed: 161, style: 'tannery' },
+  apothecary: { x: -15, y: 13, seed: 167, style: 'apothecary' },
+  jeweler: { x: 30, y: 12.6, seed: 173, style: 'jeweler' },
+  caravan: { x: 38.5, y: 19.5, seed: 179, style: 'caravan' },
 };
+/** Every village business the player can build (houses aside). */
+export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan'];
 
 // ---- Applicants: fame draws newcomers to the door; famous adventurers come only when the guild suits them. ----
 export const TRAIT_NAMES = ['ใจเย็น', 'ช่างสังเกต', 'ใฝ่รู้', 'อ่อนโยน', 'รักอิสระ', 'ขยัน', 'ร่าเริง', 'รอบคอบ', 'กล้าหาญ', 'ช่างพูด', 'อดทน', 'สุขุม'];
@@ -287,3 +298,50 @@ export const CLASS_COMBAT = {
 };
 /** The guild's share of what its members earn hunting, and the trading-post fee everyone pays when selling loot. */
 export const HUNT_ECONOMY = { guildCut: 0.2, marketFee: 0.05, matPrice: 0.8 };
+
+// ---- The guild's trade: what hunters bring home, what the guild makes of it and where it sells. ----
+/** Monster parts. kind decides which workshop can use it; value is a fair price in G. */
+export const PARTS = {
+  jelly: { name: 'เยือกสไลม์', icon: '💧', kind: 'essence', value: 5 },
+  horn: { name: 'เขากระต่าย', icon: '🦴', kind: 'gem', value: 7 },
+  honey: { name: 'น้ำผึ้งป่า', icon: '🍯', kind: 'essence', value: 7 },
+  fiber: { name: 'เส้นใยหนาม', icon: '🌿', kind: 'hide', value: 6 },
+  spore: { name: 'สปอร์เห็ด', icon: '🍄', kind: 'essence', value: 9 },
+  shell: { name: 'เปลือกด้วง', icon: '🐚', kind: 'gem', value: 10 },
+  pelt: { name: 'หนังหมาป่า', icon: '🐺', kind: 'hide', value: 12 },
+  carapace: { name: 'กระดองหิน', icon: '🪨', kind: 'gem', value: 13 },
+  crystal: { name: 'ผลึกค้างคาว', icon: '💎', kind: 'gem', value: 16 },
+  core: { name: 'แกนหินอ่อน', icon: '⚪', kind: 'gem', value: 20 },
+  mistDust: { name: 'ผงหมอก', icon: '✨', kind: 'essence', value: 18 },
+  wick: { name: 'ไส้ตะเกียงวิญญาณ', icon: '🕯', kind: 'essence', value: 20 },
+  silk: { name: 'ไหมแสงจันทร์', icon: '🧵', kind: 'hide', value: 18 },
+};
+export const MONSTER_PART = { leafSlime: 'jelly', hornHare: 'horn', fuzzBee: 'honey', thornling: 'fiber', mushHopper: 'spore', acornBeetle: 'shell', mossWolf: 'pelt', pebbleCrab: 'carapace', crystalBat: 'crystal', marbleGolem: 'core', mistWisp: 'mistDust', lanternGhost: 'wick', glowMoth: 'silk', hollowKeeper: 'core', bellGuardian: 'crystal', heartGuardian: 'silk' };
+/** One-step workshops: three parts of a kind become one good worth more than the parts. */
+export const GOODS = {
+  leather: { name: 'เครื่องหนัง', icon: '👜', kind: 'hide', workshop: 'tannery' },
+  tonic: { name: 'ยาบำรุง', icon: '🧪', kind: 'essence', workshop: 'apothecary' },
+  trinket: { name: 'เครื่องประดับ', icon: '💍', kind: 'gem', workshop: 'jeweler' },
+};
+/** Treasures found now and then while hunting; world bosses always guard one. */
+export const TREASURES = {
+  oldCoin: { name: 'เหรียญโบราณ', icon: '🪙', value: 120, rep: 3, rank: 'F' },
+  silverBangle: { name: 'กำไลเงินเก่า', icon: '📿', value: 200, rep: 5, rank: 'E' },
+  jadeIdol: { name: 'รูปปั้นหยก', icon: '🗿', value: 380, rep: 8, rank: 'D' },
+  starMap: { name: 'แผนที่ดวงดาว', icon: '🗺', value: 520, rep: 10, rank: 'C' },
+  rustCrown: { name: 'มงกุฎสนิมเขียว', icon: '👑', value: 650, rep: 14, boss: true },
+};
+export const BUY_RATES = {
+  low: { name: 'กดราคา', rate: 0.5, description: 'กำไรมาก แต่นักผจญภัยอิสระมักไปขายที่อื่น' },
+  fair: { name: 'ราคาปกติ', rate: 0.65, description: 'สมดุล' },
+  generous: { name: 'ราคาดี', rate: 0.8, description: 'กำไรน้อย แต่นักผจญภัยอิสระมาขายให้และชอบกิลด์มากขึ้น' },
+};
+export const TRADE_RULES = {
+  storeBase: 60, storePerLevel: 40, reserve: 200,
+  partChance: 0.8, treasureChance: 0.012,
+  wholesale: 0.85, wholesaleFloor: 0.45, demandRecover: 0.5,
+  recipe: 3, goodsValue: 1.7, workTime: 45,
+  townDemand: 3, townDemandPerLevel: 2,
+  caravanTime: 360, caravanCapacity: 30, caravanPerLevel: 15, caravanMarkup: 1.35, contractBonus: 0.5, caravanRisk: 0.18, caravanLoss: 0.35, escortCost: 60,
+  displaySlots: 6, displayTip: 0.02,
+};
