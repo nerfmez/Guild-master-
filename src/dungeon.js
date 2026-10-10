@@ -1,6 +1,6 @@
 /* Top-down dungeon view of a mission: one generator, themed per region, laid out per quest. */
 import { drawSprite, drawFoe } from './render.js';
-import { JOBS, RARITIES } from './content.js';
+import { JOBS, RARITIES, CLASS_COMBAT } from './content.js';
 
 const T = 10, COLS = 40, ROWS = 22, W = COLS * T, H = ROWS * T;
 const THEMES = {
@@ -117,6 +117,65 @@ export function missionStage(mission, layout) {
   return { d: s[3] * (1 - (ratio - .88) / .12), walking: true, fight: -1, target: 3, back: true, ratio };
 }
 
+// ---- Real-time dungeon battle (visual): cooldowns per class, projectiles, skills and floating numbers. ----
+const rootOf = id => JOBS[id]?.base || JOBS[id]?.parent || id;
+const PACE = { warrior: 1.1, archer: 1.2, mage: 1.6, healer: 1.5 };
+function fightTick(memory, stage, party, foes, mission, t, paused) {
+  let b = memory.battle;
+  if (!b || b.room !== stage.fight) b = memory.battle = { room: stage.fight, last: t, cd: {}, skill: {}, foeCd: {}, act: {}, melee: {}, hurt: {}, foeHit: {}, foeLunge: {}, floats: [], shots: [], seed: 7 + stage.fight };
+  const dt = paused ? 0 : Math.max(0, Math.min(.1, t - b.last)); b.last = t;
+  const rand = () => { b.seed = (Math.imul(b.seed, 1664525) + 1013904223) >>> 0; return b.seed / 4294967296; };
+  const living = foes.filter(f => f.room === stage.fight), hit = mission.power ? Math.max(3, Math.round(mission.power / 8)) : 8;
+  if (!dt || !living.length) return b;
+  const float = (x, y, text, color, size = 9) => { b.floats.push({ x, y, text, color, size, at: t }); if (b.floats.length > 40) b.floats.shift(); };
+  for (const p of party) {
+    const id = p.member.id, cls = rootOf(p.member.class), cc = CLASS_COMBAT[cls] || CLASS_COMBAT.warrior;
+    b.cd[id] = (b.cd[id] ?? rand() * 1.2) - dt; b.skill[id] = (b.skill[id] ?? 3 + rand() * 4) - dt;
+    const target = living[Math.floor(rand() * living.length) % living.length];
+    if (b.skill[id] <= 0) {
+      b.skill[id] = 7 + rand() * 4; b.act[id] = t; b.melee[id] = cls === 'warrior';
+      float(p.x, p.y - 44, cc.skillName, '#fff1c4', 8); b.shots.push({ kind: 'ring', x: p.x, y: p.y - 8, at: t, color: cls === 'healer' ? '#9fe08a' : cls === 'mage' ? '#f08a4b' : cls === 'archer' ? '#e8cd8c' : '#8eb6e0' });
+      if (cls === 'healer') for (const q of party) float(q.x, q.y - 30, '+' + Math.round(hit * 1.5), '#8fe28a');
+      else for (const f of living) { b.foeHit[f.key] = t + .1; float(f.x, f.y - 26, String(Math.round(hit * (cls === 'mage' ? 1.8 : 1.3) * (.85 + rand() * .3))), '#ffd36a', 10); }
+      continue;
+    }
+    if (b.cd[id] > 0) continue;
+    b.cd[id] = (PACE[cls] || 1.3) * (.85 + rand() * .3); b.act[id] = t; b.melee[id] = cls === 'warrior';
+    if (cls === 'healer') { const q = party[Math.floor(rand() * party.length)]; float(q.x, q.y - 30, '+' + Math.round(hit * .9), '#8fe28a'); b.shots.push({ kind: 'heal', x: q.x, y: q.y - 12, at: t }); continue; }
+    const crit = rand() < .12, dmg = Math.round(hit * cc.dmg * (crit ? 1.6 : 1) * (.85 + rand() * .3));
+    if (cls === 'warrior') { b.foeHit[target.key] = t; float(target.x, target.y - 26, String(dmg), crit ? '#ffd36a' : '#ffffff', crit ? 11 : 9); b.shots.push({ kind: 'slash', x: target.x, y: target.y - 12, at: t }); }
+    else { b.shots.push({ kind: cls === 'archer' ? 'arrow' : 'bolt', fx: p.x + 6, fy: p.y - 14, tx: target.x, ty: target.y - 14, at: t, key: target.key, dmg, crit }); }
+  }
+  // Projectiles land after a short flight.
+  for (const s of b.shots) if ((s.kind === 'arrow' || s.kind === 'bolt') && !s.done && t - s.at >= .22) { s.done = true; b.foeHit[s.key] = t; float(s.tx, s.ty - 12, String(s.dmg), s.crit ? '#ffd36a' : '#ffffff', s.crit ? 11 : 9); }
+  // Foes strike back at their own pace.
+  for (const f of living) {
+    b.foeCd[f.key] = (b.foeCd[f.key] ?? .6 + rand()) - dt;
+    if (b.foeCd[f.key] > 0) continue;
+    b.foeCd[f.key] = (f.boss ? 2 : 1.6) * (.85 + rand() * .3); b.foeLunge[f.key] = t;
+    const q = party[Math.floor(rand() * party.length)]; if (!q) continue;
+    b.hurt[q.member.id] = t; float(q.x, q.y - 30, String(Math.max(1, Math.round(hit * (f.boss ? .9 : .45) * (.8 + rand() * .4)))), '#ff8a7a');
+  }
+  b.shots = b.shots.filter(s => t - s.at < .6);
+  return b;
+}
+function drawBattleFx(c, b, t) {
+  for (const s of b.shots) {
+    const k = Math.min(1, (t - s.at) / .22);
+    if (s.kind === 'arrow' && !s.done) { const x = s.fx + (s.tx - s.fx) * k, y = s.fy + (s.ty - s.fy) * k; rect(c, x - 5, y, 6, 1, '#8a6a4a'); rect(c, x + 1, y - 1, 2, 3, '#e3e9e6'); }
+    else if (s.kind === 'bolt' && !s.done) { const x = s.fx + (s.tx - s.fx) * k, y = s.fy + (s.ty - s.fy) * k; c.globalAlpha = .45; rect(c, x - 7, y - 1, 6, 3, '#f0a060'); c.globalAlpha = 1; rect(c, x - 2, y - 2, 4, 4, '#f08a4b'); rect(c, x - 1, y - 1, 2, 2, '#fff1c4'); }
+    else if (s.kind === 'slash') { const a = t - s.at; if (a < .25) { c.strokeStyle = '#fff8e7'; c.lineWidth = 2; c.beginPath(); c.arc(s.x - 2, s.y, 9, -2.4 + a * 4, -.4 + a * 4); c.stroke(); } }
+    else if (s.kind === 'ring' || s.kind === 'heal') { const a = (t - s.at) / .6; c.globalAlpha = Math.max(0, 1 - a); c.strokeStyle = s.kind === 'heal' ? '#9fe08a' : s.color; c.lineWidth = 2; c.beginPath(); c.ellipse(s.x, s.y + 6, 6 + a * 14, 3 + a * 6, 0, 0, Math.PI * 2); c.stroke(); c.globalAlpha = 1; }
+  }
+  c.textBaseline = 'bottom';
+  for (const f of b.floats) {
+    const a = t - f.at; if (a < 0 || a > .9) continue;
+    c.globalAlpha = Math.min(1, (.9 - a) * 3); c.font = `bold ${f.size}px "Noto Sans Thai", sans-serif`;
+    const w = c.measureText(f.text).width, x = f.x - w / 2, y = f.y - a * 16;
+    c.fillStyle = '#3d2f28'; c.fillText(f.text, x + 1, y + 1); c.fillStyle = f.color; c.fillText(f.text, x, y);
+  }
+  c.globalAlpha = 1;
+}
 function banner(c, x, y, text, color, size = 10) {
   c.font = `bold ${size}px "Noto Sans Thai", sans-serif`; c.textBaseline = 'middle'; const w = Math.ceil(c.measureText(text).width) + 14, h = size + 8;
   rect(c, x - w / 2 - 1, y - h / 2 - 1, w + 2, h + 2, '#4f4540'); rect(c, x - w / 2, y - h / 2, w, h, color); rect(c, x - w / 2, y - h / 2, w, 2, '#ffffff40');
@@ -169,13 +228,18 @@ export function drawDungeonScene(canvas, mission, quest, state, options = {}) {
   }
   // Enemies: two minions in each encounter room and the boss; cleared rooms are empty.
   const cleared = room => stage.back ? (room < 3 || won !== false) : stage.fight > 0 ? room < stage.fight : room < stage.target;
-  const attackAge = t - memory.strikeAt, attacking = stage.fight > 0 && !paused && attackAge >= 0 && attackAge < .7, hit = attacking && attackAge > .28 && attackAge < .42;
   const foes = [];
+  // How much of the current room's foes is left: the wave's share of the mission's battle, so the fight matches the outcome.
+  const ratio = Math.max(0, Math.min(1, (mission.progress || 0) / (mission.duration || 1))), br = (ratio - .18) / .7, wave = Math.min(2, Math.floor(Math.max(0, br) * 3));
+  const waveLeft = stage.fight > 0 ? 1 - Math.max(0, Math.min(1, ((br * 3 - wave) - (wave > 0 ? STOP_WALK : 0)) / (1 - (wave > 0 ? STOP_WALK : 0)))) : 1;
   for (let room = 1; room <= 3; room++) {
     if (cleared(room)) continue;
     const rm = layout.rooms[room], boss = room === 3, bob = Math.round(Math.sin(t * 3 + room) * 1.5);
     const spots = boss ? [[rm.cx + 1.6, rm.cy + .6]] : [[rm.cx + 1.2, rm.cy - .4], [rm.cx + 1.8, rm.cy + 1.1]];
-    for (const [x, y] of spots) foes.push({ x: x * T, y: y * T + bob, scale: boss ? .62 : .38, flash: hit && stage.fight === room, room });
+    spots.forEach(([x, y], i) => {
+      const hp = room === stage.fight ? Math.max(0, Math.min(1, waveLeft * spots.length - (spots.length - 1 - i))) : 1;
+      if (hp > 0) foes.push({ x: x * T, y: y * T + bob, scale: boss ? .62 : .38, flash: false, room, hp, boss, key: room * 10 + i });
+    });
   }
   // Party: follow the path in a line, or face the foe in a fan when fighting.
   const members = (mission.memberIds || []).map(id => (state.members || []).find(m => m.id === id)).filter(Boolean);
@@ -184,29 +248,29 @@ export function drawDungeonScene(canvas, mission, quest, state, options = {}) {
     const p = pointAt(layout, stage.back ? stage.d + i * 1.4 : stage.d - i * 1.4);
     return { member, x: p.x * T, y: (p.y + .7) * T, dir: stage.back ? ({ east: 'west', west: 'east', north: 'south', south: 'north' })[p.dir] : p.dir };
   });
-  const strike = combat.log?.[0], striker = attacking ? party.find(p => p.member.id === strike?.memberId) : null;
+  // Real-time battle: every adventurer fights at their class's pace and foes hit back (drawn from the mission's own numbers).
+  const battle = stage.fight > 0 ? fightTick(memory, stage, party, foes, mission, t, paused) : (memory.battle = null);
+  const striker = null, strike = null;
+  const partyRatio = (combat.partyHp || 0) / Math.max(1, combat.partyMaxHp || 1);
   const actors = [...foes.map(f => ({ ...f, foe: true })), ...party].sort((a, b) => a.y - b.y);
   for (const a of actors) {
     if (a.foe) { if (a.room === 3) { c.globalAlpha = .28 + Math.sin(t * 4) * .1; c.fillStyle = '#d98978'; c.beginPath(); c.ellipse(a.x, a.y + 1, 22, 8, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; }
-      drawFoe(c, Math.round(a.x), Math.round(a.y), quest, t, a.flash, a.room === 3 ? 44 : 22); continue; }
+      const lunge = battle?.foeLunge?.[a.key] !== undefined && t - battle.foeLunge[a.key] < .35 ? Math.round(-Math.sin((t - battle.foeLunge[a.key]) / .35 * Math.PI) * 7) : 0;
+      const flash = battle?.foeHit?.[a.key] !== undefined && t - battle.foeHit[a.key] < .12;
+      drawFoe(c, Math.round(a.x + lunge), Math.round(a.y), quest, t, flash, a.room === 3 ? 44 : 22);
+      if (a.room === stage.fight) hpBar(c, a.x - 10, a.y - (a.boss ? 50 : 30), 20, a.hp, '#d98978');
+      continue; }
     if (stage.walking && !paused) { const k = (t * 4 + a.y / 7) % 1; c.globalAlpha = .45 * (1 - k); rect(c, a.x - 2 - (a.dir === 'east' ? 4 + k * 4 : a.dir === 'west' ? -4 - k * 4 : 0), a.y - 1 - k * 2, 3, 2, '#e8dcc0'); c.globalAlpha = 1; }
     let x = a.x, pose = stage.fight > 0 ? (Math.floor(t * 1.6 + a.y) % 2 ? 'breath' : 'idle') : 'idle';
-    if (a === striker) { x += Math.round(Math.sin(Math.min(1, attackAge / .7) * Math.PI) * 9); pose = attackAge < .25 ? 'train0' : 'train1'; }
+    const act = battle?.act?.[a.member.id];
+    if (act !== undefined && t - act < .5) { const k = (t - act) / .5; x += (battle.melee?.[a.member.id] ? Math.round(Math.sin(k * Math.PI) * 9) : 0); pose = k < .4 ? 'train0' : 'train1'; }
+    const hurt = battle?.hurt?.[a.member.id] !== undefined && t - battle.hurt[a.member.id] < .15;
+    if (hurt) c.globalAlpha = .55;
     drawSprite(c, x, a.y, a.member, t * 8 + a.y, stage.walking && !paused, 1, a.dir, pose);
+    c.globalAlpha = 1;
+    if (stage.fight > 0) { const i = party.indexOf(a), r = Math.max(0, Math.min(1, partyRatio + ((i * 37) % 9 - 4) / 60)); hpBar(c, a.x - 9, a.y - 34, 18, r, r < .35 ? '#e0a050' : '#90b89c'); }
   }
-  // Strike effects: a slash on the target and a floating damage number.
-  if (attacking && foes.length) {
-    const target = foes.find(f => f.room === stage.fight) || foes[0];
-    const role = JOBS[striker?.member.class]?.role || 'damage', from = striker || party[0];
-    if (from && (role === 'scout' || role === 'magic' || role === 'heal') && attackAge > .1 && attackAge < .32) {
-      const k = (attackAge - .1) / .22, px = from.x + (target.x - from.x) * k, py = from.y - 10 + (target.y - 12 - from.y + 10) * k;
-      if (role === 'scout') { rect(c, px - 5, py, 6, 1, '#8a6a4a'); rect(c, px + 1, py - 1, 2, 3, '#e3e9e6'); }
-      else { const col = role === 'heal' ? '#f4d49a' : '#b7c9f2'; c.globalAlpha = .4; rect(c, px - 7, py - 1, 6, 3, col); c.globalAlpha = 1; rect(c, px - 2, py - 2, 4, 4, col); rect(c, px - 1, py - 1, 2, 2, '#ffffff'); }
-    }
-    if (role === 'heal' && attackAge > .3 && attackAge < .7) for (const p of party) { const k = (attackAge - .3) / .4; c.globalAlpha = 1 - k; rect(c, p.x - 1, p.y - 30 - k * 8, 3, 1, '#7fd18b'); rect(c, p.x, p.y - 31 - k * 8, 1, 3, '#7fd18b'); c.globalAlpha = 1; }
-    if (attackAge > .22 && attackAge < .45) { c.strokeStyle = role === 'magic' ? '#c9d8ff' : '#fff8e7'; c.lineWidth = 2; c.beginPath(); c.arc(target.x - 2, target.y - 12, 9, -2.4, -.4); c.stroke(); }
-    if (attackAge > .28 && Number.isFinite(strike?.damage)) { c.fillStyle = '#4f4540'; c.font = 'bold 10px sans-serif'; c.textBaseline = 'bottom'; const y = target.y - 22 - attackAge * 14; c.fillText(String(strike.damage), target.x - 4, y + 1); c.fillStyle = '#fff1c4'; c.fillText(String(strike.damage), target.x - 5, y); }
-  }
+  if (battle) drawBattleFx(c, battle, t);
   // Fog of war: rooms and corridors ahead of the party stay dark.
   c.fillStyle = theme.fog;
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { const s = layout.seg[y * COLS + x]; if (s > memory.reveal) { c.globalAlpha = .82; c.fillRect(x * T, y * T, T, T); } }

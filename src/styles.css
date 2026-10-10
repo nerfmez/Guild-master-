@@ -397,3 +397,9 @@ body.on-title .event-banner{visibility:hidden}
 .need.ok{background:#e4efd9;color:#4f7a45;border-color:#c5dcb4}
 .move-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.move-list button{min-height:0;padding:6px 10px;font-size:11.5px}
 @media(max-width:620px){.home-row{grid-template-columns:30px 1fr}.home-row button{grid-column:1/-1}}
+/* Full-screen dungeon battle */
+.dungeon-dialog{width:min(980px,calc(100vw - 24px));max-width:none;padding:10px 12px 12px;background:#2c241e;border:2px solid #6b5440}
+.dungeon-dialog .dd-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#fbeed2}
+.dungeon-dialog .dd-head b{font-size:14px;font-weight:600}.dungeon-dialog .close-dialog{position:static;color:#4f4540}
+.dungeon-dialog .dungeon-view{width:100%;max-height:none;margin:0}
+.mission-watch{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}.mission-watch button{min-height:0;padding:8px}
