@@ -453,3 +453,7 @@ export function drawQuestArt(canvas,quest={},options={}) {
   if(options.locked){c.fillStyle='#3d352ccc';c.fillRect(0,0,160,90);box(c,72,36,16,13,P.gold,P.woodDark);rect(c,75,29,10,2,P.cream);rect(c,75,29,2,8,P.cream);rect(c,83,29,2,8,P.cream);rect(c,79,40,2,4,P.woodDark);}
   c.restore();
 }
+
+/** Shared drawing for other views (the dungeon map). */
+export function drawSprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',pose='idle'){sprite(c,x,y,member,phase,walking,facing,direction,pose);}
+export function drawFoe(c,x,y,quest,phase=0,flash=false){battleEnemy(c,x,y,quest,phase,flash);}
