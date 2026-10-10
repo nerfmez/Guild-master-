@@ -91,7 +91,7 @@ export function createGame(seed = 123, options = {}) {
     addLog(state, `${state.profile.masterName} รับบ้านเก่าข้างต้นไม้มาเปิดเป็น${state.profile.guildName} เริ่มจากวางโต๊ะรับคำร้อง`, 'story');
     return state;
   }
-  addLog(state, 'บ้านเก่าข้างต้นไม้เปิดเป็นกิลด์แล้ว ส่งสมาชิก 3 คนลาดตระเวนทางหมู่บ้านเพื่อเริ่มต้น', 'story');
+  addLog(state, 'บ้านเก่าข้างต้นไม้เปิดเป็นกิลด์แล้ว ส่งสมาชิกไปลาดตระเวนทางหมู่บ้านเพื่อเริ่มต้น', 'story');
   return state;
 }
 
@@ -286,9 +286,48 @@ function grantLoot(state, mission, count) {
     else if ((state.inventory[entry.id] || 0) < 24) state.inventory[entry.id] = (state.inventory[entry.id] || 0) + 1;
     else transact(state, { gold: 40 }, 'ขายของซ้ำจากหีบ', 1);
     found.push(entry);
+    if (entry.kind === 'item' && EQUIPMENT_BY_ID[entry.id].loot) { state.foundTreasures ??= []; if (!state.foundTreasures.includes(entry.id)) state.foundTreasures.push(entry.id); }
     if (entry.kind === 'item' && (entry.tier === 'rare' || entry.tier === 'legendary')) addLog(state, `พบสมบัติ${RARITIES[entry.tier].name}: ${EQUIPMENT_BY_ID[entry.id].name}!`, 'loot');
   }
   return found;
+}
+/** Best available team (up to three) for a quest: cover its roles first, then add the strongest rested members. */
+export function suggestTeam(state, questId, policy = 'balanced') {
+  const quest = QUEST_BY_ID[questId];
+  if (!quest) return [];
+  const ready = state.members.filter(member => !isBusy(state, member.id) && member.energy >= 25 && member.injury <= 40);
+  const score = member => getMemberStats(state, member).power * (0.6 + member.energy / 250);
+  const team = [];
+  for (const role of quest.tags) {
+    const pick = ready.filter(member => !team.includes(member) && getMemberStats(state, member).role === role).sort((a, b) => score(b) - score(a))[0];
+    if (pick && team.length < 3) team.push(pick);
+  }
+  for (const member of ready.filter(member => !team.includes(member)).sort((a, b) => score(b) - score(a))) if (team.length < 3) team.push(member);
+  return team.map(member => member.id);
+}
+const SELL_RARITY = { rare: 120, legendary: 320 };
+export function getSellPrice(id) { const item = EQUIPMENT_BY_ID[id]; if (!item) return 0; return item.loot ? SELL_RARITY[item.rarity] || 60 : Math.max(10, Math.round((item.cost.gold || 0) * 0.5)); }
+function sellItem(state, payload) {
+  const item = EQUIPMENT_BY_ID[payload.equipmentId];
+  if (!item) return failure('ไม่พบอุปกรณ์');
+  if (!(state.inventory[item.id] > 0)) return failure('ไม่มีของชิ้นนี้ในคลัง');
+  state.inventory[item.id] -= 1;
+  const price = getSellPrice(item.id);
+  transact(state, { gold: price }, `ขาย${item.name}`, 1);
+  return success(`ขาย${item.name} ได้ ${price} G`);
+}
+/** Give every member at home the strongest weapon and accessory available to their class. */
+function autoEquip(state) {
+  const value = item => (item?.power || 0) * 2 + (item?.health || 0) * 0.5 + (item?.luck || 0) * 40;
+  let changes = 0;
+  const members = state.members.filter(member => !isBusy(state, member.id)).sort((a, b) => getMemberStats(state, b).basePower - getMemberStats(state, a).basePower);
+  for (const slot of ['weapon', 'accessory']) for (const member of members) {
+    const current = EQUIPMENT_BY_ID[member.equipment[slot]];
+    const best = EQUIPMENT.filter(item => item.slot === slot && state.inventory[item.id] > 0 && (!item.classes.length || item.classes.includes(equipmentBaseClass(member))))
+      .sort((a, b) => value(b) - value(a))[0];
+    if (best && value(best) > value(current)) { state.inventory[best.id] -= 1; if (current) state.inventory[current.id] = (state.inventory[current.id] || 0) + 1; member.equipment[slot] = best.id; changes++; }
+  }
+  return changes ? success(`จัดอุปกรณ์ใหม่ ${changes} ชิ้น`) : failure('ทุกคนใส่ของที่ดีที่สุดอยู่แล้ว');
 }
 export function previewMission(state, questId, memberIds = [], policy = 'balanced') {
   const quest = QUEST_BY_ID[questId];
@@ -305,7 +344,7 @@ export function previewMission(state, questId, memberIds = [], policy = 'balance
   const readiness = power / quest.difficulty;
   let reason = questLockReason(state, quest);
   if (!reason && !selectedPolicy) reason = 'แผนเดินทางไม่ถูกต้อง';
-  if (!reason && (!Array.isArray(memberIds) || memberIds.length !== 3 || new Set(memberIds).size !== 3 || members.length !== 3)) reason = 'เลือกสมาชิกที่ต่างกัน 3 คน';
+  if (!reason && (!Array.isArray(memberIds) || memberIds.length < 1 || memberIds.length > 3 || new Set(memberIds).size !== memberIds.length || members.length !== memberIds.length)) reason = 'เลือกสมาชิก 1–3 คน';
   if (!reason && members.some(member => isBusy(state, member.id))) reason = 'สมาชิกบางคนกำลังทำภารกิจ';
   if (!reason && members.some(member => member.energy < 25 || member.injury > 40)) reason = 'สมาชิกต้องพักให้พลังอย่างน้อย 25 และบาดเจ็บไม่เกิน 40';
   if (!reason && getGuildStats(state).activeMissions >= getGuildStats(state).teamCap) reason = 'ทีมภารกิจเต็มแล้ว';
@@ -846,6 +885,8 @@ function command(state, type, payload = {}) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return failure('คำสั่งไม่ถูกต้อง');
   switch (type) {
     case 'welcomeVisitors': return welcomeVisitors(state);
+    case 'sellItem': return sellItem(state, payload);
+    case 'autoEquip': return autoEquip(state);
     case 'setProfile': state.profile = normalizeProfile({ ...(state.profile || DEFAULT_PROFILE), ...payload }); return success(`บันทึกข้อมูล${state.profile.guildName}แล้ว`);
     case 'sendMission': return sendMission(state, payload);
     case 'chooseEvent': return chooseEvent(state, payload);
@@ -984,7 +1025,7 @@ export function deserializeGame(source) {
   for (const mission of state.missions) {
     if (!mission || !QUEST_BY_ID[mission.questId] || typeof mission.id !== 'string' || missionIds.has(mission.id) || !['active', 'completed', 'failed', 'recalled'].includes(mission.status)) throw new Error('ข้อมูลภารกิจไม่ถูกต้อง');
     missionIds.add(mission.id);
-    if (!Array.isArray(mission.memberIds) || mission.memberIds.length !== 3 || new Set(mission.memberIds).size !== 3 || mission.memberIds.some(id => !ids.has(id))) throw new Error('สมาชิกภารกิจไม่ถูกต้อง');
+    if (!Array.isArray(mission.memberIds) || mission.memberIds.length < 1 || mission.memberIds.length > 3 || new Set(mission.memberIds).size !== mission.memberIds.length || mission.memberIds.some(id => !ids.has(id))) throw new Error('สมาชิกภารกิจไม่ถูกต้อง');
     validateNumber(mission, 'duration', 1, 10000);
     validateNumber(mission, 'progress', 0, 10000);
     if (!MISSION_POLICIES[mission.policy]) throw new Error('แผนภารกิจไม่ถูกต้อง');
@@ -1008,6 +1049,7 @@ export function deserializeGame(source) {
       }
     }
   }
+  if (data.foundTreasures !== undefined) state.foundTreasures = Array.isArray(data.foundTreasures) ? [...new Set(data.foundTreasures.filter(id => EQUIPMENT_BY_ID[id]?.loot))] : [];
   state.inventory = { ...(data.inventory || {}) };
   if (!state.inventory || typeof state.inventory !== 'object' || Array.isArray(state.inventory)) throw new Error('คลังอุปกรณ์ไม่ถูกต้อง');
   for (const [id, count] of Object.entries(state.inventory)) if (!EQUIPMENT_BY_ID[id] || !Number.isInteger(count) || count < 0 || count > 1000) throw new Error('จำนวนอุปกรณ์ไม่ถูกต้อง');

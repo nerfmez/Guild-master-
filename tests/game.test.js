@@ -447,3 +447,32 @@ test('missions roll quest-specific chest loot, and luck finds rarer treasure', a
   assert.ok(rareShare(0.45) > rareShare(0) * 1.6, 'high luck finds clearly more rare treasure');
   assert.ok(EQUIPMENT.filter(e => e.loot).every(e => e.workshopLevel === 99), 'treasures cannot be crafted');
 });
+
+test('teams of one to three can travel, auto-picked teams cover the quest roles', async () => {
+  const { suggestTeam } = await import('../src/game.js');
+  const state = createGame(21);
+  assert.equal(previewMission(state, 'patrol', []).ok, false);
+  assert.equal(previewMission(state, 'patrol', ['mira', 'mira']).ok, false);
+  const solo = dispatch(state, 'patrol', ['finn']);
+  assert.deepEqual(solo.memberIds, ['finn']);
+  complete(state, solo);
+  assert.ok(['completed', 'failed'].includes(solo.status));
+  assert.equal(deserializeGame(serializeGame(state)).missions.at(-1).memberIds.length, 1);
+  const fresh = createGame(22);
+  const team = suggestTeam(fresh, 'herbs');
+  assert.equal(team.length, 3);
+  assert.ok(team.includes('noa') && team.includes('finn'), 'healer and scout cover the herb quest');
+});
+
+test('items can be sold and auto-equip gives each member the best gear', async () => {
+  const { getSellPrice } = await import('../src/game.js');
+  const state = createGame(23);
+  state.inventory['oak-blade'] = 1; state.inventory['echo-blade'] = 1; state.inventory['ribbon'] = 2;
+  assert.equal(act(state, 'autoEquip').ok, true);
+  assert.equal(state.members.find(m => m.id === 'mira').equipment.weapon, 'echo-blade');
+  assert.equal(state.members.filter(m => m.equipment.accessory === 'ribbon').length, 2);
+  const gold = state.gold;
+  assert.equal(act(state, 'sellItem', { equipmentId: 'oak-blade' }).ok, true);
+  assert.equal(state.gold, gold + getSellPrice('oak-blade'));
+  assert.equal(act(state, 'sellItem', { equipmentId: 'oak-blade' }).ok, false);
+});

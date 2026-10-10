@@ -230,3 +230,14 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .luck-row{display:flex;align-items:center;gap:8px}.luck-row b{font-size:12px}.luck-row small{font-size:10.5px;color:var(--muted)}
 .luck-stars{font-size:13px;letter-spacing:1px;color:#e2a93c}.luck-stars i{font-style:normal;color:#e3d8c0}
 .item-card.treasure{border-color:#9fbbe0}.item-card.treasure.legendary{border-color:#e2b55a;background:#fff8e6}
+/* R22: auto dispatch, collection. */
+.auto-row{display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin:4px 0 10px}
+.auto-row button{min-height:44px;font-weight:700;border-radius:10px}
+.auto-board{display:grid;gap:1px;width:100%;padding:10px 14px;margin-bottom:12px;text-align:left;border-radius:12px;background:#fff1c4;border:1px solid #e2b55a;box-shadow:0 3px 0 #d8b468;min-height:0}
+.auto-board b{font-size:14px;color:#6f5a3a}.auto-board small{font-size:11px;color:#8a7356}
+.auto-board.off{background:#f3ead6;border-color:#e0d1b0;box-shadow:none}
+.collection-head{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:4px 10px;margin-bottom:12px}.collection-head b{font-size:24px}.collection-head .progress{grid-column:1/-1}
+.collection{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.collection .loot{width:auto;padding:10px 8px}.collection .loot canvas{width:40px;height:40px}.collection .loot small{font-size:12px;font-weight:600}
+.collection .loot em{font-style:normal;font-size:10px;line-height:1.5;color:var(--muted)}
+.collection .loot.unknown{background:#f1ebde;border-style:dashed}.collection .loot.unknown>b{color:#b8a888}
