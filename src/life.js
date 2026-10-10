@@ -126,10 +126,10 @@ function startReturn(state, ctx, partyId) {
 }
 function hitMonster(state, ctx, h, m, dmg, kind) {
   m.hp -= dmg; m.target ??= h.id;
-  emit({ type: 'hit', x: m.x, y: m.y, amount: Math.round(dmg), kind, crit: dmg > h.power * .6 });
+  emit({ type: 'hit', id: m.id, from: h.id, x: m.x, y: m.y, fx: h.x, fy: h.y, amount: Math.round(dmg), kind, crit: dmg > h.power * .6 });
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(state.world) * 20; state.world.kills++;
-  emit({ type: 'kill', x: m.x, y: m.y, species: m.species });
+  emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
   const s = MONSTER_STATS[m.species], party = state.world.hunters.filter(o => o.party === h.party && o.mode === 'hunt' && dist(o, m) < 9);
   h.bag.gold += s.gold[0] + Math.floor(rand(state.world) * (s.gold[1] - s.gold[0] + 1));
   if (rand(state.world) < .7) h.bag[s.mat] += 1 + (s.boss ? 4 : 0);
@@ -156,7 +156,7 @@ function fight(state, ctx, h, dt) {
     const hurt = party.filter(o => o.hp < o.maxHp * .75 && dist(o, h) < cc.reach + 1).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
     if (h.skillCd <= 0 && party.filter(o => o.hp < o.maxHp * .6).length >= 2) {
       for (const o of party) { const amt = o.maxHp * .35; o.hp = Math.min(o.maxHp, o.hp + amt); emit({ type: 'heal', x: o.x, y: o.y, amount: Math.round(amt) }); }
-      emit({ type: 'skill', x: h.x, y: h.y, skill: 'blessing', name: cc.skillName }); h.skillCd = cc.skillCd; return;
+      emit({ type: 'skill', id: h.id, x: h.x, y: h.y, skill: 'blessing', name: cc.skillName }); h.skillCd = cc.skillCd; return;
     }
     if (hurt && h.atkCd <= 0) { const amt = h.power * .9; hurt.hp = Math.min(hurt.maxHp, hurt.hp + amt); emit({ type: 'heal', x: hurt.x, y: hurt.y, amount: Math.round(amt) }); h.atkCd = cc.rate; return; }
   }
@@ -170,7 +170,7 @@ function fight(state, ctx, h, dt) {
   if (dist(h, m) > cc.reach) { moveTo(h, { x: m.x + (h.x > m.x ? .4 : -.4), y: m.y }, WALK, dt); return; }
   if (h.skillCd <= 0) {
     h.skillCd = cc.skillCd;
-    emit({ type: 'skill', x: h.x, y: h.y, tx: m.x, ty: m.y, skill: cc.skill, name: cc.skillName });
+    emit({ type: 'skill', id: h.id, x: h.x, y: h.y, tx: m.x, ty: m.y, skill: cc.skill, name: cc.skillName });
     if (cc.skill === 'guard') { h.guard = 5; for (const x of near.filter(x => dist(x, h) < 4)) x.target = h.id; }
     else if (cc.skill === 'volley') for (const x of near.filter(x => dist(x, h) < cc.reach + .5).slice(0, 3)) hitMonster(state, ctx, h, x, h.power * .45 * cc.dmg * 1.2, 'arrow');
     else if (cc.skill === 'fireball') for (const x of near.filter(x => dist(x, m) < 1.6)) hitMonster(state, ctx, h, x, h.power * .45 * cc.dmg * 1.8, 'fire');
@@ -203,14 +203,14 @@ function monsterAct(state, ctx, m, dt) {
   if (m.cd > 0) return;
   m.cd = s.rate;
   const dmg = s.atk * (.85 + rand(w) * .3) * (t.guard > 0 ? .6 : 1);
-  t.hp -= dmg; emit({ type: 'hurt', x: t.x, y: t.y, amount: Math.round(dmg) });
+  t.hp -= dmg; emit({ type: 'hurt', id: t.id, by: m.id, x: t.x, y: t.y, amount: Math.round(dmg) });
   if (t.hp <= 0) knockOut(state, ctx, t);
 }
 function knockOut(state, ctx, h) {
   const w = state.world;
   if (h.carrying) { const c = w.hunters.find(o => o.id === h.carrying); if (c) c.carriedBy = null; h.carrying = null; }
   h.hp = 0; h.mode = 'down'; h.target = null; h.path = [];
-  emit({ type: 'ko', x: h.x, y: h.y });
+  emit({ type: 'ko', id: h.id, x: h.x, y: h.y });
   for (const m of w.monsters) if (m.target === h.id) m.target = null;
   const name = h.kind === 'member' ? state.members.find(m => m.id === h.id)?.name : w.free.find(f => f.id === h.id)?.name;
   if (h.kind === 'member') ctx.log(`${name}สลบที่${HUNT_ZONES[h.zone]?.name || 'นอกเมือง'}!`, 'warning');

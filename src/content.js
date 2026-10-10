@@ -254,7 +254,7 @@ export const CLASS_TIERS = { 2: { rank: 'D', level: 5, dojo: 1, fee: 150 }, 3: {
 // ---- The living world: hunting grounds, monster stats and how each class fights in real time. ----
 /** Hunting grounds on the world map (grid units). Adventurers walk the road waypoints out and back. */
 export const HUNT_ZONES = {
-  meadow: { name: 'ทุ่งใบชา', rank: 'F', x: -24, y: 25, r: 6.5, via: [[6, 17.5], [-12, 17.5], [-18, 19.5], [-23, 22]], species: ['leafSlime', 'hornHare', 'fuzzBee', 'thornling'], count: 8 },
+  meadow: { name: 'ทุ่งใบชา', rank: 'F', x: -32, y: 20.5, r: 5.5, via: [[6, 17.5], [-12, 17.5], [-18, 19.5], [-24, 22.5], [-29, 22]], species: ['leafSlime', 'hornHare', 'fuzzBee', 'thornling'], count: 8 },
   woods: { name: 'ป่าต้นโอ๊ก', rank: 'E', x: 2, y: -25, r: 6, via: [[2, 8], [2, -2], [2, -12], [1, -20]], species: ['mushHopper', 'acornBeetle', 'mossWolf'], count: 7 },
   hills: { name: 'เนินผลึก', rank: 'D', x: 55, y: 15, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15]], species: ['pebbleCrab', 'crystalBat', 'marbleGolem'], count: 7 },
   mist: { name: 'ป่าหมอกจันทร์', rank: 'C', x: 0, y: -44, r: 6, via: [[2, 8], [2, -2], [2, -12], [1, -20], [5, -28], [2, -36]], species: ['mistWisp', 'lanternGhost', 'glowMoth'], count: 7 },
