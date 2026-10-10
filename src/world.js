@@ -3,7 +3,8 @@ import { FACILITIES } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove } from './game.js';
 import { makeActorTexture } from './render.js';
 import { QUESTS } from './content.js';
-import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeFoeSprite,makeFlowers,makeBellTower,makeCrystals,makeHollowOak,makeAncientTree,makeCampfire,makeBridge,makeLogBarrier,makeFog,makeSignText } from './overworld.js';
+import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeFoeSprite,makeBridge,makeFog } from './overworld.js';
+import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
 import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,HOME_STYLES,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
@@ -36,7 +37,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R27',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R28',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -212,14 +213,21 @@ export class GuildRenderer {
   this.chimneys=[];this.puffs=[];
   for(const [x,y,seed,style] of VILLAGE_HOMES)this.worldProps.push(this.addHome(style,seed,x,y));
   // Landmarks where quests happen.
-  place('lm-cart',()=>V.makeProp('cart',{seed:5}),S.escort.x+1.2,S.escort.y-1.2);
-  place('lm-hollow',makeHollowOak,S.hollow.x+2.4,S.hollow.y-1.5);
-  place('lm-crystals',makeCrystals,S.crystals.x+2.2,S.crystals.y-1.4);
-  place('lm-tower',makeBellTower,S.ruins.x+3,S.ruins.y-2);
-  for(let i=0;i<3;i++)place('lm-lamp',()=>V.makeProp('lamp',{seed:7}),S.mistpath.x-2+i*2.2,S.mistpath.y-1.8+(i%2)*3.2);
-  this.campfire=place('lm-fire-0',()=>makeCampfire(0),S.rescue.x+1.6,S.rescue.y-.6);bake('lm-fire-1',()=>makeCampfire(1));
-  place('lm-ancient',makeAncientTree,S.heart.x+3,S.heart.y-3);
-  for(const sign of SIGNPOSTS)place('sign-'+sign.region,()=>makeSignText(sign.text),sign.x,sign.y);
+  // Each quest has its own set piece; some of them breathe (sparkle, flicker, sway).
+  this.animated=[];const anim=(key,make,frames,fps,x,y,depth)=>{for(let f=0;f<frames;f++)bake(`${key}-${f}`,()=>make(f));const image=place(`${key}-0`,()=>make(0),x,y,depth);this.animated.push({image,key,frames,fps,phase:Math.random()*frames});return image;};
+  anim('lm-post',makeWatchPost,2,1.5,-21.4,23.2);
+  for(const [x,y,seed] of [[-26.6,29.4,0],[-25.3,30.8,1],[-26.8,32.3,2],[-25,33,1],[-27.9,33.8,0]])anim('lm-tea'+seed,f=>makeTeaBush(seed,f),2,1.2,x,y);
+  place('lm-basket',makeTeaBasket,-27.7,31.3);
+  anim('lm-wagon',makeBreadWagon,2,.7,47.8,14.6);
+  place('lm-oak',makeGreatOak,S.hollow.x+2.6,S.hollow.y-2);
+  anim('lm-cave',makeCrystalCave,2,1.6,S.crystals.x+2.2,S.crystals.y-1.4);
+  anim('lm-tower',makeBellTower,2,.8,66,-5);
+  place('lm-gate',makeMistGate,1,-38);
+  for(const [x,y] of [[-1.7,-40.8],[.9,-40.8],[-2.9,-43.2],[-.3,-43.2]])anim('lm-lantern',makeStoneLantern,2,3,x,y);
+  place('lm-camp',makeLostCamp,S.rescue.x-1.9,S.rescue.y-1.8);
+  anim('lm-fire',makeCampfire,3,7,S.rescue.x+1.1,S.rescue.y-.8);
+  anim('lm-heart',makeHeartTree,2,.9,S.heart.x+3,S.heart.y-3);
+  for(const sign of SIGNPOSTS)place('sign-'+sign.region,()=>makeSignpost(sign.text,false,sign.flip),sign.x,sign.y);
   // Little lives: sheep in the pasture, ducks on the pond, butterflies over the flowers.
   const puff=dark=>{const c=document.createElement('canvas');c.width=c.height=10;const g=c.getContext('2d');g.fillStyle=dark?'#8d8782':'#f4f0e6';g.fillRect(2,0,6,10);g.fillRect(0,2,10,6);g.fillRect(1,1,8,8);g.fillStyle=dark?'#a9a39d':'#ffffff';g.fillRect(2,2,4,3);return{canvas:c};};bake('puff',()=>puff(false));bake('puff-dark',()=>puff(true));
   for(let k=0;k<3;k++)bake('sheep-'+k,()=>makeSheep(k));for(let k=0;k<2;k++){bake('duck-'+k,()=>makeDuck(k));bake('duckw-'+k,()=>makeDuck(k,true));}for(let k=0;k<2;k++)for(let c=0;c<4;c++)bake(`fly-${k}-${c}`,()=>makeButterfly(k,c));
@@ -259,8 +267,8 @@ export class GuildRenderer {
  refreshWorldSigns(){
   const key=this.state.rank;if(this.signRank===key||!this.scene)return;this.signRank=key;for(const s of this.worldSigns||[])s.destroy();this.worldSigns=[];
   for(const sign of SIGNPOSTS)if(!regionOpen(this.state,sign.region)){const rank={meadow:'F',ruins:'D',mist:'B'}[sign.region],p=gridPoint(sign.x+1.2,sign.y-1.6);
-   if(!this.scene.textures.exists('barrier'))this.texture('barrier',makeLogBarrier().canvas);const b=makeLogBarrier();this.worldSigns.push(this.scene.add.image(p.x-b.footX,p.y-b.footY,'barrier').setOrigin(0).setDepth(p.y));
-   const lock=makeSignText(`ต้องเป็นกิลด์ ${rank}`,true),q=gridPoint(sign.x+2.4,sign.y-2.6);this.texture('lock-'+sign.region+rank,lock.canvas);this.worldSigns.push(this.scene.add.image(q.x-lock.footX,q.y-lock.footY,'lock-'+sign.region+rank).setOrigin(0).setDepth(q.y));}
+   if(!this.scene.textures.exists('barrier'))this.texture('barrier',makeBarricade().canvas);const b=makeBarricade();this.worldSigns.push(this.scene.add.image(p.x-b.footX,p.y-b.footY,'barrier').setOrigin(0).setDepth(p.y));
+   const lock=makeSignpost(`ต้องเป็นกิลด์ ${rank}`,true,sign.flip),q=gridPoint(sign.x+2.4,sign.y-2.6);this.texture('lock-'+sign.region+rank,lock.canvas);this.worldSigns.push(this.scene.add.image(q.x-lock.footX,q.y-lock.footY,'lock-'+sign.region+rank).setOrigin(0).setDepth(q.y));}
  }
  updateWorld(dt,playing){
   if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;this.updateGround();this.updateCritters(dt,t,playing);
@@ -270,7 +278,7 @@ export class GuildRenderer {
    const p=gridPoint(f.x,f.y);f.image.setPosition(Math.round(p.x),Math.round(p.y+Math.sin(t*3+f.x)*1.5)).setDepth(p.y).setFlipX(f.tx<f.x);
   }
   for(const fog of this.fogs||[])fog.image.setPosition(fog.x+Math.sin(t*.12+fog.phase)*40,fog.y+Math.cos(t*.09+fog.phase)*10).setAlpha(.4+Math.sin(t*.3+fog.phase)*.15);
-  if(this.campfire)this.campfire.setTexture(Math.floor(t*6)%2?'lm-fire-1':'lm-fire-0');
+  for(const a of this.animated||[])if(a.image.visible)a.image.setTexture(`${a.key}-${Math.floor(t*a.fps+a.phase)%a.frames}`);
   // Only draw world props near the view.
   this.cullClock=(this.cullClock||0)-dt;if(this.cullClock<=0&&this.camera){this.cullClock=.25;const v=this.camera.worldView,m=220;for(const c of this.groundChunks||[])c.image?.setVisible(c.left<v.right+m&&c.left+c.size>v.x-m&&c.top<v.bottom+m&&c.top+c.size>v.y-m);for(const img of this.worldProps||[])img.setVisible(img.x+img.width>v.x-m&&img.x<v.right+m&&img.y+img.height>v.y-m&&img.y<v.bottom+m);for(const f of this.foes)f.image.setVisible(f.image.x>v.x-m&&f.image.x<v.right+m&&f.image.y>v.y-m&&f.image.y<v.bottom+m+60);}
   // Mission foes, strike effects and the floating quest tag for each travelling team.

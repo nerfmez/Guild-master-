@@ -38,9 +38,9 @@ const ROUTES = {
   hollow: ['north', 4], mistpath: ['north', 5], rescue: ['north', 6, 'mistdeep'], heart: ['north', 8],
 };
 export const SIGNPOSTS = [
-  { x: -14, y: 19.8, text: 'ทุ่งใบชา →', region: 'meadow' },
-  { x: 3.8, y: -16, text: 'ป่าหมอกจันทร์ ↑', region: 'mist' },
-  { x: 45.5, y: 18.8, text: 'ซากหอระฆัง →', region: 'ruins' },
+  { x: -14, y: 19.8, text: 'ทุ่งใบชา', region: 'meadow', flip: true },
+  { x: 3.8, y: -16, text: 'ป่าหมอกจันทร์', region: 'mist' },
+  { x: 45.5, y: 18.8, text: 'ซากหอระฆัง', region: 'ruins' },
 ];
 export const VILLAGE_HOMES = [[-9, 20.5, 31, 'smithy'], [-2, 21.5, 44, 'thatch'], [8, 21.5, 52, 'stone'], [14, 22, 63, 'cabin'], [24, 21.5, 75, 'brick'], [-8, -3, 88, 'tall']];
 
@@ -195,7 +195,7 @@ export const MEADOW_SCENE = {
   pasture: { x: -21, y: 29, r: 3.6 },
 };
 export function scatterMeadow() {
-  const r = rng(808), items = [], clear = (x, y) => nearPath(x, y, 1.5) || inWater(x, y, .6) || FIELDS.some(f => x > f.x - 1.2 && x < f.x + f.w + 1.2 && y > f.y - 1.2 && y < f.y + f.h + 1.2) || Math.hypot(x - MEADOW_SCENE.windmill.x, y - MEADOW_SCENE.windmill.y) < 3 || Math.hypot(x - MEADOW_SCENE.barn.x, y - MEADOW_SCENE.barn.y) < 3.2 || MEADOW_SCENE.trees.some(([tx, ty]) => Math.hypot(tx - x, ty - y) < 1.6) || Object.values(QUEST_SITES).some(s => Math.hypot(s.x - x, s.y - y) < 2.4);
+  const r = rng(808), items = [], clear = (x, y) => nearPath(x, y, 1.5) || inWater(x, y, .6) || FIELDS.some(f => x > f.x - 1.2 && x < f.x + f.w + 1.2 && y > f.y - 1.2 && y < f.y + f.h + 1.2) || Math.hypot(x - MEADOW_SCENE.windmill.x, y - MEADOW_SCENE.windmill.y) < 3 || Math.hypot(x - MEADOW_SCENE.barn.x, y - MEADOW_SCENE.barn.y) < 3.2 || MEADOW_SCENE.trees.some(([tx, ty]) => Math.hypot(tx - x, ty - y) < 1.6) || Object.values(QUEST_SITES).some(s => Math.hypot(s.x - x, s.y - y) < 2.4) || Math.hypot(x + 21.4, y - 23.2) < 2.2 || Math.hypot(x + 26.4, y - 31.6) < 2.8;
   for (let y = MEADOW_BOX.y0; y < MEADOW_BOX.y1; y += 1.1) for (let x = MEADOW_BOX.x0; x < MEADOW_BOX.x1; x += 1.1) {
     const jx = x + (r() - .5) * .9, jy = y + (r() - .5) * .9, roll = r(), theme = Math.floor(noise(jx * .12 + 40, jy * .12) * 4.99);
     if (clear(jx, jy) || Math.hypot(jx - VILLAGE.x, jy - VILLAGE.y) < 17) continue;
@@ -232,7 +232,7 @@ function wildLandmarks() {
   // The ruins: broken walls and pillars around the bell tower's plaza, rubble spilling outward.
   const R = S.ruins;
   for (const [dx, dy, seed, len] of [[-4.6, -3.8, 0, 2.6], [1.4, -5, 1, 2], [-5.4, 2, 2, 1.8], [2.6, 3.6, 3, 2.4]]) items.push({ kind: 'wall', x: R.x + dx, y: R.y + dy, seed, len });
-  for (const [dx, dy, seed] of [[-3, .2, 0], [-1.4, 3.4, 1], [4.8, -1.4, 2], [.6, -3.6, 3], [5.2, 2.6, 4]]) items.push({ kind: 'pillar', x: R.x + dx, y: R.y + dy, seed });
+  for (const [dx, dy, seed] of [[-3, .2, 0], [-1.4, 3.4, 1], [5.8, 1.2, 2], [.6, -3.6, 3], [4.4, 3.6, 4]]) items.push({ kind: 'pillar', x: R.x + dx, y: R.y + dy, seed });
   for (const [dx, dy, seed] of [[-6.6, -.6, 0], [6.8, 4.4, 1], [-2, 6.2, 2]]) items.push({ kind: 'boulders', x: R.x + dx, y: R.y + dy, seed });
   // Standing stones on the far hill and the crystal outcrop's scree.
   for (const [x, y, seed] of [[71, 13, 1], [72.6, 15, 2], [70, 16.4, 3]]) items.push({ kind: 'stone', x, y, seed, rune: false });
@@ -246,6 +246,10 @@ const SCENE_CLEAR = () => [
   { x: WILD_SCENE.camp.x, y: WILD_SCENE.camp.y, r: 4.2 }, { ...WILD_SCENE.deer }, { x: WILD_SCENE.goats.x, y: WILD_SCENE.goats.y, r: 4 },
   { x: WILD_SCENE.circle.x, y: WILD_SCENE.circle.y, r: 4.6 }, { x: QUEST_SITES.ruins.x, y: QUEST_SITES.ruins.y, r: 8 }, { x: 71, y: 14.6, r: 2.6 },
   { x: FOOTBRIDGE.x + 1, y: FOOTBRIDGE.y + .7, r: 2.6 },
+  // Breathing room around each quest's set piece.
+  { x: QUEST_SITES.hollow.x + 2.6, y: QUEST_SITES.hollow.y - 2, r: 5.5 }, { x: QUEST_SITES.heart.x + 3, y: QUEST_SITES.heart.y - 3, r: 8.5 },
+  { x: QUEST_SITES.crystals.x + 2, y: QUEST_SITES.crystals.y - 1.4, r: 5 }, { x: QUEST_SITES.rescue.x - 1, y: QUEST_SITES.rescue.y - 1, r: 5 },
+  { x: 0, y: -41, r: 4.5 }, { x: 47.8, y: 14.6, r: 3.5 },
 ];
 
 /** Everything outside the meadow: groves of mixed trees with open glades, misty pines, dry rocky hills, a southern orchard. */
@@ -288,59 +292,6 @@ export function makeFoeSprite(quest, scale = .5, flash = false) {
   const w = Math.ceil(90 * scale) + 8, h = Math.ceil(70 * scale) + 8;
   return sprite(w, h, Math.round(w / 2), h - 4, c => { c.translate(Math.round(w / 2), h - 4); c.scale(scale, scale); drawFoe(c, 0, 0, quest, 0, flash); });
 }
-export function makeFlowers(seed = 0) {
-  const r = rng(seed + 9); return sprite(26, 14, 13, 10, (c, R) => { for (let i = 0; i < 7; i++) { const x = 3 + r() * 20, y = 3 + r() * 8; R(x, y + 2, 1, 3, '#6d8d6b'); R(x - 1, y, 3, 2, ['#f2b8a8', '#fff3d6', '#f4d49a', '#d8c4ef'][(i + seed) % 4]); } });
-}
-export function makeBellTower() {
-  return sprite(84, 150, 42, 144, (c, R) => {
-    R(10, 136, 66, 10, '#00000026');
-    R(16, 40, 50, 100, '#b5ad9d'); R(16, 40, 22, 100, '#ccc4b2'); R(56, 40, 10, 100, '#9d9586');
-    for (let y = 46; y < 138; y += 10) { R(16, y, 50, 1, '#00000018'); R(y % 20 ? 28 : 40, y, 1, 10, '#00000014'); }
-    R(30, 60, 20, 30, '#4f4540'); R(32, 62, 16, 26, '#6c625a'); R(36, 66, 8, 10, '#d4ad5f'); R(37, 66, 6, 2, '#f0d48d'); R(39, 76, 2, 3, '#b48a3c');
-    R(28, 112, 26, 28, '#4f4540'); R(30, 114, 22, 26, '#2f2a26');
-    R(16, 32, 12, 10, '#ccc4b2'); R(30, 26, 10, 16, '#b5ad9d'); R(46, 36, 10, 6, '#b5ad9d'); R(58, 30, 8, 12, '#9d9586');
-    R(4, 132, 12, 8, '#a59d8f'); R(4, 132, 12, 2, '#cfc7b4'); R(66, 128, 14, 10, '#a59d8f'); R(66, 128, 14, 2, '#cfc7b4');
-    R(20, 90, 6, 14, '#7f9a72'); R(18, 96, 4, 6, '#94b085'); R(60, 70, 5, 16, '#7f9a72');
-  });
-}
-export function makeCrystals() {
-  return sprite(64, 56, 32, 50, (c, R) => {
-    R(8, 46, 50, 6, '#00000022');
-    const shard = (x, y, w, h, a, b) => { c.fillStyle = a; c.beginPath(); c.moveTo(x, y + h); c.lineTo(x + w / 2, y); c.lineTo(x + w, y + h); c.closePath(); c.fill(); c.fillStyle = b; c.beginPath(); c.moveTo(x + w / 2, y); c.lineTo(x + w, y + h); c.lineTo(x + w / 2, y + h); c.closePath(); c.fill(); };
-    R(10, 40, 44, 8, '#9d9586'); R(10, 40, 44, 2, '#cfc7b4');
-    shard(14, 14, 14, 30, '#c7bfe6', '#a598cf'); shard(26, 2, 16, 42, '#d8d0f2', '#b2a6dc'); shard(40, 18, 12, 26, '#bcd6ea', '#93b6cf'); shard(8, 26, 10, 18, '#bcd6ea', '#93b6cf');
-    R(31, 10, 2, 12, '#ffffff'); R(17, 22, 1, 8, '#ffffff');
-  });
-}
-const blobber = R => (x, y, r, col) => { for (let dy = -r; dy <= r; dy++) { const w = Math.round(Math.sqrt(r * r - dy * dy)); R(x - w, y + dy, w * 2, 1, col); } };
-export function makeHollowOak() {
-  return sprite(120, 132, 60, 126, (c, R) => {
-    const blob = blobber(R);
-    R(30, 118, 60, 10, '#00000026');
-    R(44, 60, 32, 64, '#7b5d45'); R(44, 60, 12, 64, '#94735a'); R(70, 60, 6, 64, '#5f4636'); R(36, 116, 48, 8, '#7b5d45');
-    R(52, 92, 16, 24, '#3a2f2b'); R(54, 94, 12, 22, '#26201d'); R(58, 108, 3, 3, '#e7bd74');
-    blob(60, 42, 38, '#5f8a62'); blob(40, 50, 24, '#6f9a6d'); blob(82, 48, 24, '#6f9a6d'); blob(56, 30, 24, '#83aa7c'); blob(48, 24, 10, '#a3c693');
-  });
-}
-export function makeAncientTree() {
-  return sprite(200, 220, 100, 212, (c, R) => {
-    const blob = blobber(R);
-    R(40, 202, 120, 14, '#00000030');
-    for (const [x, w] of [[60, 20], [118, 22]]) R(x, 190, w, 18, '#5f4636');
-    R(76, 90, 48, 120, '#6b5040'); R(76, 90, 16, 120, '#86664f'); R(116, 90, 8, 120, '#4f3a2c');
-    blob(100, 70, 66, '#4f7a66'); blob(60, 86, 40, '#5c8a72'); blob(144, 84, 40, '#5c8a72'); blob(96, 46, 44, '#6f9a82'); blob(84, 34, 18, '#8fb8a0');
-    for (let i = 0; i < 9; i++) { const x = 50 + (i * 37) % 100, y = 40 + (i * 23) % 70; R(x - 1, y - 1, 5, 5, '#f4e8a044'); R(x, y, 3, 3, '#f4e8a0'); }
-    R(92, 150, 16, 18, '#9fd3a8'); R(96, 154, 8, 10, '#d8f2d6');
-  });
-}
-export function makeCampfire(frame = 0) {
-  return sprite(40, 34, 20, 28, (c, R) => {
-    R(6, 24, 28, 6, '#00000022'); R(8, 22, 24, 4, '#7b5d45'); R(12, 20, 16, 4, '#94735a');
-    const f = frame % 2; R(14, 10 + f, 12, 12 - f, '#e8935a'); R(16, 6 + f * 2, 8, 12, '#f4b860'); R(18, 4 + f, 4, 8, '#fff1c4');
-    R(26, 26, 10, 4, '#b5ad9d');
-  });
-}
-/** Plank bridge over a grid rectangle; span 'x' crosses along x (rails on the y edges), 'y' along y. */
 export function makeBridge(B = BRIDGE, span = 'x') {
   const corners = [gridPoint(B.x, B.y), gridPoint(B.x + B.w, B.y), gridPoint(B.x, B.y + B.h), gridPoint(B.x + B.w, B.y + B.h)];
   const minX = Math.min(...corners.map(p => p.x)) - 4, minY = Math.min(...corners.map(p => p.y)) - 14, maxX = Math.max(...corners.map(p => p.x)) + 4, maxY = Math.max(...corners.map(p => p.y)) + 6;
@@ -354,15 +305,6 @@ export function makeBridge(B = BRIDGE, span = 'x') {
   });
   out.x = minX; out.y = minY; out.depthY = gridPoint(B.x + B.w, B.y + B.h).y; return out;
 }
-export function makeLogBarrier() {
-  return sprite(64, 30, 32, 24, (c, R) => { R(6, 20, 54, 6, '#00000022'); R(4, 10, 56, 10, '#7b5d45'); R(4, 10, 56, 3, '#94735a'); R(2, 10, 6, 10, '#c9a77f'); R(3, 12, 3, 5, '#a8865f'); R(56, 10, 6, 10, '#c9a77f'); R(20, 4, 6, 8, '#7b5d45'); });
-}
 export function makeFog(seed = 0) {
   const r = rng(seed + 31); return sprite(200, 70, 100, 35, c => { for (let i = 0; i < 6; i++) { const x = 40 + r() * 120, y = 20 + r() * 30, rad = 18 + r() * 22, g = c.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, 'rgba(238,244,241,.5)'); g.addColorStop(1, 'rgba(238,244,241,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); } });
-}
-export function makeSignText(text, locked = false) {
-  return sprite(76, 32, 38, 30, (c, R) => {
-    R(36, 12, 3, 20, '#6b4f3a'); R(37, 12, 1, 20, '#8a6a4a'); R(1, 1, 74, 13, '#5a463f'); R(2, 2, 72, 11, locked ? '#e7bd74' : '#d9b27c'); R(2, 2, 72, 1, '#f0d4a0'); R(2, 12, 72, 1, '#b48d5f');
-    c.fillStyle = '#4f3a2c'; c.font = 'bold 8px "Noto Sans Thai", sans-serif'; c.textBaseline = 'middle'; c.textAlign = 'center'; c.fillText(text, 38, 7.5);
-  });
 }

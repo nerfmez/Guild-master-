@@ -237,5 +237,5 @@
     });
   }
 
-  window.VillageNature = { makeTree, makeBush, makeRock, makeGrassTuft };
+  window.VillageNature = { makeTree, makeBush, makeRock, makeGrassTuft, leafMasses };
 })();
