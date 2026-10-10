@@ -3,8 +3,9 @@ import { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,MONSTE
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
 import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { drainFx } from './life.js';
+import { pathTier } from './town.js';
 import { QUESTS } from './content.js';
-import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
+import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
 import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
@@ -39,7 +40,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R34',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R35',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -155,9 +156,13 @@ export class GuildRenderer {
   if(!this.groundChunks||!this.camera)return;const v=this.camera.worldView,m=200,start=performance.now();
   while(performance.now()-start<budget){
    let job=this.groundJob;
-   if(!job){let bd=Infinity;for(const c of this.groundChunks){if(c.image||c.left>v.right+m||c.left+c.size<v.x-m||c.top>v.bottom+m||c.top+c.size<v.y-m)continue;const d=(c.left+c.size/2-v.centerX)**2+(c.top+c.size/2-v.centerY)**2;if(d<bd){bd=d;job=c;}}
+   if(!job){let bd=Infinity;for(const c of this.groundChunks){if((c.image&&!c.stale)||c.left>v.right+m||c.left+c.size<v.x-m||c.top>v.bottom+m||c.top+c.size<v.y-m)continue;const d=(c.left+c.size/2-v.centerX)**2+(c.top+c.size/2-v.centerY)**2;if(d<bd){bd=d;job=c;}}
     if(!job)return;this.groundJob=job;job.painter=makeGroundPainter(job.left,job.top,job.size,2);}
-   if(job.painter.step(6)){const key=`ground-chunk-${job.left}-${job.top}`;this.texture(key,job.painter.canvas);job.image=this.scene.add.image(job.left,job.top,key).setOrigin(0).setScale(2).setDepth(-9999.5);job.painter=null;this.groundJob=null;}
+   if(job.painter.step(6)){
+    // A stale chunk keeps showing its old picture until the new one is ready, then swaps without a blank frame.
+    const old=job.image?.texture?.key,key=`ground-chunk-${job.left}-${job.top}-${job.ver=(job.ver||0)+1}`;this.texture(key,job.painter.canvas);
+    if(job.image)job.image.setTexture(key);else job.image=this.scene.add.image(job.left,job.top,key).setOrigin(0).setScale(2).setDepth(-9999.5);
+    if(old&&old!==key&&this.scene.textures.exists(old))this.scene.textures.remove(old);job.stale=false;job.painter=null;this.groundJob=null;}
   }
  }
  decorateWorld(){
@@ -384,7 +389,16 @@ export class GuildRenderer {
   this.onVillagePick?.({ok:!v.problem,message:v.problem});}
  getVillagePick(){const v=this.villagePick;return v?{ok:!v.problem,message:v.problem,x:v.x,y:v.y}:null;}
  stopVillagePlacement(){this.villagePick=null;this.villageGhost?.clear();}
+ // Village footpaths grow by themselves: repaint the village ground and the world chunks they cross when they change.
+ syncPaths(){const v=getVillageInfo(this.state),paths=this.state.village?.paths||{};
+  const sig=JSON.stringify(Object.entries(paths).map(([k,p])=>[k,p.pts.length,pathTier(p.wear,v.level)]));if(sig===this.pathSig)return;const first=this.pathSig===undefined;this.pathSig=sig;
+  setVillagePaths(Object.values(paths).map(p=>p.pts));
+  if(this.groundImage&&this.scene.textures.exists('ground')){const terrain=makeGround(this.state);this.groundImage.setTexture(this.texture('ground',terrain.canvas));}
+  if(first||!this.groundChunks)return;
+  const boxes=Object.values(paths).filter(p=>p.pts.length>1).map(p=>{const g=p.pts.map(([x,y])=>gridPoint(x,y));return{x0:Math.min(...g.map(q=>q.x))-60,x1:Math.max(...g.map(q=>q.x))+60,y0:Math.min(...g.map(q=>q.y))-40,y1:Math.max(...g.map(q=>q.y))+40};});
+  for(const c of this.groundChunks)if(boxes.some(b=>b.x1>c.left&&b.x0<c.left+c.size&&b.y1>c.top&&b.y0<c.top+c.size)){if(this.groundJob===c){this.groundJob=null;c.painter=null;}c.stale=true;}}
  syncVillage(){
+  this.syncPaths();
   if(!this.scene||!this.state||!this.worldProps)return;const v=getVillageInfo(this.state),tier=v.level>=5?2:v.level>=3?1:0,want=[];
   // Buildings stand where the player put them (older saves fall back to the original lots).
   VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses){const at=this.villageLot('h'+i);want.push({key:'h'+i,style:lot.styles[tier],seed:lot.seed,x:at.x,y:at.y});}});
@@ -409,7 +423,10 @@ export class GuildRenderer {
  // ---- Villagers bringing petitions: they walk from home along the road, in through the door, and wait at the desk. ----
  bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
   for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-villager-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
- villagerRoute(home){const h=petitionHome(home),b=buildingRect(this.state),door=b.x+b.w/2,road=17.5;return[h,{x:h.x,y:road},{x:door,y:road},{x:door,y:b.y+b.h+.6},{x:door,y:b.y+b.h-.4}];}
+ villagerRoute(home){const h=petitionHome(home),b=buildingRect(this.state),door=b.x+b.w/2,road=17.5,path=Number.isInteger(home)&&this.state.village?.paths?.['h'+home]?.pts;
+  // Villagers keep to the footpath their feet wore from home to the road.
+  if(path&&path.length>1){const end=path[path.length-1];return[...path.map(([x,y])=>({x,y})),...(Math.abs(end[1]-road)>.3?[{x:end[0],y:road}]:[]),{x:door,y:road},{x:door,y:b.y+b.h+.6},{x:door,y:b.y+b.h-.4}];}
+  return[h,{x:h.x,y:road},{x:door,y:road},{x:door,y:b.y+b.h+.6},{x:door,y:b.y+b.h-.4}];}
  updateVillagers(dt,playing){
   if(!this.scene)return;this.villagers??=new Map();const elapsed=playing?dt*(this.state.settings?.speed||1):0,live=new Set();
   const desk=this.state.facilities.find(f=>f.type==='reception'),b=buildingRect(this.state),spot=desk?getFacilityEntry(desk):{x:b.x+b.w/2,y:b.y+b.h-1.2};let queue=0;

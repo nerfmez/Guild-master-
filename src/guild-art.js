@@ -1,5 +1,6 @@
 import { buildingRect,siteRoads,siteDecorations,partitionRect,partitionDoor } from './site.js';
-import { FACILITIES,ROOM_TYPES } from './content.js';
+import { FACILITIES,ROOM_TYPES,VILLAGE_LEVELS } from './content.js';
+import { pathTier } from './town.js';
 
 // Original pixel artwork. Every floor and object uses the same 2:1 projection.
 const {rect:R,poly:P,line:L,ellipse:E,rng,createCanvas,shade:ArtShade}=window.ArtCore;
@@ -130,6 +131,21 @@ export function makePartition(room,state){
  }
  return{layers};
 }
+/** Dense points along a Catmull-Rom curve through control points, about every 0.15 tiles. */
+export function curvePoints(pts){const out=[],p=i=>pts[Math.max(0,Math.min(pts.length-1,i))];
+ for(let i=0;i<pts.length-1;i++){const steps=Math.max(2,Math.ceil(Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1])/.15));
+  for(let s=0;s<steps;s++){const t=s/steps,[p0,p1,p2,p3]=[p(i-1),p(i),p(i+1),p(i+2)],f=k=>.5*(2*p1[k]+(-p0[k]+p2[k])*t+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*t*t+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*t*t*t);out.push([f(0),f(1)]);}}
+ out.push(pts[pts.length-1]);return out;}
+/** Footpaths the village grew by itself: a trodden trail, then a dirt road, then cobbles in a town. */
+function paintPaths(c,state,r){const pr=state.village?.prosperity||0,level=VILLAGE_LEVELS.reduce((l,v)=>pr>=v.prosperity?v.level:l,1);
+ const paths=Object.values(state.village?.paths||{}).filter(p=>p.pts?.length>1).map(p=>({tier:pathTier(p.wear,level),pts:curvePoints(p.pts)}));
+ const W={trail:.26,dirt:.38,cobble:.44};
+ for(const pass of [0,1])for(const p of paths){const hw=W[p.tier];for(const[x,y]of p.pts){const[a,b]=q(x,y);
+  if(pass===0){E(c,a,b,hw*26+2,hw*13+1.5,p.tier==='cobble'?'#9fa088':p.tier==='dirt'?'#a8926a':'#93a06f');continue;}
+  if(p.tier==='trail'){if(r()<.3)continue;E(c,a+(r()-.5)*3,b+(r()-.5)*1.5,hw*26*(.6+r()*.5),hw*13*(.6+r()*.5),r()>.5?'#c2ad7f':'#b5a476');continue;}
+  E(c,a,b,hw*26,hw*13,p.tier==='cobble'?(r()>.5?'#d1c8ab':'#c4bea4'):(r()>.5?'#d4bb8c':'#cbb184'));
+  if(p.tier==='cobble'&&r()<.5)R(c,a+(r()-.5)*hw*40,b+(r()-.5)*hw*18,2,1,r()>.5?'#e6ddc2':'#b4b39c');
+  else if(p.tier==='dirt'&&r()<.2)R(c,a+(r()-.5)*hw*40,b+(r()-.5)*hw*18,2,1,'#b8ab8b');}}}
 function contains(rect,x,y){return x>=rect.x&&x<rect.x+rect.w&&y>=rect.y&&y<rect.y+rect.h;}
 export function makeGround(state){
  const canvas=createCanvas(1200,900),c=canvas.getContext('2d'),r=rng(730);
@@ -138,6 +154,7 @@ export function makeGround(state){
  for(let i=0;i<6000;i++){const x=r()*1200,y=r()*900;R(c,x,y,1+r()*3,1,i%5===0?'#c2ca9a':'#8fa477');if(i%31===0){R(c,x,y-2,1,3,'#879b6b');R(c,x+2,y-1,1,2,'#b9c68d');}}
  const roads=siteRoads(state),roadAt=(x,y)=>roads.find(p=>contains(p,x,y));
  c.save();c.translate(ORIGIN_X,ORIGIN_Y);
+ paintPaths(c,state,r);
  for(const road of roads)top(c,road.x,road.y,road.w,road.h,-1,'#aaa78c');
  c.save();c.beginPath();for(const road of roads){for(const[i,[x,y]]of [[road.x,road.y],[road.x+road.w,road.y],[road.x+road.w,road.y+road.h],[road.x,road.y+road.h]].entries()){const[a,b]=q(x,y);if(i)c.lineTo(a,b);else c.moveTo(a,b);}c.closePath();}c.clip();
  // Shared road union: curbs are only drawn on the outer edge, never across a junction.

@@ -928,3 +928,26 @@ test('engine modules use plain named imports so the single-file export can bundl
     assert.ok(!/^export\s*\{/m.test(source), `${file} re-exports a list, which export.mjs cannot bundle`);
   }
 });
+
+test('the village grows its own footpaths: new buildings get a winding path to the road that wears into a road', async () => {
+  const { villageBuildings, pathTier } = await import('../src/town.js');
+  const state = createGame(111);
+  state.gold = 99999; state.wood = 999; state.stone = 999; state.village.prosperity = 300;
+  for (const id of ['house', 'shop', 'dojo', 'tannery']) assert.equal(act(state, 'buildProject', { projectId: id }).ok, true);
+  tick(state, 10);
+  const buildings = villageBuildings(state);
+  for (const b of buildings) {
+    const p = state.village.paths[b.key];
+    assert.ok(p && p.pts.length >= 2, `${b.key} has a path`);
+    // No point of the path runs through a building.
+    for (const [x, y] of p.pts.slice(1, -1)) assert.ok(!buildings.some(o => x > o.x && x < o.x + o.w && y > o.y && y < o.y + o.h), `${b.key} path avoids buildings`);
+  }
+  const dojo = state.village.paths.dojo;
+  assert.ok(dojo.pts.length > 3, 'a far building gets a long, winding path');
+  assert.equal(pathTier(dojo.wear, 1), 'trail', 'new paths start as trails');
+  tick(state, 1200);
+  assert.ok(state.village.paths.dojo.wear > dojo.wear || state.village.paths.dojo.wear === 1, 'feet wear them in');
+  assert.equal(pathTier(0.9, 4), 'cobble'); assert.equal(pathTier(0.9, 2), 'dirt');
+  const back = deserializeGame(serializeGame(state));
+  assert.deepEqual(back.village.paths.dojo.pts, state.village.paths.dojo.pts, 'paths survive save and load');
+});

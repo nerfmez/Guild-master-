@@ -36,3 +36,13 @@ export function partitionWallBlocks(room,p){
  const edges=[['x',a.x],['x',a.x+a.w],['y',a.y],['y',a.y+a.h]];
  return edges.some(([axis,boundary])=>Math.abs(p[axis]-boundary)<.08&&!(axis===d.axis&&boundary===d.boundary&&Math.abs(p[axis==='x'?'y':'x']-d.center)<d.width/2-.04));
 }
+
+/** World trails as control points in grid units (smoothed with Catmull-Rom when drawn). */
+export const WORLD_PATHS = {
+  west: [[6, 17.5], [-4, 17.5], [-12, 17.5], [-18, 19.5], [-24, 22.5], [-30, 24], [-38, 22], [-46, 25]],
+  lake: [[-30, 24], [-30.6, 27], [-30.2, 30], [-30.4, 31.9]],
+  north: [[2, 8], [2, -2], [2, -12], [1, -20], [5, -28], [2, -36], [-2, -44], [2, -52], [4, -58]],
+  mistdeep: [[-2, -44], [-7, -47], [-10, -50]],
+  east: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [58, 4], [62, -1]],
+  hills: [[48, 15], [54, 18], [59, 20]],
+};

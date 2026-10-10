@@ -232,6 +232,8 @@ export const VILLAGE_LOTS = {
   jeweler: { x: 30, y: 12.6, seed: 173, style: 'jeweler' },
   caravan: { x: 38.5, y: 19.5, seed: 179, style: 'caravan' },
 };
+/** Footprints of village buildings on the world grid (width, depth). */
+export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4] };
 /** Every village business the player can build (houses aside). */
 export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan'];
 
