@@ -1,12 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addPetition, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
+import { addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
 import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
 // Villagers bring petitions over time; tests post one straight to the board when none is waiting.
 function ensurePetition(state, questId) {
   if (!state.petitions.some(p => p.questId === questId && p.status === 'posted' && !p.missionId)) addPetition(state, questId, { status: 'posted' });
+}
+// Applicants walk to the door over time; tests seat one there directly.
+function hire(state, memberId) {
+  if (!state.applicants.some(a => a.memberId === memberId && a.status === 'waiting')) addApplicant(state, memberId, { status: 'waiting' });
+  return act(state, 'recruit', { memberId });
 }
 function dispatch(state, questId = 'patrol', ids = party, policy = 'balanced') {
   ensurePetition(state, questId);
@@ -122,10 +127,10 @@ test('bankrupt guild remains playable, charges modest upkeep, and limits daily w
 test('two teams require dispatch room, beds and six unique available members', () => {
   const state = createGame();
   state.rank = 'E'; state.gold = 6000; state.wood = 200; state.stone = 100;
-  assert.equal(act(state, 'recruit', { memberId: 'sera' }).ok, false);
+  assert.equal(hire(state, 'sera').ok, false);
   assert.equal(act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 }).ok, true);
-  assert.equal(act(state, 'recruit', { memberId: 'sera' }).ok, true);
-  assert.equal(act(state, 'recruit', { memberId: 'toma' }).ok, true);
+  assert.equal(hire(state, 'sera').ok, true);
+  assert.equal(hire(state, 'toma').ok, true);
   dispatch(state);
   ensurePetition(state, 'herbs');
   assert.equal(act(state, 'sendMission', { questId: 'herbs', memberIds: ['noa', 'sera', 'toma'] }).ok, false);
@@ -192,7 +197,7 @@ test('late story contracts require guild investment as well as a strong fighting
   state.gold = 9000; state.wood = 500; state.stone = 500;
   assert.equal(act(state, 'expand').ok, true);
   assert.equal(act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 }).ok, true);
-  for (const memberId of ['sera', 'toma']) assert.equal(act(state, 'recruit', { memberId }).ok, true);
+  for (const memberId of ['sera', 'toma']) assert.equal(hire(state, memberId).ok, true);
   rescue = getAvailableQuests(state).find(quest => quest.id === 'rescue');
   assert.match(rescue.lockReason, /โต๊ะวางแผน/);
   assert.equal(act(state, 'build', { type: 'dispatch', x: 5.5, y: 6.5, rotation:2 }).ok, true);
@@ -606,4 +611,33 @@ test('promotion needs renown and a record of work, then the exam letter arrives'
   state.rank = 'C';
   assert.equal(renownFactor(state, QUESTS.find(q => q.id === 'patrol')), 0.1);
   assert.equal(getRankProgress(state).future, true, 'B opens with the full game');
+});
+
+test('fame draws applicants to the door; rookies are generated and famous adventurers wait for the right guild', () => {
+  const state = createGame(31);
+  state.gold = 3000;
+  state.applicantClock = 1;
+  tick(state, 2);
+  const applicant = state.applicants[0];
+  assert.ok(applicant, 'someone sets out for the guild');
+  tick(state, applicant.eta + 1);
+  assert.equal(applicant.status, 'waiting');
+  assert.ok(applicant.bio?.name && applicant.rookieId, 'early applicants are new rookies');
+  // A full dorm turns them away until a bed is added.
+  assert.equal(act(state, 'recruit', { applicantId: applicant.id }).ok, false);
+  let placed = false;
+  for (let y = 4.5; y < 9.5 && !placed; y += 0.25) for (let x = 5.5; x < 12.5 && !placed; x += 0.25) placed = act(state, 'build', { type: 'dorm', x, y }).ok;
+  assert.equal(act(state, 'recruit', { applicantId: applicant.id }).ok, true);
+  const rookie = state.members.at(-1);
+  assert.equal(rookie.id, applicant.rookieId);
+  assert.ok(getMemberStats(state, rookie).trait, 'rookies have a trait like everyone else');
+  assert.deepEqual(deserializeGame(serializeGame(state)), state);
+  // Famous adventurers wait for renown and a guild that suits them.
+  state.rank = 'C';
+  assert.match(getAvailableRecruits(state).find(m => m.id === 'yuki').reason, /ชื่อเสียง/);
+  state.rep = 500;
+  assert.match(getAvailableRecruits(state).find(m => m.id === 'yuki').reason, /ชั้นตำรา/);
+  assert.equal(getAvailableRecruits(state).find(m => m.id === 'poppy').available, false);
+  const data = JSON.parse(serializeGame(state)); delete data.checksum; data.members.at(-1).bio.trait = 'cheater';
+  assert.throws(() => deserializeGame(JSON.stringify(data)));
 });

@@ -76,10 +76,10 @@ export const MEMBERS = [
   { id: 'toma', name: 'โทมา', class: 'warrior', trait: 'ขยัน', description: 'เด็กโรงตีเหล็กที่ถือโล่หนักได้ทั้งวัน', hair: '#826751', unlockRank: 'E', cost: 260 },
   { id: 'iris', name: 'ไอริส', class: 'healer', trait: 'ร่าเริง', description: 'เชื่อว่าซุปอุ่น ๆ ช่วยเยียวยาได้พอ ๆ กับเวท', hair: '#c0a16f', unlockRank: 'D', cost: 380 },
   { id: 'alba', name: 'อัลบา', class: 'mage', trait: 'รอบคอบ', description: 'อดีตผู้ดูแลหอระฆัง ถือกุญแจเก่าไว้เสมอ', hair: '#b4bec1', unlockRank: 'D', cost: 420 },
-  { id: 'ren', name: 'เรน', class: 'warrior', trait: 'กล้าหาญ', description: 'นักเดินทางที่กลับมาเพื่อช่วยเมืองบ้านเกิด', hair: '#73818d', unlockRank: 'C', cost: 520 },
-  { id: 'poppy', name: 'ป๊อปปี้', class: 'healer', trait: 'ช่างพูด', description: 'นักร้องประจำโรงเตี๊ยมผู้ชอบช่วยคน', hair: '#c79894', unlockRank: 'C', cost: 480 },
-  { id: 'cedar', name: 'ซีดาร์', class: 'archer', trait: 'อดทน', description: 'พรานที่คอยส่งอาหารให้ทีมสำรวจในป่า', hair: '#82976a', unlockRank: 'C', cost: 650 },
-  { id: 'yuki', name: 'ยูกิ', class: 'mage', trait: 'สุขุม', description: 'นักวิจัยที่ตามหาความทรงจำในป่าหมอก', hair: '#b2a8cf', unlockRank: 'C', cost: 680 },
+  { id: 'ren', name: 'เรน', class: 'warrior', trait: 'กล้าหาญ', description: 'นักเดินทางที่กลับมาเพื่อช่วยเมืองบ้านเกิด', hair: '#73818d', unlockRank: 'C', cost: 520, famous: { rep: 380, level: 7, needs: 'memberLevel', value: 7, hint: 'อยากร่วมกิลด์ที่มีสมาชิกเลเวล 7 ขึ้นไป' } },
+  { id: 'poppy', name: 'ป๊อปปี้', class: 'healer', trait: 'ช่างพูด', description: 'นักร้องประจำโรงเตี๊ยมผู้ชอบช่วยคน', hair: '#c79894', unlockRank: 'C', cost: 480, famous: { rep: 360, level: 6, needs: 'facility', value: 'lounge', hint: 'ชอบกิลด์ที่มีชุดโต๊ะน้ำชาไว้ร้องเพลง' } },
+  { id: 'cedar', name: 'ซีดาร์', class: 'archer', trait: 'อดทน', description: 'พรานที่คอยส่งอาหารให้ทีมสำรวจในป่า', hair: '#82976a', unlockRank: 'C', cost: 650, famous: { rep: 420, level: 7, needs: 'quest', value: 'mistpath', hint: 'จะมาเมื่อมีคนเปิดเส้นทางป่าหมอกได้' } },
+  { id: 'yuki', name: 'ยูกิ', class: 'mage', trait: 'สุขุม', description: 'นักวิจัยที่ตามหาความทรงจำในป่าหมอก', hair: '#b2a8cf', unlockRank: 'C', cost: 680, famous: { rep: 420, level: 7, needs: 'facility', value: 'library', hint: 'อยากได้กิลด์ที่มีชั้นตำราให้ค้นคว้า' } },
 ];
 export const QUESTS = [
   { id: 'patrol', name: 'ลาดตระเวนทางหมู่บ้าน', title: 'ก้าวแรกของกิลด์', region: 'meadow', description: 'ตรวจเส้นทางและพาชาวบ้านกลับบ้านอย่างปลอดภัย', duration: 48, rank: 'F', difficulty: 30, tags: ['scout'], reward: { gold: 110, wood: 6, stone: 2, herb: 1, rep: 14, xp: 24 }, cost: {}, energy: 16, enemy: 'สไลม์ใบไม้' },
@@ -207,3 +207,9 @@ export const VILLAGE_LOTS = {
   market: { x: 34, y: 12.4, seed: 137 },
   smithy: { x: -9, y: 20.5, seed: 31, style: 'smithy' },
 };
+
+// ---- Applicants: fame draws newcomers to the door; famous adventurers come only when the guild suits them. ----
+export const TRAIT_NAMES = ['ใจเย็น', 'ช่างสังเกต', 'ใฝ่รู้', 'อ่อนโยน', 'รักอิสระ', 'ขยัน', 'ร่าเริง', 'รอบคอบ', 'กล้าหาญ', 'ช่างพูด', 'อดทน', 'สุขุม'];
+export const ROOKIE_NAMES = ['ปิ่น', 'ต้นข้าว', 'โอ๊ต', 'มะปราง', 'ภู', 'น้ำหวาน', 'กิ่ง', 'ตะวัน', 'ใบเตย', 'ก้อนหิน', 'ฝ้าย', 'เมฆ', 'แพรว', 'บุญมา', 'ขนุน', 'ดาวเรือง', 'สายลม', 'ปุยฝ้าย'];
+export const ROOKIE_LINES = ['เด็กจากหมู่บ้านข้าง ๆ ที่อยากเห็นโลกกว้าง', 'เคยช่วยพ่อเฝ้าไร่ เลยไม่กลัวหมูป่า', 'อ่านนิทานนักผจญภัยจนจำได้ทุกเล่ม', 'ฝึกมาเองจากหนังสือเก่า ๆ ในห้องสมุด', 'มาตามคำบอกเล่าว่ากิลด์นี้ใจดี', 'อยากเก็บเงินซื้อดาบเล่มแรกของตัวเอง', 'ได้ยินชื่อกิลด์จากชาวบ้านที่เคยได้รับความช่วยเหลือ'];
+export const HAIR_COLORS = ['#5b4637', '#8b5a3c', '#d9b26f', '#a66c59', '#6f6a8f', '#e9e2d0', '#73818d', '#c79894', '#82976a'];

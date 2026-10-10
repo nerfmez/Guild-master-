@@ -1,5 +1,5 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS } from './content.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS } from './content.js';
 
 export const SAVE_VERSION = 5;
 export const DAY_LENGTH = 240;
@@ -33,7 +33,9 @@ const memberById = (state, id) => state.members.find(member => member.id === id)
 const isBusy = (state, memberId) => state.missions.some(mission => mission.status === 'active' && mission.memberIds.includes(memberId));
 const availableMember = (state, id) => memberById(state, id) && !isBusy(state, id);
 const finiteNumber = n => typeof n === 'number' && Number.isFinite(n);
-const traitOf = member => TRAIT_BONUSES[MEMBER_BY_ID[member.id]?.trait] || {};
+/** Authored content for a named member, or the stored biography of a rookie who walked in. */
+export const contentOf = member => MEMBER_BY_ID[member?.id] || member?.bio || null;
+const traitOf = member => TRAIT_BONUSES[contentOf(member)?.trait] || {};
 
 function nextRandom(state) {
   let x = state.rng | 0;
@@ -59,8 +61,10 @@ function canAfford(state, cost) {
 }
 
 function createMember(content, level = 1) {
-  return { id: content.id, name: content.name, class: content.class, level, xp: 0, energy: 100, morale: 80,
+  const member = { id: content.id, name: content.name, class: content.class, level, xp: 0, energy: 100, morale: 80,
     injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null, purse: 0 };
+  if (content.rookie) { member.bio = { name: content.name, class: content.class, trait: content.trait, hair: content.hair, description: content.description, rookie: true }; member.hair = content.hair; }
+  return member;
 }
 
 export function createGame(seed = 123, options = {}) {
@@ -82,7 +86,7 @@ export function createGame(seed = 123, options = {}) {
     settings: { speed: 1, sound: true, paused: false },
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, garden: false },
     bankruptcyDays: 0,
-    petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
+    applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
     record: { jobs: 0 }, upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0 }, idleBank: 0,
   };
   if (options.opening) {
@@ -165,7 +169,7 @@ export function getMemberStats(state, memberOrId) {
     role: job.role, jobName: job.name, xpNeeded: xpNeeded(member.level), busy: isBusy(state, member.id),
     energy: Math.round(member.energy), morale: Math.round(member.morale), injury: Math.round(member.injury),
     canSpecialize: member.level >= 5 && !job.parent && hasRank(state, 'D'),
-    trait: MEMBER_BY_ID[member.id].trait,
+    trait: contentOf(member)?.trait,
     waitingReason: member.waitingReason || null,
   };
 }
@@ -261,15 +265,96 @@ export function getAvailableQuests(state) {
   });
 }
 
+/** Why a named adventurer would (or would not yet) come to the door. */
+function namedReason(state, member) {
+  if (!hasRank(state, member.unlockRank)) return `ต้องมีกิลด์ระดับ ${member.unlockRank}`;
+  const f = member.famous;
+  if (!f) return '';
+  if (state.rep < f.rep) return `ต้องมีชื่อเสียง ${f.rep} · ${f.hint}`;
+  if (f.needs === 'memberLevel' && !state.members.some(m => m.level >= f.value)) return f.hint;
+  if (f.needs === 'facility' && !roomLevel(state, f.value)) return f.hint;
+  if (f.needs === 'quest' && !state.completedQuests[f.value]) return f.hint;
+  return '';
+}
+/** Named adventurers who have not joined: whether they would come, and what the guild still lacks. */
 export function getAvailableRecruits(state) {
-  const stats = getGuildStats(state);
   return MEMBERS.filter(member => !member.starter && !memberById(state, member.id)).map(member => {
-    let reason = '';
-    if (!hasRank(state, member.unlockRank)) reason = `ต้องมีกิลด์ระดับ ${member.unlockRank}`;
-    else if (stats.memberCount >= stats.memberCap) reason = 'พื้นที่พักเต็มแล้ว';
-    else if (state.gold < member.cost) reason = 'เหรียญไม่เพียงพอ';
-    return { ...member, available: !reason, reason };
+    const reason = namedReason(state, member);
+    return { ...member, available: !reason, reason, applying: (state.applicants || []).some(a => a.memberId === member.id) };
   });
+}
+/** Fame draws applicants: about every 4 minutes at first, faster as renown grows. */
+export function applicantInterval(state) { return Math.max(50, Math.round(240 / (1 + state.rep / 150))); }
+const APPLICANT_START = { x: -12, y: 17.5 };
+function applicantContent(state, applicant) {
+  return applicant.memberId ? MEMBER_BY_ID[applicant.memberId] : { ...applicant.bio, id: applicant.rookieId, rookie: true, cost: applicant.fee };
+}
+/** Put an applicant at the door (named by id, or a new rookie), used by the arrival timer and by tests. */
+export function addApplicant(state, memberId = null, options = {}) {
+  state.applicants ??= [];
+  const status = options.status || 'coming', b = buildingRect(state);
+  const eta = Math.round((Math.abs(APPLICANT_START.x - (b.x + b.w / 2)) + Math.abs(APPLICANT_START.y - (b.y + b.h))) / PETITION_WALK + 3);
+  const applicant = { id: `app-${state.nextId++}`, status, eta: status === 'coming' ? eta : 0, etaTotal: eta, patience: 160, memberId: null, rookieId: null, bio: null, level: 1, fee: 0, famous: false };
+  if (memberId) {
+    const content = MEMBER_BY_ID[memberId];
+    if (!content || content.starter || memberById(state, memberId)) return null;
+    Object.assign(applicant, { memberId, level: content.famous ? content.famous.level : Math.max(1, rankIndex(state.rank) + 1), fee: content.cost, famous: Boolean(content.famous) });
+  } else {
+    const pick = list => list[Math.floor(petitionRandom(state) * list.length) % list.length];
+    const used = new Set([...state.members.map(m => m.name), ...state.applicants.map(a => a.bio?.name)]);
+    const name = pick(ROOKIE_NAMES.filter(n => !used.has(n)).length ? ROOKIE_NAMES.filter(n => !used.has(n)) : ROOKIE_NAMES);
+    applicant.rookieId = `r-${state.nextId++}`;
+    applicant.bio = { name, class: pick(['warrior', 'archer', 'mage', 'healer']), trait: pick(TRAIT_NAMES), hair: pick(HAIR_COLORS), description: pick(ROOKIE_LINES) };
+    applicant.level = Math.max(1, rankIndex(state.rank) + (petitionRandom(state) < 0.3 ? 1 : 0));
+    applicant.fee = 60 + rankIndex(state.rank) * 70 + applicant.level * 10;
+  }
+  state.applicants.push(applicant);
+  return applicant;
+}
+function tickApplicants(state, step) {
+  state.applicants ??= [];
+  if (!introActive(state) && roomLevel(state, 'reception')) {
+    state.applicantClock = (state.applicantClock ?? 60) - step;
+    if (state.applicantClock <= 0) {
+      state.applicantClock = applicantInterval(state) * (0.8 + petitionRandom(state) * 0.4);
+      if (state.applicants.length < 2 && state.members.length < 12) {
+        const named = getAvailableRecruits(state).filter(m => m.available && !m.applying);
+        const famous = named.filter(m => m.famous);
+        const choice = famous.length ? famous[0] : named.length && petitionRandom(state) < 0.5 ? named[0] : null;
+        const applicant = addApplicant(state, choice?.id || null);
+        if (applicant?.famous) addLog(state, `ข่าวลือว่า${MEMBER_BY_ID[applicant.memberId].name}กำลังเดินทางมาที่กิลด์!`, 'rank');
+      }
+    }
+  }
+  for (const applicant of [...state.applicants]) {
+    if (applicant.status === 'coming') {
+      applicant.eta -= step;
+      if (applicant.eta <= 0) { applicant.status = 'waiting'; applicant.eta = 0; addLog(state, `${applicantContent(state, applicant).name}มาขอสมัครเป็นนักผจญภัย`, 'member'); }
+    } else if ((applicant.patience -= step) <= 0) {
+      state.applicants = state.applicants.filter(a => a !== applicant);
+      addLog(state, `${applicantContent(state, applicant).name}รอนานเกินไปจึงไปหากิลด์อื่น`, 'info');
+    }
+  }
+}
+function recruit(state, payload) {
+  state.applicants ??= [];
+  const applicant = state.applicants.find(a => a.status === 'waiting' && (a.id === payload.applicantId || (payload.memberId && a.memberId === payload.memberId)));
+  if (!applicant) return failure('ยังไม่มีผู้สมัครคนนี้ที่ประตู');
+  const content = applicantContent(state, applicant), stats = getGuildStats(state);
+  if (stats.memberCount >= stats.memberCap) return failure('พื้นที่พักเต็มแล้ว วางเตียงเพิ่มก่อน');
+  if (state.gold < applicant.fee) return failure('เหรียญไม่เพียงพอสำหรับค่าแรกเข้า');
+  transact(state, { gold: applicant.fee }, `รับ ${content.name} เข้ากิลด์`);
+  state.members.push(createMember(content, applicant.level));
+  state.applicants = state.applicants.filter(a => a !== applicant);
+  state.goals.firstRecruit = true;
+  addLog(state, `${content.name} เข้าร่วมกิลด์: ${content.description}`, applicant.famous ? 'rank' : 'member');
+  return success(`${content.name} เข้าร่วมกิลด์แล้ว`);
+}
+function declineApplicant(state, payload) {
+  const applicant = (state.applicants || []).find(a => a.id === payload.applicantId);
+  if (!applicant) return failure('ไม่พบผู้สมัคร');
+  state.applicants = state.applicants.filter(a => a !== applicant);
+  return success('ขอบคุณที่สนใจกิลด์ของเรา');
 }
 
 function bondKey(a, b) { return [a, b].sort().join(':'); }
@@ -1035,6 +1120,7 @@ export function tick(state, seconds) {
     }
     if (state.intro) advanceIntro(state, step);
     tickPetitions(state, step);
+    tickApplicants(state, step);
     tickVillage(state, step);
     if (state.clock >= DAY_LENGTH - 0.00001) {
       state.clock = 0;
@@ -1044,19 +1130,6 @@ export function tick(state, seconds) {
     remaining -= step;
   }
   return state;
-}
-
-function recruit(state, payload) {
-  const content = MEMBER_BY_ID[payload.memberId];
-  if (!content || content.starter) return failure('ไม่พบผู้สมัครคนนี้');
-  if (memberById(state, content.id)) return failure('สมาชิกอยู่ในกิลด์แล้ว');
-  const available = getAvailableRecruits(state).find(member => member.id === content.id);
-  if (!available?.available) return failure(available?.reason || 'ยังรับสมาชิกไม่ได้');
-  transact(state, { gold: content.cost }, `รับ ${content.name} เข้ากิลด์`);
-  state.members.push(createMember(content, Math.max(1, rankIndex(state.rank))));
-  state.goals.firstRecruit = true;
-  addLog(state, `${content.name} เข้าร่วมกิลด์: ${content.description}`, 'member');
-  return success(`${content.name} เข้าร่วมกิลด์แล้ว`);
 }
 
 function build(state, payload) {
@@ -1226,6 +1299,7 @@ function command(state, type, payload = {}) {
       return success('เรียกทีมกลับแล้ว');
     }
     case 'recruit': return recruit(state, payload);
+    case 'declineApplicant': return declineApplicant(state, payload);
     case 'setTask': {
       const member = memberById(state, payload.memberId);
       if (!member) return failure('ไม่พบสมาชิก');
@@ -1266,6 +1340,8 @@ function validateNumber(object, key, min, max, integer = false) {
   if (!finiteNumber(object[key]) || object[key] < min || object[key] > max || (integer && !Number.isInteger(object[key]))) throw new Error(`ข้อมูลเซฟไม่ถูกต้อง: ${key}`);
 }
 
+const validRookie = m => typeof m.id === 'string' && /^r-\d+$/.test(m.id) && m.bio && typeof m.bio.name === 'string' && m.bio.name.length > 0 && m.bio.name.length <= 20
+  && JOBS[m.bio.class] && !JOBS[m.bio.class].parent && TRAIT_NAMES.includes(m.bio.trait) && /^#[0-9a-f]{6}$/i.test(m.bio.hair) && m.bio.rookie === true && typeof m.bio.description === 'string';
 /** Migrate v1 exports with missing optional bookkeeping, and reject corrupted state. */
 export function deserializeGame(source) {
   if (typeof source !== 'string' || source.length > 2000000) throw new Error('ไฟล์เซฟใหญ่เกินไปหรือไม่ใช่ข้อความ');
@@ -1299,12 +1375,12 @@ export function deserializeGame(source) {
   if (!Array.isArray(state.members) || state.members.length < (opening ? 0 : 3) || state.members.length > 12) throw new Error('รายชื่อสมาชิกไม่ถูกต้อง');
   const ids = new Set();
   state.members = state.members.map(member => {
-    if (!member || !MEMBER_BY_ID[member.id] || ids.has(member.id) || !JOBS[member.class]) throw new Error('พบสมาชิกซ้ำหรืออาชีพไม่ถูกต้อง');
+    if (!member || !(MEMBER_BY_ID[member.id] || validRookie(member)) || ids.has(member.id) || !JOBS[member.class]) throw new Error('พบสมาชิกซ้ำหรืออาชีพไม่ถูกต้อง');
     ids.add(member.id);
-    const content = MEMBER_BY_ID[member.id];
+    const content = contentOf(member);
     const baseClass = JOBS[member.class].parent || member.class;
     if (baseClass !== content.class) throw new Error('สายอาชีพสมาชิกไม่ถูกต้อง');
-    const normalized = { ...createMember(content), ...member, name: content.name, equipment: { weapon: null, accessory: null, ...member.equipment } };
+    const normalized = { ...createMember(content), ...member, name: content.name, ...(content.rookie ? { bio: { ...member.bio }, hair: member.bio.hair } : {}), equipment: { weapon: null, accessory: null, ...member.equipment } };
     validateNumber(normalized, 'level', 1, MAX_LEVEL, true);
     validateNumber(normalized, 'xp', 0, 1000000);
     for (const key of ['energy', 'morale', 'injury']) validateNumber(normalized, key, 0, 100);
@@ -1402,6 +1478,13 @@ export function deserializeGame(source) {
   for (const id of ['shop', 'market', 'smithy']) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
   state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy };
   state.idleBank = finiteNumber(data.idleBank) ? clamp(data.idleBank, 0, 1000000) : 0;
+  const appIds = new Set();
+  state.applicants = (Array.isArray(data.applicants) ? data.applicants : []).filter(a => a && typeof a.id === 'string' && !appIds.has(a.id) && appIds.add(a.id) && ['coming', 'waiting'].includes(a.status)
+    && finiteNumber(a.fee) && a.fee >= 0 && a.fee < 100000 && Number.isInteger(a.level) && a.level >= 1 && a.level <= MAX_LEVEL
+    && (a.memberId ? MEMBER_BY_ID[a.memberId] && !MEMBER_BY_ID[a.memberId].starter && !ids.has(a.memberId) : validRookie({ id: a.rookieId, bio: { ...a.bio, rookie: true } }))).slice(0, 4)
+    .map(a => ({ id: a.id, status: a.status, eta: finiteNumber(a.eta) ? clamp(a.eta, 0, 600) : 0, etaTotal: finiteNumber(a.etaTotal) ? clamp(a.etaTotal, 1, 600) : 20, patience: finiteNumber(a.patience) ? clamp(a.patience, 0, 1000) : 160,
+      memberId: a.memberId || null, rookieId: a.memberId ? null : a.rookieId, bio: a.memberId ? null : { name: a.bio.name, class: a.bio.class, trait: a.bio.trait, hair: a.bio.hair, description: a.bio.description }, level: a.level, fee: a.fee, famous: Boolean(a.famous) }));
+  state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
   // Older saves count the quests they already cleared as their record of work.
   const jobs = data.record?.jobs ?? Object.values(state.completedQuests).reduce((sum, n) => sum + n, 0);
   state.record = { jobs: Number.isInteger(jobs) && jobs >= 0 && jobs < 10000000 ? jobs : 0 };
@@ -1430,7 +1513,7 @@ export function deserializeGame(source) {
   for (const [id, value] of Object.entries(state.eventCooldowns)) if (!GUILD_EVENTS.some(event => event.id === id) || !finiteNumber(value) || value < 0 || value > 1000000000) throw new Error('เวลากิจกรรมไม่ถูกต้อง');
   state.log = Array.isArray(data.log) ? data.log.filter(item => item && typeof item.text === 'string' && item.text.length < 1000).slice(0, MAX_LOG) : defaults.log;
   state.ledger = Array.isArray(data.ledger) ? data.ledger.filter(item => item && typeof item.text === 'string' && finiteNumber(item.gold)).slice(0, MAX_LEDGER) : [];
-  state.nextId = Math.max(Number.isInteger(data.nextId) ? data.nextId : 10, ...[...roomIds,...partitionIds, ...missionIds, ...petitionIds].map(id => (Number(id.split('-').pop()) || 0) + 1));
+  state.nextId = Math.max(Number.isInteger(data.nextId) ? data.nextId : 10, ...[...roomIds,...partitionIds, ...missionIds, ...petitionIds, ...appIds, ...state.applicants.map(a => a.rookieId).filter(Boolean), ...state.members.map(m => m.id).filter(id => /^r-\d+$/.test(id))].map(id => (Number(id.split('-').pop()) || 0) + 1));
   syncImportant(state);
   state.rng = state.rng >>> 0 || 123;
   state.members.forEach(member => { if (assigned.has(member.id)) member.task = 'mission'; else if (member.task === 'mission') member.task = 'rest'; });
