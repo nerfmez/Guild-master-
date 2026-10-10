@@ -411,3 +411,16 @@ test('opening chapter starts empty and brings adventurers in step by step', () =
   assert.equal(state.members.length, 4);
   assert.equal(roundTrip().members.length, 4);
 });
+
+test('guild master profile is cleaned, saved and editable', async () => {
+  const { normalizeProfile } = await import('../src/game.js');
+  const state = createGame(3, { opening: true, profile: { masterName: '  อาริน<script>  ', guildName: 'กิลด์ดาวเหนือ', hair: '#d9b26f', outfit: 'red', hairStyle: 'long' } });
+  assert.equal(state.profile.masterName, 'อารินscript');
+  assert.equal(state.profile.guildName, 'กิลด์ดาวเหนือ');
+  assert.equal(state.profile.hair, '#d9b26f');
+  assert.equal(state.profile.outfit, normalizeProfile({}).outfit);
+  assert.equal(deserializeGame(serializeGame(state)).profile.hairStyle, 'long');
+  assert.equal(act(state, 'setProfile', { guildName: '' }).ok, true);
+  assert.equal(state.profile.guildName, 'กิลด์ใบอ่อน');
+  assert.equal(createGame().profile, undefined);
+});

@@ -33,7 +33,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R11',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R12',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -106,7 +106,7 @@ export class GuildRenderer {
   return this.state.facilities.find(f=>f.type===type)||this.state.facilities[0];}
 
  syncActors(){
-  const ids=new Set(this.state.members.map(m=>m.id));for(const [id,a] of this.actors)if(!ids.has(id)){a.image.destroy();this.actors.delete(id);}
+  const ids=new Set([...this.state.members.map(m=>m.id),'master']);for(const [id,a] of this.actors)if(!ids.has(id)){a.image.destroy();this.actors.delete(id);}
   const idleKey=this.signature+'|'+this.state.members.map(m=>m.id).join(',');if(this.idleKey!==idleKey){this.idleKey=idleKey;const hall=buildingRect(this.state),spots=getWalkableSpots(this.state),claimed=[];this.idleSpots=this.state.members.map((m,i)=>{const desired=[{x:2.5,y:2.5},{x:4.25,y:2},{x:5,y:3.5},{x:1.75,y:2.75}][i%4],tx=hall.x+desired.x,ty=hall.y+desired.y+(Math.floor(i/4)*.6);const p=spots.filter(p=>claimed.every(q=>Math.hypot(p.x-q.x,p.y-q.y)>=.8)).sort((a,b)=>(a.x-tx)**2+(a.y-ty)**2-((b.x-tx)**2+(b.y-ty)**2))[0]||spots[i%spots.length];claimed.push(p);return p;});}
   const away=new Set(this.state.missions.filter(m=>['active','decision'].includes(m.status)).flatMap(m=>m.memberIds));
   for(const m of this.state.members){const room=this.roomFor(m),b=room&&getRoomSize(room.type,room.rotation||0),n=hash(m.id);
@@ -125,6 +125,20 @@ export class GuildRenderer {
    const anchor=room.x+','+room.y+','+room.rotation;if(a.roomAnchor&&a.roomAnchor!==anchor){a.x=target.x;a.y=target.y;a.path=[];}a.roomAnchor=anchor;
    a.member=m;a.home=target;a.logicalHome=logical;a.away=away.has(m.id);a.image.setVisible(!a.away);if(this.frozen){a.x=target.x;a.y=target.y;}
   }
+  this.syncMaster();
+ }
+ syncMaster(){
+  // The player's guild master keeps the reception desk, or waits by the door before it exists.
+  const p=this.state.profile,old=this.actors.get('master');
+  if(!p){if(old){old.image.destroy();this.actors.delete('master');}return;}
+  const m={id:'master',name:p.masterName,class:'master',hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle},look=[p.hair,p.outfit,p.skin,p.hairStyle].join();
+  const desk=this.state.facilities.find(f=>f.type==='reception'),hall=buildingRect(this.state);
+  const logical=desk?(()=>{const e=getFacilityEntry(desk);return{x:e.x+.35,y:e.y+.2};})():{x:hall.x+hall.w/2,y:hall.y+hall.h-.8};
+  const target=gridPoint(logical.x,logical.y);let a=old;
+  if(!a){this.bakeActor(m);a={image:this.scene.add.image(target.x,target.y,'actor-master-master-south-0').setOrigin(.5,46/52),x:target.x,y:target.y,clock:0,direction:'south',look};this.actors.set('master',a);}
+  else if(a.look!==look){this.bakeActor(m);a.look=look;}
+  if(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>3)a.path=this.pathBetween(a.x,a.y,target.x,target.y);
+  a.member=m;a.home=target;a.away=false;a.image.setVisible(true);if(this.frozen){a.x=target.x;a.y=target.y;}
  }
  arrive(ids){this.arrivals??=new Set();for(const id of ids)this.arrivals.add(id);}
  bakeActor(m){for(const direction of ['south','east','north','west'])for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${direction}-${frame}`,makeActorTexture(m,frame*Math.PI/2,frame>0,1,direction));}

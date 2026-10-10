@@ -87,11 +87,27 @@ export function createGame(seed = 123, options = {}) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
     state.members = []; state.facilities = []; state.wood = 40; state.stone = 24;
     state.intro = { step: 'reception', timer: 0, visitors: [], next: [], after: null };
-    addLog(state, 'ผู้ใหญ่บ้านมอบบ้านเก่าข้างต้นไม้ให้เปิดเป็นกิลด์ เริ่มจากวางโต๊ะรับคำร้อง', 'story');
+    state.profile = normalizeProfile(options.profile);
+    addLog(state, `${state.profile.masterName} รับบ้านเก่าข้างต้นไม้มาเปิดเป็น${state.profile.guildName} เริ่มจากวางโต๊ะรับคำร้อง`, 'story');
     return state;
   }
   addLog(state, 'บ้านเก่าข้างต้นไม้เปิดเป็นกิลด์แล้ว ส่งสมาชิก 3 คนลาดตระเวนทางหมู่บ้านเพื่อเริ่มต้น', 'story');
   return state;
+}
+
+export const PROFILE_LOOKS = {
+  hair: ['#5b4637', '#8b5a3c', '#d9b26f', '#a66c59', '#6f6a8f', '#e9e2d0'],
+  outfit: ['#d98978', '#94b7c5', '#90b89c', '#b7aec9', '#e7bd74', '#8a7a68'],
+  skin: ['#f7d4ae', '#e8b88c', '#b9805a'],
+  hairStyle: ['short', 'long'],
+};
+export const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ใบอ่อน', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short' };
+/** Clean player-entered names and look choices; unknown values fall back to defaults. */
+export function normalizeProfile(input = {}) {
+  const text = (value, fallback) => { const clean = String(value ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20); return clean || fallback; };
+  const pick = (key, value) => PROFILE_LOOKS[key].includes(value) ? value : DEFAULT_PROFILE[key];
+  return { masterName: text(input.masterName, DEFAULT_PROFILE.masterName), guildName: text(input.guildName, DEFAULT_PROFILE.guildName),
+    hair: pick('hair', input.hair), outfit: pick('outfit', input.outfit), skin: pick('skin', input.skin), hairStyle: pick('hairStyle', input.hairStyle) };
 }
 
 export const INTRO_STEPS = ['reception', 'dorm', 'training', 'patrol', 'wait', 'visit', 'done'];
@@ -789,6 +805,7 @@ function command(state, type, payload = {}) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return failure('คำสั่งไม่ถูกต้อง');
   switch (type) {
     case 'welcomeVisitors': return welcomeVisitors(state);
+    case 'setProfile': state.profile = normalizeProfile({ ...(state.profile || DEFAULT_PROFILE), ...payload }); return success(`บันทึกข้อมูล${state.profile.guildName}แล้ว`);
     case 'sendMission': return sendMission(state, payload);
     case 'chooseEvent': return chooseEvent(state, payload);
     case 'recallMission': {
@@ -871,6 +888,7 @@ export function deserializeGame(source) {
       || (intro.after !== null && intro.after !== undefined && !INTRO_STEPS.includes(intro.after))) throw new Error('ข้อมูลช่วงเริ่มเกมไม่ถูกต้อง');
     state.intro = { step: intro.step, timer: intro.timer, visitors: [...intro.visitors], next: [...intro.next], after: intro.after ?? null, delay: finiteNumber(intro.delay) ? intro.delay : 6 };
   }
+  if (data.profile !== undefined) { if (!data.profile || typeof data.profile !== 'object') throw new Error('ข้อมูลหัวหน้ากิลด์ไม่ถูกต้อง'); state.profile = normalizeProfile(data.profile); }
   if (!Array.isArray(state.members) || state.members.length < (opening ? 0 : 3) || state.members.length > 12) throw new Error('รายชื่อสมาชิกไม่ถูกต้อง');
   const ids = new Set();
   state.members = state.members.map(member => {

@@ -195,7 +195,7 @@ function drawRoom(c,f) {
 const CHAR_COLORS = [P.coral,P.blue,P.sage,P.lavender,'#d8b572','#9cbbc1','#bf9da1','#8ea28f'];
 function roleOf(member) { return String(member.class||member.job||'warrior').toLowerCase(); }
 function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south') {
-  const n=hash(member.id||member.name),role=roleOf(member),color=JOBS[member.class]?.color||CHAR_COLORS[n%CHAR_COLORS.length];
+  const n=hash(member.id||member.name),role=roleOf(member),color=member.outfit||JOBS[member.class]?.color||CHAR_COLORS[n%CHAR_COLORS.length],skin=member.skin||P.skin,master=role==='master';
   const hair=member.hair||MEMBER_ART[member.id]?.hair||['#795b50','#ad785e','#d9be87','#706175','#8b7760','#cfaaa4'][n%6];
   const mage=/mage|wizard|sorcer|sage|elementalist/.test(role),healer=/heal|cleric|priest|bard/.test(role),archer=/arch|ranger|scout|sharpshooter/.test(role);
   const back=direction==='north',side=direction==='east'||direction==='west',step=walking?Math.round(Math.sin(phase)*2):0,bob=walking&&Math.abs(step)>1?-1:0;
@@ -213,19 +213,25 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south') {
   else {rect(c,side?2:-1,-21,2,12,P.cream);rect(c,0,-18,1,1,P.gold);rect(c,0,-14,1,1,P.gold);}
   rect(c,-6,-10,12,2,P.woodDark);rect(c,1,-10,3,2,P.gold);
   rect(c,-8,-22+step,3,11,color);rect(c,6,-21-step,3,10,color);
-  rect(c,-8,-13+step,3,3,P.skin);rect(c,6,-13-step,3,3,P.skin);
+  rect(c,-8,-13+step,3,3,skin);rect(c,6,-13-step,3,3,skin);
   // Twelve-pixel face, stepped hair silhouette, warm cheeks and a three-quarter fringe.
   poly(c,[[-5,-36],[4,-36],[7,-33],[7,-24],[3,-21],[-5,-23],[-8,-28],[-7,-33]],P.deep);
   poly(c,[[-5,-35],[4,-35],[6,-32],[6,-25],[2,-23],[-5,-24],[-7,-28],[-6,-32]],hair);
   rect(c,-4,-34,7,2,'#ffffff25');
+  if(member.hairStyle==='long'){rect(c,-8,-31,3,15,hair);rect(c,5,-31,3,15,hair);rect(c,-8,-17,3,2,P.deep);rect(c,5,-17,3,2,P.deep);}
   if(back){rect(c,-5,-29,10,6,hair);rect(c,-4,-25,8,3,hair);rect(c,4,-31,2,6,'#69625930');}
   else {
-    rect(c,side?0:-4,-31,side?7:10,8,P.skin);rect(c,side?2:-3,-31,side?5:8,2,'#ffe3bf');
+    rect(c,side?0:-4,-31,side?7:10,8,skin);rect(c,side?2:-3,-31,side?5:8,2,'#ffe3bf');
     rect(c,-5,-33,9,3,hair);rect(c,-5,-31,3,6,hair);rect(c,0,-32,2,3,hair);rect(c,4,-32,2,2,hair);
-    if(side){rect(c,4,-28,2,3,P.deep);rect(c,4,-28,1,1,P.white);rect(c,6,-26,2,2,P.skin);rect(c,2,-25,2,1,P.coralLight);}
+    if(side){rect(c,4,-28,2,3,P.deep);rect(c,4,-28,1,1,P.white);rect(c,6,-26,2,2,skin);rect(c,2,-25,2,1,P.coralLight);}
     else {rect(c,-2,-28,2,3,P.deep);rect(c,3,-28,2,3,P.deep);rect(c,-2,-28,1,1,P.white);rect(c,3,-28,1,1,P.white);rect(c,-4,-25,2,1,P.coralLight);rect(c,5,-25,1,1,P.coralLight);rect(c,0,-23,3,1,'#b77e69');}
   }
-  if(mage){
+  if(master){
+    // Guild master: sash, satchel and a ledger instead of a weapon.
+    poly(c,[[-5,-22],[-2,-22],[6,-11],[3,-10]],P.cream);rect(c,0,-17,2,2,P.gold);
+    box(c,-11,-15,6,6,P.woodLight,P.woodDark);rect(c,-9,-13,2,1,P.gold);
+    box(c,8,-18,7,9,P.white,P.woodDark);rect(c,10,-16,3,1,P.coral);rect(c,10,-13,3,1,P.blue);
+  }else if(mage){
     poly(c,[[-7,-35],[-3,-44],[3,-42],[5,-35],[10,-33],[6,-31],[-8,-32],[-10,-33]],P.deep);
     poly(c,[[-6,-35],[-2,-42],[2,-40],[4,-35],[8,-33],[-8,-33]],color);
     rect(c,-5,-35,10,2,P.cream);rect(c,3,-35,2,2,P.gold);
@@ -269,6 +275,15 @@ export function drawItemIcon(canvas,type='sword',size=40) {
     rect(c,-7,-12,14,2,P.woodDark);rect(c,-9,-10,2,12,P.woodDark);rect(c,7,-10,2,12,P.woodDark);
     poly(c,[[0,-3],[8,3],[6,12],[0,16],[-6,12],[-8,3]],P.deep);
     poly(c,[[0,-1],[6,4],[4,10],[0,13],[-4,10],[-6,4]],P.lavender);rect(c,-2,3,4,6,P.white);rect(c,0,1,3,3,P.gold);
+  } else if(name==='hammer') {
+    c.rotate(-.6); rect(c,-2,-4,4,19,P.woodDark); rect(c,-1,-4,2,18,P.wood); box(c,-10,-13,20,10,'#9aa6a4',P.deep); rect(c,-8,-11,16,2,'#c9d1cc'); c.rotate(.6);
+  } else if(name==='scroll') {
+    box(c,-11,-12,22,24,P.paper,P.woodDark); rect(c,-13,-14,26,4,P.wood); rect(c,-13,10,26,4,P.wood); rect(c,-7,-6,14,2,P.woodDark); rect(c,-7,-1,11,2,P.woodDark); rect(c,-7,4,13,2,P.woodDark); rect(c,5,3,5,5,P.coral);
+  } else if(name==='people') {
+    box(c,-14,-1,13,14,P.blue,P.deep); box(c,-12,-12,9,10,P.skin,P.deep); rect(c,-12,-12,9,3,'#795b50');
+    box(c,1,-3,14,16,P.coral,P.deep); box(c,3,-15,10,11,P.skin,P.deep); rect(c,3,-15,10,4,'#d9be87');
+  } else if(name==='banner') {
+    rect(c,-11,-15,3,30,P.woodDark); rect(c,-9,-14,20,17,P.coral); poly(c,[[-9,3],[1,-1],[11,3],[11,6],[1,2],[-9,6]],P.coral); rect(c,-7,-13,2,14,P.coralLight); rect(c,-1,-10,5,9,P.cream); rect(c,-3,-7,9,3,P.cream);
   } else if(/staff|wand|magic/.test(name)) {
     rect(c,-2,-8,3,23,P.woodDark); box(c,-6,-14,11,11,P.blue,P.deep); rect(c,-3,-12,5,5,P.mint); rect(c,-1,-11,2,2,P.white); rect(c,-4,-4,7,2,P.gold);
   } else if(/bow/.test(name)) {
