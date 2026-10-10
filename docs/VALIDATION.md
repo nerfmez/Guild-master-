@@ -1,10 +1,10 @@
-# ตรวจเวอร์ชัน Phaser / กิลด์เปิดหลังคา
+# ตรวจเวอร์ชัน Phaser / กิลด์มุมเฉียงเปิดหลังคา
 
 ตรวจวันที่ 10 ตุลาคม 2026 (Asia/Bangkok)
 
 ## ฉากและเมนู
 
-ฉากหลักใช้ Phaser 3.90.0 และ WebGL จริง โดยตรวจจาก `guildDebug.getRendererInfo()` และ context ที่ Phaser สร้าง ขนาด canvas/viewport ตรงหน้าจอ 1440×960, 390×844 และ 844×390 ไม่แบ่งพื้นที่ให้ sidebar เมนูปิดตอนเข้าเกม และเปิดหน้าจัดการเดียวจากปุ่มเมนู ห้องแสดงพื้น เฟอร์นิเจอร์ และผนังเมื่อเปิดหลังคา
+ฉากหลักใช้ Phaser 3.90.0 และ WebGL จริง โดยตรวจจาก `guildDebug.getRendererInfo()` และ context ที่ Phaser สร้าง ขนาด canvas/viewport ตรงหน้าจอ 1440×960, 390×844 และ 844×390 ไม่แบ่งพื้นที่ให้ sidebar เมนูปิดตอนเข้าเกม และเปิดหน้าจัดการเดียวจากปุ่มเมนู ห้องแสดงพื้น ผนัง และเฟอร์นิเจอร์ที่วาดสำหรับกริด isometric 2:1 รวมถึงบ้านและของประกอบฉาก มุมฉายภาพตรงกันทุกส่วน
 
 ภาพจากเกม: [ฉาก](images/desktop-game.png) · [เมนู](images/menu-game.png) · [มือถือ](images/mobile-game.png) · [เมนูมือถือ](images/mobile-menu.png) · [แนวนอน](images/landscape-game.png) · [ภารกิจ](images/mission-game.png)
 
@@ -22,6 +22,6 @@
 
 `npm run build` ผ่านและแนบ Phaser runtime กับ MIT License ใน dist; `npm run export` ผ่านและสร้าง play.html รวมโค้ด เท็กซ์เจอร์ที่เตรียมด้วย Canvas 2D ฟอนต์ไทยและ license ทั้งหมด Phaser ที่ฝังไว้ถูกคลาย gzip ในเครื่องผู้เล่นก่อนเริ่มเกม
 
-เปิด play.html ด้วย file:// จริงใน Chromium ผ่าน โดยไม่มี HTTP/HTTPS requests เพิ่ม ไม่มี JavaScript errors เมนูปิดเมื่อเข้าเกม canvas เต็ม viewport และปุ่มซูมเพิ่มขนาดได้ ผลสรุปอยู่ใน [standalone-check.json](standalone-check.json) ขั้นตอนสร้างภาพ/ตรวจไฟล์เดี่ยวอยู่ใน tests/visual-smoke.mjs
+เปิด play.html ด้วย file:// จริงใน Chromium ผ่าน โดยไม่มี HTTP/HTTPS requests เพิ่ม ไม่มี JavaScript errors เมนูปิดเมื่อเข้าเกม canvas เต็ม viewport และปุ่มซูมเพิ่มขนาดได้ ผลสรุปอยู่ใน [standalone-check.json](standalone-check.json) ขั้นตอนสร้างภาพ/ตรวจไฟล์เดี่ยวอยู่ใน tests/visual-smoke.mjs ชุดนี้ตรวจเลือกห้องทั้งหกจากพื้นเฉียง เลือกหลัง pan/zoom และย้ายห้องบนมือถือไปพิกัด 8,11 ผ่าน พร้อมจับภาพ [กริดการย้ายห้อง](images/mobile-build.png)
 
 การตรวจภาพเป็นภาพนิ่งจาก runtime และตรวจลำดับการใช้งานจริง ไม่ใช่การวัด FPS หรือยืนยันความลื่นบนโทรศัพท์จริงทุกสเปก ภาพหลักเป็นการตีความเรฟ ไม่ได้อ้างว่าเหมือน asset ต้นฉบับทุกจุด

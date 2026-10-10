@@ -65,11 +65,11 @@ PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs BROWSER_EXECUTABLE=/path/to/chro
 
 ## ทรัพย์สิน
 
-ฉากหลักใช้ **Phaser + WebGL**; Canvas 2D ใช้เตรียมเท็กซ์เจอร์พิกเซลและภาพเล็กในเมนู งานสไปรต์และสภาพแวดล้อมสร้างสำหรับโครงการนี้ ฟอนต์ Noto Sans Thai ใช้ SIL Open Font License ดู [assets/fonts/OFL.txt](assets/fonts/OFL.txt) และ metadata ในฟอนต์
+ฉากหลักใช้ **Phaser + WebGL** และกริด **isometric 2:1**; พื้น ผนัง เฟอร์นิเจอร์ และบ้านรอบกิลด์วาดสำหรับมุมเฉียงเดียวกัน จัดลำดับการบังตามตำแหน่งบนพื้น และแปลงการแตะ/วางห้องกลับเป็นพิกัดกริด; Canvas 2D ใช้เตรียมเท็กซ์เจอร์พิกเซลและภาพเล็กในเมนู งานสไปรต์และสภาพแวดล้อมสร้างสำหรับโครงการนี้ ฟอนต์ Noto Sans Thai ใช้ SIL Open Font License ดู [assets/fonts/OFL.txt](assets/fonts/OFL.txt) และ metadata ในฟอนต์
 
-[Dungeon Village 2 — Kairosoft](https://kairosoft.net/game/appli/bouken2.html) เป็นแรงบันดาลใจเรื่องการเติบโตของสถานที่และนักผจญภัย ไม่มีการนำทรัพย์สินเกมนั้นมาใช้
+[Dungeon Village 2 — Kairosoft](https://kairosoft.net/game/appli/bouken2.html) เป็นเรฟมุมเฉียงแบบ isometric และแรงบันดาลใจเรื่องการเติบโตของสถานที่และนักผจญภัย ไม่มีการนำทรัพย์สินเกมนั้นมาใช้
 
-[Pixel Art Top Down — Village โดย Cainos](https://cainos.itch.io/pixel-art-top-down-village) เป็นเรฟมุมมองและภาษาภาพ ไม่ได้รวมทรัพย์สินของ Cainos ในเกม Phaser ใช้ MIT License ซึ่งแนบอยู่ใน build และไฟล์เดี่ยว
+[Pixel Art Top Down — Village โดย Cainos](https://cainos.itch.io/pixel-art-top-down-village) เป็นเรฟวัสดุและภาษาภาพ ไม่ได้รวมทรัพย์สินของ Cainos ในเกม Phaser ใช้ MIT License ซึ่งแนบอยู่ใน build และไฟล์เดี่ยว
 
 ![ฉากกิลด์เปิดหลังคา](docs/images/desktop-game.png)
 

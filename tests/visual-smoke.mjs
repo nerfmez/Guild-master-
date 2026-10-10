@@ -18,7 +18,18 @@ try{
  console.log('mobile metrics',await page.evaluate(()=>window.guildDebug.getRendererInfo()));await page.screenshot({path:root+'/docs/images/mobile-game.png'});await page.locator('#menu-button').click();await page.screenshot({path:root+'/docs/images/mobile-menu.png'});
  
  await page.locator('#menu-close').click();await page.setViewportSize({width:844,height:390});await page.waitForTimeout(250);await page.screenshot({path:root+'/docs/images/landscape-game.png'});
- const landscape=await page.evaluate(()=>window.guildDebug.getRendererInfo());const sceneErrors=[...errors];await page.close();
+ const landscape=await page.evaluate(()=>window.guildDebug.getRendererInfo());
+ // Hit testing must follow the projected floor after resize, pan and zoom.
+ await page.setViewportSize({width:1440,height:960});await page.locator('#home-view').click();
+ const pick=async f=>{const p=await page.evaluate(f=>window.guildDebug.getScenePoint(f.x+.35,f.y+.4),f);await page.mouse.click(p.x,p.y);await page.locator(`[data-upgrade="${f.id}"]`).waitFor({state:'visible'});};
+ const facilities=await page.evaluate(()=>window.guildDebug.getState().facilities);
+ for(const f of facilities){await pick(f);await page.locator('#menu-close').click();}
+ await page.mouse.move(180,190);await page.mouse.down();await page.mouse.move(260,150,{steps:4});await page.mouse.up();await page.locator('#zoom-in').click();
+ await pick(facilities[0]);await page.locator('#menu-close').click();
+ await page.setViewportSize({width:390,height:844});await page.locator('#home-view').click();await pick(facilities[1]);await page.locator('[data-move="room-2"]').click();
+ const move=await page.evaluate(()=>window.guildDebug.getScenePoint(8.5,11.5));await page.mouse.move(move.x,move.y);await page.screenshot({path:root+'/docs/images/mobile-build.png'});await page.mouse.click(move.x,move.y);
+ await page.waitForFunction(()=>window.guildDebug.getState().facilities.find(f=>f.id==='room-2').y===11);
+ const sceneErrors=[...errors];if(sceneErrors.length)throw new Error(sceneErrors.join('\n'));await page.close();
  const offline=await browser.newPage({viewport:{width:1440,height:960}});const offlineRequests=[],offlineErrors=[];offline.on('request',r=>offlineRequests.push(r.url()));offline.on('pageerror',e=>offlineErrors.push(e.message));
  await offline.goto('file://'+root+'/play.html?still');await offline.waitForFunction(()=>window.guildDebug?.getRendererInfo()?.ready);await offline.evaluate(()=>document.fonts.ready);
  const offlineInfo=await offline.evaluate(()=>window.guildDebug.getRendererInfo());
@@ -26,6 +37,6 @@ try{
  if(await offline.locator('#management-dialog').evaluate(e=>e.open))throw new Error('Menu was open on entry');
  const zoom=offlineInfo.zoom;await offline.locator('#zoom-in').click();if((await offline.evaluate(()=>window.guildDebug.getRendererInfo())).zoom<=zoom)throw new Error('Zoom control failed');
  if(offlineErrors.length||offlineRequests.some(u=>/^https?:/.test(u)))throw new Error('Offline file uses the network or has script errors');
- console.log('errors',errors,'offlineErrors',offlineErrors);await writeFile(root+'/docs/standalone-check.json',JSON.stringify({standalone:true,engine:'Phaser',version:'3.90.0',renderer:'WebGL',externalRequests:0,desktopViewport:[1440,960],phoneViewport:[390,844],landscapeViewport:[844,390],offlineFileOpened:true,initialMenuClosed:true,fullViewport:true,zoom:true,errors:[...errors,...offlineErrors],landscape},null,2));
+ console.log('errors',errors,'offlineErrors',offlineErrors);await writeFile(root+'/docs/standalone-check.json',JSON.stringify({standalone:true,engine:'Phaser',version:'3.90.0',renderer:'WebGL',externalRequests:0,desktopViewport:[1440,960],phoneViewport:[390,844],landscapeViewport:[844,390],offlineFileOpened:true,initialMenuClosed:true,fullViewport:true,zoom:true,projection:'isometric 2:1',roomSelections:6,selectionAfterPanZoom:true,mobileMove:true,errors:[...errors,...offlineErrors],landscape},null,2));
  
 }finally{await browser.close();server.kill();}

@@ -20,6 +20,10 @@
   "initialMenuClosed": true,
   "fullViewport": true,
   "zoom": true,
+  "projection": "isometric 2:1",
+  "roomSelections": 6,
+  "selectionAfterPanZoom": true,
+  "mobileMove": true,
   "errors": [],
   "landscape": {
     "engine": "Phaser",
@@ -30,15 +34,17 @@
       844,
       390
     ],
-    "zoom": 1.15,
+    "zoom": 0.7903225806451613,
+    "projection": "isometric 2:1",
     "roomCount": 6,
+    "drawnParts": 104,
     "camera": {
       "width": 844,
       "height": 390,
-      "scrollX": 16,
+      "scrollX": 150,
       "scrollY": 65,
       "focus": [
-        438,
+        572,
         260
       ]
     },

@@ -4,8 +4,8 @@
   const { rng, rect, poly, line, ellipse, createCanvas } = window.ArtCore;
   const cache = new Map();
   const LEAVES = {
-    green: ['#716335', '#7b7832', '#96963d', '#b2b34b', '#c6c75c', '#d7d17a'],
-    gold: ['#826237', '#967439', '#b59142', '#cfac53', '#ddbf6a', '#e9d389'],
+    green: ['#667655', '#77895e', '#92a775', '#a8b985', '#bdcb9a', '#d1dab4'],
+    gold: ['#857653', '#a08c62', '#baaa79', '#cebd8e', '#decca4', '#ebddba'],
   };
 
   function sprite(width, height, footX, footY, paint) {
