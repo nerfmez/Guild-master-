@@ -33,7 +33,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R13',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R14',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -99,9 +99,26 @@ export class GuildRenderer {
   for(const room of this.state.rooms||[])for(const part of makePartition(room,this.state).layers){const p=gridPoint(part.x,part.y),key='partition-'+room.id+'-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
   for(const f of this.state.facilities)for(const part of makeRoom(f).layers){const p=gridPoint(f.x+part.x,f.y+part.y),key='furniture-'+f.id+'-'+part.name;const image=this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort);this.rooms.push(image);this.furnitureSprites.push({f,image,canvas:part.sprite.canvas,alpha:part.sprite.canvas.getContext('2d').getImageData(0,0,part.sprite.canvas.width,part.sprite.canvas.height).data});}
   for(const a of this.furnitureSprites)if(a.f.id===this.moveId)a.image.setAlpha(.25);
+  this.animateChanges();
   if(!this.userPanned){const b=buildingRect(this.state),p=gridPoint(b.x+b.w/2,b.y+b.h/2);this.focusX=p.x;this.focusY=p.y+22;this.applyView();}
  }
 
+ // Newly placed or moved items drop in with a bounce and a puff of dust.
+ animateChanges(){
+  const where=new Map([...this.state.facilities.map(f=>['f:'+f.id,[f.x,f.y,f.rotation||0].join()]),...(this.state.rooms||[]).map(r=>['r:'+r.id,[r.x,r.y,r.width,r.height,r.rotation||0].join()])]);
+  const before=this.placedAt;this.placedAt=where;if(!before||this.frozen)return;
+  const changed=[...where].filter(([id,at])=>before.get(id)!==at).map(([id])=>id);if(!changed.length||changed.length>2)return;
+  for(const id of changed){const [kind,key]=[id[0],id.slice(2)];
+   const images=kind==='f'?this.furnitureSprites.filter(a=>a.f.id===key).map(a=>a.image):this.rooms.filter(image=>String(image.texture?.key||'').startsWith('partition-'+key+'-'));
+   for(const image of images){const y=image.y;image.y=y-16;image.setScale(1,1);this.scene.tweens.add({targets:image,y,duration:360,ease:'Bounce.easeOut'});}
+   const item=kind==='f'?this.state.facilities.find(f=>f.id===key):this.state.rooms.find(r=>r.id===key);if(!item)continue;
+   const d=kind==='f'?getRoomSize(item.type,item.rotation||0):partitionSize(item);
+   this.scene.time.delayedCall(170,()=>this.dustPuff(item.x,item.y,d.w,d.h));}
+ }
+ dustPuff(x,y,w,h){if(!this.scene)return;const corners=[[x,y+h],[x+w,y+h],[x+w,y],[x+w/2,y+h],[x+w,y+h/2],[x,y+h/2]];
+  for(const [cx,cy] of corners){const p=gridPoint(cx,cy),puff=this.scene.add.graphics().setDepth(9997).setPosition(p.x,p.y);puff.fillStyle(0xf3ead2,.95);puff.fillCircle(0,0,4);
+   const c=gridPoint(x+w/2,y+h/2),dx=p.x-c.x,dy=p.y-c.y,len=Math.hypot(dx,dy)||1;
+   this.scene.tweens.add({targets:puff,x:p.x+dx/len*14,y:p.y+dy/len*7-4,scale:2.4,alpha:0,duration:480,ease:'Quad.easeOut',onComplete:()=>puff.destroy()});}}
  roomFor(m){let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
   if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','dorm'][hash(m.id)%4];
   return this.state.facilities.find(f=>f.type===type)||this.state.facilities[0];}
@@ -196,7 +213,7 @@ export class GuildRenderer {
   const origin=gridPoint(0,0),box=this.scene.add.container(0,0).setDepth(9998);
   for(const part of makeRoom({id:'ghost',type,x:0,y:0,rotation:this.rotation,level:f?.level||1}).layers){const key=`ghost-${type}-${this.rotation}-${f?.level||1}-${part.name}`;if(!this.scene.textures.exists(key))this.texture(key,part.sprite.canvas);const p=gridPoint(part.x,part.y);box.add(this.scene.add.image(p.x-origin.x-part.sprite.footX,p.y-origin.y-part.sprite.footY,key).setOrigin(0));}
   this.ghostBox=box;this.positionGhost();}
- positionGhost(){if(!this.ghostBox||!this.pendingDraw)return;const p=gridPoint(this.pendingDraw.x,this.pendingDraw.y);this.ghostBox.setPosition(p.x,p.y).setAlpha(this.getPlacement().ok?.88:.5);}
+ positionGhost(){if(!this.ghostBox||!this.pendingDraw)return;const p=gridPoint(this.pendingDraw.x,this.pendingDraw.y),lift=this.drag?.item?6:0;this.ghostBox.setPosition(p.x,p.y-lift).setAlpha(this.getPlacement().ok?.88:.5);}
  setPending(x,y){const g=this.state.grid,d=this.footprint();x=Math.max(0,Math.min(g.width-d.w,Math.round(x*4)/4));y=Math.max(0,Math.min(g.height-d.h,Math.round(y*4)/4));if(this.pending&&this.pending.x===x&&this.pending.y===y)return;this.pending={x,y};this.placementChanged();}
  getPlacement(){
   if(!this.pending)return{active:false};const {x,y}=this.pending,key=this.signature+'|'+this.placementKey+'|'+x+'|'+y+'|'+this.rotation;
