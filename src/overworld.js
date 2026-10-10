@@ -2,7 +2,6 @@
    Biomes are soft fields that blend into each other: meadow west, woods north fading into mist,
    dry hills east beyond the river. Paths wind out from the village roads to landmark quest sites. */
 import { gridPoint } from './guild-art.js';
-import { drawFoe } from './render.js';
 import { REGIONS, RANKS } from './content.js';
 
 export const WORLD = { x0: -62, y0: -68, x1: 84, y1: 58 };
@@ -288,10 +287,6 @@ export function mistTint(src, level) {
   if (!level) return src;
   return sprite(src.canvas.width, src.canvas.height, src.footX, src.footY, c => { c.drawImage(src.canvas, 0, 0); c.globalCompositeOperation = 'source-atop'; c.fillStyle = `rgba(52,86,88,${.15 * level})`; c.fillRect(0, 0, src.canvas.width, src.canvas.height); });
 }
-export function makeFoeSprite(quest, scale = .5, flash = false) {
-  const w = Math.ceil(90 * scale) + 8, h = Math.ceil(70 * scale) + 8;
-  return sprite(w, h, Math.round(w / 2), h - 4, c => { c.translate(Math.round(w / 2), h - 4); c.scale(scale, scale); drawFoe(c, 0, 0, quest, 0, flash); });
-}
 export function makeBridge(B = BRIDGE, span = 'x') {
   const corners = [gridPoint(B.x, B.y), gridPoint(B.x + B.w, B.y), gridPoint(B.x, B.y + B.h), gridPoint(B.x + B.w, B.y + B.h)];
   const minX = Math.min(...corners.map(p => p.x)) - 4, minY = Math.min(...corners.map(p => p.y)) - 14, maxX = Math.max(...corners.map(p => p.x)) + 4, maxY = Math.max(...corners.map(p => p.y)) + 6;
@@ -308,3 +303,29 @@ export function makeBridge(B = BRIDGE, span = 'x') {
 export function makeFog(seed = 0) {
   const r = rng(seed + 31); return sprite(200, 70, 100, 35, c => { for (let i = 0; i < 6; i++) { const x = 40 + r() * 120, y = 20 + r() * 30, rad = 18 + r() * 22, g = c.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, 'rgba(238,244,241,.5)'); g.addColorStop(1, 'rgba(238,244,241,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); } });
 }
+
+// ---- Where monsters live ----
+const SPAWNS = [
+  ['leafSlime', 'meadow', 7], ['thornling', 'meadow', 3], ['hornHare', 'meadow', 5], ['fuzzBee', 'meadow', 4], ['fluffBoar', 'meadow', 3], ['mushHopper', 'meadow', 2],
+  ['pondFrog', 'water', 4], ['waterSlime', 'water', 4],
+  ['mushHopper', 'forest', 4], ['acornBeetle', 'forest', 5], ['mossWolf', 'forest', 3], ['hollowKeeper', 'forest', 2], ['fuzzBee', 'forest', 1],
+  ['pebbleCrab', 'hills', 5], ['crystalBat', 'hills', 4], ['marbleGolem', 'hills', 4], ['fluffBoar', 'hills', 2],
+  ['mistWisp', 'mist', 5], ['lanternGhost', 'mist', 3], ['glowMoth', 'mist', 4], ['bindingRoots', 'mist', 3],
+  ['leafSlime', 'base', 3], ['hornHare', 'base', 3], ['fuzzBee', 'base', 2],
+];
+const HABITAT = {
+  meadow: (b, x, y) => b.meadow > .45, forest: (b, x, y) => b.forest > .45 && b.mist < .3, hills: (b, x, y) => b.hills > .45, mist: (b, x, y) => b.mist > .4,
+  base: (b, x, y) => b.meadow < .3 && b.forest < .3 && b.hills < .3 && b.mist < .2 && Math.hypot(x - VILLAGE.x, y - VILLAGE.y) < 42,
+  water: (b, x, y) => inWater(x, y, 1.6) && !inWater(x, y, .15),
+};
+/** Monster homes across the world: { id, x, y, r } where r is how far each one wanders. */
+export function monsterSpawns() {
+  const r = rng(9091), out = [{ id: 'bellGuardian', x: QUEST_SITES.ruins.x - 1, y: QUEST_SITES.ruins.y + 1, r: 2.5 }, { id: 'heartGuardian', x: QUEST_SITES.heart.x - 1, y: QUEST_SITES.heart.y + 4, r: 2.5 }];
+  for (const [id, habitat, count] of SPAWNS) for (let n = 0, tries = 0; n < count && tries < 600; tries++) {
+    const x = WORLD.x0 + 4 + r() * (WORLD.x1 - WORLD.x0 - 8), y = WORLD.y0 + 4 + r() * (WORLD.y1 - WORLD.y0 - 8), b = biomeAt(x, y);
+    if (!HABITAT[habitat](b, x, y) || (habitat !== 'water' && inWater(x, y, .6)) || Math.hypot(x - VILLAGE.x, y - VILLAGE.y) < 19 || out.some(o => Math.hypot(o.x - x, o.y - y) < 3)) continue;
+    out.push({ id, x, y, r: habitat === 'water' ? 2 : 3.5 + r() * 2 }); n++;
+  }
+  return out;
+}
+

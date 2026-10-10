@@ -188,7 +188,7 @@ export function drawDungeonScene(canvas, mission, quest, state, options = {}) {
   const actors = [...foes.map(f => ({ ...f, foe: true })), ...party].sort((a, b) => a.y - b.y);
   for (const a of actors) {
     if (a.foe) { if (a.room === 3) { c.globalAlpha = .28 + Math.sin(t * 4) * .1; c.fillStyle = '#d98978'; c.beginPath(); c.ellipse(a.x, a.y + 1, 22, 8, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; }
-      c.save(); c.translate(Math.round(a.x), Math.round(a.y)); c.scale(a.scale, a.scale); drawFoe(c, 0, 0, quest, t, a.flash); c.restore(); continue; }
+      drawFoe(c, Math.round(a.x), Math.round(a.y), quest, t, a.flash, a.room === 3 ? 44 : 22); continue; }
     if (stage.walking && !paused) { const k = (t * 4 + a.y / 7) % 1; c.globalAlpha = .45 * (1 - k); rect(c, a.x - 2 - (a.dir === 'east' ? 4 + k * 4 : a.dir === 'west' ? -4 - k * 4 : 0), a.y - 1 - k * 2, 3, 2, '#e8dcc0'); c.globalAlpha = 1; }
     let x = a.x, pose = stage.fight > 0 ? (Math.floor(t * 1.6 + a.y) % 2 ? 'breath' : 'idle') : 'idle';
     if (a === striker) { x += Math.round(Math.sin(Math.min(1, attackAge / .7) * Math.PI) * 9); pose = attackAge < .25 ? 'train0' : 'train1'; }

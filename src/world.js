@@ -3,7 +3,8 @@ import { FACILITIES } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove } from './game.js';
 import { makeActorTexture } from './render.js';
 import { QUESTS } from './content.js';
-import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeFoeSprite,makeBridge,makeFog } from './overworld.js';
+import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,monsterSpawns,inWater,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
+import { SPECIES,makeMonster,questFoe } from './monsters.js';
 import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
 import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,HOME_STYLES,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
@@ -37,7 +38,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R28',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R29',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -239,12 +240,15 @@ export class GuildRenderer {
   this.flies=blooms.filter((_,i)=>i%5===0).slice(0,26).map((b,i)=>{const p=gridPoint(b.x,b.y),image=this.scene.add.image(p.x,p.y,'fly-0-0').setOrigin(.5);this.worldProps.push(image);return{x:p.x,y:p.y-12,tone:(b.theme+i)%4,phase:i*1.9,image};});
   // Drifting fog over the misty woods.
   this.fogs=[];for(let i=0;i<16;i++){const x=-22+(i*7.3)%34,y=-62+(i*5.9)%28;if(biomeAt(x,y).mist<.35)continue;const p=gridPoint(x,y);bake('fog-'+i%3,()=>makeFog(i%3));this.fogs.push({image:this.scene.add.image(p.x,p.y,'fog-'+i%3).setDepth(p.y+80).setAlpha(.55),x:p.x,y:p.y,phase:i});}
-  // Foes roam near their homes: slimes out past the farm, golems on the hills, guardians in the woods.
+  // Monsters live all over the world, each kind in its own habitat, each moving its own way.
   this.foes=[];this.worldSigns=[];this.signRank=null;this.parties=new Map();
-  const homes={meadow:[[-46,34],[-50,20],[-38,40],[-16,35],[-52,28]],ruins:[[56,6],[60,14],[66,4],[52,22],[64,-8]],mist:[[-4,-34],[6,-44],[-8,-54],[8,-50],[-2,-60]]};
-  for(const [region,list] of Object.entries(homes)){const quest=QUESTS.find(q=>q.region===region&&!q.story)||QUESTS.find(q=>q.region===region);for(const [x,y] of list)this.foes.push({region,quest,hx:x,hy:y,x,y,tx:x,ty:y,wait:Math.random()*3,image:this.scene.add.image(0,0,this.foeTexture(quest,.42)).setOrigin(.5,1)});}
+  for(const m of monsterSpawns()){const sp=SPECIES[m.id],w=sp.size[0];
+   const shadowKey='msh-'+w;if(!this.scene.textures.exists(shadowKey)){const c=document.createElement('canvas');c.width=Math.round(w*.8);c.height=5;const g=c.getContext('2d');g.fillStyle='rgba(60,50,40,.24)';g.beginPath();g.ellipse(c.width/2,2.5,c.width/2,2.5,0,0,Math.PI*2);g.fill();this.texture(shadowKey,c);}
+   const tex=this.monTex(m.id,0),src=makeMonster(m.id,0);
+   this.foes.push({id:m.id,kind:sp.kind,hx:m.x,hy:m.y,r:m.r,x:m.x,y:m.y,tx:m.x,ty:m.y,wait:Math.random()*4,hop:0,phase:Math.random()*6,flip:Math.random()<.5,
+    shadow:this.scene.add.image(0,0,shadowKey).setOrigin(.5),image:this.scene.add.image(0,0,tex).setOrigin(src.footX/src.canvas.width,src.footY/src.canvas.height)});}
   // Nothing outside the view is drawn until the first cull pass decides what is near.
-  for(const img of this.worldProps)img.setVisible(false);for(const f of this.foes)f.image.setVisible(false);
+  for(const img of this.worldProps)img.setVisible(false);for(const f of this.foes){f.image.setVisible(false);f.shadow.setVisible(false);}
  }
  updateCritters(dt,t,playing){
   const P=MEADOW_SCENE.pasture;
@@ -263,7 +267,7 @@ export class GuildRenderer {
   if(this.sails)this.sails.setTexture('sails-'+(Math.floor(t*2.5)%6));
   for(const w of this.wheat||[])w.image.setTexture(`wheat-${w.part}-${Math.floor(t/1.1)%2}`);
  }
- foeTexture(quest,scale,flash=false){const key=`foe-${quest.id}-${scale}-${flash?1:0}`;if(!this.scene.textures.exists(key)){const s=makeFoeSprite(quest,scale,flash);this.texture(key,s.canvas);}return key;}
+ monTex(id,frame,flash=false){const key=`mon-${id}-${frame}-${flash?1:0}`;if(!this.scene.textures.exists(key))this.texture(key,makeMonster(id,frame,flash).canvas);return key;}
  refreshWorldSigns(){
   const key=this.state.rank;if(this.signRank===key||!this.scene)return;this.signRank=key;for(const s of this.worldSigns||[])s.destroy();this.worldSigns=[];
   for(const sign of SIGNPOSTS)if(!regionOpen(this.state,sign.region)){const rank={meadow:'F',ruins:'D',mist:'B'}[sign.region],p=gridPoint(sign.x+1.2,sign.y-1.6);
@@ -272,15 +276,29 @@ export class GuildRenderer {
  }
  updateWorld(dt,playing){
   if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;this.updateGround();this.updateCritters(dt,t,playing);
+  const SPEED={hop:.9,walk:.55,float:.5,root:0};
   for(const f of this.foes){
-   if(playing){f.wait-=dt;if(f.wait<=0){f.tx=f.hx+(Math.random()-.5)*7;f.ty=f.hy+(Math.random()-.5)*7;f.wait=3+Math.random()*4;}
-    const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d>.05){f.x+=dx/d*Math.min(d,dt*.8);f.y+=dy/d*Math.min(d,dt*.8);}}
-   const p=gridPoint(f.x,f.y);f.image.setPosition(Math.round(p.x),Math.round(p.y+Math.sin(t*3+f.x)*1.5)).setDepth(p.y).setFlipX(f.tx<f.x);
+   const moving=Math.hypot(f.tx-f.x,f.ty-f.y)>.05;
+   if(playing&&f.kind!=='root'){
+    f.wait-=dt;if(f.wait<=0&&!moving){for(let k=0;k<4;k++){const a=Math.random()*Math.PI*2,d=Math.sqrt(Math.random())*f.r,tx=f.hx+Math.cos(a)*d,ty=f.hy+Math.sin(a)*d;if((f.id==='pondFrog'||f.id==='waterSlime'?!inWater(tx,ty,.05):!inWater(tx,ty,.4))&&Math.hypot(tx-10,ty-8)>17){f.tx=tx;f.ty=ty;break;}}f.wait=(f.kind==='float'?1:2)+Math.random()*5;}
+    if(moving){const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy),sp=SPEED[f.kind]*(f.id==='marbleGolem'||f.id==='bellGuardian'||f.id==='heartGuardian'?.5:f.id==='mossWolf'||f.id==='fluffBoar'?1.4:1);
+     if(f.kind==='hop'){f.hop+=dt*2.2;if(f.hop>=1)f.hop-=1;}
+     const step=f.kind==='hop'?(f.hop>.1&&f.hop<.9?sp*1.4:0):sp;f.x+=dx/d*Math.min(d,dt*step);f.y+=dy/d*Math.min(d,dt*step);if(Math.abs(dx-dy)>.02)f.flip=dx-dy<0;}
+    else f.hop=0;
+   }
+   if(!f.image.visible)continue;
+   const p=gridPoint(f.x,f.y);let lift=0,frame;
+   if(f.kind==='hop'){lift=moving?Math.sin(f.hop*Math.PI)*7:0;frame=moving?(f.hop<.12||f.hop>.88?1:0):Math.floor(t*1.4+f.phase)%2;}
+   else if(f.kind==='walk')frame=Math.floor(t*(moving?6:1.2)+f.phase)%2;
+   else if(f.kind==='float'){lift=Math.sin(t*2+f.phase)*2.5;frame=Math.floor(t*6+f.phase)%2;}
+   else frame=Math.floor(t*1.3+f.phase)%2;
+   f.image.setTexture(this.monTex(f.id,frame)).setPosition(Math.round(p.x),Math.round(p.y-lift)).setDepth(p.y).setFlipX(f.flip);
+   f.shadow.setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y-.5).setScale(f.kind==='float'?.75:1-lift/24);
   }
   for(const fog of this.fogs||[])fog.image.setPosition(fog.x+Math.sin(t*.12+fog.phase)*40,fog.y+Math.cos(t*.09+fog.phase)*10).setAlpha(.4+Math.sin(t*.3+fog.phase)*.15);
   for(const a of this.animated||[])if(a.image.visible)a.image.setTexture(`${a.key}-${Math.floor(t*a.fps+a.phase)%a.frames}`);
   // Only draw world props near the view.
-  this.cullClock=(this.cullClock||0)-dt;if(this.cullClock<=0&&this.camera){this.cullClock=.25;const v=this.camera.worldView,m=220;for(const c of this.groundChunks||[])c.image?.setVisible(c.left<v.right+m&&c.left+c.size>v.x-m&&c.top<v.bottom+m&&c.top+c.size>v.y-m);for(const img of this.worldProps||[])img.setVisible(img.x+img.width>v.x-m&&img.x<v.right+m&&img.y+img.height>v.y-m&&img.y<v.bottom+m);for(const f of this.foes)f.image.setVisible(f.image.x>v.x-m&&f.image.x<v.right+m&&f.image.y>v.y-m&&f.image.y<v.bottom+m+60);}
+  this.cullClock=(this.cullClock||0)-dt;if(this.cullClock<=0&&this.camera){this.cullClock=.25;const v=this.camera.worldView,m=220;for(const c of this.groundChunks||[])c.image?.setVisible(c.left<v.right+m&&c.left+c.size>v.x-m&&c.top<v.bottom+m&&c.top+c.size>v.y-m);for(const img of this.worldProps||[])img.setVisible(img.x+img.width>v.x-m&&img.x<v.right+m&&img.y+img.height>v.y-m&&img.y<v.bottom+m);for(const f of this.foes){const p=gridPoint(f.x,f.y),on=p.x>v.x-m&&p.x<v.right+m&&p.y>v.y-m&&p.y<v.bottom+m+60;f.image.setVisible(on);f.shadow.setVisible(on);}}
   // Mission foes, strike effects and the floating quest tag for each travelling team.
   const live=new Set();
   for(const m of this.state.missions||[]){if(m.status!=='active'&&m.status!=='decision')continue;const quest=QUESTS.find(q=>q.id===m.questId);if(!quest)continue;live.add(m.id);
@@ -288,9 +306,9 @@ export class GuildRenderer {
    if(party.strike!==(m.combat?.lastStrike||0)){party.strike=m.combat?.lastStrike||0;party.strikeAt=t;}
    const ratio=Math.max(0,Math.min(1,m.progress/(m.duration||1))),phase=ratio<.18?'go':ratio<.88?'fight':'back',wave=phase==='fight'?Math.min(2,Math.floor((ratio-.18)/.7*3)):-1,site=QUEST_SITES[quest.id];
    if(wave!==party.wave){if(party.wave>=0&&site)this.dustPuff(site.x+.6,site.y-.3,.8,.8);party.wave=wave;}
-   if(phase==='fight'&&site){const age=t-party.strikeAt,hit=age>.28&&age<.42,p=gridPoint(site.x+.9,site.y),scale=wave===2?.62:.42;
-    if(!party.foe)party.foe=this.scene.add.image(0,0,this.foeTexture(quest,scale)).setOrigin(.5,1);
-    party.foe.setTexture(this.foeTexture(quest,scale,hit)).setVisible(true).setPosition(Math.round(p.x),Math.round(p.y+Math.sin(t*3)*1.5)).setDepth(p.y).setFlipX(true);
+   if(phase==='fight'&&site){const age=t-party.strikeAt,hit=age>.28&&age<.42,p=gridPoint(site.x+.9,site.y),species=questFoe(quest),src=makeMonster(species,0);
+    if(!party.foe)party.foe=this.scene.add.image(0,0,this.monTex(species,0)).setOrigin(src.footX/src.canvas.width,src.footY/src.canvas.height);
+    party.foe.setTexture(this.monTex(species,Math.floor(t*3)%2,hit)).setScale(wave===2?1.4:1).setVisible(true).setPosition(Math.round(p.x),Math.round(p.y-(SPECIES[species].kind==='float'?Math.sin(t*2)*2.5:0))).setDepth(p.y).setFlipX(true);
     const dmg=m.combat?.log?.[0]?.damage;if(age>=0&&age<.9&&Number.isFinite(dmg)){if(!party.num)party.num=this.scene.add.text(0,0,'',{fontFamily:'sans-serif',fontSize:'10px',fontStyle:'bold',color:'#fff1c4',stroke:'#4f4540',strokeThickness:3}).setOrigin(.5).setResolution(2);party.num.setText(String(dmg)).setVisible(age>.28).setPosition(p.x,p.y-34-age*16).setDepth(p.y+100).setAlpha(Math.max(0,1-age/.9));}else party.num?.setVisible(false);}
    else{party.foe?.setVisible(false);party.num?.setVisible(false);}
    party.ratio=ratio;party.phase=phase;

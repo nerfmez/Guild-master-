@@ -1,6 +1,7 @@
 /* Original pixel artwork drawn at runtime. All world coordinates use 32px tiles. */
 import { JOBS, MEMBERS, FACILITIES } from './content.js';
 import { canPlaceFacility } from './game.js';
+import { makeMonster, questFoe } from './monsters.js';
 const TILE = 32;
 const P = {
   ink: '#696259', deep: '#716861', shadow: '#a3a798', cream: '#fff1d5', paper: '#f8e8cb',
@@ -349,41 +350,12 @@ export function drawItemIcon(canvas,type='sword',size=40) {
   c.restore();
 }
 
-function battleEnemy(c,x,y,quest,phase=0,flash=false) {
-  const id=quest.id||'', color=flash?P.white:P.sage;
-  rect(c,x-24,y+1,49,5,'#b4b49b');
-  if(id==='patrol'||id==='herbs') {
-    poly(c,[[x-23,y],[x-27,y-9],[x-25,y-21],[x-18,y-30],[x-6,y-35],[x+10,y-33],[x+21,y-25],[x+27,y-12],[x+24,y],[x+15,y+3],[x-14,y+3]],flash?P.white:'#7eaf9c');
-    poly(c,[[x-21,y-9],[x-21,y-20],[x-13,y-28],[x-4,y-30],[x+7,y-28],[x+16,y-20],[x+18,y-8]],flash?P.white:P.mint);
-    rect(c,x-11,y-17,3,5,P.deep);rect(c,x+8,y-17,3,5,P.deep);rect(c,x-3,y-10,6,2,P.deep);
-    poly(c,[[x-1,y-31],[x-12,y-40],[x-6,y-45],[x+1,y-37],[x+8,y-47],[x+17,y-43],[x+7,y-33]],P.leaf);
-    rect(c,x-17,y-21,4,3,P.white);rect(c,x-18,y-7,4,2,P.coralLight);rect(c,x+15,y-7,4,2,P.coralLight);
-    if(id==='herbs'){leafCluster(c,x-29,y-32,18,15,P.leafDark,P.leafLight);leafCluster(c,x+13,y-29,20,16,P.leafDark,P.leafLight);flower(c,x+4,y-40,P.coralLight);}
-  } else if(id==='escort') {
-    poly(c,[[x-25,y-5],[x-27,y-18],[x-19,y-28],[x+9,y-29],[x+22,y-20],[x+25,y-7],[x+18,y-1],[x-14,y-1]],flash?P.white:'#ba947d');
-    rect(c,x-20,y-2,7,7,P.woodDark);rect(c,x+12,y-2,7,7,P.woodDark);
-    poly(c,[[x-24,y-21],[x-30,y-30],[x-21,y-30],[x-16,y-23]],P.woodDark);poly(c,[[x-6,y-24],[x+1,y-33],[x+2,y-25]],P.woodDark);
-    box(c,x-32,y-16,19,11,P.coralLight,P.woodDark);rect(c,x-29,y-12,2,3,P.deep);rect(c,x-23,y-12,2,3,P.deep);
-    rect(c,x-17,y-21,3,3,P.deep);poly(c,[[x-25,y-7],[x-29,y-2],[x-33,y-2],[x-30,y-9]],P.white);
-    rect(c,x+1,y-29,15,4,P.woodLight);rect(c,x+4,y-33,3,5,P.woodDark);rect(c,x+11,y-32,3,5,P.woodDark);
-  } else if(id==='crystals'||id==='ruins'||id==='hollow') {
-    const stone=flash?P.white:'#9cafb3';rect(c,x-19,y-10,13,15,'#87959d');rect(c,x+6,y-10,13,15,'#87959d');
-    box(c,x-22,y-34,44,30,stone,'#758b94');rect(c,x-20,y-33,39,5,'#c5cfca');
-    box(c,x-14,y-51,29,22,stone,'#758b94');rect(c,x-11,y-49,22,5,'#c5cfca');rect(c,x-8,y-42,5,3,P.gold);rect(c,x+5,y-42,5,3,P.gold);
-    box(c,x-34,y-32,13,27,stone,'#758b94');box(c,x+23,y-32,13,27,stone,'#758b94');
-    poly(c,[[x,y-29],[x+7,y-19],[x,y-9],[x-7,y-19]],P.lavender);rect(c,x-2,y-22,3,5,P.white);
-    leafCluster(c,x-16,y-54,22,8,P.sage,P.mint);rect(c,x+25,y-8,9,4,P.sage);
-  } else {
-    // Forest guardian: root limbs, leaf mane and a lantern heart.
-    const bark=flash?P.white:P.woodDark;
-    poly(c,[[x-18,y-5],[x-21,y-31],[x-10,y-44],[x+11,y-43],[x+21,y-28],[x+15,y-4],[x+7,y+5],[x+4,y-7],[x-5,y-7],[x-10,y+5]],bark);
-    poly(c,[[x-19,y-28],[x-34,y-18],[x-32,y-8],[x-25,y-16],[x-14,y-17]],bark);poly(c,[[x+18,y-27],[x+32,y-15],[x+34,y-6],[x+24,y-13],[x+13,y-17]],bark);
-    leafCluster(c,x-26,y-52,51,26,color,P.leafLight);leafCluster(c,x-13,y-59,29,19,color,P.mint);
-    box(c,x-14,y-38,28,16,P.woodLight,P.woodDark);rect(c,x-9,y-32,5,3,P.deep);rect(c,x+6,y-32,5,3,P.deep);
-    poly(c,[[x,y-21],[x+7,y-15],[x+5,y-7],[x,y-3],[x-5,y-7],[x-7,y-15]],id==='heart'?P.coral:P.gold);rect(c,x-2,y-16,4,7,P.cream);
-    rect(c,x-27,y-53,4,3,P.coralLight);rect(c,x+18,y-50,4,3,P.coralLight);
-    if(id==='mistpath'){c.globalAlpha=.45;rect(c,x-34,y+2,68,5,'#d9e7e1');rect(c,x-25,y-1,49,4,'#d9e7e1');c.globalAlpha=1;}
-  }
+/** A quest's creature from the bestiary, scaled up by a whole number so its pixels stay crisp; feet at (x, y). */
+function battleEnemy(c,x,y,quest,phase=0,flash=false,size=44) {
+  const m=makeMonster(questFoe(quest),Math.floor(phase*2.5)%2,flash),cw=m.canvas.width,ch=m.canvas.height,k=Math.max(1,Math.min(3,Math.round(size/ch)));
+  const smooth=c.imageSmoothingEnabled;c.imageSmoothingEnabled=false;
+  c.fillStyle='rgba(70,58,46,.2)';c.beginPath();c.ellipse(x,y+1,cw*k*.3,2.5*k,0,0,Math.PI*2);c.fill();
+  c.drawImage(m.canvas,Math.round(x-m.footX*k),Math.round(y-m.footY*k),cw*k,ch*k);c.imageSmoothingEnabled=smooth;
 }
 
 /** Mission illustration mirrors engine health and strike records; it never resolves combat. */
@@ -459,4 +431,5 @@ export function drawQuestArt(canvas,quest={},options={}) {
 
 /** Shared drawing for other views (the dungeon map). */
 export function drawSprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',pose='idle'){sprite(c,x,y,member,phase,walking,facing,direction,pose);}
-export function drawFoe(c,x,y,quest,phase=0,flash=false){battleEnemy(c,x,y,quest,phase,flash);}
+/** size: the height to aim for; the creature is scaled by a whole number nearest to it. */
+export function drawFoe(c,x,y,quest,phase=0,flash=false,size=44){battleEnemy(c,x,y,quest,phase,flash,size);}
