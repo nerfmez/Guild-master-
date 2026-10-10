@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { marketPrice, tradeQuote, addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
+import { getAdventurerRank, classChoices, marketPrice, tradeQuote, addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
 import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
@@ -222,9 +222,14 @@ test('training, specialization, gatherings and choices apply meaningful stat eff
   state.rank = 'D';
   const member = state.members.find(member => member.id === 'mira');
   member.level = 5;
-  const oldPower = getMemberStats(state, member).power;
+  const oldPower = getMemberStats(state, member).basePower;
+  assert.equal(act(state, 'specialize', { memberId: 'mira', classId: 'guardian' }).ok, false, 'class change needs rank D and a dojo');
+  member.rank = 'D'; state.village.dojo = 1;
   assert.equal(act(state, 'specialize', { memberId: 'mira', classId: 'guardian' }).ok, true);
-  assert.ok(getMemberStats(state, member).power > oldPower);
+  assert.equal(member.errand.kind, 'classTrial', 'the trial happens at the dojo');
+  tick(state, 41);
+  assert.equal(member.class, 'guardian');
+  assert.ok(getMemberStats(state, member).basePower > oldPower);
   member.energy = 40;
   assert.equal(act(state, 'hostEvent', { eventId: 'tea' }).ok, true);
   assert.equal(member.energy, 55);
@@ -682,4 +687,45 @@ test('the village market moves with supply, shops restock from it, and adventure
   assert.equal(mira.wear.weapon, 100, 'the smithy mends worn gear for a fee');
   assert.ok(getMemberStats(state, mira).basePower > worn);
   assert.deepEqual(deserializeGame(serializeGame(state)).shops, state.shops);
+});
+
+test('adventurers rank up by level, merit points and an exam at the arena; ranks limit the work they can take', () => {
+  const state = createGame(51);
+  state.gold = 5000; state.wood = 300; state.stone = 300;
+  const mira = state.members.find(m => m.id === 'mira');
+  assert.equal(mira.rank, 'F');
+  // Rank F can take F and E work, not D.
+  state.rank = 'D';
+  assert.match(previewMission(state, 'crystals', ['mira']).reason, /แรงค์/);
+  state.rank = 'F';
+  mira.level = 3; mira.points = 30; mira.purse = 100;
+  assert.match(getAdventurerRank(state, mira).needs.join(), /สนามสอบ/, 'exams need an arena');
+  assert.equal(act(state, 'buildProject', { projectId: 'arena' }).ok, true);
+  const info = getAdventurerRank(state, mira);
+  assert.equal(info.eligible, true);
+  assert.equal(act(state, 'rankExam', { memberId: 'mira' }).ok, true);
+  assert.equal(mira.errand.kind, 'exam');
+  assert.equal(mira.purse, 70, 'the member pays the exam fee from their own wages');
+  assert.equal(previewMission(state, 'patrol', ['mira']).ok, false, 'away at the arena');
+  assert.deepEqual(deserializeGame(serializeGame(state)).members.find(m => m.id === 'mira').errand, mira.errand);
+  tick(state, 26);
+  assert.equal(mira.errand, null);
+  assert.ok(mira.rank === 'E' || mira.examReadyAt > state.elapsed, 'passed, or waits a day to retry');
+  // Merit points: work above one's rank counts more.
+  const before = mira.points;
+  mira.rank = 'F';
+  complete(state, dispatch(state, 'patrol', party));
+  assert.equal(mira.points - before, 10);
+  // Lessons at the dojo: paid from the purse, limited per day.
+  assert.equal(act(state, 'buildProject', { projectId: 'dojo' }).ok, true);
+  const lune = state.members.find(m => m.id === 'lune');
+  lune.purse = 100; lune.energy = 100; lune.injury = 0; lune.errand = null;
+  const xp = lune.xp + lune.level * 1000;
+  assert.equal(act(state, 'takeLesson', { memberId: 'lune' }).ok, true);
+  assert.equal(act(state, 'takeLesson', { memberId: 'lune' }).ok, false);
+  tick(state, 31);
+  assert.ok(lune.xp + lune.level * 1000 > xp);
+  // Tier-3 classes are visible goals for the full game.
+  lune.class = 'sage';
+  assert.match(classChoices(state, lune)[0].reason, /เกมเต็ม/);
 });

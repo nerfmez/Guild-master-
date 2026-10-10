@@ -1,6 +1,6 @@
 /** A plain, reasonable player for balance checks: answers petitions, lets the board run,
  * sends the important steps itself, and invests only what the guild has earned. */
-import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, suggestTeam, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress } from '../src/game.js';
+import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, suggestTeam, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress, classChoices } from '../src/game.js';
 import { RANKS, GUILD_UPGRADES } from '../src/content.js';
 
 const STEP = 5;
@@ -53,7 +53,10 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
     // Surplus materials go to the village market, which keeps the shops stocked.
     for (const key of ['wood', 'stone', 'herb']) if (state[key] > 80 && state.market[key] < 60) act(state, 'sellMaterial', { key });
     if (RANKS.indexOf(state.rank) >= 3 && state.landLevel < 1) act(state, 'expand');
-    for (const member of state.members) if (getMemberStats(state, member).canSpecialize) act(state, 'specialize', { memberId: member.id, classId: { warrior: 'guardian', archer: 'ranger', mage: 'sage', healer: 'cleric' }[member.class] });
+    // The arena lets members rank up; the dojo teaches and holds class trials.
+    if (!state.village.arena && getProjectStatus(state, 'arena').ok && state.gold > getProjectStatus(state, 'arena').cost.gold + reserve) { act(state, 'buildProject', { projectId: 'arena' }); say('build arena'); }
+    if (RANKS.indexOf(state.rank) >= 1 && !state.village.dojo && getProjectStatus(state, 'dojo').ok && state.gold > getProjectStatus(state, 'dojo').cost.gold + reserve) { act(state, 'buildProject', { projectId: 'dojo' }); say('build dojo'); }
+    for (const member of state.members) { const choice = classChoices(state, member).find(c => c.ok); if (choice && act(state, 'specialize', { memberId: member.id, classId: choice.id }).ok) say(`class ${member.id} -> ${choice.id}`); }
     if (state.facilities.filter(f => f.level >= 2).length < 2 && RANKS.indexOf(state.rank) >= 3) for (const f of state.facilities.filter(f => ['dorm', 'training', 'reception'].includes(f.type))) if (canPay(state, getUpgradeCost(state, f.id), reserve)) { act(state, 'upgrade', { facilityId: f.id }); break; }
     act(state, 'autoEquip');
     // 3. The player's own teams take the important steps.

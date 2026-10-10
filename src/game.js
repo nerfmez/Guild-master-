@@ -1,5 +1,5 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES } from './content.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,RANK_POWER,CLASS_TIERS } from './content.js';
 
 export const SAVE_VERSION = 5;
 export const DAY_LENGTH = 240;
@@ -26,11 +26,16 @@ export function getFacilityEntry(f){const d=getRoomSize(f.type,f.rotation||0),r=
 const hasRank = (state, rank) => rankIndex(state.rank) >= rankIndex(rank);
 const success = message => ({ ok: true, message });
 const failure = message => ({ ok: false, message });
-const equipmentBaseClass = member => JOBS[member.class]?.parent || member.class;
+/** The basic job at the root of a class line (warrior, archer, mage or healer). */
+export const rootClass = id => JOBS[id]?.base || JOBS[id]?.parent || id;
+const equipmentBaseClass = member => rootClass(member.class);
+const classTier = id => JOBS[id]?.tier || (JOBS[id]?.parent ? 2 : 1);
+const memberRankIndex = member => ADVENTURER_RANKS.indexOf(member.rank || 'F');
 const roomLevel = (state, type) => state.facilities.reduce((sum, facility) => sum + (facility.type === type ? facility.level : 0), 0);
 const bestRoomLevel = (state, type) => Math.max(0, ...state.facilities.filter(room => room.type === type).map(room => room.level));
 const memberById = (state, id) => state.members.find(member => member.id === id);
-const isBusy = (state, memberId) => state.missions.some(mission => mission.status === 'active' && mission.memberIds.includes(memberId));
+// Away on a mission, or on an errand in the village (a lesson, an exam, a class trial).
+const isBusy = (state, memberId) => state.missions.some(mission => mission.status === 'active' && mission.memberIds.includes(memberId)) || Boolean(memberById(state, memberId)?.errand);
 const availableMember = (state, id) => memberById(state, id) && !isBusy(state, id);
 const finiteNumber = n => typeof n === 'number' && Number.isFinite(n);
 /** Authored content for a named member, or the stored biography of a rookie who walked in. */
@@ -62,7 +67,7 @@ function canAfford(state, cost) {
 
 function createMember(content, level = 1) {
   const member = { id: content.id, name: content.name, class: content.class, level, xp: 0, energy: 100, morale: 80,
-    injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null, purse: 0, pack: { ration: 0, potion: 0 }, wear: { weapon: 100, accessory: 100 } };
+    injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null, purse: 0, pack: { ration: 0, potion: 0 }, wear: { weapon: 100, accessory: 100 }, rank: content.rank || 'F', points: 0, errand: null, examReadyAt: 0 };
   if (content.rookie) { member.bio = { name: content.name, class: content.class, trait: content.trait, hair: content.hair, description: content.description, rookie: true }; member.hair = content.hair; }
   return member;
 }
@@ -84,10 +89,10 @@ export function createGame(seed = 123, options = {}) {
     missions: [], completedQuests: {}, questRuns: {}, bonds: {}, inventory: {}, log: [], ledger: [],
     goals: { firstMission: false, firstCraft: false, firstUpgrade: false, firstRecruit: false, firstExpansion: false },
     settings: { speed: 1, sound: true, paused: false },
-    story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, garden: false },
+    story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0,
     applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, trade: 0 }, idleBank: 0,
+    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, trade: 0 }, idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -160,7 +165,7 @@ export function getMemberStats(state, memberOrId) {
   const job = JOBS[member.class];
   const weapon = EQUIPMENT_BY_ID[member.equipment?.weapon];
   const accessory = EQUIPMENT_BY_ID[member.equipment?.accessory];
-  const basePower = job.power + (member.level - 1) * 2.7 + (weapon?.power || 0) * wearFactor(member, 'weapon') + (accessory?.power || 0) * wearFactor(member, 'accessory') + (traitOf(member).power || 0);
+  const basePower = (job.power + (member.level - 1) * 2.7 + (weapon?.power || 0) * wearFactor(member, 'weapon') + (accessory?.power || 0) * wearFactor(member, 'accessory') + (traitOf(member).power || 0)) * (RANK_POWER[member.rank || 'F'] || 1);
   const moraleFactor = 0.85 + member.morale * 0.002;
   const energyFactor = 0.7 + member.energy * 0.003;
   const injuryFactor = 1 - member.injury * 0.004;
@@ -168,13 +173,14 @@ export function getMemberStats(state, memberOrId) {
     health: Math.round(job.health + (member.level - 1) * 8 + (weapon?.health || 0) + (accessory?.health || 0) + (traitOf(member).health || 0)),
     role: job.role, jobName: job.name, xpNeeded: xpNeeded(member.level), busy: isBusy(state, member.id),
     energy: Math.round(member.energy), morale: Math.round(member.morale), injury: Math.round(member.injury),
-    canSpecialize: member.level >= 5 && !job.parent && hasRank(state, 'D'),
+    canSpecialize: classChoices(state, member).some(c => c.ok), rank: member.rank || 'F', errand: member.errand?.kind || null,
     trait: contentOf(member)?.trait,
     waitingReason: member.waitingReason || null,
   };
 }
 
-function xpNeeded(level) { return 35 + level * 15; }
+// The curve steepens so levels keep meaning something across a long game (L5 ~143 XP, L10 ~380, L15 ~743).
+function xpNeeded(level) { return Math.round(30 + level * 10 + level * level * 2.5); }
 function addXp(state, member, amount) {
   if (member.level >= MAX_LEVEL) return;
   member.xp += amount;
@@ -222,6 +228,7 @@ function meritValue(state, merit) {
     case 'village': return getVillageInfo(state).level;
     case 'geared': return state.members.filter(member => member.equipment?.weapon).length;
     case 'level': return state.members.filter(member => member.level >= merit.level).length;
+    case 'ranked': return state.members.filter(member => memberRankIndex(member) >= ADVENTURER_RANKS.indexOf(merit.rank)).length;
     default: return 0;
   }
 }
@@ -344,7 +351,10 @@ function recruit(state, payload) {
   if (stats.memberCount >= stats.memberCap) return failure('พื้นที่พักเต็มแล้ว วางเตียงเพิ่มก่อน');
   if (state.gold < applicant.fee) return failure('เหรียญไม่เพียงพอสำหรับค่าแรกเข้า');
   transact(state, { gold: applicant.fee }, `รับ ${content.name} เข้ากิลด์`);
-  state.members.push(createMember(content, applicant.level));
+  const joined = createMember(content, applicant.level);
+  // Experienced newcomers arrive with the rank their record has earned elsewhere.
+  joined.rank = applicant.level >= 6 ? 'D' : applicant.level >= 3 ? 'E' : 'F';
+  state.members.push(joined);
   state.applicants = state.applicants.filter(a => a !== applicant);
   state.goals.firstRecruit = true;
   addLog(state, `${content.name} เข้าร่วมกิลด์: ${content.description}`, applicant.famous ? 'rank' : 'member');
@@ -413,7 +423,7 @@ function grantLoot(state, mission, count) {
 export function suggestTeam(state, questId, policy = 'balanced') {
   const quest = QUEST_BY_ID[questId];
   if (!quest) return [];
-  const ready = state.members.filter(member => !isBusy(state, member.id) && member.energy >= 25 && member.injury <= 40);
+  const ready = state.members.filter(member => !isBusy(state, member.id) && member.energy >= 25 && member.injury <= 40 && rankAllows(member, quest));
   const score = member => getMemberStats(state, member).power * (0.6 + member.energy / 250);
   const team = [];
   for (const role of quest.tags) {
@@ -463,7 +473,9 @@ export function previewMission(state, questId, memberIds = [], policy = 'balance
   let reason = questLockReason(state, quest);
   if (!reason && !selectedPolicy) reason = 'แผนเดินทางไม่ถูกต้อง';
   if (!reason && (!Array.isArray(memberIds) || memberIds.length < 1 || memberIds.length > 3 || new Set(memberIds).size !== memberIds.length || members.length !== memberIds.length)) reason = 'เลือกสมาชิก 1–3 คน';
-  if (!reason && members.some(member => isBusy(state, member.id))) reason = 'สมาชิกบางคนกำลังทำภารกิจ';
+  if (!reason && members.some(member => isBusy(state, member.id))) reason = 'สมาชิกบางคนไม่อยู่กิลด์';
+  const underRanked = members.find(member => !rankAllows(member, quest));
+  if (!reason && underRanked) reason = `${underRanked.name} แรงค์ ${underRanked.rank || 'F'} รับงานระดับ ${quest.rank} ไม่ได้ (ต้องแรงค์ ${ADVENTURER_RANKS[ADVENTURER_RANKS.indexOf(quest.rank) - 1]} ขึ้นไป)`;
   if (!reason && members.some(member => member.energy < 25 || member.injury > 40)) reason = 'สมาชิกต้องพักให้พลังอย่างน้อย 25 และบาดเจ็บไม่เกิน 40';
   const slots = getGuildStats(state);
   if (!reason && (options.auto ? slots.boardMissions >= slots.boardCap : slots.activeMissions >= slots.teamCap)) reason = options.auto ? 'ช่องทีมจากกระดานเต็มแล้ว' : 'ทีมภารกิจเต็มแล้ว';
@@ -764,6 +776,9 @@ function resolveMission(state, mission) {
     member.wear ??= { weapon: 100, accessory: 100 };
     for (const slot of ['weapon', 'accessory']) if (member.equipment[slot]) member.wear[slot] = Math.max(0, member.wear[slot] - Math.round(7 + mission.risk * 6 + (won ? 0 : 8)));
     member.missionsDone += won ? 1 : 0;
+    // Personal merit: work above one's rank counts for more, work far below for little.
+    const gap = ADVENTURER_RANKS.indexOf(quest.rank) - memberRankIndex(member);
+    member.points = (member.points || 0) + Math.round(10 * (gap >= 1 ? 1.5 : gap === 0 ? 1 : gap === -1 ? 0.5 : 0.2) * (won ? 1 : 0.3));
     addXp(state, member, quest.reward.xp * (won ? 1 : 0.35));
   });
   updateRank(state);
@@ -810,7 +825,7 @@ function dailyUpdate(state) {
   if (market) transact(state, { wood: market * 3, stone: market * 2, herb: market * 2 }, 'ของจากตลาดนัด', 1);
   settleIdle(state, true);
   restockShops(state);
-  state.daily = { missionCounts: {}, work: {}, garden: Boolean(garden) };
+  state.daily = { missionCounts: {}, work: {}, lessons: {}, garden: Boolean(garden) };
   if (state.day % 3 === 0) {
     const choices = ['ชาวบ้านฝากขนมปังมาให้กิลด์ สมาชิกทุกคนขวัญดีขึ้น', 'เด็ก ๆ นำภาพวาดทีมกิลด์มาติดผนัง ทุกคนยิ้มให้กัน'];
     const text = choices[Math.floor(nextRandom(state) * choices.length)];
@@ -866,7 +881,7 @@ export function getVillageInfo(state) {
   for (let i = 0; i < VILLAGE_LEVELS.length; i++) if (v.prosperity >= VILLAGE_LEVELS[i].prosperity) index = i;
   const now = VILLAGE_LEVELS[index], next = VILLAGE_LEVELS[index + 1] || null;
   return { level: now.level, name: now.name, prosperity: Math.floor(v.prosperity), next, progress: next ? clamp((v.prosperity - now.prosperity) / (next.prosperity - now.prosperity), 0, 1) : 1,
-    houses: v.houses, maxHouses: Math.min(VILLAGE_LOTS.houses.length, 2 + now.level * 2), shop: v.shop || 0, market: v.market || 0, smithy: v.smithy || 0,
+    houses: v.houses, maxHouses: Math.min(VILLAGE_LOTS.houses.length, 2 + now.level * 2), shop: v.shop || 0, market: v.market || 0, smithy: v.smithy || 0, dojo: v.dojo || 0, arena: v.arena || 0,
     interval: petitionInterval(state), maxWaiting: 2 + Math.floor(now.level / 2), maxPosted: 4 + roomLevel(state, 'reception'), idleRate: idleRate(state) };
 }
 function petitionInterval(state) {
@@ -941,9 +956,10 @@ function freeForBoard(state, member) {
 /** The smallest strong-enough team from the free adventurers: cover roles, then add the strongest until ready. */
 function pickBoardTeam(state, quest, planId) {
   const plan = PAYOUT_PLANS[planId] || PAYOUT_PLANS.standard;
-  const pool = state.members.filter(member => freeForBoard(state, member));
+  const pool = state.members.filter(member => freeForBoard(state, member) && rankAllows(member, quest));
   if (!pool.length) return null;
-  const score = member => getMemberStats(state, member).power;
+  // Adventurers favour work at or above their own rank: it counts towards their next rank.
+  const score = member => getMemberStats(state, member).power * (ADVENTURER_RANKS.indexOf(quest.rank) >= memberRankIndex(member) ? 1.2 : 0.85);
   const team = [];
   const ready = () => previewMission(state, quest.id, team.map(m => m.id), 'balanced', { auto: true }).readiness >= plan.readiness + 0.1;
   for (const role of quest.tags) {
@@ -1004,6 +1020,82 @@ function settleIdle(state, force = false) {
     transact(state, { gold }, 'ดอกผลกองทุนและค่าแผงตลาด', 1);
   }
 }
+// ---- Adventurer ranks, lessons and exams: errands in the village. ----
+/** A member may join work up to one rank above their own. */
+const rankAllows = (member, quest) => ADVENTURER_RANKS.indexOf(quest.rank) <= memberRankIndex(member) + 1;
+export function getAdventurerRank(state, member) {
+  const next = ADVENTURER_RANKS[memberRankIndex(member) + 1], rule = next && ADVENTURER_RANK_RULES[next];
+  if (!rule) return { rank: member.rank || 'F', next: null };
+  const needs = [];
+  if (rule.future) needs.push('เปิดในเกมเต็ม');
+  if (member.level < rule.level) needs.push(`เลเวล ${member.level}/${rule.level}`);
+  if ((member.points || 0) < rule.points) needs.push(`แต้มผลงาน ${member.points || 0}/${rule.points}`);
+  if ((state.village?.arena || 0) < rule.arena) needs.push(rule.arena > 1 ? `สนามสอบระดับ ${rule.arena}` : 'สร้างสนามสอบในหมู่บ้าน');
+  const cooldown = Math.max(0, Math.ceil((member.examReadyAt || 0) - state.elapsed));
+  return { rank: member.rank || 'F', next, rule, needs, cooldown, eligible: !needs.length && !cooldown, chance: examChance(state, member, rule) };
+}
+function examChance(state, member, rule) {
+  // The exam weighs strength and staying power, so healers and tanks are judged fairly beside strikers.
+  const stats = getMemberStats(state, member), score = stats.basePower + stats.health * 0.08;
+  return Math.round(clamp(0.15 + (score / rule.exam - 0.75) * 1.4, 0.05, 0.97) * 100) / 100;
+}
+/** Fees come from the member's own purse; the guild covers what they cannot. */
+function payFee(state, member, fee, reason) {
+  const own = Math.min(member.purse || 0, fee), rest = fee - own;
+  if (rest > state.gold) return false;
+  member.purse -= own;
+  state.village.prosperity += own * 0.1;
+  if (rest > 0) transact(state, { gold: rest }, reason);
+  return true;
+}
+function startErrand(state, member, kind, duration, data = {}) {
+  member.errand = { kind, start: state.elapsed, end: state.elapsed + duration, ...data };
+  member.task = 'rest';
+}
+export function lessonFee(state) { return 10 + (state.village?.dojo || 0) * 8; }
+function startExam(state, member) {
+  const info = getAdventurerRank(state, member);
+  if (!info.eligible) return failure(info.cooldown ? `สอบใหม่ได้ในอีก ${info.cooldown} วินาที` : info.needs[0] || 'ยังสอบไม่ได้');
+  if (isBusy(state, member.id)) return failure('รอสมาชิกกลับมาที่กิลด์ก่อน');
+  if (!payFee(state, member, info.rule.fee, `ค่าสอบแรงค์${member.name}`)) return failure(`ค่าสอบ ${info.rule.fee} G ไม่พอ`);
+  startErrand(state, member, 'exam', 25, { rank: info.next });
+  addLog(state, `${member.name}ไปสอบเลื่อนเป็นแรงค์ ${info.next} ที่สนามสอบ`, 'member');
+  return success(`${member.name} ไปสอบแล้ว`);
+}
+function startLesson(state, member) {
+  const dojo = state.village?.dojo || 0, taken = state.daily.lessons?.[member.id] || 0;
+  if (!dojo) return failure('ต้องสร้างโรงฝึกในหมู่บ้าน');
+  if (taken >= dojo) return failure('วันนี้เรียนครบแล้ว');
+  if (isBusy(state, member.id)) return failure('รอสมาชิกกลับมาที่กิลด์ก่อน');
+  if (member.energy < 40 || member.injury > 30) return failure('ต้องพักก่อนไปเรียน');
+  if (!payFee(state, member, lessonFee(state), `ค่าเรียน${member.name}`)) return failure('ค่าเรียนไม่พอ');
+  state.daily.lessons = { ...(state.daily.lessons || {}), [member.id]: taken + 1 };
+  startErrand(state, member, 'lesson', 30);
+  return success(`${member.name} ไปเรียนที่โรงฝึก`);
+}
+function finishErrand(state, member) {
+  const errand = member.errand;
+  member.errand = null;
+  if (errand.kind === 'lesson') {
+    member.energy = clamp(member.energy - 12, 0, 100);
+    addXp(state, member, 20 + (state.village?.dojo || 1) * 10);
+  } else if (errand.kind === 'exam') {
+    const rule = ADVENTURER_RANK_RULES[errand.rank];
+    if (petitionRandom(state) < examChance(state, member, rule)) {
+      member.rank = errand.rank; member.morale = clamp(member.morale + 8, 0, 100);
+      addLog(state, `${member.name}สอบผ่าน! เลื่อนเป็นนักผจญภัยแรงค์ ${member.rank}`, 'rank');
+    } else {
+      member.examReadyAt = state.elapsed + DAY_LENGTH; member.morale = clamp(member.morale - 6, 0, 100);
+      addLog(state, `${member.name}สอบแรงค์ ${errand.rank} ไม่ผ่าน จะฝึกแล้วกลับไปสอบใหม่พรุ่งนี้`, 'warning');
+    }
+  } else if (errand.kind === 'classTrial' && JOBS[errand.classId]) {
+    member.class = errand.classId;
+    addLog(state, `${member.name}ผ่านพิธีที่โรงฝึก เป็น${JOBS[member.class].name}แล้ว`, 'level');
+  }
+}
+function tickErrands(state) {
+  for (const member of state.members) if (member.errand && state.elapsed >= member.errand.end) finishErrand(state, member);
+}
 function tickVillage(state, step) {
   state.idleBank = (state.idleBank || 0) + idleRate(state) * step;
   settleIdle(state);
@@ -1042,6 +1134,12 @@ function memberShopping(state, member) {
     if (current) { shops.gear[current.id] = (shops.gear[current.id] || 0) + 1; member.purse += Math.floor(gearPrice(current) * 0.25); }
     member.equipment[slot] = best.id; member.wear[slot] = 100;
     addLog(state, `${member.name}ซื้อ${best.name}ด้วยเงินของตัวเองที่โรงตีเหล็ก`, 'member');
+  }
+  // Then they look after their own growth: an exam when ready, otherwise a lesson at the dojo.
+  if (member.energy >= 60 && member.injury <= 20 && member.autoWork !== false) {
+    const info = getAdventurerRank(state, member);
+    if (info.eligible && info.chance >= 0.5 && member.purse >= info.rule.fee) { startExam(state, member); return; }
+    if (v.dojo && (state.daily.lessons?.[member.id] || 0) < v.dojo && member.purse >= lessonFee(state) + 30 && member.level < 20) { startLesson(state, member); return; }
   }
   // Treats only from savings beyond what the next upgrade needs.
   if (v.shop && member.purse > 90) { const treat = Math.min(member.purse - 90, 6 + v.shop * 3); spendInVillage(state, member, treat); member.morale = clamp(member.morale + treat * 0.5, 0, 100); }
@@ -1198,6 +1296,7 @@ export function tick(state, seconds) {
     if (state.intro) advanceIntro(state, step);
     tickPetitions(state, step);
     tickApplicants(state, step);
+    tickErrands(state);
     tickVillage(state, step);
     if (state.clock >= DAY_LENGTH - 0.00001) {
       state.clock = 0;
@@ -1313,17 +1412,30 @@ function equip(state, payload) {
   return success(`${member.name} สวม${item.name}แล้ว`);
 }
 
+/** Which next classes a member could take, and what each still needs. */
+export function classChoices(state, member) {
+  const job = JOBS[member.class];
+  return (job?.next || []).map(id => {
+    const next = JOBS[id], rule = CLASS_TIERS[classTier(id)];
+    let reason = '';
+    if (next.future) reason = `เปิดในเกมเต็ม (แรงค์ ${rule.rank})`;
+    else if (memberRankIndex(member) < ADVENTURER_RANKS.indexOf(rule.rank)) reason = `ต้องแรงค์ ${rule.rank}`;
+    else if (member.level < rule.level) reason = `ต้องเลเวล ${rule.level}`;
+    else if ((state.village?.dojo || 0) < rule.dojo) reason = rule.dojo > 1 ? `ต้องมีโรงฝึกระดับ ${rule.dojo}` : 'ต้องสร้างโรงฝึกในหมู่บ้าน';
+    return { id, name: next.name, tier: classTier(id), fee: rule.fee, ok: !reason, reason };
+  });
+}
 function specialize(state, payload) {
   const member = memberById(state, payload.memberId);
-  if (!member || !JOBS[payload.classId]) return failure('ไม่พบสมาชิกหรืออาชีพ');
-  if (isBusy(state, member.id)) return failure('รอสมาชิกกลับก่อนเปลี่ยนอาชีพ');
-  if (!getMemberStats(state, member).canSpecialize) return failure('ต้องเป็นอาชีพพื้นฐาน เลเวล 5 และกิลด์ระดับ D');
-  if (!JOBS[member.class].next.includes(payload.classId)) return failure('อาชีพนี้ต่อจากสายเดิมไม่ได้');
-  if (state.gold < 180) return failure('ต้องใช้ 180 เหรียญ');
-  transact(state, { gold: 180 }, `เปลี่ยนอาชีพ${member.name}`);
-  member.class = payload.classId;
-  addLog(state, `${member.name} ค้นพบเส้นทางของตัวเอง เป็น${JOBS[member.class].name}แล้ว`, 'level');
-  return success('เปลี่ยนอาชีพแล้ว');
+  if (!member || !JOBS[payload.classId]) return failure('ไม่พบสมาชิกหรือคลาส');
+  if (isBusy(state, member.id)) return failure('รอสมาชิกกลับมาที่กิลด์ก่อน');
+  const choice = classChoices(state, member).find(c => c.id === payload.classId);
+  if (!choice) return failure('คลาสนี้ไม่ได้ต่อจากสายเดิม');
+  if (!choice.ok) return failure(choice.reason);
+  if (!payFee(state, member, choice.fee, `พิธีเปลี่ยนคลาส${member.name}`)) return failure(`ค่าพิธี ${choice.fee} G ไม่พอ`);
+  startErrand(state, member, 'classTrial', 40, { classId: choice.id });
+  addLog(state, `${member.name}ไปทำพิธีเปลี่ยนคลาสที่โรงฝึก`, 'level');
+  return success(`${member.name} ไปที่โรงฝึกแล้ว`);
 }
 
 function hostEvent(state, payload) {
@@ -1404,6 +1516,8 @@ function command(state, type, payload = {}) {
     case 'craft': return craft(state, payload);
     case 'equip': return equip(state, payload);
     case 'specialize': return specialize(state, payload);
+    case 'rankExam': { const member = memberById(state, payload.memberId); return member ? startExam(state, member) : failure('ไม่พบสมาชิก'); }
+    case 'takeLesson': { const member = memberById(state, payload.memberId); return member ? startLesson(state, member) : failure('ไม่พบสมาชิก'); }
     case 'hostEvent': return hostEvent(state, payload);
     case 'setSpeed': {
       if (![1, 2, 4].includes(payload.speed)) return failure('ความเร็วต้องเป็น 1, 2 หรือ 4');
@@ -1457,7 +1571,7 @@ export function deserializeGame(source) {
     if (!member || !(MEMBER_BY_ID[member.id] || validRookie(member)) || ids.has(member.id) || !JOBS[member.class]) throw new Error('พบสมาชิกซ้ำหรืออาชีพไม่ถูกต้อง');
     ids.add(member.id);
     const content = contentOf(member);
-    const baseClass = JOBS[member.class].parent || member.class;
+    const baseClass = rootClass(member.class);
     if (baseClass !== content.class) throw new Error('สายอาชีพสมาชิกไม่ถูกต้อง');
     const normalized = { ...createMember(content), ...member, name: content.name, ...(content.rookie ? { bio: { ...member.bio }, hair: member.bio.hair } : {}), equipment: { weapon: null, accessory: null, ...member.equipment } };
     validateNumber(normalized, 'level', 1, MAX_LEVEL, true);
@@ -1475,6 +1589,12 @@ export function deserializeGame(source) {
     normalized.pack = { ration: count(member.pack?.ration), potion: count(member.pack?.potion) };
     normalized.wear = { weapon: pct(member.wear?.weapon), accessory: pct(member.wear?.accessory) };
     if (normalized.shopClock !== undefined && !finiteNumber(normalized.shopClock)) delete normalized.shopClock;
+    if (!ADVENTURER_RANKS.includes(normalized.rank)) normalized.rank = normalized.level >= 6 ? 'D' : normalized.level >= 3 ? 'E' : 'F';
+    if (!Number.isInteger(normalized.points) || normalized.points < 0 || normalized.points > 10000000) normalized.points = (normalized.missionsDone || 0) * 10;
+    if (!finiteNumber(normalized.examReadyAt) || normalized.examReadyAt < 0) normalized.examReadyAt = 0;
+    const e = member.errand;
+    normalized.errand = e && ['lesson', 'exam', 'classTrial'].includes(e.kind) && finiteNumber(e.start) && finiteNumber(e.end) && e.end - e.start <= 120
+      && (e.kind !== 'exam' || ADVENTURER_RANK_RULES[e.rank]) && (e.kind !== 'classTrial' || JOBS[e.classId]?.parent === normalized.class) ? { ...e } : null;
     return normalized;
   });
   if (!Array.isArray(state.facilities) || state.facilities.length < (opening ? 0 : 1) || state.facilities.length > 100) throw new Error('รายชื่อห้องไม่ถูกต้อง');
@@ -1558,8 +1678,8 @@ export function deserializeGame(source) {
   const village = { ...defaults.village, ...(data.village && typeof data.village === 'object' ? data.village : {}) };
   validateNumber(village, 'prosperity', 0, 1000000000);
   validateNumber(village, 'houses', 0, VILLAGE_LOTS.houses.length, true);
-  for (const id of ['shop', 'market', 'smithy']) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
-  state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy, trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
+  for (const id of ['shop', 'market', 'smithy', 'dojo', 'arena']) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
+  state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy, dojo: village.dojo, arena: village.arena, trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
   state.idleBank = finiteNumber(data.idleBank) ? clamp(data.idleBank, 0, 1000000) : 0;
   const appIds = new Set();
   state.applicants = (Array.isArray(data.applicants) ? data.applicants : []).filter(a => a && typeof a.id === 'string' && !appIds.has(a.id) && appIds.add(a.id) && ['coming', 'waiting'].includes(a.status)
@@ -1592,7 +1712,7 @@ export function deserializeGame(source) {
   validateNumber(state.story, 'chapter', 1, 5, true);
   state.story.finished = Boolean(state.story.finished);
   if (state.story.finished && !state.completedQuests.heart) throw new Error('บทสรุปเกมไม่ตรงกับประวัติภารกิจ');
-  state.daily = { ...defaults.daily, ...data.daily, missionCounts: { ...(data.daily?.missionCounts || {}) }, work: { ...(data.daily?.work || {}) } };
+  state.daily = { ...defaults.daily, ...data.daily, missionCounts: { ...(data.daily?.missionCounts || {}) }, work: { ...(data.daily?.work || {}) }, lessons: Object.fromEntries(Object.entries(data.daily?.lessons || {}).filter(([id, n]) => ids.has(id) && Number.isInteger(n) && n >= 0 && n <= 3)) };
   for (const [id, value] of Object.entries(state.daily.missionCounts)) if (!QUEST_BY_ID[id] || !Number.isInteger(value) || value < 0 || value > 1000000) throw new Error('ประวัติภารกิจประจำวันไม่ถูกต้อง');
   for (const [id, value] of Object.entries(state.daily.work)) if (!ids.has(id) || !Number.isInteger(value) || value < 0 || value > 2) throw new Error('ประวัติงานประจำวันไม่ถูกต้อง');
   state.eventCooldowns = { ...(data.eventCooldowns || {}) };

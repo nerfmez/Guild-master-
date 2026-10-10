@@ -5,8 +5,8 @@ export const RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
 export const RANK_REQUIREMENTS = {
   F: { rep: 0, quest: null, merits: [] },
   E: { rep: 40, quest: 'escort', merits: [{ kind: 'jobs', n: 4 }, { kind: 'members', n: 4 }] },
-  D: { rep: 130, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'quests', n: 3 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }] },
-  C: { rep: 330, quest: 'ruins', merits: [{ kind: 'jobs', n: 24 }, { kind: 'quests', n: 5 }, { kind: 'members', n: 6 }, { kind: 'geared', n: 4 }, { kind: 'level', n: 3, level: 5 }] },
+  D: { rep: 130, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }, { kind: 'ranked', n: 2, rank: 'E' }] },
+  C: { rep: 330, quest: 'ruins', merits: [{ kind: 'jobs', n: 24 }, { kind: 'quests', n: 5 }, { kind: 'members', n: 6 }, { kind: 'geared', n: 4 }, { kind: 'ranked', n: 3, rank: 'D' }] },
   B: { rep: 800, quest: null, future: true, merits: [] },
   A: { rep: 1600, quest: null, future: true, merits: [] },
   S: { rep: 3000, quest: null, future: true, merits: [] },
@@ -15,11 +15,12 @@ export const MERIT_LABELS = {
   jobs: n => `ทำคำร้องสำเร็จ ${n} งาน`, members: n => `มีสมาชิก ${n} คน`, quests: n => `สำเร็จคำร้องต่างชนิดกัน ${n} แบบ`,
   board: () => 'มีกระดานคำร้องในกิลด์', village: n => `หมู่บ้านระดับ ${n}`, geared: n => `สมาชิกถืออาวุธ ${n} คน`,
   level: (n, m) => `สมาชิกเลเวล ${m.level}+ อย่างน้อย ${n} คน`,
+  ranked: (n, m) => `สมาชิกแรงค์ ${m.rank} ขึ้นไป ${n} คน`,
 };
 /** What each rank opens, shown on the promotion panel. */
 export const RANK_UNLOCKS = {
   E: ['คำร้องคุ้มกันรถขนขนมปัง', 'โต๊ะวางแผน: ส่งได้ 2 ทีม', 'แปลงสมุนไพร และชุดโต๊ะน้ำชา', 'ผู้สมัครคนใหม่ที่เก่งขึ้น', 'ซื้อที่ดินเพิ่มได้'],
-  D: ['ซากหอระฆัง: คำร้องระดับ D', 'ชั้นตำรา', 'อาวุธขั้น 2 ในโรงตีเหล็ก', 'เปลี่ยนสายอาชีพเมื่อเลเวล 5'],
+  D: ['ซากหอระฆัง: คำร้องระดับ D', 'ชั้นตำรา', 'อาวุธขั้น 2 ในโรงตีเหล็ก'],
   C: ['ป่าหมอกจันทร์: บทสุดท้ายของเดโม่', 'เครื่องรางหมอกจันทร์', 'นักผจญภัยมีชื่อเสียงอาจมาสมัคร'],
   B: ['แผนที่ใหม่ในเกมเต็ม'],
 };
@@ -33,14 +34,24 @@ export const JOBS = {
   archer: { id: 'archer', name: 'นักธนู', role: 'scout', color: '#90b89d', power: 13, health: 65, stat: 'สำรวจ', icon: '🏹', next: ['ranger', 'sharpshooter'] },
   mage: { id: 'mage', name: 'นักเวท', role: 'magic', color: '#afa0cc', power: 15, health: 55, stat: 'เวทมนตร์', icon: '✦', next: ['sage', 'elementalist'] },
   healer: { id: 'healer', name: 'ผู้รักษา', role: 'heal', color: '#dec792', power: 9, health: 65, stat: 'รักษา', icon: '✚', next: ['cleric', 'bard'] },
-  guardian: { id: 'guardian', name: 'ผู้พิทักษ์', role: 'tank', color: '#c8907e', power: 17, health: 125, parent: 'warrior', icon: '🛡', next: [] },
-  duelist: { id: 'duelist', name: 'นักดาบ', role: 'damage', color: '#d99b97', power: 22, health: 90, parent: 'warrior', icon: '⚔', next: [] },
-  ranger: { id: 'ranger', name: 'พรานป่า', role: 'scout', color: '#79a58e', power: 18, health: 80, parent: 'archer', icon: '🏹', next: [] },
-  sharpshooter: { id: 'sharpshooter', name: 'มือยิง', role: 'damage', color: '#9ab697', power: 22, health: 65, parent: 'archer', icon: '➶', next: [] },
-  sage: { id: 'sage', name: 'ปราชญ์', role: 'magic', color: '#ac9abd', power: 19, health: 80, parent: 'mage', icon: '✦', next: [] },
-  elementalist: { id: 'elementalist', name: 'จอมเวทธาตุ', role: 'magic', color: '#bda6d4', power: 24, health: 60, parent: 'mage', icon: '✧', next: [] },
-  cleric: { id: 'cleric', name: 'นักบวช', role: 'heal', color: '#d0bd88', power: 15, health: 90, parent: 'healer', icon: '✚', next: [] },
-  bard: { id: 'bard', name: 'นักขับขาน', role: 'support', color: '#d5b39e', power: 20, health: 75, parent: 'healer', icon: '♪', next: [] },
+  guardian: { id: 'guardian', name: 'ผู้พิทักษ์', role: 'tank', color: '#c8907e', power: 17, health: 125, parent: 'warrior', icon: '🛡', tier: 2, next: ['paladin'] },
+  duelist: { id: 'duelist', name: 'นักดาบ', role: 'damage', color: '#d99b97', power: 22, health: 90, parent: 'warrior', icon: '⚔', tier: 2, next: ['blademaster'] },
+  ranger: { id: 'ranger', name: 'พรานป่า', role: 'scout', color: '#79a58e', power: 18, health: 80, parent: 'archer', icon: '🏹', tier: 2, next: ['warden'] },
+  sharpshooter: { id: 'sharpshooter', name: 'มือยิง', role: 'damage', color: '#9ab697', power: 22, health: 65, parent: 'archer', icon: '➶', tier: 2, next: ['hawkeye'] },
+  sage: { id: 'sage', name: 'ปราชญ์', role: 'magic', color: '#ac9abd', power: 19, health: 80, parent: 'mage', icon: '✦', tier: 2, next: ['archsage'] },
+  elementalist: { id: 'elementalist', name: 'จอมเวทธาตุ', role: 'magic', color: '#bda6d4', power: 24, health: 60, parent: 'mage', icon: '✧', tier: 2, next: ['stormcaller'] },
+  cleric: { id: 'cleric', name: 'นักบวช', role: 'heal', color: '#d0bd88', power: 15, health: 90, parent: 'healer', icon: '✚', tier: 2, next: ['saint'] },
+  bard: { id: 'bard', name: 'นักขับขาน', role: 'support', color: '#d5b39e', power: 20, health: 75, parent: 'healer', icon: '♪', tier: 2, next: ['maestro'] },
+
+  // Third-tier classes open at adventurer rank B in the full game; the demo shows them as goals.
+  paladin: { id: 'paladin', name: 'อัศวินศักดิ์สิทธิ์', role: 'tank', color: '#d8b07e', power: 24, health: 170, parent: 'guardian', base: 'warrior', icon: '🛡', tier: 3, future: true, next: [] },
+  blademaster: { id: 'blademaster', name: 'จ้าวดาบ', role: 'damage', color: '#d98a86', power: 32, health: 120, parent: 'duelist', base: 'warrior', icon: '⚔', tier: 3, future: true, next: [] },
+  warden: { id: 'warden', name: 'ผู้พิทักษ์พงไพร', role: 'scout', color: '#6f9a80', power: 25, health: 110, parent: 'ranger', base: 'archer', icon: '🏹', tier: 3, future: true, next: [] },
+  hawkeye: { id: 'hawkeye', name: 'ตาเหยี่ยว', role: 'damage', color: '#93ad8e', power: 31, health: 85, parent: 'sharpshooter', base: 'archer', icon: '➶', tier: 3, future: true, next: [] },
+  archsage: { id: 'archsage', name: 'มหาปราชญ์', role: 'magic', color: '#a194c0', power: 27, health: 110, parent: 'sage', base: 'mage', icon: '✦', tier: 3, future: true, next: [] },
+  stormcaller: { id: 'stormcaller', name: 'ผู้เรียกพายุ', role: 'magic', color: '#9fa6d8', power: 33, health: 80, parent: 'elementalist', base: 'mage', icon: '✧', tier: 3, future: true, next: [] },
+  saint: { id: 'saint', name: 'นักบุญ', role: 'heal', color: '#e2cd8f', power: 21, health: 125, parent: 'cleric', base: 'healer', icon: '✚', tier: 3, future: true, next: [] },
+  maestro: { id: 'maestro', name: 'คีตกวี', role: 'support', color: '#d9a98e', power: 28, health: 100, parent: 'bard', base: 'healer', icon: '♪', tier: 3, future: true, next: [] },
 };
 export const FACILITIES = {
   reception: { id: 'reception', name: 'โต๊ะรับคำร้อง', description: 'รับคำร้อง เพิ่มชื่อเสียงจากภารกิจ 5% ต่อระดับ', w: 2, h: 1, cost: { gold: 180, wood: 8, stone: 4 }, unlockRank: 'F', color: '#dec6a1', maxLevel: 3 },
@@ -187,6 +198,8 @@ export const VILLAGE_PROJECTS = {
   house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง' },
   shop: { name: 'ร้านค้า', icon: '🛍', max: 3, villageLevel: 1, base: { gold: 240, wood: 14, stone: 6 }, growth: 1.9, prosperity: 140, description: 'ขายเสบียงและยาให้นักผจญภัยด้วยเงินของพวกเขาเอง (ใช้สมุนไพรจากตลาด) · ขนมช่วยขวัญ · กิลด์ได้ค่าเช่าวันละ 20 G ต่อระดับ' },
   market: { name: 'ตลาดนัด', icon: '🧺', max: 3, villageLevel: 2, base: { gold: 420, wood: 20, stone: 14 }, growth: 1.9, prosperity: 200, description: 'แผงค้าส่งไม้ หิน สมุนไพรให้กิลด์ทุกวัน และเก็บค่าแผง 0.15 G/วินาทีต่อระดับ' },
+  dojo: { name: 'โรงฝึก', icon: '🥋', max: 3, villageLevel: 1, base: { gold: 280, wood: 20, stone: 8 }, growth: 2, prosperity: 160, description: 'นักผจญภัยจ่ายค่าเรียนเองเพื่อฝึกกับครู ได้ XP มาก (วันละ 1 คอร์สต่อระดับ) · พิธีเปลี่ยนคลาสขั้น 2 ระดับ 3 สำหรับคลาสขั้น 3 ในเกมเต็ม' },
+  arena: { name: 'สนามสอบ', icon: '🏟', max: 3, villageLevel: 1, base: { gold: 220, wood: 16, stone: 12 }, growth: 2.2, prosperity: 140, description: 'สมาคมกิลด์จัดสอบเลื่อนแรงค์นักผจญภัย ระดับ 1 สอบได้ถึงแรงค์ D ระดับ 2 ถึง C ระดับ 3 ถึง B ในเกมเต็ม' },
   smithy: { name: 'โรงตีเหล็ก', icon: '⚒', max: 3, villageLevel: 1, base: { gold: 320, wood: 12, stone: 18 }, growth: 2, prosperity: 180, description: 'ขายและซ่อมอาวุธให้นักผจญภัย อาวุธขั้นสูงขึ้นตามระดับ (ใช้ไม้และหินจากตลาด) · ลดเงินคราฟต์ของกิลด์ 10% ต่อระดับ' },
 };
 /** Where homes and businesses stand on the world map (grid units, top-left of the footprint). */
@@ -206,6 +219,8 @@ export const VILLAGE_LOTS = {
   shop: { x: -9, y: 13.2, seed: 131, style: 'store' },
   market: { x: 34, y: 12.4, seed: 137 },
   smithy: { x: -9, y: 20.5, seed: 31, style: 'smithy' },
+  dojo: { x: -16, y: 12.2, seed: 149, style: 'dojo' },
+  arena: { x: 34.5, y: 5, seed: 151 },
 };
 
 // ---- Applicants: fame draws newcomers to the door; famous adventurers come only when the guild suits them. ----
@@ -220,3 +235,17 @@ export const CONSUMABLES = {
   ration: { name: 'เสบียงเดินทาง', price: 9, herb: 1, description: 'ใช้พลังในภารกิจน้อยลง 30%' },
   potion: { name: 'ยาสมุนไพร', price: 22, herb: 2, description: 'บาดเจ็บจากภารกิจลดลงครึ่งหนึ่ง' },
 };
+
+// ---- Adventurer ranks: earned one by one with level, personal merit points and an exam at the arena. ----
+export const ADVENTURER_RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
+export const ADVENTURER_RANK_RULES = {
+  E: { level: 3, points: 30, exam: 30, fee: 30, arena: 1, power: 1.04 },
+  D: { level: 5, points: 80, exam: 42, fee: 80, arena: 1, power: 1.08 },
+  C: { level: 9, points: 230, exam: 72, fee: 160, arena: 2, power: 1.13 },
+  B: { level: 13, points: 480, exam: 110, fee: 300, arena: 3, power: 1.19, future: true },
+  A: { level: 16, points: 900, exam: 160, fee: 500, arena: 3, power: 1.26, future: true },
+  S: { level: 20, points: 1600, exam: 230, fee: 900, arena: 3, power: 1.34, future: true },
+};
+export const RANK_POWER = { F: 1, E: 1.04, D: 1.08, C: 1.13, B: 1.19, A: 1.26, S: 1.34 };
+/** Class changes: tier 2 needs rank D, level 5 and a dojo; tier 3 waits for rank B in the full game. */
+export const CLASS_TIERS = { 2: { rank: 'D', level: 5, dojo: 1, fee: 150 }, 3: { rank: 'B', level: 13, dojo: 3, fee: 400 } };
