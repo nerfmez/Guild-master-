@@ -5,7 +5,7 @@ export const RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
 export const RANK_REQUIREMENTS = {
   F: { rep: 0, quest: null, merits: [] },
   E: { rep: 40, quest: 'escort', merits: [{ kind: 'jobs', n: 4 }, { kind: 'members', n: 4 }] },
-  D: { rep: 150, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'quests', n: 3 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }] },
+  D: { rep: 130, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'quests', n: 3 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }] },
   C: { rep: 330, quest: 'ruins', merits: [{ kind: 'jobs', n: 24 }, { kind: 'quests', n: 5 }, { kind: 'members', n: 6 }, { kind: 'geared', n: 4 }, { kind: 'level', n: 3, level: 5 }] },
   B: { rep: 800, quest: null, future: true, merits: [] },
   A: { rep: 1600, quest: null, future: true, merits: [] },
@@ -179,9 +179,9 @@ export const GUILD_UPGRADES = {
 export const VILLAGE_LEVELS = [
   { level: 1, prosperity: 0, name: 'หมู่บ้านเล็ก ๆ' },
   { level: 2, prosperity: 250, name: 'หมู่บ้านอบอุ่น' },
-  { level: 3, prosperity: 700, name: 'หมู่บ้านคึกคัก' },
-  { level: 4, prosperity: 1500, name: 'ตำบลริมทาง' },
-  { level: 5, prosperity: 3000, name: 'เมืองใบอ่อน' },
+  { level: 3, prosperity: 900, name: 'หมู่บ้านคึกคัก' },
+  { level: 4, prosperity: 2600, name: 'ตำบลริมทาง' },
+  { level: 5, prosperity: 6000, name: 'เมืองใบอ่อน' },
 ];
 export const VILLAGE_PROJECTS = {
   house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง' },

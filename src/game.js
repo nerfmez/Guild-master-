@@ -924,7 +924,8 @@ function spawnPetition(state) {
   const open = QUESTS.filter(q => questOpen(state, q) && !q.final && !isImportantQuest(state, q.id)
     && state.petitions.filter(p => p.questId === q.id).length < 2);
   if (!open.length) return null;
-  const weights = open.map(q => 1 + rankIndex(q.rank) * 0.8);
+  // Villagers bring work that suits the guild's standing: mostly at its rank, less of what it has outgrown.
+  const weights = open.map(q => { const gap = rankIndex(state.rank) - rankIndex(q.rank); return gap <= 0 ? 3 : gap === 1 ? 1.2 : 0.5; });
   let pick = petitionRandom(state) * weights.reduce((a, b) => a + b, 0), quest = open[0];
   for (let i = 0; i < open.length; i++) { if (pick < weights[i]) { quest = open[i]; break; } pick -= weights[i]; }
   return addPetition(state, quest.id);
@@ -1016,7 +1017,7 @@ function tickVillage(state, step) {
 }
 const hashId = id => [...String(id)].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) >>> 0, 7);
 /** Money spent in the village shops makes the village more prosperous. */
-function spendInVillage(state, member, gold) { member.purse -= gold; state.village.prosperity += gold * 0.2; state.village.trade = (state.village.trade || 0) + gold; }
+function spendInVillage(state, member, gold) { member.purse -= gold; state.village.prosperity += gold * 0.1; state.village.trade = (state.village.trade || 0) + gold; }
 /** An adventurer at home looks after themselves: mend gear, pack supplies, save for and buy better gear, then treats. */
 function memberShopping(state, member) {
   const v = state.village, shops = state.shops;
@@ -1582,7 +1583,7 @@ export function deserializeGame(source) {
     for (const [id, count] of Object.entries(state[key])) if (!QUEST_BY_ID[id] || !Number.isInteger(count) || count < 0 || count > 1000000) throw new Error('ประวัติภารกิจไม่ถูกต้อง');
   }
   state.bonds = { ...(data.bonds || {}) };
-  for (const [key, value] of Object.entries(state.bonds)) if (!/^\w+:\w+$/.test(key) || !key.split(':').every(id => ids.has(id)) || !finiteNumber(value) || value < 0 || value > 100) throw new Error('ความสัมพันธ์สมาชิกไม่ถูกต้อง');
+  for (const [key, value] of Object.entries(state.bonds)) if (!/^[\w-]+:[\w-]+$/.test(key) || !key.split(':').every(id => ids.has(id)) || !finiteNumber(value) || value < 0 || value > 100) throw new Error('ความสัมพันธ์สมาชิกไม่ถูกต้อง');
   state.settings = { ...defaults.settings, ...data.settings };
   if (![1, 2, 4].includes(state.settings.speed)) throw new Error('ความเร็วเซฟไม่ถูกต้อง');
   state.settings.paused = Boolean(state.settings.paused); state.settings.sound = Boolean(state.settings.sound);

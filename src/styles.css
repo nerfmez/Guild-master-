@@ -290,3 +290,4 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .market-actions{display:grid;grid-template-columns:1fr 1fr;gap:4px}.market-actions button{display:grid;gap:0;min-height:0;padding:5px 3px;font-size:11.5px}.market-actions small{font-size:10px;color:var(--muted)}
 .stock-row{display:flex;flex-wrap:wrap;gap:5px}.stock-row span{display:inline-flex;gap:4px;align-items:baseline;font-size:11.5px;padding:3px 9px;border-radius:9px;background:#f4ecd8}.stock-row small{font-size:10px;color:var(--muted)}
 @media(max-width:620px){.market-grid{grid-template-columns:1fr}}
+.recruit-card .qbadge{position:static;display:inline-block;margin-left:4px;vertical-align:middle}

@@ -513,7 +513,7 @@ test('idle guild upgrades and village projects grow income, petitions and the vi
   assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, true);
   assert.equal(state.village.houses, 4);
   assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, false, 'a small village only has so many lots');
-  state.village.prosperity = 800;
+  state.village.prosperity = 1000;
   assert.equal(getVillageInfo(state).level, 3);
   assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, true);
   assert.equal(act(state, 'buildProject', { projectId: 'market' }).ok, true);
@@ -572,18 +572,22 @@ test('board teams use their own slots, so the player can still send important wo
   assert.doesNotThrow(() => deserializeGame(serializeGame(state)));
 });
 
-test('a plain player finishes the story with the board running, never goes broke, and grows the village', async () => {
+test('a plain player finishes the demo in about an hour, ranks climb by renown and merit, and money circulates', async () => {
   const { simulate } = await import('./simulate.js');
   for (const seed of [1, 2, 3, 4, 5]) {
     const { state, metrics: m } = simulate(seed, { freePlay: 3600 });
-    assert.ok(m.finishedAt !== null, `seed ${seed} finishes the story`);
-    assert.ok(m.finishedAt >= 25 * 60 && m.finishedAt <= 90 * 60, `seed ${seed} story takes 25-90 game minutes, took ${m.finishedAt}s`);
+    const min = s => s / 60;
+    assert.ok(m.finishedAt !== null, `seed ${seed} finishes the demo story`);
+    assert.ok(min(m.finishedAt) >= 45 && min(m.finishedAt) <= 80, `seed ${seed} demo takes 45-80 game minutes, took ${min(m.finishedAt)}`);
+    assert.ok(min(m.ranks.E) <= 15 && min(m.ranks.D) <= 45 && min(m.ranks.C) <= 70, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
+    assert.equal(state.rank, 'C', `seed ${seed} the demo stops at rank C`);
     assert.equal(m.bankruptDays, 0, `seed ${seed} never misses upkeep`);
-    assert.ok(m.boardRuns >= 20, `seed ${seed} adventurers took board work by themselves (${m.boardRuns})`);
     assert.equal(m.failures, 0, `seed ${seed} teams only take work they can handle`);
-    assert.ok(getVillageInfo(state).level >= 3 && (m.village[3] ?? Infinity) <= m.finishedAt, `seed ${seed} village is busy by the ending`);
-    assert.ok(m.village[5] !== undefined && m.village[5] > m.finishedAt * 0.8, `seed ${seed} the last village level takes investment, not just quests`);
-    assert.ok(m.upgrades >= 5 && m.projects >= 5, `seed ${seed} earned money buys upgrades (${m.upgrades}) and projects (${m.projects})`);
+    assert.ok(m.boardRuns >= 30, `seed ${seed} adventurers took board work by themselves (${m.boardRuns})`);
+    assert.ok(state.members.filter(member => member.id.startsWith('r-')).length >= 1, `seed ${seed} rookies were drawn in by fame`);
+    assert.ok(m.trade >= 5000, `seed ${seed} adventurers spent their wages in the village (${Math.round(m.trade)} G)`);
+    assert.ok(state.members.every(member => member.equipment.weapon), `seed ${seed} everyone ends up armed`);
+    assert.ok(m.village[5] === undefined || m.village[5] > m.finishedAt * 1.3, `seed ${seed} the top village level is left for later`);
     const idle = m.ledger['ดอกผลกองทุนและค่าแผงตลาด'] || 0, commission = m.ledger['ค่านายหน้า'] || 0;
     assert.ok(idle > commission * 0.1 && idle < commission, `seed ${seed} idle income matters but does not replace work (${idle} vs ${commission})`);
     assert.doesNotThrow(() => serializeGame(state));

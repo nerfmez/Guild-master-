@@ -1,6 +1,6 @@
 /** A plain, reasonable player for balance checks: answers petitions, lets the board run,
  * sends the important steps itself, and invests only what the guild has earned. */
-import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, suggestTeam, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost } from '../src/game.js';
+import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, suggestTeam, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress } from '../src/game.js';
 import { RANKS, GUILD_UPGRADES } from '../src/content.js';
 
 const STEP = 5;
@@ -32,6 +32,7 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
     m.bankruptDays = Math.max(m.bankruptDays || 0, state.bankruptcyDays);
     book();
     if (state.elapsed % 600 < STEP) m.goldSamples.push(Math.round(state.gold));
+    if (log && state.elapsed % 300 < STEP) { const p = getRankProgress(state); if (p) say(`toward ${p.rank}: rep ${p.rep}/${p.repNeeded} ${p.merits.filter(x => !x.ok).map(x => x.label + ' ' + x.have + '/' + x.need).join(', ')} members ${state.members.length} gold ${Math.round(state.gold)}`); }
     const rank = state.rank; if (!(rank in m.ranks)) { m.ranks[rank] = Math.round(state.elapsed); say(`rank ${rank}`); }
     const vl = getVillageInfo(state).level; if (!(vl in m.village)) { m.village[vl] = Math.round(state.elapsed); say(`village ${vl}`); }
     if (state.story.finished && m.finishedAt === null) { m.finishedAt = Math.round(state.elapsed); say('story finished'); }
@@ -43,8 +44,14 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
     const stats = getGuildStats(state), reserve = 150;
     if (!state.facilities.some(f => f.type === 'board') && state.gold >= 120 + reserve) placeSomewhere(state, 'board');
     if (RANKS.indexOf(state.rank) >= 1 && !state.facilities.some(f => f.type === 'dispatch') && state.gold > 340 + reserve) placeSomewhere(state, 'dispatch') || act(state, 'expandBuilding');
-    if (stats.memberCount >= stats.memberCap && stats.memberCap < 12 && state.gold > 400 + reserve) placeSomewhere(state, 'dorm') || act(state, 'expandBuilding');
-    for (const r of getAvailableRecruits(state)) if (r.available && state.members.length < maxMembers && state.gold > r.cost + reserve) { act(state, 'recruit', { memberId: r.id }); say(`recruit ${r.id}`); }
+    if (stats.memberCount >= stats.memberCap && state.members.length < maxMembers && stats.memberCap < 12 && state.gold > 400 + reserve) placeSomewhere(state, 'dorm') || act(state, 'expandBuilding');
+    // Applicants come to the door; hire while there is room, the fee is affordable and the guild needs hands.
+    for (const a of state.applicants.filter(a => a.status === 'waiting')) {
+      if (state.members.length < maxMembers && getGuildStats(state).memberCount < getGuildStats(state).memberCap && state.gold > a.fee + reserve) { act(state, 'recruit', { applicantId: a.id }); say(`hire ${a.memberId || a.bio.name} lv${a.level}`); }
+      else if (state.members.length >= maxMembers) act(state, 'declineApplicant', { applicantId: a.id });
+    }
+    // Surplus materials go to the village market, which keeps the shops stocked.
+    for (const key of ['wood', 'stone', 'herb']) if (state[key] > 80 && state.market[key] < 60) act(state, 'sellMaterial', { key });
     if (RANKS.indexOf(state.rank) >= 3 && state.landLevel < 1) act(state, 'expand');
     for (const member of state.members) if (getMemberStats(state, member).canSpecialize) act(state, 'specialize', { memberId: member.id, classId: { warrior: 'guardian', archer: 'ranger', mage: 'sage', healer: 'cleric' }[member.class] });
     if (state.facilities.filter(f => f.level >= 2).length < 2 && RANKS.indexOf(state.rank) >= 3) for (const f of state.facilities.filter(f => ['dorm', 'training', 'reception'].includes(f.type))) if (canPay(state, getUpgradeCost(state, f.id), reserve)) { act(state, 'upgrade', { facilityId: f.id }); break; }
@@ -67,6 +74,7 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
     }
   }
   m.lostPetitions = m.petitionsSeen - state.petitions.length;
+  m.trade = state.village.trade || 0;
   m.final = { elapsed: Math.round(state.elapsed), day: state.day, rank: state.rank, gold: Math.round(state.gold), village: getVillageInfo(state).level, houses: state.village.houses, upgrades: { ...state.upgrades }, members: state.members.length };
   return { state, metrics: m };
 }
