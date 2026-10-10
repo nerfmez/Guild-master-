@@ -1,7 +1,7 @@
 // Shared physical layout: placement, navigation and artwork read the same geometry.
 export const START_BUILDING={x:5,y:4,width:8,height:6,level:0};
-export const SITE_COTTAGES=[{x:-3.5,y:8,w:2.6,h:2.5,seed:21},{x:23,y:13,w:2.6,h:2.5,seed:36}];
-export const SITE_TREES=[[-4,1,101,0],[-3,6,102,0],[1,-2,103,1],[8,-3,104,0],[17,-2,105,1],[23,1,106,0],[-4,14,107,0],[25,8,109,0],[28,20,110,0],[-2,22,111,1],[18,23,112,1],[10,24,113,0],[24,22,114,1]];
+export const SITE_COTTAGES=[{x:-3.5,y:8,w:2.6,h:2.5,seed:21,style:'inn'},{x:23,y:13,w:2.6,h:2.5,seed:36,style:'bakery'}];
+export const SITE_TREES=[[-4.5,2.8,101,0],[-3,6,102,0],[1,-2,103,1],[8,-3,104,0],[17,-2,105,1],[23,1,106,0],[-4,14,107,0],[25,8,109,0],[28,20,110,0],[-4.6,25,111,1],[18,23,112,1],[11.6,25.6,113,0],[28.5,24.5,114,1]];
 export const SITE_BUSHES=[[-3,1,201,0],[19,-1,202,1],[23,5,203,0],[-3,20,204,0],[27,14,205,0],[20,22,206,0]];
 export function intersects(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 export function buildingRect(state){const b=state.building||START_BUILDING;return{x:b.x,y:b.y,w:b.width,h:b.height};}

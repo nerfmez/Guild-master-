@@ -3,9 +3,9 @@ import { FACILITIES } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove } from './game.js';
 import { makeActorTexture } from './render.js';
 import { QUESTS } from './content.js';
-import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,questRoute,regionOpen,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeFoeSprite,makeFlowers,makeBellTower,makeCrystals,makeHollowOak,makeAncientTree,makeCampfire,makeBridge,makeLogBarrier,makeFog,makeSignText } from './overworld.js';
-import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly } from './worldart.js';
-import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
+import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeFoeSprite,makeFlowers,makeBellTower,makeCrystals,makeHollowOak,makeAncientTree,makeCampfire,makeBridge,makeLogBarrier,makeFog,makeSignText } from './overworld.js';
+import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
+import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,HOME_STYLES,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 export class GuildRenderer {
@@ -36,7 +36,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R26',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R27',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -64,7 +64,8 @@ export class GuildRenderer {
   this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.pointers.clear();this.drag=null;this.pinch=null;
   this.start(Phaser.CANVAS);
  }
- texture(key,canvas){const t=this.scene.textures;if(t.exists(key))t.remove(key);t.addCanvas(key,canvas).setFilter(Phaser.Textures.FilterMode.NEAREST);return key;}
+ // Baked canvases are registered as plain image sources: a CanvasTexture would read every pixel back with getImageData, which stalls GPU-backed canvases.
+ texture(key,canvas){const t=this.scene.textures;if(t.exists(key))t.remove(key);t.addImage(key,canvas).setFilter(Phaser.Textures.FilterMode.NEAREST);return key;}
  put(key,sprite,x,y,depth=y){if(!this.scene.textures.exists(key))this.texture(key,sprite.canvas);return this.scene.add.image(x-sprite.footX,y-sprite.footY,key).setOrigin(0).setDepth(depth);}
  setup(){
   this.ready=true;this.camera=this.scene.cameras.main;this.camera.roundPixels=true;
@@ -85,7 +86,7 @@ export class GuildRenderer {
   this.decorateWorld();
   const N=window.VillageNature;
   for(const[x,y,seed,gold]of SITE_TREES){const p=gridPoint(x,y);this.put('tree-'+seed,N.makeTree({seed,season:gold?'gold':'green',kind:seed%4===0?'oak':'birch'}),p.x,p.y);}
-  for(const c of SITE_COTTAGES){const p=gridPoint(c.x,c.y);this.put('cottage-'+c.seed,makeCottage({seed:c.seed}),p.x,p.y,p.y+30);}
+  for(const c of SITE_COTTAGES)this.addHome(c.style,c.seed,c.x,c.y);
   for(const[x,y,seed,gold]of SITE_BUSHES){const p=gridPoint(x,y);this.put('bush-'+seed,N.makeBush({seed,gold:!!gold}),p.x,p.y);}
  }
 
@@ -125,6 +126,13 @@ export class GuildRenderer {
    this.scene.tweens.add({targets:puff,x:p.x+dx/len*14,y:p.y+dy/len*7-4,scale:2.4,alpha:0,duration:480,ease:'Quad.easeOut',onComplete:()=>puff.destroy()});}}
 
  // ---- The world outside: regions, roads, village, roaming foes and travelling teams. ----
+ // A village home; its chimney (if any) puffs smoke.
+ addHome(style,seed,x,y){
+  const st=HOME_STYLES[style],key='home-'+style,p=gridPoint(x,y),c=gridPoint(x+st.w/2,y+st.h/2);let s=this.homeSprites?.get(key);
+  if(!s||!this.scene.textures.exists(key)){s=makeHome(style,seed);(this.homeSprites??=new Map()).set(key,s);this.texture(key,s.canvas);}
+  if(s.smoke)(this.chimneys??=[]).push({x:p.x+s.smoke.x,y:p.y+s.smoke.y,dark:s.smoke.dark,clock:Math.random()});
+  return this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(c.y+4);
+ }
  // World ground is painted lazily in crisp chunks around the view, a few rows per frame.
  initGround(){
   for(const c of this.groundChunks||[])c.image?.destroy();this.groundJob=null;
@@ -142,11 +150,11 @@ export class GuildRenderer {
   }
  }
  decorateWorld(){
-  const N=window.VillageNature,V=window.VillageProps,B=window.VillageBuildings;this.worldProps=[];this.initGround();
+  const N=window.VillageNature,V=window.VillageProps,B=window.VillageBuildings;this.worldProps=[];this.initGround();this.cullClock=0;
   const meta=this.propMeta??=new Map();const place=(key,make,x,y,depth)=>{const p=gridPoint(x,y);let s=meta.get(key);if(!s||!this.scene.textures.exists(key)){s=make();meta.set(key,s);this.texture(key,s.canvas);}const image=this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(depth??p.y);this.worldProps.push(image);return image;};
   const flat=(key,s,depth)=>{this.texture(key,s.canvas);const image=this.scene.add.image(s.x,s.y,key).setOrigin(0).setDepth(depth);this.worldProps.push(image);return image;};
   const bake=(key,make)=>{if(!this.scene.textures.exists(key))this.texture(key,make().canvas);return key;};
-  const bridge=makeBridge();flat('world-bridge',bridge,bridge.depthY);
+  const bridge=makeBridge();flat('world-bridge',bridge,bridge.depthY);const foot=makeBridge(FOOTBRIDGE,'y');flat('foot-bridge',foot,foot.depthY);
   const M=MEADOW_SCENE,S=QUEST_SITES,at=(x,y)=>gridPoint(x,y).y;
   // The farm west of the village: fenced wheat with a scarecrow, a kitchen plot, hay, a barn and a turning windmill.
   this.wheat=[];
@@ -173,16 +181,36 @@ export class GuildRenderer {
    else if(item.kind==='reeds')place('reeds-'+item.seed,()=>makeReeds(item.seed),item.x,item.y);
    else if(item.kind==='lily')place('lily-'+item.seed,()=>makeLily(item.seed),item.x,item.y,y-60);}
   // The rest of the world: woods with glades, misty trees, rocky hills.
-  for(const item of scatterNature()){const m=item.mist||0;
-   if(item.kind==='tree'){const base=()=>N.makeTree({seed:item.seed,season:item.gold?'gold':'green',kind:item.seed%2?'oak':'birch'});place(`wt-${item.seed}-${item.gold?1:0}-${m}`,()=>mistTint(base(),m),item.x,item.y);}
-   else if(item.kind==='rock')place(`wr-${item.seed}`,()=>N.makeRock({seed:item.seed,size:item.seed%2?'large':'small'}),item.x,item.y);
-   else if(item.kind==='flowers')place(`wf-${m}`,()=>mistTint(makeFlowerPatch(4,0),m),item.x,item.y,at(item.x,item.y)-4);
-   else if(item.kind==='mushroom')place(`wm-${item.seed}-${m}`,()=>mistTint(makeMushrooms(item.seed),m),item.x,item.y);
-   else if(item.kind==='stump')place(`ws-${item.seed}-${m}`,()=>mistTint(makeStump(item.seed),m),item.x,item.y);
-   else if(item.kind==='drygrass')place(`wd-${item.seed}`,()=>makeDryGrass(item.seed),item.x,item.y);
-   else place(`wg-${item.seed}-${m}`,()=>mistTint(makeTallGrass(item.seed),m),item.x,item.y);
+  const fireflySpots=[];
+  for(const item of scatterNature()){const m=item.mist||0,k=item.kind,y=at(item.x,item.y),tint=(key,make)=>place(`${key}-${m}`,()=>mistTint(make(),m),item.x,item.y);
+   if(k==='tree')tint(`wt-${item.seed}-${item.gold?1:0}`,()=>N.makeTree({seed:item.seed,season:item.gold?'gold':'green',kind:item.seed%2?'oak':'birch'}));
+   else if(k==='pine')tint(`wp-${item.seed}-${item.tone}`,()=>makePine(item.seed,item.tone));
+   else if(k==='dead')tint('wdt-'+item.seed,()=>makeDeadTree(item.seed));
+   else if(k==='willow')place('ww-'+item.seed,()=>makeWillow(item.seed),item.x,item.y);
+   else if(k==='fruit')place('wfr-'+item.seed,()=>makeFruitTree(item.seed),item.x,item.y);
+   else if(k==='hive')place('whive',makeBeehive,item.x,item.y);
+   else if(k==='fern')tint('wfe-'+item.seed,()=>makeFern(item.seed));
+   else if(k==='log')tint('wlog-'+item.seed%2,()=>makeFallenLog(item.seed));
+   else if(k==='berry')place('wbe-'+item.seed,()=>makeBerryBush(item.seed),item.x,item.y);
+   else if(k==='shroom'){place('wgs-'+item.seed,()=>makeGlowShrooms(item.seed),item.x,item.y);fireflySpots.push(item);}
+   else if(k==='stone')place(`wst-${item.seed%4}-${item.rune?1:0}`,()=>makeStandingStone(item.seed%4,item.rune),item.x,item.y);
+   else if(k==='boulders')place('wbo-'+item.seed%4,()=>makeBoulders(item.seed%4),item.x,item.y);
+   else if(k==='wall')place('wwall-'+item.seed,()=>makeRuinWall(item.seed,item.len),item.x,item.y);
+   else if(k==='pillar')place('wpil-'+item.seed,()=>makePillar(item.seed),item.x,item.y);
+   else if(k==='tent')place('wtent',makeTent,item.x,item.y);
+   else if(k==='woodpile')place('wpile',()=>V.makeProp('woodpile',{seed:3}),item.x,item.y);
+   else if(k==='chop')place('wchop',makeChoppingStump,item.x,item.y);
+   else if(k==='rock')place(`wr-${item.seed}`,()=>N.makeRock({seed:item.seed,size:item.seed%2?'large':'small'}),item.x,item.y);
+   else if(k==='bush')place('wb-'+item.seed,()=>N.makeBush({seed:item.seed}),item.x,item.y);
+   else if(k==='flowers'){tint(`wfl-${item.theme}-${item.seed}`,()=>makeFlowerPatch(item.theme,item.seed));if(!m&&item.seed===0)blooms.push(item);}
+   else if(k==='mushroom')tint('wm-'+item.seed,()=>makeMushrooms(item.seed));
+   else if(k==='stump')tint('ws-'+item.seed,()=>makeStump(item.seed));
+   else if(k==='drygrass')place('wd-'+item.seed,()=>makeDryGrass(item.seed),item.x,item.y);
+   else if(k==='reeds')place('reeds-'+item.seed,()=>makeReeds(item.seed),item.x,item.y);
+   else tint('wg-'+item.seed,()=>makeTallGrass(item.seed));
   }
-  for(const [x,y,seed] of VILLAGE_HOMES)place('home-'+seed,()=>makeCottage({seed,roof:['#8fa0b1','#c98a72','#a39bb8','#d6b072'][seed%4]}),x,y,at(x,y)+30);
+  this.chimneys=[];this.puffs=[];
+  for(const [x,y,seed,style] of VILLAGE_HOMES)this.worldProps.push(this.addHome(style,seed,x,y));
   // Landmarks where quests happen.
   place('lm-cart',()=>V.makeProp('cart',{seed:5}),S.escort.x+1.2,S.escort.y-1.2);
   place('lm-hollow',makeHollowOak,S.hollow.x+2.4,S.hollow.y-1.5);
@@ -193,28 +221,37 @@ export class GuildRenderer {
   place('lm-ancient',makeAncientTree,S.heart.x+3,S.heart.y-3);
   for(const sign of SIGNPOSTS)place('sign-'+sign.region,()=>makeSignText(sign.text),sign.x,sign.y);
   // Little lives: sheep in the pasture, ducks on the pond, butterflies over the flowers.
+  const puff=dark=>{const c=document.createElement('canvas');c.width=c.height=10;const g=c.getContext('2d');g.fillStyle=dark?'#8d8782':'#f4f0e6';g.fillRect(2,0,6,10);g.fillRect(0,2,10,6);g.fillRect(1,1,8,8);g.fillStyle=dark?'#a9a39d':'#ffffff';g.fillRect(2,2,4,3);return{canvas:c};};bake('puff',()=>puff(false));bake('puff-dark',()=>puff(true));
   for(let k=0;k<3;k++)bake('sheep-'+k,()=>makeSheep(k));for(let k=0;k<2;k++){bake('duck-'+k,()=>makeDuck(k));bake('duckw-'+k,()=>makeDuck(k,true));}for(let k=0;k<2;k++)for(let c=0;c<4;c++)bake(`fly-${k}-${c}`,()=>makeButterfly(k,c));
-  const P=M.pasture;this.sheep=Array.from({length:6},(_,i)=>{const a=i*1.1,x=P.x+Math.cos(a)*P.r*.6,y=P.y+Math.sin(a)*P.r*.5,image=this.scene.add.image(0,0,'sheep-2').setOrigin(.5,14/18);this.worldProps.push(image);return{x,y,tx:x,ty:y,wait:1+i*.7,image};});
+  for(let k=0;k<3;k++){bake('deer-'+k,()=>makeDeer(k));bake('fawn-'+k,()=>makeDeer(k,true));bake('goat-'+k,()=>makeGoat(k));}bake('firefly',()=>makeFirefly(1));
+  const herd=(home,n,tex,foot,speed,squash=.8)=>Array.from({length:n},(_,i)=>{const a=i*2.1+n,x=home.x+Math.cos(a)*home.r*.6,y=home.y+Math.sin(a)*home.r*.5,image=this.scene.add.image(0,0,tex+'-2').setOrigin(.5,foot);this.worldProps.push(image);return{x,y,tx:x,ty:y,wait:1+i*.7,image,tex,home,speed,squash};});
+  this.grazers=[...herd(M.pasture,6,'sheep',14/18,.45),...herd(WILD_SCENE.deer,2,'deer',25/28,.7,1),...herd(WILD_SCENE.deer,1,'fawn',25/28,.75,1),...herd(WILD_SCENE.goats,5,'goat',18/20,.4,1)];
+  this.fireflies=[...fireflySpots.map(s=>[s.x,s.y]),...Array.from({length:40},(_,i)=>[-30+(i*13.7)%60,-66+(i*7.3)%40])].filter(([x,y])=>biomeAt(x,y).mist>.3||fireflySpots.some(s=>s.x===x)).slice(0,26).map(([x,y],i)=>{const p=gridPoint(x,y),image=this.scene.add.image(p.x,p.y,'firefly').setBlendMode(Phaser.BlendModes.ADD).setDepth(p.y+60);this.worldProps.push(image);return{x:p.x,y:p.y-14,phase:i*2.3,image};});
   this.ducks=Array.from({length:4},(_,i)=>{const image=this.scene.add.image(0,0,'duck-0').setOrigin(.5,8/11);this.worldProps.push(image);return{a:i*1.7,k:.3+(i%3)*.14,speed:(i%2?1:-1)*(.05+i*.012),plain:i===3,image};});
-  this.flies=blooms.filter((_,i)=>i%5===0).slice(0,14).map((b,i)=>{const p=gridPoint(b.x,b.y),image=this.scene.add.image(p.x,p.y,'fly-0-0').setOrigin(.5);this.worldProps.push(image);return{x:p.x,y:p.y-12,tone:(b.theme+i)%4,phase:i*1.9,image};});
+  this.flies=blooms.filter((_,i)=>i%5===0).slice(0,26).map((b,i)=>{const p=gridPoint(b.x,b.y),image=this.scene.add.image(p.x,p.y,'fly-0-0').setOrigin(.5);this.worldProps.push(image);return{x:p.x,y:p.y-12,tone:(b.theme+i)%4,phase:i*1.9,image};});
   // Drifting fog over the misty woods.
   this.fogs=[];for(let i=0;i<16;i++){const x=-22+(i*7.3)%34,y=-62+(i*5.9)%28;if(biomeAt(x,y).mist<.35)continue;const p=gridPoint(x,y);bake('fog-'+i%3,()=>makeFog(i%3));this.fogs.push({image:this.scene.add.image(p.x,p.y,'fog-'+i%3).setDepth(p.y+80).setAlpha(.55),x:p.x,y:p.y,phase:i});}
   // Foes roam near their homes: slimes out past the farm, golems on the hills, guardians in the woods.
   this.foes=[];this.worldSigns=[];this.signRank=null;this.parties=new Map();
   const homes={meadow:[[-46,34],[-50,20],[-38,40],[-16,35],[-52,28]],ruins:[[56,6],[60,14],[66,4],[52,22],[64,-8]],mist:[[-4,-34],[6,-44],[-8,-54],[8,-50],[-2,-60]]};
   for(const [region,list] of Object.entries(homes)){const quest=QUESTS.find(q=>q.region===region&&!q.story)||QUESTS.find(q=>q.region===region);for(const [x,y] of list)this.foes.push({region,quest,hx:x,hy:y,x,y,tx:x,ty:y,wait:Math.random()*3,image:this.scene.add.image(0,0,this.foeTexture(quest,.42)).setOrigin(.5,1)});}
+  // Nothing outside the view is drawn until the first cull pass decides what is near.
+  for(const img of this.worldProps)img.setVisible(false);for(const f of this.foes)f.image.setVisible(false);
  }
  updateCritters(dt,t,playing){
   const P=MEADOW_SCENE.pasture;
-  for(const s of this.sheep||[]){
-   if(playing){s.wait-=dt;if(s.wait<=0&&Math.hypot(s.tx-s.x,s.ty-s.y)<.05){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*P.r;s.tx=P.x+Math.cos(a)*r;s.ty=P.y+Math.sin(a)*r*.8;s.wait=3+Math.random()*6;}
-    const dx=s.tx-s.x,dy=s.ty-s.y,d=Math.hypot(dx,dy);if(d>.05){s.x+=dx/d*Math.min(d,dt*.45);s.y+=dy/d*Math.min(d,dt*.45);const sx=(dx-dy);if(Math.abs(sx)>.01)s.flip=sx<0;}}
-   const moving=Math.hypot(s.tx-s.x,s.ty-s.y)>.05,p=gridPoint(s.x,s.y);s.image.setTexture(moving?'sheep-'+(Math.floor(t*6+s.wait)%2):'sheep-2').setFlipX(!!s.flip).setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y);
+  for(const s of this.grazers||[]){const H=s.home;
+   if(playing){s.wait-=dt;if(s.wait<=0&&Math.hypot(s.tx-s.x,s.ty-s.y)<.05){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*H.r;s.tx=H.x+Math.cos(a)*r;s.ty=H.y+Math.sin(a)*r*s.squash;s.wait=3+Math.random()*6;}
+    const dx=s.tx-s.x,dy=s.ty-s.y,d=Math.hypot(dx,dy);if(d>.05){s.x+=dx/d*Math.min(d,dt*s.speed);s.y+=dy/d*Math.min(d,dt*s.speed);const sx=(dx-dy);if(Math.abs(sx)>.01)s.flip=sx<0;}}
+   const moving=Math.hypot(s.tx-s.x,s.ty-s.y)>.05,p=gridPoint(s.x,s.y);s.image.setTexture(s.tex+'-'+(moving?Math.floor(t*6+s.wait)%2:2)).setFlipX(!!s.flip).setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y);
   }
+  for(const f of this.fireflies||[])f.image.setPosition(Math.round(f.x+Math.sin(t*.4+f.phase)*20),Math.round(f.y+Math.cos(t*.53+f.phase)*10)).setAlpha(.35+.65*Math.max(0,Math.sin(t*1.3+f.phase)));
   for(const d of this.ducks||[]){if(playing)d.a+=dt*d.speed;const x=LAKE.x-1.2+Math.cos(d.a)*LAKE.rx*d.k,y=LAKE.y+Math.sin(d.a)*LAKE.ry*d.k,p=gridPoint(x,y),vx=-Math.sin(d.a)*LAKE.rx*d.speed,vy=Math.cos(d.a)*LAKE.ry*d.speed;
    d.image.setTexture((d.plain?'duckw-':'duck-')+(Math.floor(t*2+d.a*3)%2)).setFlipX(vx-vy<0).setPosition(Math.round(p.x),Math.round(p.y+Math.sin(t*2+d.a)*.6)).setDepth(p.y);}
   for(const f of this.flies||[]){const x=f.x+Math.sin(t*.7+f.phase)*22+Math.sin(t*1.9+f.phase)*6,y=f.y+Math.cos(t*.5+f.phase)*9-Math.abs(Math.sin(t*4+f.phase))*4;
    f.image.setTexture(`fly-${Math.floor(t*9+f.phase)%2}-${f.tone}`).setPosition(Math.round(x),Math.round(y)).setDepth(f.y+40);}
+  for(const ch of this.chimneys||[]){ch.clock-=dt;if(ch.clock>0)continue;ch.clock=.8+Math.random()*.5;let pf=this.puffs.find(p=>!p.live);if(!pf&&this.puffs.length<70){pf={image:this.scene.add.image(0,0,'puff').setVisible(false)};this.puffs.push(pf);}if(pf)Object.assign(pf,{live:true,age:0,x:ch.x,y:ch.y,seed:Math.random()*6});if(pf)pf.image.setTexture(ch.dark?'puff-dark':'puff');}
+  for(const pf of this.puffs||[])if(pf.live){pf.age+=dt;const a=pf.age/3.2;if(a>=1){pf.live=false;pf.image.setVisible(false);continue;}pf.image.setVisible(true).setPosition(Math.round(pf.x+a*16+Math.sin(pf.age*2+pf.seed)*2),Math.round(pf.y-a*36)).setScale(.7+a*1.3).setAlpha((1-a)*.75).setDepth(pf.y+400);}
   if(this.sails)this.sails.setTexture('sails-'+(Math.floor(t*2.5)%6));
   for(const w of this.wheat||[])w.image.setTexture(`wheat-${w.part}-${Math.floor(t/1.1)%2}`);
  }

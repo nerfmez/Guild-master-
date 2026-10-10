@@ -179,7 +179,7 @@ $('title-new').addEventListener('click',()=>{if(hasSave&&!(introActive(state)&&s
 // Player identity: the guild master and the guild's name.
 function profile(){return state.profile||DEFAULT_PROFILE;}
 function masterSprite(p){return{id:'master',name:p.masterName,class:'master',hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle};}
-function syncBrand(){const p=profile();if($('brand-name').textContent!==p.guildName)$('brand-name').textContent=p.guildName;const sub=state.profile?`หัวหน้ากิลด์ ${p.masterName}`:'LITTLE LEAF GUILD';if($('brand-sub').textContent!==sub)$('brand-sub').textContent=sub;const title=`${p.guildName} · R26`;if(document.title!==title)document.title=title;}
+function syncBrand(){const p=profile();if($('brand-name').textContent!==p.guildName)$('brand-name').textContent=p.guildName;const sub=state.profile?`หัวหน้ากิลด์ ${p.masterName}`:'LITTLE LEAF GUILD';if($('brand-sub').textContent!==sub)$('brand-sub').textContent=sub;const title=`${p.guildName} · R27`;if(document.title!==title)document.title=title;}
 function guildTabs(){return `<div class="sheet-tabs"><button data-tab="home" class="${ui.tab==='home'?'active':''}">ภาพรวม</button><button data-tab="journal" class="${ui.tab==='journal'?'active':''}">บันทึก</button><button data-tab="collection" class="${ui.tab==='collection'?'active':''}">สมุดสมบัติ</button><button data-edit-profile>หัวหน้ากิลด์</button><button data-guild-settings>เซฟ / ตั้งค่า</button></div>`;}
 const NAME_IDEAS=['กิลด์ใบอ่อน','กิลด์ดาวเหนือ','กิลด์ชาอุ่น','กิลด์ต้นโอ๊ก','กิลด์หิ่งห้อย','กิลด์ขนมปังกรอบ'];
 const LOOK_ROWS=[['hair','สีผม'],['outfit','สีชุด'],['skin','สีผิว']];

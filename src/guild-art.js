@@ -2,7 +2,7 @@ import { buildingRect,siteRoads,siteDecorations,partitionRect,partitionDoor } fr
 import { FACILITIES,ROOM_TYPES } from './content.js';
 
 // Original pixel artwork. Every floor and object uses the same 2:1 projection.
-const {rect:R,poly:P,line:L,ellipse:E,rng,createCanvas}=window.ArtCore;
+const {rect:R,poly:P,line:L,ellipse:E,rng,createCanvas,shade:ArtShade}=window.ArtCore;
 export const CELL_W=24;
 export const CELL_H=12;
 export const ORIGIN_X=500;
@@ -173,6 +173,86 @@ export function makeCottage({roof='#8fa0b1',seed=1}={}){
   cube(c,.87,h+.02,.84,.42,0,3,'#b2a283','#d5c4a0','#938e77');
   const r=rng(seed);for(let i=0;i<8;i++){const[x,y]=q(.12+i*.32,h+.7);R(c,x,y-2,2,2,r()>.5?'#ebc6ac':'#dcd799');}
  });
+}
+// Village homes: one generator, many characters. A spec picks the footprint, walls, roof and the touches that make a home its own.
+const ROOFS={slate:['#8fa0b1','#728a9c','#b3bfca','#5f7488'],dusk:['#7f8796','#646c7c','#9aa2b0','#525866'],terra:['#c98a72','#a86c58','#e0a88e','#87543f'],moss:['#93a679','#768c62','#b0c193','#5f7350'],thatch:['#d9bc78','#b99a55','#ecd59a','#987b42'],plum:['#a39bb8','#857d9c','#c0b9d2','#6a6382'],shingle:['#ad8160','#8f664a','#c99d78','#6f4f38']};
+const WALLS={plaster:['#ecdfbf','#cdc1a2'],stone:['#c6bfab','#a59e8b'],log:['#c08f63','#9a714c'],brick:['#cf9576','#a9735d'],timber:['#efe3c4','#cbbf9f']};
+export const HOME_STYLES={
+ inn:{w:2.6,h:2.5,z:52,ridge:'x',roof:'terra',wall:'plaster',storeys:2,sign:'mug',chimney:[.5,.6],lantern:true,porch:true},
+ bakery:{w:2.6,h:2.3,z:31,ridge:'x',roof:'terra',wall:'timber',awning:['#d77d6a','#f4e5c9'],sign:'bread',chimney:[2,.5]},
+ stone:{w:2.4,h:2.4,z:50,ridge:'y',roof:'slate',wall:'stone',storeys:2,chimney:[.4,1.6],flowers:true},
+ cabin:{w:2.4,h:2.2,z:28,ridge:'y',roof:'shingle',wall:'log',porch:true,chimney:[1.9,.5],woodpile:true},
+ thatch:{w:2.2,h:2,z:26,ridge:'x',roof:'thatch',wall:'plaster',pitch:32,shutters:'#7f9a8a',flowers:true},
+ smithy:{w:2.6,h:2.3,z:30,ridge:'y',roof:'dusk',wall:'stone',forge:true,sign:'anvil',chimney:[.45,.5],smoke:'dark'},
+ brick:{w:2.6,h:2.2,z:32,ridge:'x',roof:'moss',wall:'brick',shutters:'#6f8fb0',chimney:[2.1,.6],dormer:true},
+ tall:{w:2,h:2,z:56,ridge:'y',roof:'plum',wall:'timber',storeys:2,pitch:30,flowers:true,shutters:'#c98a72'},
+};
+export function makeHome(name,seed=1){
+ const s=HOME_STYLES[name]||HOME_STYLES.thatch,{w,h,z,ridge,storeys=1}=s,pitch=s.pitch||(ridge==='y'?w:h)*11,o=.16,[r0,r1,rl,rk]=ROOFS[s.roof],[w0,w1]=WALLS[s.wall],r=rng(seed),peak=z+pitch;
+ let smoke=null;const footX=Math.ceil(h*24)+30,footY=peak+40,result=stamp(Math.ceil((w+h)*24)+60+(s.forge?40:0),footY+Math.ceil((w+h)*12)+30,footX,footY,c=>{
+  const F=(u,zz)=>[u,h,zz],S=(u,zz)=>[w,u,zz],quad=(at,u0,u1,z0,z1,color,edge)=>face(c,[at(u0,z0),at(u1,z0),at(u1,z1),at(u0,z1)],color,edge);
+  top(c,-.1,.1,w+.45,h+.4,0,'#5f705040');
+  if(s.porch)plank(c,ridge==='x'?.2:.2,h,ridge==='x'?w-.4:w-.4,.55,0);
+  // Walls with their own material.
+  quad(F,0,w,0,z,w0,C.ink);quad(S,0,h,0,z,w1,C.ink);
+  for(const [at,len,col] of [[F,w,w0],[S,h,w1]]){
+   const dark=ArtShade(col,-26),light=ArtShade(col,14);
+   if(s.wall==='stone')for(let zz=5,k=0;zz<z;zz+=6,k++){stroke(c,at(0,zz),at(len,zz),dark);for(let u=(k%2)*.25+.12;u<len;u+=.5)stroke(c,at(u,zz),at(u,Math.min(z,zz+6)),dark);stroke(c,at(0,zz+1),at(len,zz+1),light);}
+   else if(s.wall==='log')for(let zz=4;zz<z;zz+=5){stroke(c,at(0,zz),at(len,zz),dark);stroke(c,at(0,zz+2),at(len,zz+2),light);}
+   else if(s.wall==='brick')for(let zz=3,k=0;zz<z;zz+=3,k++){stroke(c,at(0,zz),at(len,zz),light);if(k%2)for(let u=.15;u<len;u+=.3)stroke(c,at(u,zz),at(u,zz+3),dark);}
+   else{quad(at,0,len,0,5,ArtShade(col,-40));stroke(c,at(0,5),at(len,5),C.edge,2);}
+   if(s.wall==='timber'||s.wall==='plaster'){for(const u of [0,len])stroke(c,at(u,0),at(u,z),C.edge,3);stroke(c,at(0,z-1),at(len,z-1),C.edge,3);}
+   if(s.wall==='timber'){for(let u=len/3;u<len-.1;u+=len/3)stroke(c,at(u,5),at(u,z),C.edge,2);stroke(c,at(.1,6),at(len/3-.05,z/(storeys)-3),C.edge,2);stroke(c,at(len-.1,6),at(len*2/3+.05,z/storeys-3),C.edge,2);}
+   if(storeys>1){stroke(c,at(0,z/2),at(len,z/2),C.ink,3);stroke(c,at(0,z/2+2),at(len,z/2+2),C.light);}
+   if(s.wall==='log'){const [ex,ey]=q(...at(len,0));for(let zz=4;zz<z;zz+=5)E(c,ex+(at===F?0:0),ey-zz-1,2,2,'#d9b083');}
+  }
+  // Windows, door, shutters and flower boxes.
+  const win=(at,u,zb,ww,wh,lit)=>{
+   if(s.shutters){quad(at,u-.16,u,zb,zb+wh,s.shutters,C.ink);quad(at,u+ww,u+ww+.16,zb,zb+wh,s.shutters,C.ink);}
+   quad(at,u,u+ww,zb,zb+wh,'#7a5f4a');quad(at,u+.05,u+ww-.05,zb+2,zb+wh-2,lit?'#f0d79a':'#a5c0b8');stroke(c,at(u+ww/2,zb+2),at(u+ww/2,zb+wh-2),C.light);stroke(c,at(u+.05,zb+wh/2),at(u+ww-.05,zb+wh/2),C.light);
+   if(!lit)stroke(c,at(u+.1,zb+wh-4),at(u+.2,zb+wh-3),'#e6f2ee');
+   if(s.flowers&&zb<z*.6){quad(at,u-.05,u+ww+.05,zb-3,zb,'#9a7a5c',C.ink);for(let k=0;k<4;k++){const [fx,fy]=q(...at(u+.04+k*ww/3.5,zb+1));R(c,fx,fy-2,2,2,['#ebc6ac','#f2b8c8','#f4d070','#d8c4ef'][(k+seed)%4]);R(c,fx-1,fy,3,1,'#7d9a64');}}
+  };
+  const levels=storeys>1?[6,z/2+6]:[Math.round(z*.35)];
+  const doorU=s.awning?w/2-.3:w*.62,doorW=s.porch&&name==='inn'?.75:.55;
+  for(const zb of levels){const wh=Math.min(15,Math.round(z/storeys*.45));
+   if(zb===levels[0]){quad(F,doorU,doorU+doorW,0,Math.min(25,z/storeys-3),'#7a5f4a',C.ink);quad(F,doorU+.05,doorU+doorW-.05,0,Math.min(23,z/storeys-5),r()>.5?'#ae8d6a':'#9a7656');const [dx,dy]=q(...F(doorU+doorW-.12,11));R(c,dx,dy,2,2,'#e9cd8f');
+    win(F,doorU>1?.25:doorU+doorW+.35,zb,.42,wh,name==='inn');if(w>2.5&&doorU>1.2)win(F,.85,zb,.42,wh);}
+   else{win(F,.3,zb,.42,wh,name==='inn');win(F,w-.75,zb,.42,wh);}
+   win(S,h*.5-.2,zb,.42,wh,zb>z/2&&name!=='inn');
+  }
+  if(s.awning){const [a,b]=s.awning,zA=Math.min(26,z-3);for(let k=0;k<6;k++){const u0=doorU-.45+k*.25;face(c,[F(u0,zA),F(u0+.25,zA),[u0+.25,h+.45,zA-9],[u0,h+.45,zA-9]],k%2?b:a);}stroke(c,F(doorU-.45,zA),F(doorU+1.05,zA),C.ink);stroke(c,[doorU-.45,h+.45,zA-9],[doorU+1.05,h+.45,zA-9],C.edge,2);
+   cube(c,doorU+1.15,h+.1,.5,.32,0,8,'#c79b6a','#e8c99a','#a3805a');for(let k=0;k<3;k++){const [bx,by]=q(doorU+1.25+k*.13,h+.25,9);E(c,bx,by-1,2.4,1.6,'#d9a05a');}}
+  if(s.porch){const roofZ=Math.min(26,z/storeys+(storeys>1?0:-4));for(const u of [.25,w-.25])stroke(c,[u,h+.5,0],[u,h+.5,roofZ],C.edge,2);face(c,[F(.1,roofZ+6),F(w-.1,roofZ+6),[w-.1,h+.62,roofZ],[.1,h+.62,roofZ]],r1,C.ink);for(let u=.3;u<w-.1;u+=.28)stroke(c,F(u,roofZ+6),[u,h+.62,roofZ],rk);}
+  // Roof: two planes, darker on the side away from the light, with courses following the slope.
+  const thatch=s.roof==='thatch';
+  if(ridge==='y'){
+   face(c,[[-o,-o,z],[w/2,-o,peak],[w/2,h+o,peak],[-o,h+o,z]],r0,C.ink);face(c,[[w/2,-o,peak],[w+o,-o,z],[w+o,h+o,z],[w/2,h+o,peak]],r1,C.ink);
+   for(let y=.1;y<h+o;y+=thatch?.17:.3){stroke(c,[-o+.05,y,z+1],[w/2,y,peak],thatch?rl:rk);stroke(c,[w/2,y,peak],[w+o-.05,y,z+1],rk);}
+   for(let k=1;k<4;k++){const f=k/4;stroke(c,[-o+(w/2+o)*f,-o,z+pitch*f],[-o+(w/2+o)*f,h+o,z+pitch*f],rl);}
+   face(c,[F(0,z),[w/2,h+.01,peak-3],F(w,z)].map(p=>[p[0],h+o+.01,p[2]]),w0,C.ink);stroke(c,[-o,h+o,z],[w/2,h+o,peak],C.ink,3);stroke(c,[w/2,h+o,peak],[w+o,h+o,z],C.ink,3);stroke(c,[-o,h+o+.02,z+1],[w/2,h+o+.02,peak+1],rl,1);
+   if(storeys===1||true){const zb=z+pitch*.3;quad((u,zz)=>[u,h+o+.02,zz],w/2-.2,w/2+.2,zb,zb+9,'#7a5f4a');quad((u,zz)=>[u,h+o+.02,zz],w/2-.15,w/2+.15,zb+1,zb+8,'#a5c0b8');}
+   stroke(c,[w/2,-o,peak],[w/2,h+o,peak],C.ink,3);
+  }else{
+   face(c,[[-o,-o,z],[w+o,-o,z],[w+o,h/2,peak],[-o,h/2,peak]],r1,C.ink);face(c,[[-o,h/2,peak],[w+o,h/2,peak],[w+o,h+o,z],[-o,h+o,z]],r0,C.ink);
+   for(let x=.1;x<w+o;x+=thatch?.17:.3)stroke(c,[x,h/2,peak],[x,h+o-.05,z+1],thatch?rl:rk);
+   for(let k=1;k<4;k++){const f=k/4;stroke(c,[-o,h+o-(h/2+o)*f,z+pitch*f],[w+o,h+o-(h/2+o)*f,z+pitch*f],rl);}
+   face(c,[[w+o+.01,0,z],[w+o+.01,h/2,peak-3],[w+o+.01,h,z]],w1,C.ink);stroke(c,[w+o,-o,z],[w+o,h/2,peak],C.ink,3);stroke(c,[w+o,h/2,peak],[w+o,h+o,z],C.ink,3);
+   {const zb=z+pitch*.3;quad((u,zz)=>[w+o+.02,u,zz],h/2-.18,h/2+.18,zb,zb+8,'#7a5f4a');quad((u,zz)=>[w+o+.02,u,zz],h/2-.13,h/2+.13,zb+1,zb+7,'#a5c0b8');}
+   stroke(c,[-o,h/2,peak],[w+o,h/2,peak],C.ink,3);
+   if(s.dormer){const u=w*.35,zz=z+pitch*.35;cube(c,u,h*.6,.6,.35,zz-6,12,w0,r0,w1);face(c,[[u-.06,h*.6+.37,zz+6],[u+.3,h*.6+.37,zz+14],[u+.66,h*.6+.37,zz+6]],r1,C.ink);quad((uu,z2)=>[uu,h*.6+.36,z2],u+.15,u+.45,zz-3,zz+5,'#a5c0b8',C.ink);}
+  }
+  if(thatch){const eave=ridge==='x'?[[-o,h+o],[w+o,h+o]]:[[-o,h+o],[-o,-o]];for(let k=0;k<=24;k++){const f=k/24,[x,y]=q(eave[0][0]+(eave[1][0]-eave[0][0])*f,eave[0][1]+(eave[1][1]-eave[0][1])*f,z);R(c,x,y,1,2+(k%3),k%2?rk:r0);}}
+  // Chimney, then the special touches.
+  if(s.chimney){const [cx,cy]=s.chimney,base=ridge==='y'?z+pitch*(1-Math.abs(cx+.18-w/2)/(w/2+o)):z+pitch*(1-Math.abs(cy+.18-h/2)/(h/2+o));cube(c,cx,cy,.36,.36,base-8,22,'#b8b0a0','#d6cfbe','#948c7d');top(c,cx+.06,cy+.06,.24,.24,base+14.2,'#4f4540');smoke=q(cx+.18,cy+.18,base+16);}
+  if(s.forge){cube(c,w+.15,.3,.9,1.5,0,18,'#a59e8b','#8f877a','#857d70');face(c,[[w+.1,.2,24],[w+1.15,.2,16],[w+1.15,1.9,16],[w+.1,1.9,24]],r1,C.ink);quad((u,zz)=>[w+1.05,u,zz],.55,1.25,0,11,'#3f3530');quad((u,zz)=>[w+1.06,u,zz],.7,1.1,1,6,'#e8935a');quad((u,zz)=>[w+1.07,u,zz],.8,1,1,4,'#fff1c4');cube(c,w+1.3,1.55,.35,.22,0,6,'#5f5a5a','#8a8484','#4a4545');cube(c,w+1.22,1.5,.5,.32,6,3,'#5f5a5a','#9a9494','#4a4545');}
+  if(s.sign){const at=ridge==='x'?F:S,u=ridge==='x'?w-.12:.12,[sx,sy]=q(...(at===F?F(w+.05,z-6):S(-.05,z-6)));R(c,sx,sy,9,1,C.ink);R(c,sx+2,sy+1,1,3,C.ink);R(c,sx+7,sy+1,1,3,C.ink);R(c,sx,sy+4,10,9,C.edge);R(c,sx+1,sy+5,8,7,'#e8c99a');
+   if(s.sign==='bread'){E(c,sx+5,sy+9,3,2,'#c98a4a');R(c,sx+3,sy+8,1,1,'#f0c890');R(c,sx+6,sy+8,1,1,'#f0c890');}else if(s.sign==='anvil'){R(c,sx+2,sy+7,6,2,'#5f5a5a');R(c,sx+4,sy+9,2,2,'#5f5a5a');R(c,sx+3,sy+11,4,1,'#5f5a5a');}else{R(c,sx+3,sy+7,4,5,'#e8c070');R(c,sx+3,sy+6,4,1,'#fff7ea');R(c,sx+7,sy+8,1,3,'#b8946a');}}
+  if(s.lantern){const [lx,ly]=q(...F(.15,z/2-4));R(c,lx-2,ly-6,5,6,'#5a463f');R(c,lx-1,ly-5,3,4,'#f4d48a');R(c,lx,ly-8,1,2,'#5a463f');}
+  if(s.woodpile){for(let k=0;k<3;k++)for(let m=0;m<3-k;m++){const [lx,ly]=q(w+.18,.3+m*.28+k*.14,3+k*5);E(c,lx,ly,2.6,2.6,'#8a6446');E(c,lx,ly,1.4,1.4,'#d9b083');}}
+ });
+ if(smoke)result.smoke={x:smoke[0],y:smoke[1],dark:s.smoke==='dark'};
+ return result;
 }
 export function makeOutdoor(type){
  return object(c=>{
