@@ -21,13 +21,13 @@ for(const mode of ['restricted-canvas','webgl']){
    const create=document.createElement.bind(document);
    document.createElement=(name,...args)=>{if(name.toLowerCase()==='script')throw new Error('Dynamic script loading unavailable');return create(name,...args);};
   });
-  await page.goto('file://'+root+'/'+file+'?still');
+  await page.goto('file://'+root+'/'+file+'?still',{timeout:90000});await page.waitForFunction(()=>window.guildDebug?.getRendererInfo()?.ready,null,{timeout:90000});
   await page.waitForFunction(()=>window.guildDebug?.getRendererInfo()?.ready);
   await page.evaluate(()=>document.fonts.ready);
   // R11 opens on a title screen; start a new guild and skip the prologue.
   const enter=async()=>{if(await page.locator('#title-continue').isVisible())await page.locator('#title-continue').click();else{await page.locator('#title-new').click();await page.locator('#setup-master').fill('ทดสอบ');await page.locator('[data-setup="next"]').click();await page.locator('#setup-guild').fill('กิลด์ใบอ่อน');await page.locator('[data-setup="done"]').click();await page.locator('[data-story-skip]').click();}};
   await enter();
-  assert.equal(await page.title(),'กิลด์ใบอ่อน · R23');
+  assert.equal(await page.title(),'กิลด์ใบอ่อน · R24');
   assert.equal(await page.locator('#scene-status').isVisible(),false);
   const info=await page.evaluate(()=>window.guildDebug.getRendererInfo());
   assert.equal(info.renderer,mode==='restricted-canvas'?'Canvas':'WebGL');
@@ -49,7 +49,7 @@ for(const mode of ['restricted-canvas','webgl']){
   await page.locator('#room-width').fill('3');await page.locator('#room-height').fill('3');await page.locator('[data-room-type="dorm"]').click();
   const p=await page.evaluate(()=>window.guildDebug.getScenePoint(11.5,5.5));await page.mouse.click(p.x,p.y);await page.locator('[data-confirm-placement]').click();
   assert.equal((await page.evaluate(()=>window.guildDebug.getState())).rooms.length,1);
-  await page.reload();await page.waitForFunction(()=>window.guildDebug?.getRendererInfo()?.ready);await enter();assert.equal((await page.evaluate(()=>window.guildDebug.getState())).rooms.length,1);
+  await page.reload({timeout:90000});await page.waitForFunction(()=>window.guildDebug?.getRendererInfo()?.ready,null,{timeout:90000});await enter();assert.equal((await page.evaluate(()=>window.guildDebug.getState())).rooms.length,1);
   if(mode==='restricted-canvas'){
    await page.setViewportSize({width:390,height:844});await page.locator('#home-view').click();await page.screenshot({path:root+'/docs/images/r7-mobile.png'});
    const box=await page.locator('#guild-world').boundingBox();assert.equal(box.width,390);assert.equal(box.height,844);

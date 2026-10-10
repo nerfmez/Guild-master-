@@ -2,6 +2,8 @@ import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,buildingRect,parti
 import { FACILITIES } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove } from './game.js';
 import { makeActorTexture } from './render.js';
+import { QUESTS } from './content.js';
+import { REGIONS_WORLD,ROAD_EXTENSIONS,QUEST_SITES,VILLAGE_HOMES,questRoute,regionOpen,makeRegionGround,makeRoad,makeFoeSprite,makePillar,makeGateSign } from './overworld.js';
 import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
@@ -33,7 +35,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R23',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R24',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -68,7 +70,7 @@ export class GuildRenderer {
   this.width=this.game.scale.width;this.height=this.game.scale.height;
   const base=makeGround(this.state),grass=document.createElement('canvas');grass.width=128;grass.height=128;
   this.grassCanvas=grass;const gc=grass.getContext('2d');gc.fillStyle='#9cac7d';gc.fillRect(0,0,128,128);let grassSeed=3187;const randomGrass=()=>{grassSeed=(Math.imul(grassSeed,1664525)+1013904223)>>>0;return grassSeed/4294967296;};for(let i=0;i<280;i++){gc.fillStyle=['#97a776','#a8b586','#8fa477','#b9c68d'][i%4];gc.fillRect(Math.floor(randomGrass()*128),Math.floor(randomGrass()*128),1+Math.floor(randomGrass()*5),1);}this.texture('meadow',grass);
-  this.scene.add.tileSprite(-512,-512,2048,1664,'meadow').setOrigin(0).setDepth(-10000);
+  this.scene.add.tileSprite(-1700,-1200,5400,3000,'meadow').setOrigin(0).setDepth(-10000);
   this.groundImage=this.scene.add.image(0,0,this.texture('ground',base.canvas)).setOrigin(0).setDepth(-9999);
   this.decorate();this.ghost=this.scene.add.graphics().setDepth(9999);this.bindInput();
   this.game.scale.on('resize',size=>{this.width=size.width;this.height=size.height;this.applyView();});
@@ -79,6 +81,7 @@ export class GuildRenderer {
   this.refreshPlacement();this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
  }
  decorate(){
+  this.decorateWorld();
   const N=window.VillageNature;
   for(const[x,y,seed,gold]of SITE_TREES){const p=gridPoint(x,y);this.put('tree-'+seed,N.makeTree({seed,season:gold?'gold':'green',kind:seed%4===0?'oak':'birch'}),p.x,p.y);}
   for(const c of SITE_COTTAGES){const p=gridPoint(c.x,c.y);this.put('cottage-'+c.seed,makeCottage({seed:c.seed}),p.x,p.y,p.y+30);}
@@ -119,6 +122,80 @@ export class GuildRenderer {
   for(const [cx,cy] of corners){const p=gridPoint(cx,cy),puff=this.scene.add.graphics().setDepth(9997).setPosition(p.x,p.y);puff.fillStyle(0xf3ead2,.95);puff.fillCircle(0,0,4);
    const c=gridPoint(x+w/2,y+h/2),dx=p.x-c.x,dy=p.y-c.y,len=Math.hypot(dx,dy)||1;
    this.scene.tweens.add({targets:puff,x:p.x+dx/len*14,y:p.y+dy/len*7-4,scale:2.4,alpha:0,duration:480,ease:'Quad.easeOut',onComplete:()=>puff.destroy()});}}
+
+ // ---- The world outside: regions, roads, village, roaming foes and travelling teams. ----
+ decorateWorld(){
+  for(const road of ROAD_EXTENSIONS){const g=makeRoad(road);this.scene.add.image(g.x,g.y,this.texture('road-'+road.x+'-'+road.y,g.canvas)).setOrigin(0).setDepth(-9998);}
+  for(const [id,z] of Object.entries(REGIONS_WORLD)){const g=makeRegionGround(id);this.scene.add.image(g.x,g.y,this.texture('region-'+id,g.canvas)).setOrigin(0).setDepth(-9997);}
+  const N=window.VillageNature,r=(seed=>()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;})(9091);
+  const near=(x,y)=>Object.values(QUEST_SITES).some(s=>Math.hypot(s.x-x,s.y-y)<3.2)||Math.abs(y-17.5)<1.6||Math.abs(x-2)<1.4&&y<-12;
+  for(const [id,z] of Object.entries(REGIONS_WORLD)){
+   const cx=(z.x0+z.x1)/2,cy=(z.y0+z.y1)/2,rx=(z.x1-z.x0)/2,ry=(z.y1-z.y0)/2,count=id==='mist'?46:34;
+   for(let i=0;i<count;i++){const a=r()*Math.PI*2,k=Math.sqrt(r())*.95,x=cx+Math.cos(a)*rx*k,y=cy+Math.sin(a)*ry*k;if(near(x,y))continue;const p=gridPoint(x,y),seed=300+(i%6)+id.length*50;
+    if(id==='ruins'){if(r()<.45)this.put('pillar-'+seed%4,makePillar(seed%4+1),p.x,p.y);else if(r()<.6)this.put('rock-'+seed%2,N.makeRock({seed,size:seed%2?'large':'small'}),p.x,p.y);else this.put('bush-wg'+seed%4,N.makeBush({seed:seed%4,gold:true}),p.x,p.y);}
+    else if(r()<(id==='mist'?.75:.45))this.put('tree-w'+seed+(id==='meadow'&&seed%3===0?'g':''),N.makeTree({seed,season:id==='meadow'&&seed%3===0?'gold':'green',kind:seed%2?'oak':'birch'}),p.x,p.y);
+    else if(r()<.5)this.put('bush-w'+seed%4+id,N.makeBush({seed:seed%4,gold:id==='meadow'}),p.x,p.y);
+    else this.put('tuft-'+seed%4+id,N.makeGrassTuft({seed:seed%4,flowers:id==='meadow'}),p.x,p.y);}
+   const l=gridPoint(z.label.x,z.label.y);this.scene.add.text(l.x,l.y,{meadow:'ทุ่งใบชา',ruins:'ซากหอระฆัง',mist:'ป่าหมอกจันทร์'}[id],{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'11px',fontStyle:'bold',color:'#fff8e7',stroke:'#4f4540',strokeThickness:3}).setOrigin(.5).setDepth(-9000).setAlpha(.9).setResolution(2);
+  }
+  for(let i=0;i<60;i++){const x=-14+r()*60,y=-14+r()*40;if(x>-6&&x<28&&y>-4&&y<26||near(x,y))continue;const p=gridPoint(x,y),seed=700+(i%8);this.put('tree-v'+seed,N.makeTree({seed,season:seed%4===0?'gold':'green',kind:seed%2?'oak':'birch'}),p.x,p.y);}
+  for(const [x,y,seed] of VILLAGE_HOMES){const p=gridPoint(x,y);this.put('home-'+seed,makeCottage({seed,roof:['#8fa0b1','#c98a72','#a39bb8','#d6b072'][seed%4]}),p.x,p.y,p.y+30);}
+  for(const [id,q] of Object.entries(QUEST_SITES)){const p=gridPoint(q.x,q.y);this.put('site-sign-'+id,window.VillageProps.makeProp('sign',{seed:id.length*13}),p.x-30,p.y-8);}
+  // Foes roam each region; their textures are baked once per quest.
+  this.foes=[];this.worldSigns=[];this.signRank=null;
+  for(const [id,z] of Object.entries(REGIONS_WORLD)){const quest=QUESTS.find(q=>q.region===id);for(let i=0;i<5;i++){const x=z.x0+(z.x1-z.x0)*(.25+r()*.5),y=z.y0+(z.y1-z.y0)*(.25+r()*.5);this.foes.push({region:id,quest,x,y,tx:x,ty:y,wait:r()*3,image:this.scene.add.image(0,0,this.foeTexture(quest,.42)).setOrigin(.5,1)});}}
+  this.parties=new Map();
+ }
+ foeTexture(quest,scale,flash=false){const key=`foe-${quest.id}-${scale}-${flash?1:0}`;if(!this.scene.textures.exists(key)){const s=makeFoeSprite(quest,scale,flash);this.texture(key,s.canvas);}return key;}
+ refreshWorldSigns(){
+  const key=this.state.rank;if(this.signRank===key||!this.scene)return;this.signRank=key;for(const s of this.worldSigns||[])s.destroy();this.worldSigns=[];
+  for(const [id,z] of Object.entries(REGIONS_WORLD))if(!regionOpen(this.state,id)){const rank={meadow:'F',ruins:'D',mist:'B'}[id],p=gridPoint(z.gate.x,z.gate.y),s=makeGateSign(`ต้องเป็นกิลด์ ${rank}`);this.texture('gate-'+id+rank,s.canvas);this.worldSigns.push(this.scene.add.image(p.x-s.footX,p.y-s.footY,'gate-'+id+rank).setOrigin(0).setDepth(p.y));}
+ }
+ updateWorld(dt,playing){
+  if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;
+  for(const f of this.foes){
+   if(playing){f.wait-=dt;if(f.wait<=0){const z=REGIONS_WORLD[f.region];f.tx=Math.max(z.x0+3,Math.min(z.x1-3,f.x+(Math.random()-.5)*8));f.ty=Math.max(z.y0+3,Math.min(z.y1-3,f.y+(Math.random()-.5)*8));f.wait=3+Math.random()*4;}
+    const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d>.05){f.x+=dx/d*Math.min(d,dt*.8);f.y+=dy/d*Math.min(d,dt*.8);}}
+   const p=gridPoint(f.x,f.y);f.image.setPosition(Math.round(p.x),Math.round(p.y+Math.sin(t*3+f.x)*1.5)).setDepth(p.y).setFlipX(f.tx<f.x);
+  }
+  // Mission foes, strike effects and the floating quest tag for each travelling team.
+  const live=new Set();
+  for(const m of this.state.missions||[]){if(m.status!=='active'&&m.status!=='decision')continue;const quest=QUESTS.find(q=>q.id===m.questId);if(!quest)continue;live.add(m.id);
+   let party=this.parties.get(m.id);if(!party){party={strike:m.combat?.lastStrike||0,strikeAt:-9,wave:-1};this.parties.set(m.id,party);}
+   if(party.strike!==(m.combat?.lastStrike||0)){party.strike=m.combat?.lastStrike||0;party.strikeAt=t;}
+   const ratio=Math.max(0,Math.min(1,m.progress/(m.duration||1))),phase=ratio<.18?'go':ratio<.88?'fight':'back',wave=phase==='fight'?Math.min(2,Math.floor((ratio-.18)/.7*3)):-1,site=QUEST_SITES[quest.id];
+   if(wave!==party.wave){if(party.wave>=0&&site)this.dustPuff(site.x+.6,site.y-.3,.8,.8);party.wave=wave;}
+   if(phase==='fight'&&site){const age=t-party.strikeAt,hit=age>.28&&age<.42,p=gridPoint(site.x+.9,site.y),scale=wave===2?.62:.42;
+    if(!party.foe)party.foe=this.scene.add.image(0,0,this.foeTexture(quest,scale)).setOrigin(.5,1);
+    party.foe.setTexture(this.foeTexture(quest,scale,hit)).setVisible(true).setPosition(Math.round(p.x),Math.round(p.y+Math.sin(t*3)*1.5)).setDepth(p.y).setFlipX(true);
+    const dmg=m.combat?.log?.[0]?.damage;if(age>=0&&age<.9&&Number.isFinite(dmg)){if(!party.num)party.num=this.scene.add.text(0,0,'',{fontFamily:'sans-serif',fontSize:'10px',fontStyle:'bold',color:'#fff1c4',stroke:'#4f4540',strokeThickness:3}).setOrigin(.5).setResolution(2);party.num.setText(String(dmg)).setVisible(age>.28).setPosition(p.x,p.y-34-age*16).setDepth(p.y+100).setAlpha(Math.max(0,1-age/.9));}else party.num?.setVisible(false);}
+   else{party.foe?.setVisible(false);party.num?.setVisible(false);}
+   party.ratio=ratio;party.phase=phase;
+  }
+  for(const [id,party] of this.parties)if(!live.has(id)){party.foe?.destroy();party.num?.destroy();party.tag?.destroy();this.parties.delete(id);}
+ }
+ updateTraveler(a,playing){
+  const m=(this.state.missions||[]).find(m=>(m.status==='active'||m.status==='decision')&&m.memberIds.includes(a.member.id)),quest=m&&QUESTS.find(q=>q.id===m.questId);
+  if(!m||!quest){a.image.setVisible(false);return;}
+  a.missionId=m.id;const b=buildingRect(this.state),door={x:b.x+b.w/2,y:b.y+b.h+.4},route=questRoute(door,quest),i=m.memberIds.indexOf(a.member.id);
+  const total=route.slice(1).reduce((sum,p,k)=>sum+Math.hypot(p.x-route[k].x,p.y-route[k].y),0),ratio=Math.max(0,Math.min(1,m.progress/(m.duration||1)));
+  const along=d=>{let left=d;for(let k=1;k<route.length;k++){const p=route[k-1],q=route[k],len=Math.hypot(q.x-p.x,q.y-p.y);if(left<=len||k===route.length-1){const f=len?Math.max(0,Math.min(1,left/len)):0;return{x:p.x+(q.x-p.x)*f,y:p.y+(q.y-p.y)*f};}left-=len;}return route[route.length-1];};
+  let pos,phase=ratio<.18?'go':ratio<.88?'fight':'back';
+  if(phase==='fight'){const s=QUEST_SITES[quest.id],o=[[-1.1,-.5],[-1.5,.5],[-.6,.9]][i%3];pos={x:s.x+o[0],y:s.y+o[1]};}
+  else{const d=phase==='go'?total*ratio/.18-i*1.1:total*(1-(ratio-.88)/.12)+i*1.1;if(d<0){a.image.setVisible(false);return;}pos=along(d);}
+  const p=gridPoint(pos.x,pos.y),dx=p.x-a.x,dy=p.y-a.y,moving=Math.hypot(dx,dy)>.05;
+  if(moving)a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
+  a.x=p.x;a.y=p.y;const m2=a.member,t=this.realTime||0,party=this.parties?.get(m.id);let pose;
+  if(phase==='fight'){const age=t-(party?.strikeAt??-9),striker=m.combat?.log?.[0]?.memberId===m2.id&&age>=0&&age<.7&&playing;pose=striker?(age<.25?'train0':'train1'):(Math.floor(t*1.5+i)%2?'breath':'idle');a.direction='east';}
+  else pose=moving&&playing?'walk'+(Math.floor(this.elapsed*8)%4):'idle';
+  const facing=pose.startsWith('train')?'south':a.direction;
+  a.image.setVisible(true).setTexture(`actor-${m2.id}-${m2.class}-${facing}-${pose}`).setPosition(Math.round(p.x+(pose==='train1'?6:0)),Math.round(p.y)).setDepth(Math.round(p.y)+(i+1)/10);
+  // The first member carries the quest tag.
+  if(i===0&&party){if(!party.tag)party.tag=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'7px',fontStyle:'bold',color:'#5a4a36',backgroundColor:'#f8edd3',padding:{x:3,y:1}}).setOrigin(.5,1).setResolution(2);
+   const pending=m.event&&!m.event.resolved,text=`${pending?'! ':''}${quest.name} ${Math.round(ratio*100)}%`;if(party.tag.text!==text)party.tag.setText(text);party.tag.setBackgroundColor(pending?'#fff1c4':'#f8edd3').setPosition(Math.round(p.x),Math.round(p.y-27)).setDepth(p.y+200).setVisible(true);}
+ }
+ focusMission(id){this.followMission=id;const a=[...this.actors.values()].find(a=>a.missionId===id&&a.image.visible)||[...this.actors.values()].find(a=>a.missionId===id);const m=(this.state.missions||[]).find(m=>m.id===id),quest=m&&QUESTS.find(q=>q.id===m.questId),site=quest&&QUEST_SITES[quest.id];
+  const p=a?.image.visible?{x:a.x,y:a.y}:site?gridPoint(site.x,site.y):null;if(!p)return;this.focusX=p.x;this.focusY=p.y;this.userPanned=true;this.applyView();}
  roomFor(m){let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
   if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','dorm'][hash(m.id)%4];
   return this.state.facilities.find(f=>f.type===type)||this.state.facilities[0];}
@@ -143,7 +220,7 @@ export class GuildRenderer {
    if(a.class!==m.class){this.bakeActor(m);a.class=m.class;}
    if(a.roomId!==room.id||(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>3)){a.path=this.pathBetween(a.x,a.y,target.x,target.y);a.roomId=room.id;}
    const anchor=room.x+','+room.y+','+room.rotation;if(a.roomAnchor&&a.roomAnchor!==anchor){a.x=target.x;a.y=target.y;a.path=[];}a.roomAnchor=anchor;
-   a.member=m;a.home=target;a.logicalHome=logical;a.away=away.has(m.id);a.image.setVisible(!a.away);if(this.frozen){a.x=target.x;a.y=target.y;}
+   a.member=m;a.home=target;a.logicalHome=logical;a.away=away.has(m.id);if(!a.away)a.image.setVisible(true);if(this.frozen){a.x=target.x;a.y=target.y;}
   }
   this.assignBeds();
   this.syncMaster();
@@ -185,7 +262,7 @@ export class GuildRenderer {
   if(!this.ready)return;const playing=!this.frozen&&!document.hidden&&!this.state.settings?.paused&&!document.getElementById('confirm-dialog').open&&!document.getElementById('settings-dialog').open;
   const elapsed=playing?dt*(this.state.settings?.speed||1):0;this.elapsed+=elapsed;this.realTime=(this.realTime||0)+dt;
   for(const a of this.actors.values()){
-   if(a.away){a.emote?.setVisible(false);continue;}a.clock+=elapsed;
+   if(a.away){a.emote?.setVisible(false);this.updateTraveler(a,playing);continue;}a.clock+=elapsed;
    if(!a.path?.length&&a.clock>6){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
    const p=a.path?.[0];let walking=false;if(p){const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy);walking=d>1;
     if(d<=1)a.path.shift();else{const step=Math.min(d,elapsed*22);a.x+=dx/d*step;a.y+=dy/d*step;a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}}
@@ -207,6 +284,9 @@ export class GuildRenderer {
    else a.emote?.setVisible(false);
   }
 
+  this.updateWorld(dt,playing);
+  // Follow a watched team until the player drags the view or the team is home.
+  if(this.followMission){const a=[...this.actors.values()].find(a=>a.missionId===this.followMission&&a.away&&a.image.visible);const live=(this.state.missions||[]).some(m=>m.id===this.followMission&&(m.status==='active'||m.status==='decision'));if(!live)this.followMission=null;else if(a){const k=1-Math.pow(.02,Math.min(dt,.1));this.focusX+=(a.x-this.focusX)*k;this.focusY+=(a.y-this.focusY)*k;this.applyView();}}
   if(this.pending&&this.pendingDraw){const k=1-Math.pow(.0004,Math.min(dt,.1));this.pendingDraw.x+=(this.pending.x-this.pendingDraw.x)*k;this.pendingDraw.y+=(this.pending.y-this.pendingDraw.y)*k;if(Math.abs(this.pending.x-this.pendingDraw.x)+Math.abs(this.pending.y-this.pendingDraw.y)<.01)this.pendingDraw={...this.pending};this.positionGhost();}
   this.drawGhost();
  }
@@ -214,7 +294,7 @@ export class GuildRenderer {
  center(){this.zoom=1;const b=buildingRect(this.state),p=gridPoint(b.x+b.w/2,b.y+b.h/2);this.focusX=p.x;this.focusY=p.y+22;this.userPanned=false;this.applyView();}
 
  resetView(){this.center();}
- setZoom(z){this.zoom=Math.max(.6,Math.min(2.4,Number(z)||1));this.applyView();}
+ setZoom(z){this.zoom=Math.max(.3,Math.min(2.4,Number(z)||1));this.applyView();}
  rotatePlacement(){this.rotation=(this.rotation+1)%4;this.buildGhost();this.placementChanged();return this.rotation;}
  setBuildMode(type){this.roomMode=null;this.roomMoveId=null;this.buildType=type;this.moveId=null;this.rotation=0;this.canvas.style.cursor=type?'crosshair':'grab';this.refreshPlacement();}
  setMoveMode(id){this.roomMode=null;this.roomMoveId=null;this.moveId=id;this.buildType=null;this.rotation=this.state.facilities.find(f=>f.id===id)?.rotation||0;this.canvas.style.cursor=id?'crosshair':'grab';this.refreshPlacement();}
@@ -276,7 +356,7 @@ export class GuildRenderer {
   bind('pointermove',e=>{const p=this.screenPoint(e);this.hover=this.worldPoint(p);if(!this.pointers.has(e.pointerId))return;this.pointers.set(e.pointerId,p);
    if(this.pointers.size===2&&this.pinch){const[a,b]=[...this.pointers.values()];this.setZoom(this.pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/this.pinch.dist);return;}
    if(this.drag?.id===e.pointerId&&this.drag.item){const d=this.drag,t=gridPosition(this.worldPoint(p).x,this.worldPoint(p).y);d.moved=true;d.last=p;this.setPending(t.x-d.offset.x,t.y-d.offset.y);return;}
-   if(this.drag?.id===e.pointerId){const d=this.drag;if(Math.hypot(p.x-d.start.x,p.y-d.start.y)>6){d.moved=true;clearTimeout(d.hold);}if(d.moved){this.userPanned=true;this.focusX-=(p.x-d.last.x)/this.camera.zoom;this.focusY-=(p.y-d.last.y)/this.camera.zoom;this.applyView();}d.last=p;}});
+   if(this.drag?.id===e.pointerId){const d=this.drag;if(Math.hypot(p.x-d.start.x,p.y-d.start.y)>6){d.moved=true;clearTimeout(d.hold);}if(d.moved){this.userPanned=true;this.followMission=null;this.focusX-=(p.x-d.last.x)/this.camera.zoom;this.focusY-=(p.y-d.last.y)/this.camera.zoom;this.applyView();}d.last=p;}});
   bind('pointerup',e=>{const p=this.screenPoint(e);if(this.drag?.id===e.pointerId){clearTimeout(this.drag.hold);if(this.drag.item)this.canvas.style.cursor='crosshair';else if(!this.drag.moved)this.select(this.worldPoint(p));}this.pointers.delete(e.pointerId);if(this.pointers.size<2)this.pinch=null;if(!this.pointers.size)this.drag=null;});
   bind('pointercancel',e=>{clearTimeout(this.drag?.hold);this.pointers.delete(e.pointerId);this.drag=null;this.pinch=null;});bind('pointerleave',()=>{if(!this.drag)this.hover=null;});
   bind('wheel',e=>{e.preventDefault();const p=this.screenPoint(e),before=this.worldPoint(p);this.setZoom(this.zoom*Math.exp(-e.deltaY*.001));const after=this.worldPoint(p);this.focusX+=before.x-after.x;this.focusY+=before.y-after.y;this.applyView();},{passive:false});
@@ -284,7 +364,7 @@ export class GuildRenderer {
  select(p){
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
   if(this.pending){const d=this.footprint();this.setPending(tile.x-d.w/2,tile.y-d.h/2);return;}
-  for(const a of [...this.actors.values()].sort((a,b)=>b.y-a.y))if(!a.away&&Math.abs(p.x-a.x)<9&&p.y>a.y-30&&p.y<a.y+4){this.onSelect({kind:'member',id:a.member.id});return;}
+  for(const a of [...this.actors.values()].sort((a,b)=>b.y-a.y))if(a.image.visible&&Math.abs(p.x-a.x)<9&&p.y>a.y-30&&p.y<a.y+4){if(a.away&&a.missionId){this.onSelect({kind:'mission',id:a.missionId});return;}if(!a.away){this.onSelect({kind:'member',id:a.member.id});return;}}
   for(const a of [...this.furnitureSprites].sort((a,b)=>b.image.depth-a.image.depth)){const x=Math.floor(p.x-a.image.x),y=Math.floor(p.y-a.image.y);if(x>=0&&y>=0&&x<a.canvas.width&&y<a.canvas.height&&a.alpha[(y*a.canvas.width+x)*4+3]>50){this.onSelect({kind:'facility',id:a.f.id});return;}}
   for(const f of this.state.facilities){const d=getRoomSize(f.type,f.rotation||0);if(tile.x>=f.x&&tile.x<f.x+d.w&&tile.y>=f.y&&tile.y<f.y+d.h){this.onSelect({kind:'facility',id:f.id});return;}}
   for(const room of this.state.rooms||[])if(pointInRect(partitionRect(room),tile)){this.onSelect({kind:'partition',id:room.id});return;}

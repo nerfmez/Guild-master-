@@ -241,7 +241,4 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .collection .loot{width:auto;padding:10px 8px}.collection .loot canvas{width:40px;height:40px}.collection .loot small{font-size:12px;font-weight:600}
 .collection .loot em{font-style:normal;font-size:10px;line-height:1.5;color:var(--muted)}
 .collection .loot.unknown{background:#f1ebde;border-style:dashed}.collection .loot.unknown>b{color:#b8a888}
-/* R23: world map view. */
-.world-map{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;image-rendering:pixelated;touch-action:none;cursor:grab;background:#9fbd84}
-.world-map[hidden]{display:none}
-@media(max-width:620px){.dock-btn{width:54px}.dock-btn span{font-size:10.5px}}
+.dock-btn{width:72px}@media(max-width:620px){.dock-btn{width:62px}}

@@ -1,5 +1,5 @@
 import {readFile,writeFile} from 'node:fs/promises';
-const modules={'site.js':'Site','content.js':'Content','game.js':'Engine','render.js':'Artwork','dungeon.js':'Dungeon','worldmap.js':'WorldMapModule','guild-art.js':'GuildArtwork','world.js':'World'};
+const modules={'site.js':'Site','content.js':'Content','game.js':'Engine','render.js':'Artwork','dungeon.js':'Dungeon','guild-art.js':'GuildArtwork','overworld.js':'Overworld','world.js':'World'};
 function replaceImports(source){return source.replace(/import\s*\{([^}]+)\}\s*from\s*['"]\.\/([^'"]+)['"];?/g,(_,names,file)=>`const {${names}}=${modules[file]};`);}
 const phaser=(await readFile('node_modules/phaser/dist/phaser.min.js','utf8'));
 // Classic inline scripts also run from Android download providers. Startup does
