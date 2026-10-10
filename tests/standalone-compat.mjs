@@ -27,7 +27,7 @@ for(const mode of ['restricted-canvas','webgl']){
   // R11 opens on a title screen; start a new guild and skip the prologue.
   const enter=async()=>{if(await page.locator('#title-continue').isVisible())await page.locator('#title-continue').click();else{await page.locator('#title-new').click();await page.locator('#setup-master').fill('ทดสอบ');await page.locator('[data-setup="next"]').click();await page.locator('#setup-guild').fill('กิลด์ใบอ่อน');await page.locator('[data-setup="done"]').click();await page.locator('[data-story-skip]').click();}};
   await enter();
-  assert.equal(await page.title(),'กิลด์ใบอ่อน · R14');
+  assert.equal(await page.title(),'กิลด์ใบอ่อน · R15');
   assert.equal(await page.locator('#scene-status').isVisible(),false);
   const info=await page.evaluate(()=>window.guildDebug.getRendererInfo());
   assert.equal(info.renderer,mode==='restricted-canvas'?'Canvas':'WebGL');

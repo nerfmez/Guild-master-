@@ -152,3 +152,57 @@ body.sheet-open .goal-card{visibility:hidden}
 .pb-actions button.primary:disabled{background:#cfc6b2;border-color:#bdb39d;box-shadow:none;color:#fff;opacity:1}
 body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 @media(max-width:620px){.placement-bar{flex-direction:column;align-items:stretch;gap:8px;padding:10px}.pb-actions{justify-content:stretch}.pb-actions button{flex:1}.pb-actions button.primary{flex:1.6}}
+/* R15: quest board as illustrated cards, and a team-prep screen. */
+.map-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.map-tabs button{display:grid;justify-items:center;gap:1px;padding:6px 6px 7px;min-height:0;border-radius:10px;background:#fffaee;border:1px solid #e0d1b0;box-shadow:0 3px 0 #d8c7a2;color:#6f5a3a}
+.map-tabs button.active{background:#e6edd6;border-color:#9fb68f;box-shadow:0 3px 0 #9fb68f}
+.map-tabs canvas{width:100%;max-width:150px;aspect-ratio:16/9;height:auto;border-radius:6px;image-rendering:pixelated}
+.map-tabs b{font-size:13px}.map-tabs small{font-size:10.5px;color:#9b7a4a;font-weight:600}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.qcard{display:flex;flex-direction:column;padding:0;overflow:hidden;text-align:left;min-height:0;border-radius:11px;background:#fffaee;border:1px solid #e3d3b0;box-shadow:0 3px 0 #d8c7a2}
+.qcard:hover:not(:disabled){border-color:#c9a86a;transform:translateY(-1px)}
+.qcard.locked{background:#f3ecdc}
+.qart{position:relative}.qart canvas{display:block;width:100%;aspect-ratio:16/9;height:auto;image-rendering:pixelated}
+.qbadge{position:absolute;top:7px;left:7px;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:9px;background:#fff8e7;color:#7a6446;border:1px solid #d8c7a2}
+.qbadge.new{background:#d98978;border-color:#c0705c;color:#fff}.qbadge.final{background:#6f6a8f;border-color:#5b5675;color:#fff}.qbadge.done{background:#e1e5c9;border-color:#b1c1a0;color:#5b663e}
+.qbody{display:grid;gap:4px;padding:9px 11px 11px}
+.qbody>b{font-size:14.5px;line-height:1.35}
+.qstars{font-size:12px;letter-spacing:1px;color:#e2a93c}.qstars i{font-style:normal;color:#e3d8c0}
+.qinfo{display:flex;justify-content:space-between;gap:6px;font-size:11px;color:var(--muted)}
+.qrewards{display:flex;flex-wrap:wrap;gap:4px}
+.qrewards span{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:9px;background:#f4ecd8;color:#6f5a3a}
+.qrewards i{font-style:normal;font-size:10px;opacity:.85}
+.qrewards .qr-gold{background:#f8e7bd}.qrewards .qr-rep{background:#e6e3f0;color:#5b5675}
+.qrewards.big{margin:6px 0 4px}.qrewards.big span{font-size:13px;padding:4px 10px}
+.qlock{font-size:11px;color:#9b7a4a;line-height:1.5}
+.prep-hero{position:relative;margin:4px 0 8px;border-radius:12px;overflow:hidden;border:1px solid #e3d3b0}
+.prep-hero canvas{display:block;width:100%;aspect-ratio:8/3;height:auto;image-rendering:pixelated}
+.prep-title{position:absolute;left:0;right:0;bottom:0;display:grid;gap:1px;padding:22px 14px 9px;background:linear-gradient(transparent,#3d352ccc);color:#fff8e7}
+.prep-title small{font-size:11px;opacity:.9}.prep-title b{font-size:19px;text-shadow:0 1px 0 #3d352c}
+.team-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px}
+.slot{position:relative;display:grid;justify-items:center;gap:1px;min-height:112px;padding:8px 4px;border-radius:11px;text-align:center}
+.slot.empty{border:2px dashed #d8c7a2;background:#fbf6ea;color:#b39c74;align-content:center}.slot.empty span{font-size:28px;line-height:1}.slot.empty small{font-size:11px}
+.slot.filled{background:#e6edd6;border:1px solid #9fb68f;box-shadow:0 3px 0 #9fb68f;animation:chip-pop .25s ease-out}
+.slot canvas{width:52px;height:58px;image-rendering:pixelated}.slot b{font-size:13px}.slot small{font-size:10.5px;color:#6b7a5a}
+.slot i{position:absolute;top:4px;right:6px;font-style:normal;font-size:11px;color:#8a9a78}
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin-bottom:6px}
+.pick{display:flex;align-items:center;gap:8px;padding:5px 8px 5px 5px;min-height:0;text-align:left;border-radius:9px;background:#fffaee;border:1px solid #e3d3b0}
+.pick.on{background:#e6edd6;border-color:#9fb68f}.pick.busy{opacity:.55}
+.pick canvas{width:38px;height:43px;flex:none;image-rendering:pixelated;border-radius:6px}
+.pick span{display:grid;gap:0;min-width:0;flex:1}.pick b{font-size:12.5px}.pick small{font-size:10px;color:var(--muted)}.pick small.fit{color:#5f8250;font-weight:600}
+.pick .mini-energy{display:block;height:4px;margin-top:2px;border-radius:2px;background:#e6dcc4;overflow:hidden}.pick .mini-energy i{display:block;height:100%;background:var(--sage)}
+.plan-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.plan-row button{display:grid;gap:1px;padding:7px 6px;min-height:0;border-radius:9px;background:#fffaee;border:1px solid #e3d3b0;text-align:center}
+.plan-row button.active{background:var(--sage);border-color:var(--sage);color:#fff}.plan-row button.active small{color:#eef4e6}
+.plan-row b{font-size:12.5px}.plan-row small{font-size:10px;color:var(--muted)}
+.power-meter{margin:12px 0 10px;padding:10px 12px;border-radius:10px;background:#f6efdf;border:1px solid #e3d3b0;display:grid;gap:6px}
+.pm-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.pm-head b{font-size:14px}.pm-head small,.power-meter>small{font-size:11px;color:var(--muted)}
+.pm-bar{position:relative;height:12px;border-radius:6px;background:#e6dcc4;overflow:visible}
+.pm-bar i{display:block;height:100%;border-radius:6px;background:#c9b996;transition:width .4s}
+.pm-bar span{position:absolute;top:-3px;bottom:-3px;width:2px;background:#6f5a3a}
+.power-meter.good .pm-bar i{background:#7fae6f}.power-meter.ok .pm-bar i{background:#e2b55a}.power-meter.bad .pm-bar i{background:#d98978}
+.power-meter.good .pm-head b{color:#4f7a43}.power-meter.bad .pm-head b{color:#c0705c}
+.go-button{width:100%;min-height:54px;font-size:18px;font-weight:700;border-radius:12px;box-shadow:0 4px 0 #5d7a57;position:sticky;bottom:0}
+.go-button:disabled{box-shadow:none}
+@media(max-width:620px){.qgrid{grid-template-columns:1fr 1fr;gap:7px}.qbody{padding:7px 8px 9px}.qbody>b{font-size:13px}.qinfo span:last-child{display:none}.roster{grid-template-columns:1fr 1fr}.slot{min-height:98px}.slot canvas{width:44px;height:50px}}
+.go-button:disabled{background:#cfc6b2;border-color:#bdb39d;color:#fff;opacity:1}

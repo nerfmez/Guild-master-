@@ -33,7 +33,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R14',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R15',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -124,7 +124,7 @@ export class GuildRenderer {
   return this.state.facilities.find(f=>f.type===type)||this.state.facilities[0];}
 
  syncActors(){
-  const ids=new Set([...this.state.members.map(m=>m.id),'master']);for(const [id,a] of this.actors)if(!ids.has(id)){a.image.destroy();this.actors.delete(id);}
+  const ids=new Set([...this.state.members.map(m=>m.id),'master']);for(const [id,a] of this.actors)if(!ids.has(id)){a.image.destroy();a.emote?.destroy();this.actors.delete(id);}
   const idleKey=this.signature+'|'+this.state.members.map(m=>m.id).join(',');if(this.idleKey!==idleKey){this.idleKey=idleKey;const hall=buildingRect(this.state),spots=getWalkableSpots(this.state),claimed=[];this.idleSpots=this.state.members.map((m,i)=>{const desired=[{x:2.5,y:2.5},{x:4.25,y:2},{x:5,y:3.5},{x:1.75,y:2.75}][i%4],tx=hall.x+desired.x,ty=hall.y+desired.y+(Math.floor(i/4)*.6);const p=spots.filter(p=>claimed.every(q=>Math.hypot(p.x-q.x,p.y-q.y)>=.8)).sort((a,b)=>(a.x-tx)**2+(a.y-ty)**2-((b.x-tx)**2+(b.y-ty)**2))[0]||spots[i%spots.length];claimed.push(p);return p;});}
   const away=new Set(this.state.missions.filter(m=>['active','decision'].includes(m.status)).flatMap(m=>m.memberIds));
   for(const m of this.state.members){const room=this.roomFor(m),b=room&&getRoomSize(room.type,room.rotation||0),n=hash(m.id);
@@ -134,7 +134,7 @@ export class GuildRenderer {
    const target=gridPoint(logical.x,logical.y);
    let a=this.actors.get(m.id);if(!a){
     this.bakeActor(m);
-    a={image:this.scene.add.image(target.x,target.y,`actor-${m.id}-${m.class}-south-0`).setOrigin(.5,46/52),x:target.x,y:target.y,clock:n%6,roomId:room.id,class:m.class,direction:['south','east','south','west'][n%4]};this.actors.set(m.id,a);
+    a={image:this.scene.add.image(target.x,target.y,`actor-${m.id}-${m.class}-south-idle`).setOrigin(.5,48/52),x:target.x,y:target.y,clock:n%6,roomId:room.id,class:m.class,direction:['south','east','south','west'][n%4]};this.actors.set(m.id,a);
     // A new arrival walks up the road and in through the front door.
     if(this.arrivals?.delete(m.id)&&!this.frozen){const door=hall.x+hall.w/2,start=gridPoint(door,hall.y+hall.h+3),inside=gridPoint(door,hall.y+hall.h-.5);a.x=start.x;a.y=start.y;a.image.setPosition(start.x,start.y);a.path=[inside,...this.pathBetween(inside.x,inside.y,target.x,target.y)];}
    }
@@ -153,24 +153,43 @@ export class GuildRenderer {
   const desk=this.state.facilities.find(f=>f.type==='reception'),hall=buildingRect(this.state);
   const logical=desk?(()=>{const e=getFacilityEntry(desk);return{x:e.x+.35,y:e.y+.2};})():{x:hall.x+hall.w/2,y:hall.y+hall.h-.8};
   const target=gridPoint(logical.x,logical.y);let a=old;
-  if(!a){this.bakeActor(m);a={image:this.scene.add.image(target.x,target.y,'actor-master-master-south-0').setOrigin(.5,46/52),x:target.x,y:target.y,clock:0,direction:'south',look};this.actors.set('master',a);}
+  if(!a){this.bakeActor(m);a={image:this.scene.add.image(target.x,target.y,'actor-master-master-south-idle').setOrigin(.5,48/52),x:target.x,y:target.y,clock:0,direction:'south',look};this.actors.set('master',a);}
   else if(a.look!==look){this.bakeActor(m);a.look=look;}
   if(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>3)a.path=this.pathBetween(a.x,a.y,target.x,target.y);
   a.member=m;a.home=target;a.away=false;a.image.setVisible(true);if(this.frozen){a.x=target.x;a.y=target.y;}
  }
  arrive(ids){this.arrivals??=new Set();for(const id of ids)this.arrivals.add(id);}
- bakeActor(m){for(const direction of ['south','east','north','west'])for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${direction}-${frame}`,makeActorTexture(m,frame*Math.PI/2,frame>0,1,direction));}
+ bakeActor(m){for(const direction of ['south','east','north','west']){
+  for(const pose of ['idle','breath','blink','sleep','train0','train1','work0','work1'])this.texture(`actor-${m.id}-${m.class}-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
+  for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
+ emoteTexture(kind){const key='emote-'+kind;if(this.scene.textures.exists(key))return key;const c=document.createElement('canvas');c.width=14;c.height=12;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+  const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
+  if(kind==='z'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(4,3,6,1,'#6f6a8f');px(8,4,2,1,'#6f6a8f');px(6,5,2,1,'#6f6a8f');px(4,6,2,1,'#6f6a8f');px(4,7,6,1,'#6f6a8f');}
+  else{px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(6,3,2,6,'#d98978');px(4,5,6,2,'#d98978');}
+  this.texture(key,c);return key;}
  pathBetween(sx,sy,tx,ty){return findWalkPath(this.state,gridPosition(sx,sy),gridPosition(tx,ty)).map(p=>gridPoint(p.x,p.y));}
 
  update(dt){
   if(!this.ready)return;const playing=!this.frozen&&!document.hidden&&!this.state.settings?.paused&&!document.getElementById('confirm-dialog').open&&!document.getElementById('settings-dialog').open;
-  const elapsed=playing?dt*(this.state.settings?.speed||1):0;this.elapsed+=elapsed;
+  const elapsed=playing?dt*(this.state.settings?.speed||1):0;this.elapsed+=elapsed;this.realTime=(this.realTime||0)+dt;
   for(const a of this.actors.values()){
-   if(a.away)continue;a.clock+=elapsed;
+   if(a.away){a.emote?.setVisible(false);continue;}a.clock+=elapsed;
    if(!a.path?.length&&a.clock>6){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
    const p=a.path?.[0];let walking=false;if(p){const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy);walking=d>1;
     if(d<=1)a.path.shift();else{const step=Math.min(d,elapsed*22);a.x+=dx/d*step;a.y+=dy/d*step;a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}}
-   const frame=walking&&playing?1+Math.floor(this.elapsed*6)%3:0;a.image.setTexture(`actor-${a.member.id}-${a.member.class}-${a.direction}-${frame}`).setPosition(Math.round(a.x),Math.round(a.y)).setDepth(a.y);
+   // Pose from activity: stride while walking, otherwise train / work / sleep at home, or breathe and blink.
+   const m=a.member,home=!a.path?.length,t=this.realTime+(hash(m.id)%97)/13;let pose;
+   if(walking&&playing)pose='walk'+(Math.floor(this.elapsed*8)%4);
+   else if(home&&m.task==='train'&&!m.waitingReason)pose='train'+(Math.floor(t*2.4)%2);
+   else if(home&&m.task==='work')pose='work'+(Math.floor(t*2.2)%2);
+   else if(home&&m.task==='rest'&&m.energy<95&&!m.waitingReason&&!m.injury)pose='sleep';
+   else pose=t%4.3<.15?'blink':Math.floor(t*1.5)%2?'breath':'idle';
+   const facing=pose.startsWith('walk')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
+   a.image.setTexture(`actor-${m.id}-${m.class}-${facing}-${pose}`).setPosition(Math.round(a.x),Math.round(a.y)).setDepth(a.y);
+   const emote=pose==='sleep'?'z':home&&m.injury>0?'heal':null;
+   if(emote){if(!a.emote)a.emote=this.scene.add.image(0,0,this.emoteTexture(emote)).setOrigin(.5,1);if(a.emoteKind!==emote){a.emote.setTexture(this.emoteTexture(emote));a.emoteKind=emote;}
+    const float=Math.sin(t*2.2)*1.5;a.emote.setVisible(true).setPosition(Math.round(a.x+9),Math.round(a.y-44+float)).setDepth(a.y+1).setAlpha(.75+Math.sin(t*2.2)*.25);}
+   else a.emote?.setVisible(false);
   }
 
   if(this.pending&&this.pendingDraw){const k=1-Math.pow(.0004,Math.min(dt,.1));this.pendingDraw.x+=(this.pending.x-this.pendingDraw.x)*k;this.pendingDraw.y+=(this.pending.y-this.pendingDraw.y)*k;if(Math.abs(this.pending.x-this.pendingDraw.x)+Math.abs(this.pending.y-this.pendingDraw.y)<.01)this.pendingDraw={...this.pending};this.positionGhost();}
