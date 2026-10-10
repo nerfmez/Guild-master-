@@ -1,7 +1,7 @@
-import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, GUILD_EVENTS, MISSION_POLICIES } from './content.js';
+import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES } from './content.js';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const DAY_LENGTH = 240;
 const RESOURCE_KEYS = ['gold', 'wood', 'stone', 'herb'];
 const MAX_LEVEL = 20;
@@ -67,7 +67,7 @@ export function createGame(seed = 123) {
   const state = {
     version: SAVE_VERSION, seed: seed >>> 0 || 123, rng: seed >>> 0 || 123, nextId: 10,
     gold: 1200, wood: 32, stone: 20, herb: 12, rep: 0, day: 1, clock: 0, elapsed: 0,
-    rank: 'F', landLevel: 0, grid: { width: 20, height: 16 }, building:{...START_BUILDING},
+    rank: 'F', landLevel: 0, grid: { width: 20, height: 16 }, building:{...START_BUILDING},rooms:[],
     members: MEMBERS.filter(member => member.starter).map(member => createMember(member)),
     facilities: [
       {id:'room-1',type:'reception',x:5.5,y:4.5,rotation:0,level:1},
@@ -238,26 +238,28 @@ export function canPlaceFacility(state,type,x,y,ignoreId=null,rotation=0,checkAc
  const entrance={x:b.x+b.w/2-.5,y:b.y+b.h-.75,w:1,h:1.5};
  if(intersects(area,entrance)||protectedAreas(state).some(p=>intersects(area,p)))return failure('ต้องเว้นถนนและทางเข้าอาคาร');
  if(state.facilities.some(f=>f.id!==ignoreId&&intersects(area,{...f,...getRoomSize(f.type,f.rotation||0)})))return failure('ตำแหน่งนี้ทับเฟอร์นิเจอร์');
+ if((state.rooms||[]).some(room=>intersects(area,partitionRect(room))&&!containsRect(partitionRect(room),area,.25)))return failure('เฟอร์นิเจอร์ทับผนังห้อง');
  const planned=[...state.facilities.filter(f=>f.id!==ignoreId),{type,x,y,rotation}];
  if(checkAccess&&!hasWalkableEntries(state,planned))return failure('ต้องมีทางเดินถึงด้านใช้งานของทุกชิ้น');
  return success('วางได้');
 }
 
-const NAV_STEP=.5;
+const NAV_STEP=.25;
 function navigation(state,facilities,start){
- const w=state.grid.width*2,h=state.grid.height*2,at=(x,y)=>y*w+x;
+ const w=state.grid.width/NAV_STEP,h=state.grid.height/NAV_STEP,at=(x,y)=>y*w+x;
  const valid=(x,y)=>x>=0&&y>=0&&x<w&&y<h;
  const point=(x,y)=>({x:(x+.5)*NAV_STEP,y:(y+.5)*NAV_STEP});
  const blocked=new Uint8Array(w*h),visited=new Uint8Array(w*h),parent=new Int32Array(w*h);parent.fill(-1);
  const areas=facilities.map(f=>({...f,...getRoomSize(f.type,f.rotation||0)}));
- for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=point(x,y);if(areas.some(a=>p.x>a.x-.08&&p.x<a.x+a.w+.08&&p.y>a.y-.08&&p.y<a.y+a.h+.08))blocked[at(x,y)]=1;}
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=point(x,y);if(areas.some(a=>p.x>a.x-.08&&p.x<a.x+a.w+.08&&p.y>a.y-.08&&p.y<a.y+a.h+.08)||(state.rooms||[]).some(room=>partitionWallBlocks(room,p)))blocked[at(x,y)]=1;}
  const b=buildingRect(state),door=b.x+b.w/2;
- const sx=Math.floor(start.x*2),sy=Math.floor(start.y*2),queue=[];
+ const sx=Math.floor(start.x/NAV_STEP),sy=Math.floor(start.y/NAV_STEP),queue=[];
  if(valid(sx,sy)&&!blocked[at(sx,sy)]){queue.push([sx,sy]);visited[at(sx,sy)]=1;}
  for(let i=0;i<queue.length;i++){
   const[x,y]=queue[i],p=point(x,y);
   for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(!valid(nx,ny))continue;const id=at(nx,ny);if(blocked[id]||visited[id])continue;
    const q=point(nx,ny);if(isInsideBuilding(state,p.x,p.y)!==isInsideBuilding(state,q.x,q.y)&&!(Math.abs(q.x-door)<=.55&&Math.abs(p.x-door)<=.55&&Math.max(p.y,q.y)>=b.y+b.h&&Math.min(p.y,q.y)<b.y+b.h))continue;
+   if((state.rooms||[]).some(room=>pointInRect(partitionRect(room),p)!==pointInRect(partitionRect(room),q)&&!canCrossPartition(room,p,q)))continue;
    visited[id]=1;parent[id]=at(x,y);queue.push([nx,ny]);
   }
  }
@@ -265,10 +267,19 @@ function navigation(state,facilities,start){
 }
 function hasWalkableEntries(state,facilities){
  const b=buildingRect(state),nav=navigation(state,facilities,{x:b.x+b.w/2,y:b.y+b.h-.25});
- return facilities.every(f=>{const p=getFacilityEntry(f);if(f.type!=='garden'&&!isInsideBuilding(state,p.x,p.y))return false;const x=Math.floor(p.x*2),y=Math.floor(p.y*2);return nav.valid(x,y)&&nav.visited[nav.at(x,y)];});
+ const reached=p=>{const x=Math.floor(p.x/NAV_STEP),y=Math.floor(p.y/NAV_STEP);return nav.valid(x,y)&&nav.visited[nav.at(x,y)];};
+ if(!(state.rooms||[]).every(room=>reached(partitionDoor(room).inside)))return false;
+ return facilities.every(f=>{
+  const p=getFacilityEntry(f),d=getRoomSize(f.type,f.rotation||0),r=f.rotation||0;
+  if(f.type!=='garden'&&!isInsideBuilding(state,p.x,p.y))return false;
+  const face=r===0?{x:f.x+d.w/2,y:f.y+d.h-.1}:r===1?{x:f.x+.1,y:f.y+d.h/2}:r===2?{x:f.x+d.w/2,y:f.y+.1}:{x:f.x+d.w-.1,y:f.y+d.h/2};
+  if((state.rooms||[]).some(room=>pointInRect(partitionRect(room),face)!==pointInRect(partitionRect(room),p)&&!canCrossPartition(room,face,p)))return false;
+  return reached(p);
+ });
 }
+
 export function findWalkPath(state,start,goal){
- const nav=navigation(state,state.facilities,start),gx=Math.floor(goal.x*2),gy=Math.floor(goal.y*2);if(!nav.valid(gx,gy)||!nav.visited[nav.at(gx,gy)])return[];
+ const nav=navigation(state,state.facilities,start),gx=Math.floor(goal.x/NAV_STEP),gy=Math.floor(goal.y/NAV_STEP);if(!nav.valid(gx,gy)||!nav.visited[nav.at(gx,gy)])return[];
  const path=[];let id=nav.at(gx,gy);while(id!==-1){path.unshift(nav.point(id%nav.w,Math.floor(id/nav.w)));id=nav.parent[id];}return path;
 }
 export function getWalkableSpots(state){
@@ -279,6 +290,7 @@ export function getWalkableSpots(state){
 export function getBuildingExpansionCost(state){const level=state.building.level;return{gold:300+level*200,wood:12+level*6,stone:8+level*4};}
 function expandBuilding(state){
  const b=state.building;if(b.level>=3)return failure('อาคารขยายเต็มแล้ว');
+ if(!hasRank(state,BUILDING_STAGES[b.level+1].rank))return failure('ต่อเติมขั้นนี้ต้องมีกิลด์ระดับ '+BUILDING_STAGES[b.level+1].rank);
  const next={...b,width:b.width+2,height:b.height+2,level:b.level+1},area={x:next.x,y:next.y,w:next.width,h:next.height};
  if(area.x+area.w>state.grid.width||area.y+area.h>state.grid.height||protectedAreas({...state,building:next}).some(p=>intersects(area,p)))return failure('ซื้อที่ดินเพิ่มก่อนขยายอาคาร');
  if(state.facilities.some(f=>f.type==='garden'&&intersects(area,{...f,...getRoomSize(f.type,f.rotation||0)})))return failure('ย้ายแปลงสมุนไพรออกจากพื้นที่ต่อเติมก่อน');
@@ -287,6 +299,51 @@ function expandBuilding(state){
  transact(state,cost,'ต่อเติมอาคารกิลด์');state.building=next;addLog(state,'ต่อเติมพื้นอาคารแล้ว จัดวางของในพื้นที่ใหม่ได้','build');return success('ขยายอาคารแล้ว');
 }
 function rotate(state,payload){const f=state.facilities.find(f=>f.id===payload.facilityId);if(!f)return failure('ไม่พบเฟอร์นิเจอร์');return move(state,{facilityId:f.id,x:f.x,y:f.y,rotation:((f.rotation||0)+1)%4});}
+
+export function getPartitionCost(width,height){const area=width*height;return{gold:40+area*8,wood:Math.ceil(area*.45),stone:Math.ceil(area*.15)};}
+export function canPlacePartition(state,room,ignoreId=null,checkAccess=true){
+ if(!room||!ROOM_TYPES[room.type]||!Number.isInteger(room.width)||!Number.isInteger(room.height)||room.width<2||room.height<2||room.width>14||room.height>14)return failure('ขนาดห้องต้องเป็น 2–14 ช่อง');
+ if(!finiteNumber(room.x)||!finiteNumber(room.y)||!Number.isInteger(room.x*4)||!Number.isInteger(room.y*4)||!Number.isInteger(room.rotation)||room.rotation<0||room.rotation>3)return failure('ตำแหน่งหรือทิศห้องไม่ถูกต้อง');
+ const area=partitionRect(room),b=buildingRect(state);
+ if(!containsRect(b,area))return failure('สร้างห้องได้ในพื้นที่อาคารที่เปิดแล้ว');
+ if((state.rooms||[]).some(other=>other.id!==ignoreId&&intersects(area,partitionRect(other))))return failure('ห้องทับกัน');
+ if(state.facilities.some(f=>{const a={...f,...getRoomSize(f.type,f.rotation||0)};return intersects(a,area)&&!containsRect(area,a,.25);}))return failure('ผนังห้องทับของ ต้องย้ายของก่อน');
+ const planned={...state,rooms:[...(state.rooms||[]).filter(r=>r.id!==ignoreId),room]};
+ if(checkAccess&&!hasWalkableEntries(planned,state.facilities))return failure('ต้องเว้นทางผ่านประตูห้องและทางใช้งานของ');
+ return success('วางห้องได้');
+}
+function buildPartition(state,payload){
+ const room={id:'partition-'+state.nextId,type:payload.type,x:payload.x,y:payload.y,width:payload.width,height:payload.height,rotation:payload.rotation??0};
+ const place=canPlacePartition(state,room);if(!place.ok)return place;
+ const cost=getPartitionCost(room.width,room.height);if(!canAfford(state,cost))return failure('วัสดุสร้างห้องไม่เพียงพอ');
+ transact(state,cost,'สร้าง'+ROOM_TYPES[room.type].name);state.nextId++;state.rooms.push(room);addLog(state,'กั้น'+ROOM_TYPES[room.type].name+'แล้ว จัดของภายในได้','build');return success('สร้างห้องแล้ว');
+}
+export function previewPartitionMove(state,payload){
+ const room=state.rooms.find(r=>r.id===payload.roomId);if(!room)return failure('ไม่พบห้อง');
+ const next={...room,x:payload.x??room.x,y:payload.y??room.y,width:payload.width??room.width,height:payload.height??room.height,rotation:payload.rotation??room.rotation};
+ const old=partitionRect(room),delta=(next.rotation-room.rotation+4)%4;
+ const members=state.facilities.filter(f=>containsRect(old,{...f,...getRoomSize(f.type,f.rotation||0)}));
+ const included=new Set(members.map(f=>f.id));
+ const facilities=state.facilities.map(f=>{if(!included.has(f.id))return {...f};const d=getRoomSize(f.type,f.rotation||0),x=f.x-old.x,y=f.y-old.y;
+  const [lx,ly]=delta===1?[old.h-y-d.h,x]:delta===2?[old.w-x-d.w,old.h-y-d.h]:delta===3?[y,old.w-x-d.w]:[x,y];
+  return{...f,x:next.x+lx,y:next.y+ly,rotation:((f.rotation||0)+delta)%4};});
+ const planned={...state,rooms:state.rooms.map(r=>r.id===room.id?next:r),facilities};
+ if(facilities.some(f=>included.has(f.id)&&!containsRect(partitionRect(next),{...f,...getRoomSize(f.type,f.rotation||0)},.25)))return failure('ย้ายของออกก่อนลดขนาดห้อง');
+ const place=canPlacePartition(planned,next,room.id);if(!place.ok)return place;
+ if(facilities.some(f=>!canPlaceFacility(planned,f.type,f.x,f.y,f.id,f.rotation||0,false).ok))return failure('ห้องหรือของภายในทับของอื่น');
+ const added=Math.max(0,next.width*next.height-room.width*room.height),cost=added?{gold:added*8,wood:Math.ceil(added*.45),stone:Math.ceil(added*.15)}:{};
+ if(!canAfford(state,cost))return failure('วัสดุเพิ่มขนาดห้องไม่เพียงพอ');
+ return{...success('วางห้องได้'),next,facilities,cost};
+}
+function movePartition(state,payload){
+ const preview=previewPartitionMove(state,payload);if(!preview.ok)return preview;
+ if(Object.keys(preview.cost).length)transact(state,preview.cost,'เพิ่มขนาดห้อง');Object.assign(state.rooms.find(r=>r.id===payload.roomId),preview.next);state.facilities.forEach(f=>Object.assign(f,preview.facilities.find(o=>o.id===f.id)));return success('ปรับห้องพร้อมของภายในแล้ว');
+}
+function demolishPartition(state,payload){
+ const room=state.rooms.find(r=>r.id===payload.roomId);if(!room)return failure('ไม่พบห้อง');
+ const refund=Object.fromEntries(Object.entries(getPartitionCost(room.width,room.height)).map(([k,v])=>[k,Math.floor(v*.4)]));
+ transact(state,refund,'รื้อผนังห้อง',1);state.rooms=state.rooms.filter(r=>r.id!==room.id);return success('รื้อผนังแล้ว ของภายในยังอยู่');
+}
 
 export function getUpgradeCost(state, facilityId) {
   const room = typeof facilityId === 'object' ? facilityId : state.facilities.find(facility => facility.id === facilityId);
@@ -704,6 +761,11 @@ export function act(state, type, payload = {}) {
       member.task = payload.task; member.trainingProgress = 0;
       return success('เปลี่ยนงานสมาชิกแล้ว');
     }
+    case 'buildRoom': return buildPartition(state,payload);
+    case 'moveRoom': return movePartition(state,payload);
+    case 'rotateRoom': {const room=state.rooms.find(r=>r.id===payload.roomId);return room?movePartition(state,{roomId:room.id,rotation:(room.rotation+1)%4}):failure('ไม่พบห้อง');}
+    case 'resizeRoom': return movePartition(state,payload);
+    case 'demolishRoom': return demolishPartition(state,payload);
     case 'build': return build(state, payload);
     case 'move': return move(state, payload);
     case 'rotate': return rotate(state,payload);
@@ -738,7 +800,7 @@ export function deserializeGame(source) {
   const savedChecksum = data.checksum;
   delete data.checksum;
   if (savedChecksum !== undefined && (typeof savedChecksum !== 'string' || savedChecksum !== saveChecksum(JSON.stringify(data)))) throw new Error('ไฟล์เซฟเสียหายหรือข้อมูลถูกเปลี่ยนหลังบันทึก');
-  if (![1,2,SAVE_VERSION].includes(data.version)) throw new Error('เวอร์ชันเซฟนี้ยังไม่รองรับ');
+  if (![1,2,3,SAVE_VERSION].includes(data.version)) throw new Error('เวอร์ชันเซฟนี้ยังไม่รองรับ');
   // Clone through JSON above; imports can never change the caller's previous state.
   const defaults = createGame(data.seed || 123);
   const state = { ...defaults, ...data };
@@ -788,6 +850,8 @@ export function deserializeGame(source) {
   }
   const b=state.building;
   if(!b||b.x!==5||b.y!==4||!Number.isInteger(b.level)||b.level<0||b.level>3||b.width!==8+b.level*2||b.height!==6+b.level*2||b.x+b.width>state.grid.width||b.y+b.height>state.grid.height)throw new Error('ขนาดอาคารไม่ถูกต้อง');
+  state.rooms=data.rooms??[];if(!Array.isArray(state.rooms)||state.rooms.length>50)throw new Error('รายการห้องไม่ถูกต้อง');
+  const partitionIds=new Set();for(const room of state.rooms){if(!room||typeof room.id!=='string'||partitionIds.has(room.id)||!canPlacePartition(state,room,room.id,false).ok)throw new Error('ผังห้องไม่ถูกต้อง');partitionIds.add(room.id);}
   const roomIds = new Set();
   for (const room of state.facilities) {
     if (!room || typeof room.id !== 'string' || roomIds.has(room.id) || !FACILITIES[room.type]) throw new Error('ห้องไม่ถูกต้อง');
@@ -846,7 +910,7 @@ export function deserializeGame(source) {
   for (const [id, value] of Object.entries(state.eventCooldowns)) if (!GUILD_EVENTS.some(event => event.id === id) || !finiteNumber(value) || value < 0 || value > 1000000000) throw new Error('เวลากิจกรรมไม่ถูกต้อง');
   state.log = Array.isArray(data.log) ? data.log.filter(item => item && typeof item.text === 'string' && item.text.length < 1000).slice(0, MAX_LOG) : defaults.log;
   state.ledger = Array.isArray(data.ledger) ? data.ledger.filter(item => item && typeof item.text === 'string' && finiteNumber(item.gold)).slice(0, MAX_LEDGER) : [];
-  state.nextId = Math.max(Number.isInteger(data.nextId) ? data.nextId : 10, ...[...roomIds, ...missionIds].map(id => (Number(id.split('-').pop()) || 0) + 1));
+  state.nextId = Math.max(Number.isInteger(data.nextId) ? data.nextId : 10, ...[...roomIds,...partitionIds, ...missionIds].map(id => (Number(id.split('-').pop()) || 0) + 1));
   state.rng = state.rng >>> 0 || 123;
   state.members.forEach(member => { if (assigned.has(member.id)) member.task = 'mission'; else if (member.task === 'mission') member.task = 'rest'; });
   state.version = SAVE_VERSION;

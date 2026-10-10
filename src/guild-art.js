@@ -1,5 +1,5 @@
-import { buildingRect,siteRoads,siteDecorations } from './site.js';
-import { FACILITIES } from './content.js';
+import { buildingRect,siteRoads,siteDecorations,partitionRect,partitionDoor } from './site.js';
+import { FACILITIES,ROOM_TYPES } from './content.js';
 
 // Original pixel artwork. Every floor and object uses the same 2:1 projection.
 const {rect:R,poly:P,line:L,ellipse:E,rng,createCanvas}=window.ArtCore;
@@ -103,6 +103,25 @@ export function makeBuilding(state){
  for(let x=0;x<w;x++)if(Math.abs(x+.5-w/2)>.75)add('cut-x-'+x,x,h,object(c=>wall(c,'x',1,6)),6);
  for(let y=0;y<h;y++)add('cut-y-'+y,w,y,object(c=>wall(c,'y',1,6)),6);
  add('entrance',w/2-.75,h,object(c=>{cube(c,0,0,1.5,.38,-3,3,'#ae9e82','#dac49e','#8f8b76');cube(c,0,.38,1.5,.34,-6,3,'#a99b7f','#d6c09c','#908c76');}),8);
+ return{layers};
+}
+export function makePartition(room,state){
+ const a=partitionRect(room),b=buildingRect(state),w=a.w,h=a.h,door=partitionDoor(room),layers=[];
+ const add=(name,x,y,sprite,sort)=>layers.push({name,x:a.x+x,y:a.y+y,sort,sprite});
+ add('floor',0,0,stamp((w+h)*24+12,(w+h)*12+12,h*24+6,5,c=>{
+  top(c,0,0,w,h,.15,ROOM_TYPES[room.type].color,C.edge);
+  for(let yy=.25;yy<h;yy+=.25){stroke(c,[.04,yy,.2],[w-.04,yy,.2],'#c0a585');stroke(c,[.04,yy+.04,.2],[w-.04,Math.min(h-.04,yy+.04),.2],'#e8d5b5');}
+ }),-9400);
+ const sides=[{name:'north',axis:'x',x:0,y:0,span:w,height:23,skip:a.y===b.y},
+ {name:'west',axis:'y',x:0,y:0,span:h,height:23,skip:a.x===b.x},
+ {name:'south',axis:'x',x:0,y:h,span:w,height:7,skip:a.y+h===b.y+b.h},
+ {name:'east',axis:'y',x:w,y:0,span:h,height:7,skip:a.x+w===b.x+b.w}];
+ for(const side of sides){if(side.skip)continue;const doorSide=['south','west','north','east'][room.rotation||0]===side.name,center=side.span/2;
+  const cuts=[0,side.span];for(let t=1;t<side.span;t++)cuts.push(t);if(doorSide)cuts.push(center-door.width/2,center+door.width/2);cuts.sort((a,b)=>a-b);
+  for(let i=0;i<cuts.length-1;i++){const start=cuts[i],end=cuts[i+1];if(end-start<.01||doorSide&&Math.abs((start+end)/2-center)<door.width/2)continue;
+   const x=side.x+(side.axis==='x'?start:0),y=side.y+(side.axis==='y'?start:0);add(side.name+'-'+i,x,y,object(c=>wall(c,side.axis,end-start,side.height)),(end-start)*6);
+  }
+ }
  return{layers};
 }
 function contains(rect,x,y){return x>=rect.x&&x<rect.x+rect.w&&y>=rect.y&&y<rect.y+rect.h;}

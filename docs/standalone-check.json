@@ -3,7 +3,7 @@
   "engine": "Phaser",
   "version": "3.90.0",
   "renderer": "WebGL",
-  "externalRequests": 0,
+  "projection": "isometric 2:1",
   "desktopViewport": [
     1440,
     960
@@ -12,95 +12,20 @@
     390,
     844
   ],
-  "landscapeViewport": [
-    844,
-    390
-  ],
-  "offlineFileOpened": true,
-  "initialMenuClosed": true,
-  "fullViewport": true,
-  "zoom": true,
-  "projection": "isometric 2:1",
-  "roomSelections": 6,
-  "selectionAfterPanZoom": true,
-  "mobileMove": true,
-  "mobileRotate": true,
-  "buildingExpansion": true,
-  "errors": [],
-  "landscape": {
-    "engine": "Phaser",
-    "version": "3.90.0",
-    "renderer": "WebGL",
-    "ready": true,
-    "viewport": [
-      844,
-      390
-    ],
-    "zoom": 0.7704402515723271,
-    "projection": "isometric 2:1",
-    "roomCount": 6,
-    "building": {
-      "x": 5,
-      "y": 4,
-      "width": 8,
-      "height": 6,
-      "level": 0
-    },
-    "drawnParts": 35,
-    "camera": {
-      "width": 844,
-      "height": 390,
-      "scrollX": 126,
-      "scrollY": 99,
-      "focus": [
-        548,
-        294
-      ]
-    },
-    "canvas": [
-      844,
-      390
-    ]
-  },
-  "deliveredFile": "play-free-layout-d2ae1f2c.html",
-  "sha256": "d2ae1f2ce5cd600cc17aece04a37460a02c27e596f33f69bde9b8a35b12e0805",
-  "bytes": 834620,
+  "deliveredFile": "play-rooms-49608b46.html",
+  "sha256": "49608b4692253682b88640f3e4abb5c4b008f3318797e53cb68223f86be763d8",
+  "bytes": 856307,
   "exactDeliveryOpened": true,
-  "finalPhone": {
-    "engine": "Phaser",
-    "version": "3.90.0",
-    "renderer": "WebGL",
-    "ready": true,
-    "viewport": [
-      390,
-      844
-    ],
-    "zoom": 0.8116591928251121,
-    "projection": "isometric 2:1",
-    "roomCount": 6,
-    "building": {
-      "x": 5,
-      "y": 4,
-      "width": 8,
-      "height": 6,
-      "level": 0
-    },
-    "drawnParts": 35,
-    "camera": {
-      "width": 390,
-      "height": 844,
-      "scrollX": 353,
-      "scrollY": -128,
-      "focus": [
-        548,
-        294
-      ]
-    },
-    "canvas": [
-      390,
-      844
-    ]
-  },
-  "characterDirections": 4,
-  "rotationArt": 4
+  "emptyStart": true,
+  "customRoomSize": true,
+  "roomRotationCarriesFurniture": true,
+  "roomMovementCarriesFurniture": true,
+  "stagedExtension": true,
+  "rankGate": true,
+  "mobileRoomPlacement": true,
+  "mobileRoomRotation": true,
+  "saveReload": true,
+  "offline": true,
+  "externalRequests": 0,
+  "errors": []
 }

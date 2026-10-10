@@ -1,0 +1,17 @@
+{
+  "file": "play-rooms-49608b46.html",
+  "sha256": "49608b4692253682b88640f3e4abb5c4b008f3318797e53cb68223f86be763d8",
+  "bytes": 856307,
+  "emptyStart": true,
+  "customRoomSize": true,
+  "roomRotationCarriesFurniture": true,
+  "roomMovementCarriesFurniture": true,
+  "stagedExtension": true,
+  "rankGate": true,
+  "mobileRoomPlacement": true,
+  "mobileRoomRotation": true,
+  "saveReload": true,
+  "offline": true,
+  "externalRequests": 0,
+  "errors": []
+}

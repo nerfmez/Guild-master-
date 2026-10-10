@@ -162,7 +162,7 @@ test('version one bookkeeping migrates safely and unavailable stories cannot be 
   data.version = 1;
   delete data.daily; delete data.goals; delete data.eventCooldowns; delete data.inventory;
   const state = deserializeGame(JSON.stringify(data));
-  assert.equal(state.version, 3);
+  assert.equal(state.version, 4);
   assert.ok(state.daily.missionCounts);
   assert.equal(act(state, 'sendMission', { questId: 'heart', memberIds: party }).ok, false);
   state.rep = 999;
@@ -341,8 +341,37 @@ test('old room saves migrate to furnishings while retaining progress and rejecti
  const old=createGame(27);old.version=2;delete old.building;
  const places=[[4,3],[8,3],[12,3],[4,6],[8,6],[12,6]];
  old.facilities.forEach((f,i)=>{f.x=places[i][0];f.y=places[i][1];delete f.rotation;});old.facilities[1].level=2;old.gold=2314;old.members[0].level=4;
- const migrated=deserializeGame(JSON.stringify(old));assert.equal(migrated.version,3);assert.equal(migrated.gold,2314);assert.equal(migrated.members[0].level,4);assert.equal(migrated.facilities[1].level,2);assert.equal(migrated.facilities.length,6);assert.doesNotThrow(()=>serializeGame(migrated));
+ const migrated=deserializeGame(JSON.stringify(old));assert.equal(migrated.version,4);assert.equal(migrated.gold,2314);assert.equal(migrated.members[0].level,4);assert.equal(migrated.facilities[1].level,2);assert.equal(migrated.facilities.length,6);assert.doesNotThrow(()=>serializeGame(migrated));
  old.facilities[1].x=old.facilities[0].x;assert.throws(()=>deserializeGame(JSON.stringify(old)),/ผัง/);
 });
 
  test('mission preview accepts missing selections without throwing',()=>{assert.doesNotThrow(()=>previewMission(createGame(),'patrol',null));});
+
+
+test('empty floor accepts player-sized rooms and door access governs furniture placement',()=>{
+ const s=createGame();assert.deepEqual(s.rooms,[]);
+ assert.equal(act(s,'buildRoom',{type:'dorm',x:10,y:4,width:3,height:3}).ok,true);
+ assert.equal(s.rooms.length,1);const before=JSON.stringify(s);
+ for(const payload of [{type:'hall',x:9,y:4,width:3,height:3},{type:'hall',x:12,y:7,width:3,height:3},{type:'hall',x:5,y:4,width:3,height:2,rotation:2}])assert.equal(act(s,'buildRoom',payload).ok,false);
+ assert.equal(JSON.stringify(s),before);assert.deepEqual(deserializeGame(serializeGame(s)),s);
+ assert.equal(act(s,'move',{facilityId:'room-5',x:9.5,y:6.5}).ok,false,'Furniture cannot straddle a partition');
+});
+
+test('moving and rotating a room carries its furniture and shrinking refuses to discard objects',()=>{
+ const s=createGame();act(s,'buildRoom',{type:'dorm',x:10,y:4,width:3,height:3});const room=s.rooms[0];
+ assert.equal(act(s,'rotateRoom',{roomId:room.id}).ok,true);assert.equal(s.facilities.find(f=>f.id==='room-2').rotation,1);
+ assert.equal(act(s,'expandBuilding').ok,true);
+ assert.equal(act(s,'moveRoom',{roomId:room.id,x:11.75,y:5.5}).ok,true);
+ assert.equal(s.facilities.find(f=>f.id==='room-2').x,12.25);assert.equal(s.facilities.find(f=>f.id==='room-2').y,6);
+ const before=JSON.stringify(s);assert.equal(act(s,'resizeRoom',{roomId:room.id,width:2,height:2}).ok,false);assert.equal(JSON.stringify(s),before);
+ assert.equal(act(s,'resizeRoom',{roomId:room.id,width:4,height:3}).ok,true);assert.deepEqual(deserializeGame(serializeGame(s)),s);
+ assert.equal(act(s,'demolishRoom',{roomId:room.id}).ok,true);assert.equal(s.rooms.length,0);assert.equal(s.facilities.length,6);
+});
+
+test('floor extensions unlock in order with rank requirements and v3 saves keep an open floor',()=>{
+ const s=createGame();s.gold=10000;s.wood=500;s.stone=500;
+ assert.equal(act(s,'expandBuilding').ok,true);const before=JSON.stringify(s);assert.equal(act(s,'expandBuilding').ok,false);assert.equal(JSON.stringify(s),before);
+ s.rank='E';assert.equal(act(s,'expandBuilding').ok,true);assert.equal(act(s,'expandBuilding').ok,false);
+ s.rank='D';assert.equal(act(s,'expandBuilding').ok,true);assert.equal(s.building.width,14);assert.equal(s.building.height,12);assert.equal(act(s,'expandBuilding').ok,false);
+ const old=createGame();old.version=3;delete old.rooms;const restored=deserializeGame(JSON.stringify(old));assert.deepEqual(restored.rooms,[]);assert.deepEqual(restored.facilities,old.facilities);assert.equal(restored.gold,old.gold);
+});

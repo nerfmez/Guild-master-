@@ -1,14 +1,14 @@
-import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,buildingRect } from './site.js';
+import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,buildingRect,partitionSize,partitionRect,pointInRect } from './site.js';
 import { FACILITIES } from './content.js';
-import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility } from './game.js';
+import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove } from './game.js';
 import { makeActorTexture } from './render.js';
-import { makeBuilding,makeRoom,makeGround,makeCottage,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
+import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 export class GuildRenderer {
  constructor(canvas,onSelect=()=>{}){
   this.canvas=canvas;this.onSelect=onSelect;this.state={facilities:[],members:[],missions:[]};
-  this.zoom=1;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.signature='';this.buildType=null;this.moveId=null;this.rotation=0;this.siteProps=[];
+  this.zoom=1;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.signature='';this.buildType=null;this.moveId=null;this.rotation=0;this.siteProps=[];this.roomMode=null;this.roomMoveId=null;
   this.pointers=new Map();this.elapsed=0;this.ready=false;this.frozen=new URLSearchParams(location.search).has('still');
   const owner=this;
   class GuildScene extends Phaser.Scene{
@@ -46,7 +46,7 @@ export class GuildRenderer {
  }
 
  setState(state){
-  this.state=state;const signature=JSON.stringify([state.grid,state.building,state.facilities.map(f=>[f.id,f.type,f.x,f.y,f.level,f.rotation])]);
+  this.state=state;const signature=JSON.stringify([state.grid,state.building,state.rooms,state.facilities.map(f=>[f.id,f.type,f.x,f.y,f.level,f.rotation])]);
   if(signature!==this.signature){this.signature=signature;if(this.ready)this.rebuild();}
   if(this.ready)this.syncActors();
  }
@@ -56,6 +56,7 @@ export class GuildRenderer {
   for(const image of this.siteProps)image.destroy();this.siteProps=[];
   for(const d of siteDecorations(this.state)){const p=gridPoint(d.x,d.y);this.siteProps.push(this.put('outside-'+d.type,makeOutdoor(d.type),p.x,p.y,p.y+12));}
   for(const part of makeBuilding(this.state).layers){const p=gridPoint(part.x,part.y),key='building-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
+  for(const room of this.state.rooms||[])for(const part of makePartition(room,this.state).layers){const p=gridPoint(part.x,part.y),key='partition-'+room.id+'-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
   for(const f of this.state.facilities)for(const part of makeRoom(f).layers){const p=gridPoint(f.x+part.x,f.y+part.y),key='furniture-'+f.id+'-'+part.name;const image=this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort);this.rooms.push(image);this.furnitureSprites.push({f,image,canvas:part.sprite.canvas,alpha:part.sprite.canvas.getContext('2d').getImageData(0,0,part.sprite.canvas.width,part.sprite.canvas.height).data});}
   if(!this.userPanned){const b=buildingRect(this.state),p=gridPoint(b.x+b.w/2,b.y+b.h/2);this.focusX=p.x;this.focusY=p.y+22;this.applyView();}
  }
@@ -105,8 +106,9 @@ export class GuildRenderer {
  resetView(){this.center();}
  setZoom(z){this.zoom=Math.max(.6,Math.min(2.4,Number(z)||1));this.applyView();}
  rotatePlacement(){this.rotation=(this.rotation+1)%4;this.drawGhost();return this.rotation;}
- setBuildMode(type){this.buildType=type;this.moveId=null;this.rotation=0;this.canvas.style.cursor=type?'crosshair':'grab';}
- setMoveMode(id){this.moveId=id;this.buildType=null;this.rotation=this.state.facilities.find(f=>f.id===id)?.rotation||0;this.canvas.style.cursor=id?'crosshair':'grab';}
+ setBuildMode(type){this.roomMode=null;this.roomMoveId=null;this.buildType=type;this.moveId=null;this.rotation=0;this.canvas.style.cursor=type?'crosshair':'grab';}
+ setMoveMode(id){this.roomMode=null;this.roomMoveId=null;this.moveId=id;this.buildType=null;this.rotation=this.state.facilities.find(f=>f.id===id)?.rotation||0;this.canvas.style.cursor=id?'crosshair':'grab';}
+ setRoomMode(room,id=null){this.buildType=null;this.moveId=null;this.roomMode=room?{...room}:null;this.roomMoveId=id;this.rotation=room?.rotation||0;this.canvas.style.cursor=room?'crosshair':'grab';}
  worldToScreen(x,y){const p=gridPoint(x/32,y/32),z=this.camera?.zoom||1;return{x:(p.x-(this.focusX??548))*z+this.width/2,y:(p.y-(this.focusY??294))*z+this.height/2};}
  screenPoint(e){const b=this.canvas.getBoundingClientRect();return{x:(e.clientX-b.left)*this.width/b.width,y:(e.clientY-b.top)*this.height/b.height};}
  worldPoint(p){const z=this.camera.zoom;return{x:(p.x-this.width/2)/z+this.focusX,y:(p.y-this.height/2)/z+this.focusY};}
@@ -124,21 +126,23 @@ export class GuildRenderer {
  }
  select(p){
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
+  if(this.roomMode){this.onSelect({kind:this.roomMoveId?'moveRoom':'room',x,y,roomId:this.roomMoveId,rotation:this.rotation});return;}
   if(this.buildType){this.onSelect({kind:'build',x,y,rotation:this.rotation});return;}if(this.moveId){this.onSelect({kind:'move',x,y,facilityId:this.moveId,rotation:this.rotation});return;}
   for(const a of [...this.actors.values()].sort((a,b)=>b.y-a.y))if(!a.away&&Math.abs(p.x-a.x)<11&&p.y>a.y-44&&p.y<a.y+4){this.onSelect({kind:'member',id:a.member.id});return;}
   for(const a of [...this.furnitureSprites].sort((a,b)=>b.image.depth-a.image.depth)){const x=Math.floor(p.x-a.image.x),y=Math.floor(p.y-a.image.y);if(x>=0&&y>=0&&x<a.canvas.width&&y<a.canvas.height&&a.alpha[(y*a.canvas.width+x)*4+3]>50){this.onSelect({kind:'facility',id:a.f.id});return;}}
   for(const f of this.state.facilities){const d=getRoomSize(f.type,f.rotation||0);if(tile.x>=f.x&&tile.x<f.x+d.w&&tile.y>=f.y&&tile.y<f.y+d.h){this.onSelect({kind:'facility',id:f.id});return;}}
+  for(const room of this.state.rooms||[])if(pointInRect(partitionRect(room),tile)){this.onSelect({kind:'partition',id:room.id});return;}
  }
  drawGhost(){
-  this.ghost.clear();if(!this.buildType&&!this.moveId)return;
-  const f=this.state.facilities.find(f=>f.id===this.moveId),type=this.buildType||f?.type,d=FACILITIES[type]&&getRoomSize(type,this.rotation);if(!d)return;
+  this.ghost.clear();if(!this.buildType&&!this.moveId&&!this.roomMode)return;
+  const f=this.state.facilities.find(f=>f.id===this.moveId),type=this.buildType||f?.type,d=this.roomMode?partitionSize({...this.roomMode,rotation:this.rotation}):FACILITIES[type]&&getRoomSize(type,this.rotation);if(!d)return;
   const {width:w,height:h}=this.state.grid,g=this.ghost;g.lineStyle(1,0xf4e4b8,.3);
   for(let x=0;x<=w;x++){const a=gridPoint(x,0),b=gridPoint(x,h);g.lineBetween(a.x,a.y,b.x,b.y);}for(let y=0;y<=h;y++){const a=gridPoint(0,y),b=gridPoint(w,y);g.lineBetween(a.x,a.y,b.x,b.y);}
   if(!this.hover)return;const tile=gridPosition(this.hover.x,this.hover.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4,polygon=gridPolygon(x,y,d.w,d.h);
-  const key=this.signature+'|'+type+'|'+x+'|'+y+'|'+this.rotation+'|'+this.moveId;if(this.ghostCheck?.key!==key)this.ghostCheck={key,ok:canPlaceFacility(this.state,type,x,y,this.moveId,this.rotation).ok};
-  const good=this.ghostCheck.ok,color=good?0x92c583:0xdb8468;g.fillStyle(color,.45);g.fillPoints(polygon,true);g.lineStyle(2,color,1);g.strokePoints(polygon,true);
+  const key=this.signature+'|'+type+'|'+x+'|'+y+'|'+this.rotation+'|'+this.moveId+'|'+JSON.stringify(this.roomMode);if(this.ghostCheck?.key!==key){const candidate=this.roomMode&&{...this.roomMode,x,y,rotation:this.rotation};const place=candidate?this.roomMoveId?previewPartitionMove(this.state,{roomId:this.roomMoveId,x,y,rotation:this.rotation}):canPlacePartition(this.state,candidate):canPlaceFacility(this.state,type,x,y,this.moveId,this.rotation);this.ghostCheck={key,ok:place.ok};}
+  const good=this.ghostCheck.ok,color=good?0x92c583:0xdb8468;g.fillStyle(color,.45);g.fillPoints(polygon,true);g.lineStyle(2,color,1);g.strokePoints(polygon,true);if(this.roomMode){const r=this.rotation,p=r===0?gridPoint(x+d.w/2,y+d.h):r===1?gridPoint(x,y+d.h/2):r===2?gridPoint(x+d.w/2,y):gridPoint(x+d.w,y+d.h/2);g.fillStyle(0xffefd0,1);g.fillCircle(p.x,p.y,4);}
  }
 
- getInfo(){return{engine:'Phaser',version:Phaser.VERSION,renderer:this.game.renderer.type===Phaser.WEBGL?'WebGL':'unknown',ready:this.ready,viewport:[this.width,this.height],zoom:this.camera?.zoom,projection:'isometric 2:1',roomCount:this.state.facilities.length,building:{...this.state.building},drawnParts:this.rooms.length,camera:{width:this.camera?.width,height:this.camera?.height,scrollX:this.camera?.scrollX,scrollY:this.camera?.scrollY,focus:[this.focusX,this.focusY]},canvas:[this.canvas.width,this.canvas.height]};}
+ getInfo(){return{engine:'Phaser',version:Phaser.VERSION,renderer:this.game.renderer.type===Phaser.WEBGL?'WebGL':'unknown',ready:this.ready,viewport:[this.width,this.height],zoom:this.camera?.zoom,projection:'isometric 2:1',roomCount:(this.state.rooms||[]).length,facilityCount:this.state.facilities.length,building:{...this.state.building},drawnParts:this.rooms.length,camera:{width:this.camera?.width,height:this.camera?.height,scrollX:this.camera?.scrollX,scrollY:this.camera?.scrollY,focus:[this.focusX,this.focusY]},canvas:[this.canvas.width,this.canvas.height]};}
  destroy(){this.game.destroy(false);}
 }
