@@ -5,7 +5,7 @@ const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, spawnMonster, pointIn, worldRandom } from './life.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
-import { tickTown, sanitizePaths } from './town.js';
+import { tickTown, sanitizePaths, sanitizeHomes, population, spotFree, ROTATABLE, homeOf } from './town.js';
 import { createTrade, sellLoot, tickTrade, dailyTrade, wholesale, sendCaravan, treasureAction, sanitizeTrade } from './trade.js';
 export const SAVE_VERSION = 5;
 export const DAY_LENGTH = 240;
@@ -98,7 +98,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0,
     policy: { memberHunting: true, autoPetitions: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, trade: 0, paths: {} }, trade: createTrade(), idleBank: 0,
+    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -886,16 +886,19 @@ function syncImportant(state) {
 }
 export function getVillageInfo(state) {
   const v = state.village || { prosperity: 0, houses: 3 };
+  // A level needs both prosperity and people living in the village.
+  const people = population(state);
   let index = 0;
-  for (let i = 0; i < VILLAGE_LEVELS.length; i++) if (v.prosperity >= VILLAGE_LEVELS[i].prosperity) index = i;
+  for (let i = 0; i < VILLAGE_LEVELS.length; i++) if (v.prosperity >= VILLAGE_LEVELS[i].prosperity && people >= VILLAGE_LEVELS[i].population) index = i;
   const now = VILLAGE_LEVELS[index], next = VILLAGE_LEVELS[index + 1] || null;
-  return { level: now.level, name: now.name, prosperity: Math.floor(v.prosperity), next, progress: next ? clamp((v.prosperity - now.prosperity) / (next.prosperity - now.prosperity), 0, 1) : 1,
+  const part = (have, from, to) => to > from ? clamp((have - from) / (to - from), 0, 1) : 1;
+  return { level: now.level, name: now.name, prosperity: Math.floor(v.prosperity), population: people, next, progress: next ? Math.min(part(v.prosperity, now.prosperity, next.prosperity), part(people, now.population, next.population)) : 1,
     houses: v.houses, maxHouses: Math.min(VILLAGE_LOTS.houses.length, 2 + now.level * 2), ...Object.fromEntries(VILLAGE_BUSINESSES.map(id => [id, v[id] || 0])),
     interval: petitionInterval(state), maxWaiting: 2 + Math.floor(now.level / 2), maxPosted: 4 + roomLevel(state, 'reception'), idleRate: idleRate(state) };
 }
 function petitionInterval(state) {
-  const houses = state.village?.houses || 0, sign = state.upgrades?.signboard || 0;
-  return Math.max(10, Math.round(52 / ((1 + sign * 0.1) * (1 + houses * 0.12))));
+  const people = population(state), sign = state.upgrades?.signboard || 0;
+  return Math.max(10, Math.round(52 / ((1 + sign * 0.1) * (1 + people * 0.04))));
 }
 /** Gold per second that keeps flowing in, even while the game is closed. */
 export function idleRate(state) { return Math.round(((state.upgrades?.coffer || 0) * 0.25 + (state.village?.market || 0) * 0.15) * 100) / 100; }
@@ -949,7 +952,8 @@ function spawnPetition(state) {
     && state.petitions.filter(p => p.questId === q.id).length < 2);
   if (!open.length) return null;
   // Villagers bring work that suits the guild's standing: mostly at its rank, less of what it has outgrown.
-  const weights = open.map(q => { const gap = rankIndex(state.rank) - rankIndex(q.rank); return gap <= 0 ? 3 : gap === 1 ? 1.2 : 0.5; });
+  // Work the guild has never done comes a little more often, so its record stays varied.
+  const weights = open.map(q => { const gap = rankIndex(state.rank) - rankIndex(q.rank); return (gap <= 0 ? 3 : gap === 1 ? 1.2 : 0.5) * (state.completedQuests[q.id] ? 1 : 2); });
   let pick = petitionRandom(state) * weights.reduce((a, b) => a + b, 0), quest = open[0];
   for (let i = 0; i < open.length; i++) { if (pick < weights[i]) { quest = open[i]; break; } pick -= weights[i]; }
   return addPetition(state, quest.id);
@@ -1216,7 +1220,7 @@ function tickErrands(state) {
   for (const member of state.members) if (member.errand && state.elapsed >= member.errand.end) finishErrand(state, member);
 }
 function tickVillage(state, step) {
-  tickTown(state, step, getVillageInfo(state).level);
+  tickTown(state, step, getVillageInfo(state).level, (text, type) => addLog(state, text, type));
   state.idleBank = (state.idleBank || 0) + idleRate(state) * step;
   settleIdle(state);
   for (const member of state.members) {
@@ -1301,6 +1305,20 @@ function buyUpgrade(state, payload) {
   addLog(state, `${u.name} เป็นระดับ ${level + 1}`, 'build');
   return success(`${u.name} ระดับ ${level + 1}`);
 }
+/** Move a village building, or turn it to face the other way; its footpath grows again from the new door. */
+function moveVillageBuilding(state, payload) {
+  const key = String(payload.key || ''), spot = payload.spot || {}, house = /^h\d{1,2}$/.test(key);
+  const kind = house ? 'house' : key, built = house ? +key.slice(1) < (state.village.houses || 0) : state.village[key] > 0;
+  if (!built || (!house && !VILLAGE_BUSINESSES.includes(key))) return failure('ไม่พบอาคารนี้');
+  const rot = spot.rot === 1 ? 1 : 0;
+  if (rot && !ROTATABLE(key)) return failure('อาคารนี้หมุนไม่ได้');
+  if (!finiteNumber(spot.x) || !finiteNumber(spot.y) || Math.abs(spot.x) > 90 || Math.abs(spot.y) > 90) return failure('ตำแหน่งที่ตั้งไม่ถูกต้อง');
+  const x = Math.round(spot.x * 4) / 4, y = Math.round(spot.y * 4) / 4;
+  if (!spotFree(state, key, kind, x, y, rot)) return failure('ทับอาคารอื่นหรือที่ดินกิลด์');
+  state.village.lots = { ...(state.village.lots || {}), [key]: { x, y, ...(rot ? { rot: 1 } : {}) } };
+  if (state.village.paths) delete state.village.paths[key];
+  return success('ย้ายอาคารแล้ว ทางเดินจะค่อย ๆ เกิดใหม่จากประตู');
+}
 function buildProject(state, payload) {
   const id = payload.projectId, p = VILLAGE_PROJECTS[id], status = getProjectStatus(state, id);
   if (!status.ok) return failure(status.reason);
@@ -1308,7 +1326,7 @@ function buildProject(state, payload) {
   const key = id === 'house' ? 'h' + state.village.houses : id, spot = payload.spot;
   if (spot && (!finiteNumber(spot.x) || !finiteNumber(spot.y) || Math.abs(spot.x) > 90 || Math.abs(spot.y) > 90)) return failure('ตำแหน่งที่ตั้งไม่ถูกต้อง');
   transact(state, status.cost, `หมู่บ้าน: ${p.name}`);
-  if (spot && !state.village.lots?.[key]) state.village.lots = { ...(state.village.lots || {}), [key]: { x: Math.round(spot.x * 4) / 4, y: Math.round(spot.y * 4) / 4 } };
+  if (spot && !state.village.lots?.[key]) state.village.lots = { ...(state.village.lots || {}), [key]: { x: Math.round(spot.x * 4) / 4, y: Math.round(spot.y * 4) / 4, ...(spot.rot === 1 && ROTATABLE(key) ? { rot: 1 } : {}) } };
   if (id === 'house') state.village.houses += 1; else state.village[id] = (state.village[id] || 0) + 1;
   if (id === 'shop' || id === 'smithy') restockShops(state);
   const before = getVillageInfo(state).level;
@@ -1627,6 +1645,7 @@ function command(state, type, payload = {}) {
     case 'setBuyRate': if (!BUY_RATES[payload.rate]) return failure('ราคารับซื้อไม่ถูกต้อง'); state.trade.buyRate = payload.rate; return success(`ตั้งราคารับซื้อเป็น${BUY_RATES[payload.rate].name}`);
     case 'setAutoWholesale': state.trade.autoWholesale = Boolean(payload.on); return success(state.trade.autoWholesale ? 'โกดังใกล้เต็มจะขายส่งเอง' : 'เก็บของไว้ทั้งหมด ไม่ขายเอง');
     case 'toggleWorkshop': if (!VILLAGE_PROJECTS[payload.workshop] || !['tannery', 'apothecary', 'jeweler'].includes(payload.workshop)) return failure('ไม่พบโรงงานนี้'); state.trade.halt[payload.workshop] = !state.trade.halt[payload.workshop]; if (!state.trade.halt[payload.workshop]) delete state.trade.halt[payload.workshop]; return success(state.trade.halt[payload.workshop] ? `${VILLAGE_PROJECTS[payload.workshop].name}หยุดรับวัตถุดิบ` : `${VILLAGE_PROJECTS[payload.workshop].name}กลับมาทำงาน`);
+    case 'moveVillageBuilding': return moveVillageBuilding(state, payload);
     case 'wholesale': return wholesale(state, tradeContext(state), payload);
     case 'sendCaravan': return sendCaravan(state, tradeContext(state), payload);
     case 'sellTreasure': return treasureAction(state, tradeContext(state), payload, false);
@@ -1827,9 +1846,12 @@ export function deserializeGame(source) {
   validateNumber(village, 'houses', 0, VILLAGE_LOTS.houses.length, true);
   for (const id of VILLAGE_BUSINESSES) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
   state.village = { prosperity: village.prosperity, houses: village.houses, ...Object.fromEntries(VILLAGE_BUSINESSES.map(id => [id, village[id]])), trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
-  const lots = Object.fromEntries(Object.entries(village.lots && typeof village.lots === 'object' ? village.lots : {}).filter(([key, lot]) => (/^h\d{1,2}$/.test(key) || VILLAGE_BUSINESSES.includes(key)) && lot && finiteNumber(lot.x) && finiteNumber(lot.y) && Math.abs(lot.x) <= 90 && Math.abs(lot.y) <= 90).map(([key, lot]) => [key, { x: lot.x, y: lot.y }]));
+  const lots = Object.fromEntries(Object.entries(village.lots && typeof village.lots === 'object' ? village.lots : {}).filter(([key, lot]) => (/^h\d{1,2}$/.test(key) || VILLAGE_BUSINESSES.includes(key)) && lot && finiteNumber(lot.x) && finiteNumber(lot.y) && Math.abs(lot.x) <= 90 && Math.abs(lot.y) <= 90).map(([key, lot]) => [key, { x: lot.x, y: lot.y, ...(lot.rot === 1 && ROTATABLE(key) ? { rot: 1 } : {}) }]));
   if (Object.keys(lots).length) state.village.lots = lots;
   state.village.paths = sanitizePaths(village.paths);
+  // Older saves had no homes of their own: give each house the look it had from the village level.
+  const oldTier = (() => { let lv = 1; for (const l of VILLAGE_LEVELS) if (village.prosperity >= l.prosperity) lv = l.level; return lv >= 5 ? 2 : lv >= 3 ? 1 : 0; })();
+  state.village.homes = village.homes ? sanitizeHomes(village.homes, state.village.houses) : Object.fromEntries([...Array(state.village.houses).keys()].map(i => ['h' + i, { tier: oldTier, progress: 0 }]));
   state.idleBank = finiteNumber(data.idleBank) ? clamp(data.idleBank, 0, 1000000) : 0;
   const appIds = new Set();
   state.applicants = (Array.isArray(data.applicants) ? data.applicants : []).filter(a => a && typeof a.id === 'string' && !appIds.has(a.id) && appIds.add(a.id) && ['coming', 'waiting'].includes(a.status)

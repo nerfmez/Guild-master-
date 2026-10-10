@@ -190,11 +190,32 @@ export const GUILD_UPGRADES = {
 
 // ---- The village: homes and businesses that grow with prosperity. ----
 export const VILLAGE_LEVELS = [
-  { level: 1, prosperity: 0, name: 'หมู่บ้านเล็ก ๆ' },
-  { level: 2, prosperity: 250, name: 'หมู่บ้านอบอุ่น' },
-  { level: 3, prosperity: 900, name: 'หมู่บ้านคึกคัก' },
-  { level: 4, prosperity: 2600, name: 'ตำบลริมทาง' },
-  { level: 5, prosperity: 8500, name: 'เมืองใบอ่อน' },
+  { level: 1, prosperity: 0, population: 0, name: 'หมู่บ้านเล็ก ๆ' },
+  { level: 2, prosperity: 250, population: 10, name: 'หมู่บ้านอบอุ่น' },
+  { level: 3, prosperity: 900, population: 20, name: 'หมู่บ้านคึกคัก' },
+  { level: 4, prosperity: 2600, population: 34, name: 'ตำบลริมทาง' },
+  { level: 5, prosperity: 8500, population: 55, name: 'เมืองใบอ่อน' },
+];
+/** Homes grow by themselves when what their families need is close by. */
+export const HOUSE_TIERS = [
+  { name: 'กระท่อม', residents: 3, people: 'ชาวบ้าน' },
+  { name: 'บ้านไม้', residents: 5, people: 'ชาวบ้าน' },
+  { name: 'บ้านอิฐ', residents: 7, people: 'ช่างฝีมือ' },
+  { name: 'บ้านสองชั้น', residents: 10, people: 'พ่อค้า' },
+];
+/** What a home needs nearby to grow: which buildings provide it and how far it reaches (grid units). */
+export const HOME_NEEDS = {
+  food: { name: 'อาหาร', icon: '🍞', from: ['shop', 'market', 'bakery'], reach: 18 },
+  goods: { name: 'ของใช้', icon: '🧺', from: ['smithy', 'tannery', 'apothecary', 'jeweler', 'market'], reach: 18 },
+  road: { name: 'ถนนถึงบ้าน', icon: '🛤', road: 0.5 },
+  safety: { name: 'ความปลอดภัย', icon: '🛡', from: ['guild', 'dojo'], reach: 16 },
+  leisure: { name: 'ที่พักผ่อน', icon: '🎪', from: ['inn', 'market', 'arena'], reach: 18 },
+};
+/** Needs for the next tier, and the village level a tier waits for. */
+export const HOUSE_UPGRADES = [
+  { needs: ['food'], level: 1, time: 150 },
+  { needs: ['food', 'goods', 'road'], level: 2, time: 260 },
+  { needs: ['food', 'goods', 'road', 'safety', 'leisure'], level: 3, time: 380 },
 ];
 export const VILLAGE_PROJECTS = {
   house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง' },

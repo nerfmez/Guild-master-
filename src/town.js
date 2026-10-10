@@ -2,7 +2,7 @@
    winding around whatever stands in the way and joining paths that are already there. Paths start as
    trodden trails and wear into dirt roads, and into cobbles once the village is a town.
    Pure logic: grid units only, no drawing. */
-import { VILLAGE_LOTS, VILLAGE_BUSINESSES, BUILDING_FOOTPRINTS } from './content.js';
+import { VILLAGE_LOTS, VILLAGE_BUSINESSES, BUILDING_FOOTPRINTS, HOUSE_TIERS, HOME_NEEDS, HOUSE_UPGRADES } from './content.js';
 import { buildingRect, WORLD_PATHS, SITE_COTTAGES } from './site.js';
 
 const RES = 0.5;
@@ -10,11 +10,15 @@ const lotOf = (state, key) => state.village?.lots?.[key] || (key[0] === 'h' ? VI
 /** Every village building standing now, as rectangles in grid units. */
 export function villageBuildings(state) {
   const v = state.village || {}, out = [];
-  for (let i = 0; i < Math.min(v.houses || 0, VILLAGE_LOTS.houses.length); i++) { const at = lotOf(state, 'h' + i), [w, h] = BUILDING_FOOTPRINTS.house; if (at) out.push({ key: 'h' + i, x: at.x, y: at.y, w, h }); }
-  for (const id of VILLAGE_BUSINESSES) if (v[id] > 0) { const at = lotOf(state, id), [w, h] = BUILDING_FOOTPRINTS[id]; if (at) out.push({ key: id, x: at.x, y: at.y, w, h }); }
+  const add = (key, kind) => { const at = lotOf(state, key); if (!at) return; const [fw, fh] = BUILDING_FOOTPRINTS[kind], rot = at.rot === 1 ? 1 : 0; out.push({ key, kind, x: at.x, y: at.y, w: rot ? fh : fw, h: rot ? fw : fh, rot }); };
+  for (let i = 0; i < Math.min(v.houses || 0, VILLAGE_LOTS.houses.length); i++) add('h' + i, 'house');
+  for (const id of VILLAGE_BUSINESSES) if (v[id] > 0) add(id, id);
   return out;
 }
-export const doorOf = b => ({ x: b.x + b.w / 2, y: b.y + b.h + 0.5 });
+/** Buildings can turn: rot 0 faces their door south-west (+y), rot 1 south-east (+x); the art is mirrored. */
+export const ROTATABLE = key => key[0] === 'h' || !['market', 'arena'].includes(key);
+export const footprintOf = (kind, rot) => { const [w, h] = BUILDING_FOOTPRINTS[kind] || BUILDING_FOOTPRINTS.house; return rot === 1 ? [h, w] : [w, h]; };
+export const doorOf = b => b.rot === 1 ? { x: b.x + b.w + 0.5, y: b.y + b.h / 2 } : { x: b.x + b.w / 2, y: b.y + b.h + 0.5 };
 
 /** The roads a new path may join: village streets, world trails and paths grown earlier. */
 function network(state, except) {
@@ -41,7 +45,7 @@ export function routePath(state, key) {
   const all = villageBuildings(state), me = all.find(b => b.key === key);
   if (!me) return null;
   // Leave by whichever side faces the nearest road: the front door, or a side or back door.
-  const lines = network(state, key), sides = [doorOf(me), { x: me.x + me.w / 2, y: me.y - 0.5 }, { x: me.x - 0.5, y: me.y + me.h / 2 }, { x: me.x + me.w + 0.5, y: me.y + me.h / 2 }];
+  const front = doorOf(me), lines = network(state, key), sides = [front, ...[{ x: me.x + me.w / 2, y: me.y - 0.5 }, { x: me.x - 0.5, y: me.y + me.h / 2 }, { x: me.x + me.w + 0.5, y: me.y + me.h / 2 }, { x: me.x + me.w / 2, y: me.y + me.h + 0.5 }].filter(p => Math.hypot(p.x - front.x, p.y - front.y) > 0.1)];
   const start = sides.map(p => ({ ...p, d: nearestOn(lines, p.x, p.y).d + (p === sides[0] ? 0 : 1.5) })).sort((a, b) => a.d - b.d)[0], goal = nearestOn(lines, start.x, start.y);
   if (goal.d < 0.6) return [[start.x, start.y], [goal.x, goal.y]].map(p => p.map(v => Math.round(v * 4) / 4));
   const g = buildingRect(state), solid = [...all.map(b => ({ x: b.x - 0.3, y: b.y - 0.3, w: b.w + 0.6, h: b.h + 0.6 })), { x: g.x - 0.5, y: g.y - 0.5, w: g.w + 1, h: g.h + 0.6 },
@@ -79,9 +83,60 @@ export function routePath(state, key) {
   return pts.map(p => [Math.round(p.x * 4) / 4, Math.round(p.y * 4) / 4]).filter((p, k, a) => !k || p[0] !== a[k - 1][0] || p[1] !== a[k - 1][1]);
 }
 
+// ---- Homes and the people in them ----
+const center = b => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
+/** Where each kind of service stands: village buildings plus the guild, the inn and the bakery. */
+function providers(state, all = villageBuildings(state)) {
+  const g = buildingRect(state), out = all.filter(b => b.kind !== 'house').map(b => ({ kind: b.kind, ...center(b) }));
+  out.push({ kind: 'guild', x: g.x + g.w / 2, y: g.y + g.h / 2 });
+  for (const c of SITE_COTTAGES) out.push({ kind: c.style, x: c.x + c.w / 2, y: c.y + c.h / 2 });
+  return out;
+}
+export const homeOf = (state, key) => state.village?.homes?.[key] || { tier: 0, progress: 0 };
+/** Which needs a home has met right now. */
+export function needsMet(state, key, list = providers(state), all = villageBuildings(state)) {
+  const b = all.find(x => x.key === key); if (!b) return {};
+  const at = center(b), out = {};
+  for (const [id, n] of Object.entries(HOME_NEEDS)) {
+    if (n.road) { out[id] = (state.village?.paths?.[key]?.wear || 0) >= n.road && (state.village?.paths?.[key]?.pts?.length || 0) > 1; continue; }
+    out[id] = list.some(p => n.from.includes(p.kind) && Math.hypot(p.x - at.x, p.y - at.y) <= n.reach);
+  }
+  return out;
+}
+/** The next step for a home: what it still needs, and how far along it is. */
+export function homeStatus(state, key, villageLevel) {
+  const home = homeOf(state, key), next = HOUSE_UPGRADES[home.tier], met = needsMet(state, key);
+  if (!next) return { tier: home.tier, done: true, met, missing: [] };
+  const missing = next.needs.filter(id => !met[id]);
+  return { tier: home.tier, next, met, missing, levelOk: villageLevel >= next.level, progress: home.progress };
+}
+export function population(state) {
+  let n = 0; for (let i = 0; i < Math.min(state.village?.houses || 0, VILLAGE_LOTS.houses.length); i++) n += HOUSE_TIERS[homeOf(state, 'h' + i).tier]?.residents || 0;
+  return n;
+}
+const HOME_CLOCK = new WeakMap();
+/** Homes whose needs are met grow one tier at a time; nobody is ever moved back down. */
+function growHomes(state, step, villageLevel, log) {
+  const v = state.village; v.homes ??= {};
+  // Homes only change slowly: look again about once a second of game time.
+  const clock = (HOME_CLOCK.get(v) || 0) + step;
+  if (clock < 1) { HOME_CLOCK.set(v, clock); return; }
+  step = clock; HOME_CLOCK.set(v, 0);
+  const all = villageBuildings(state), list = providers(state, all);
+  for (let i = 0; i < Math.min(v.houses || 0, VILLAGE_LOTS.houses.length); i++) {
+    const key = 'h' + i, home = v.homes[key] ??= { tier: 0, progress: 0 }, next = HOUSE_UPGRADES[home.tier];
+    if (!next) continue;
+    const met = needsMet(state, key, list, all), ok = villageLevel >= next.level && next.needs.every(id => met[id]);
+    home.progress = ok ? home.progress + step / next.time : Math.max(0, home.progress - step / (next.time * 4));
+    if (home.progress >= 1) { home.tier += 1; home.progress = 0; log?.(`🏡 บ้านหลังหนึ่งในหมู่บ้านขยายเป็น${HOUSE_TIERS[home.tier].name} มี${HOUSE_TIERS[home.tier].people}ย้ายมาเพิ่ม`, 'build'); }
+  }
+  for (const key of Object.keys(v.homes)) if (!/^h\d+$/.test(key) || +key.slice(1) >= (v.houses || 0)) delete v.homes[key];
+}
+
 /** Paths for new buildings appear on their own; feet wear them into roads over time. */
-export function tickTown(state, step, villageLevel) {
+export function tickTown(state, step, villageLevel, log) {
   const v = state.village; if (!v) return;
+  growHomes(state, step, villageLevel, log);
   v.paths ??= {};
   const standing = new Set(villageBuildings(state).map(b => b.key));
   for (const key of Object.keys(v.paths)) if (!standing.has(key)) delete v.paths[key];
@@ -98,4 +153,18 @@ export function sanitizePaths(data) {
     out[key] = { pts, wear: typeof p.wear === 'number' && p.wear >= 0 && p.wear <= 1 ? p.wear : 0.2 };
   }
   return out;
+}
+export function sanitizeHomes(data, houses) {
+  const out = {};
+  for (const [key, h] of Object.entries(data && typeof data === 'object' ? data : {})) {
+    if (!/^h\d{1,2}$/.test(key) || +key.slice(1) >= houses || !h) continue;
+    out[key] = { tier: Number.isInteger(h.tier) && h.tier >= 0 && h.tier < HOUSE_TIERS.length ? h.tier : 0, progress: typeof h.progress === 'number' && h.progress >= 0 && h.progress < 1 ? h.progress : 0 };
+  }
+  return out;
+}
+/** Can this building stand here, turned this way? Checks other village buildings and the guild only. */
+export function spotFree(state, key, kind, x, y, rot) {
+  const [w, h] = footprintOf(kind, rot), g = buildingRect(state), others = villageBuildings(state).filter(b => b.key !== key);
+  const hit = r => x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y;
+  return !others.some(o => hit({ x: o.x - 0.4, y: o.y - 0.4, w: o.w + 0.8, h: o.h + 0.8 })) && !hit({ x: g.x - 1, y: g.y - 1, w: g.w + 2, h: g.h + 3 });
 }

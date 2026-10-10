@@ -521,6 +521,8 @@ test('idle guild upgrades and village projects grow income, petitions and the vi
   assert.equal(state.village.houses, 4);
   assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, false, 'a small village only has so many lots');
   state.village.prosperity = 1000;
+  assert.equal(getVillageInfo(state).level, 2, 'a village level also needs people living there');
+  for (let i = 0; i < 4; i++) state.village.homes['h' + i] = { tier: 2, progress: 0 };
   assert.equal(getVillageInfo(state).level, 3);
   assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, true);
   assert.equal(act(state, 'buildProject', { projectId: 'market' }).ok, true);
@@ -950,4 +952,35 @@ test('the village grows its own footpaths: new buildings get a winding path to t
   assert.equal(pathTier(0.9, 4), 'cobble'); assert.equal(pathTier(0.9, 2), 'dirt');
   const back = deserializeGame(serializeGame(state));
   assert.deepEqual(back.village.paths.dojo.pts, state.village.paths.dojo.pts, 'paths survive save and load');
+});
+
+test('homes grow by themselves when what families need is nearby; village levels need people; buildings can move and turn', async () => {
+  const { homeStatus, population, villageBuildings, doorOf } = await import('../src/town.js');
+  const state = createGame(121);
+  state.gold = 99999; state.wood = 999; state.stone = 999;
+  assert.equal(population(state), 9, 'three cottages of three');
+  // Without food nearby a cottage waits; with a shop next door it grows into a wooden house.
+  const before = homeStatus(state, 'h0', 1);
+  assert.deepEqual(before.missing, before.met.food ? [] : ['food']);
+  assert.equal(act(state, 'buildProject', { projectId: 'shop', spot: { x: 1, y: 25 } }).ok, true);
+  tick(state, 170);
+  assert.equal(state.village.homes.h0.tier, 1, 'the cottage became a wooden house');
+  assert.ok(population(state) > 9);
+  assert.ok(state.log.some(e => /ขยายเป็นบ้านไม้/.test(e.text)));
+  // A village level needs people as well as prosperity.
+  state.village.prosperity = 3000;
+  assert.ok(getVillageInfo(state).level < 4, 'not enough people for a town yet');
+  // Buildings can be turned: the footprint swaps and the door (and its path) moves to the other face.
+  const shop = villageBuildings(state).find(b => b.key === 'shop');
+  assert.equal(act(state, 'moveVillageBuilding', { key: 'shop', spot: { x: shop.x, y: shop.y, rot: 1 } }).ok, true);
+  const turned = villageBuildings(state).find(b => b.key === 'shop');
+  assert.equal(turned.rot, 1); assert.equal(turned.w, shop.h); assert.equal(turned.h, shop.w);
+  assert.ok(doorOf(turned).x > turned.x + turned.w, 'the door faces east now');
+  tick(state, 2);
+  assert.ok(state.village.paths.shop.pts.length >= 2, 'a new path grows from the new door');
+  assert.equal(act(state, 'moveVillageBuilding', { key: 'shop', spot: { x: 6, y: 5 } }).ok, false, 'not on the guild');
+  assert.equal(act(state, 'moveVillageBuilding', { key: 'market', spot: { x: 30, y: 30, rot: 1 } }).ok, false, 'not built');
+  const back = deserializeGame(serializeGame(state));
+  assert.equal(back.village.lots.shop.rot, 1);
+  assert.equal(back.village.homes.h0.tier, 1);
 });
