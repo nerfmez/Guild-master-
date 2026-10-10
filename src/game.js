@@ -114,7 +114,7 @@ export const PROFILE_LOOKS = {
   skin: ['#f7d4ae', '#e8b88c', '#b9805a'],
   hairStyle: ['short', 'long'],
 };
-export const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ใบอ่อน', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short' };
+export const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ดาวเหนือ', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short' };
 /** Clean player-entered names and look choices; unknown values fall back to defaults. */
 export function normalizeProfile(input = {}) {
   const text = (value, fallback) => { const clean = String(value ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20); return clean || fallback; };

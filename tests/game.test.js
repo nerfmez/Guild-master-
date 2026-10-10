@@ -373,7 +373,7 @@ test('guild master profile is cleaned, saved and editable', async () => {
   assert.equal(state.profile.outfit, normalizeProfile({}).outfit);
   assert.equal(deserializeGame(serializeGame(state)).profile.hairStyle, 'long');
   assert.equal(act(state, 'setProfile', { guildName: '' }).ok, true);
-  assert.equal(state.profile.guildName, 'กิลด์ใบอ่อน');
+  assert.equal(state.profile.guildName, 'กิลด์ดาวเหนือ');
   assert.equal(createGame().profile, undefined);
 });
 
