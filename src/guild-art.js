@@ -149,7 +149,10 @@ export function makeGround(state){
  for(const[x,y]of[[.25,.25],[state.grid.width-.25,.25],[.25,state.grid.height-.25],[state.grid.width-.25,state.grid.height-.25]]){
   const[a,b]=q(x,y);R(c,a-1,b-8,3,9,'#aa9673');R(c,a-1,b-8,3,2,'#e0c9a0');
  }
- c.restore();return{canvas};
+ c.restore();
+ // Fade the village ground's edges so it melts into the world floor around it.
+ c.save();c.globalCompositeOperation='destination-in';c.translate(548,300);c.scale(1,.55);const fade=c.createRadialGradient(0,0,330,0,0,560);fade.addColorStop(0,'rgba(0,0,0,1)');fade.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=fade;c.fillRect(-700,-900,1400,1800);c.restore();
+ return{canvas};
 }
 
 export function makeCottage({roof='#8fa0b1',seed=1}={}){

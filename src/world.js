@@ -3,7 +3,7 @@ import { FACILITIES } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove } from './game.js';
 import { makeActorTexture } from './render.js';
 import { QUESTS } from './content.js';
-import { REGIONS_WORLD,ROAD_EXTENSIONS,QUEST_SITES,VILLAGE_HOMES,questRoute,regionOpen,makeRegionGround,makeRoad,makeFoeSprite,makePillar,makeGateSign } from './overworld.js';
+import { WORLD,QUEST_SITES,VILLAGE_HOMES,SIGNPOSTS,questRoute,regionOpen,biomeAt,makeWorldGround,scatterNature,mistTint,makeFoeSprite,makeFlowers,makeBellTower,makeCrystals,makeHollowOak,makeAncientTree,makeCampfire,makeBridge,makeLogBarrier,makeFog,makeSignText } from './overworld.js';
 import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeOutdoor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
@@ -35,7 +35,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R24',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R25',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -125,39 +125,57 @@ export class GuildRenderer {
 
  // ---- The world outside: regions, roads, village, roaming foes and travelling teams. ----
  decorateWorld(){
-  for(const road of ROAD_EXTENSIONS){const g=makeRoad(road);this.scene.add.image(g.x,g.y,this.texture('road-'+road.x+'-'+road.y,g.canvas)).setOrigin(0).setDepth(-9998);}
-  for(const [id,z] of Object.entries(REGIONS_WORLD)){const g=makeRegionGround(id);this.scene.add.image(g.x,g.y,this.texture('region-'+id,g.canvas)).setOrigin(0).setDepth(-9997);}
-  const N=window.VillageNature,r=(seed=>()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;})(9091);
-  const near=(x,y)=>Object.values(QUEST_SITES).some(s=>Math.hypot(s.x-x,s.y-y)<3.2)||Math.abs(y-17.5)<1.6||Math.abs(x-2)<1.4&&y<-12;
-  for(const [id,z] of Object.entries(REGIONS_WORLD)){
-   const cx=(z.x0+z.x1)/2,cy=(z.y0+z.y1)/2,rx=(z.x1-z.x0)/2,ry=(z.y1-z.y0)/2,count=id==='mist'?46:34;
-   for(let i=0;i<count;i++){const a=r()*Math.PI*2,k=Math.sqrt(r())*.95,x=cx+Math.cos(a)*rx*k,y=cy+Math.sin(a)*ry*k;if(near(x,y))continue;const p=gridPoint(x,y),seed=300+(i%6)+id.length*50;
-    if(id==='ruins'){if(r()<.45)this.put('pillar-'+seed%4,makePillar(seed%4+1),p.x,p.y);else if(r()<.6)this.put('rock-'+seed%2,N.makeRock({seed,size:seed%2?'large':'small'}),p.x,p.y);else this.put('bush-wg'+seed%4,N.makeBush({seed:seed%4,gold:true}),p.x,p.y);}
-    else if(r()<(id==='mist'?.75:.45))this.put('tree-w'+seed+(id==='meadow'&&seed%3===0?'g':''),N.makeTree({seed,season:id==='meadow'&&seed%3===0?'gold':'green',kind:seed%2?'oak':'birch'}),p.x,p.y);
-    else if(r()<.5)this.put('bush-w'+seed%4+id,N.makeBush({seed:seed%4,gold:id==='meadow'}),p.x,p.y);
-    else this.put('tuft-'+seed%4+id,N.makeGrassTuft({seed:seed%4,flowers:id==='meadow'}),p.x,p.y);}
-   const l=gridPoint(z.label.x,z.label.y);this.scene.add.text(l.x,l.y,{meadow:'ทุ่งใบชา',ruins:'ซากหอระฆัง',mist:'ป่าหมอกจันทร์'}[id],{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'11px',fontStyle:'bold',color:'#fff8e7',stroke:'#4f4540',strokeThickness:3}).setOrigin(.5).setDepth(-9000).setAlpha(.9).setResolution(2);
+  // Floor: one soft, blended ground image for the whole world, under the village's own detailed ground.
+  const g=makeWorldGround(),t=this.scene.textures;if(t.exists('world-ground'))t.remove('world-ground');t.addCanvas('world-ground',g.canvas).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  this.scene.add.image(g.x,g.y,'world-ground').setOrigin(0).setScale(g.scale).setDepth(-9999.5);
+  const N=window.VillageNature,V=window.VillageProps;this.worldProps=[];
+  const meta=this.propMeta??=new Map();const place=(key,make,x,y,depth)=>{const p=gridPoint(x,y);let s=meta.get(key);if(!s||!this.scene.textures.exists(key)){s=make();meta.set(key,s);this.texture(key,s.canvas);}const image=this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(depth??p.y);this.worldProps.push(image);return image;};
+  const bridge=makeBridge();this.texture('world-bridge',bridge.canvas);this.scene.add.image(bridge.x,bridge.y,'world-bridge').setOrigin(0).setDepth(bridge.depthY);
+  // Nature thickens from scattered trees into woods and misty forest; mist tints trees deeper in.
+  for(const item of scatterNature()){
+   if(item.kind==='tree'){const base=()=>N.makeTree({seed:item.seed,season:item.gold?'gold':'green',kind:item.seed%2?'oak':'birch'});place(`wt-${item.seed}-${item.gold?1:0}-${item.mist}`,()=>mistTint(base(),item.mist),item.x,item.y);}
+   else if(item.kind==='bush')place(`wb-${item.seed}-${item.mist}`,()=>mistTint(N.makeBush({seed:item.seed}),item.mist),item.x,item.y);
+   else if(item.kind==='rock')place(`wr-${item.seed}`,()=>N.makeRock({seed:item.seed,size:item.seed%2?'large':'small'}),item.x,item.y);
+   else place(`wf-${item.seed}`,()=>makeFlowers(item.seed),item.x,item.y,gridPoint(item.x,item.y).y-20);
   }
-  for(let i=0;i<60;i++){const x=-14+r()*60,y=-14+r()*40;if(x>-6&&x<28&&y>-4&&y<26||near(x,y))continue;const p=gridPoint(x,y),seed=700+(i%8);this.put('tree-v'+seed,N.makeTree({seed,season:seed%4===0?'gold':'green',kind:seed%2?'oak':'birch'}),p.x,p.y);}
-  for(const [x,y,seed] of VILLAGE_HOMES){const p=gridPoint(x,y);this.put('home-'+seed,makeCottage({seed,roof:['#8fa0b1','#c98a72','#a39bb8','#d6b072'][seed%4]}),p.x,p.y,p.y+30);}
-  for(const [id,q] of Object.entries(QUEST_SITES)){const p=gridPoint(q.x,q.y);this.put('site-sign-'+id,window.VillageProps.makeProp('sign',{seed:id.length*13}),p.x-30,p.y-8);}
-  // Foes roam each region; their textures are baked once per quest.
-  this.foes=[];this.worldSigns=[];this.signRank=null;
-  for(const [id,z] of Object.entries(REGIONS_WORLD)){const quest=QUESTS.find(q=>q.region===id);for(let i=0;i<5;i++){const x=z.x0+(z.x1-z.x0)*(.25+r()*.5),y=z.y0+(z.y1-z.y0)*(.25+r()*.5);this.foes.push({region:id,quest,x,y,tx:x,ty:y,wait:r()*3,image:this.scene.add.image(0,0,this.foeTexture(quest,.42)).setOrigin(.5,1)});}}
-  this.parties=new Map();
+  for(const [x,y,seed] of VILLAGE_HOMES)place('home-'+seed,()=>makeCottage({seed,roof:['#8fa0b1','#c98a72','#a39bb8','#d6b072'][seed%4]}),x,y,gridPoint(x,y).y+30);
+  // Landmarks where quests happen.
+  const S=QUEST_SITES;
+  for(let i=0;i<5;i++)place('fence-'+(i%2),()=>V.makeProp('fence-h',{seed:i%2,length:3}),S.patrol.x-3+i*1.2,S.patrol.y-3.2);
+  place('lm-cart',()=>V.makeProp('cart',{seed:5}),S.escort.x+1.2,S.escort.y-1.2);
+  for(let i=0;i<5;i++)place('lm-herb-'+(i%3),()=>N.makeBush({seed:10+i%3}),S.herbs.x-2+(i%3)*1.4,S.herbs.y-1.5+Math.floor(i/3)*2.6);
+  place('lm-hollow',makeHollowOak,S.hollow.x+2.4,S.hollow.y-1.5);
+  place('lm-crystals',makeCrystals,S.crystals.x+2.2,S.crystals.y-1.4);
+  place('lm-tower',makeBellTower,S.ruins.x+3,S.ruins.y-2);
+  for(let i=0;i<3;i++)place('lm-lamp',()=>V.makeProp('lamp',{seed:7}),S.mistpath.x-2+i*2.2,S.mistpath.y-1.8+(i%2)*3.2);
+  this.campfire=place('lm-fire-0',()=>makeCampfire(0),S.rescue.x+1.6,S.rescue.y-.6);if(!this.scene.textures.exists('lm-fire-1'))this.texture('lm-fire-1',makeCampfire(1).canvas);
+  place('lm-ancient',makeAncientTree,S.heart.x+3,S.heart.y-3);
+  for(const sign of SIGNPOSTS)place('sign-'+sign.region,()=>makeSignText(sign.text),sign.x,sign.y);
+  // Drifting fog over the misty woods.
+  this.fogs=[];for(let i=0;i<16;i++){const x=-22+(i*7.3)%34,y=-62+(i*5.9)%28;if(biomeAt(x,y).mist<.35)continue;const p=gridPoint(x,y);if(!this.scene.textures.exists('fog-'+i%3))this.texture('fog-'+i%3,makeFog(i%3).canvas);this.fogs.push({image:this.scene.add.image(p.x,p.y,'fog-'+i%3).setDepth(p.y+80).setAlpha(.55),x:p.x,y:p.y,phase:i});}
+  // Foes roam near their homes: slimes in the meadow, golems on the hills, guardians in the woods.
+  this.foes=[];this.worldSigns=[];this.signRank=null;this.parties=new Map();
+  const homes={meadow:[[-26,26],[-34,18],[-20,28],[-40,28],[-30,20]],ruins:[[56,6],[60,14],[66,4],[52,22],[64,-8]],mist:[[-4,-34],[6,-44],[-8,-54],[8,-50],[-2,-60]]};
+  for(const [region,list] of Object.entries(homes)){const quest=QUESTS.find(q=>q.region===region&&!q.story)||QUESTS.find(q=>q.region===region);for(const [x,y] of list)this.foes.push({region,quest,hx:x,hy:y,x,y,tx:x,ty:y,wait:Math.random()*3,image:this.scene.add.image(0,0,this.foeTexture(quest,.42)).setOrigin(.5,1)});}
  }
  foeTexture(quest,scale,flash=false){const key=`foe-${quest.id}-${scale}-${flash?1:0}`;if(!this.scene.textures.exists(key)){const s=makeFoeSprite(quest,scale,flash);this.texture(key,s.canvas);}return key;}
  refreshWorldSigns(){
   const key=this.state.rank;if(this.signRank===key||!this.scene)return;this.signRank=key;for(const s of this.worldSigns||[])s.destroy();this.worldSigns=[];
-  for(const [id,z] of Object.entries(REGIONS_WORLD))if(!regionOpen(this.state,id)){const rank={meadow:'F',ruins:'D',mist:'B'}[id],p=gridPoint(z.gate.x,z.gate.y),s=makeGateSign(`ต้องเป็นกิลด์ ${rank}`);this.texture('gate-'+id+rank,s.canvas);this.worldSigns.push(this.scene.add.image(p.x-s.footX,p.y-s.footY,'gate-'+id+rank).setOrigin(0).setDepth(p.y));}
+  for(const sign of SIGNPOSTS)if(!regionOpen(this.state,sign.region)){const rank={meadow:'F',ruins:'D',mist:'B'}[sign.region],p=gridPoint(sign.x+1.2,sign.y-1.6);
+   if(!this.scene.textures.exists('barrier'))this.texture('barrier',makeLogBarrier().canvas);const b=makeLogBarrier();this.worldSigns.push(this.scene.add.image(p.x-b.footX,p.y-b.footY,'barrier').setOrigin(0).setDepth(p.y));
+   const lock=makeSignText(`ต้องเป็นกิลด์ ${rank}`,true),q=gridPoint(sign.x+2.4,sign.y-2.6);this.texture('lock-'+sign.region+rank,lock.canvas);this.worldSigns.push(this.scene.add.image(q.x-lock.footX,q.y-lock.footY,'lock-'+sign.region+rank).setOrigin(0).setDepth(q.y));}
  }
  updateWorld(dt,playing){
   if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;
   for(const f of this.foes){
-   if(playing){f.wait-=dt;if(f.wait<=0){const z=REGIONS_WORLD[f.region];f.tx=Math.max(z.x0+3,Math.min(z.x1-3,f.x+(Math.random()-.5)*8));f.ty=Math.max(z.y0+3,Math.min(z.y1-3,f.y+(Math.random()-.5)*8));f.wait=3+Math.random()*4;}
+   if(playing){f.wait-=dt;if(f.wait<=0){f.tx=f.hx+(Math.random()-.5)*7;f.ty=f.hy+(Math.random()-.5)*7;f.wait=3+Math.random()*4;}
     const dx=f.tx-f.x,dy=f.ty-f.y,d=Math.hypot(dx,dy);if(d>.05){f.x+=dx/d*Math.min(d,dt*.8);f.y+=dy/d*Math.min(d,dt*.8);}}
    const p=gridPoint(f.x,f.y);f.image.setPosition(Math.round(p.x),Math.round(p.y+Math.sin(t*3+f.x)*1.5)).setDepth(p.y).setFlipX(f.tx<f.x);
   }
+  for(const fog of this.fogs||[])fog.image.setPosition(fog.x+Math.sin(t*.12+fog.phase)*40,fog.y+Math.cos(t*.09+fog.phase)*10).setAlpha(.4+Math.sin(t*.3+fog.phase)*.15);
+  if(this.campfire)this.campfire.setTexture(Math.floor(t*6)%2?'lm-fire-1':'lm-fire-0');
+  // Only draw world props near the view.
+  this.cullClock=(this.cullClock||0)-dt;if(this.cullClock<=0&&this.camera){this.cullClock=.25;const v=this.camera.worldView,m=220;for(const img of this.worldProps||[])img.setVisible(img.x+img.width>v.x-m&&img.x<v.right+m&&img.y+img.height>v.y-m&&img.y<v.bottom+m);for(const f of this.foes)f.image.setVisible(f.image.x>v.x-m&&f.image.x<v.right+m&&f.image.y>v.y-m&&f.image.y<v.bottom+m+60);}
   // Mission foes, strike effects and the floating quest tag for each travelling team.
   const live=new Set();
   for(const m of this.state.missions||[]){if(m.status!=='active'&&m.status!=='decision')continue;const quest=QUESTS.find(q=>q.id===m.questId);if(!quest)continue;live.add(m.id);
@@ -194,6 +212,8 @@ export class GuildRenderer {
   if(i===0&&party){if(!party.tag)party.tag=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'7px',fontStyle:'bold',color:'#5a4a36',backgroundColor:'#f8edd3',padding:{x:3,y:1}}).setOrigin(.5,1).setResolution(2);
    const pending=m.event&&!m.event.resolved,text=`${pending?'! ':''}${quest.name} ${Math.round(ratio*100)}%`;if(party.tag.text!==text)party.tag.setText(text);party.tag.setBackgroundColor(pending?'#fff1c4':'#f8edd3').setPosition(Math.round(p.x),Math.round(p.y-27)).setDepth(p.y+200).setVisible(true);}
  }
+ clampFocus(){const a=gridPoint(WORLD.x0,WORLD.y1),b=gridPoint(WORLD.x1,WORLD.y0),c=gridPoint(WORLD.x0,WORLD.y0),d=gridPoint(WORLD.x1,WORLD.y1);this.focusX=Math.max(a.x+300,Math.min(b.x-300,this.focusX));this.focusY=Math.max(c.y+200,Math.min(d.y-200,this.focusY));}
+ focusGrid(x,y,zoom){const p=gridPoint(x,y);this.focusX=p.x;this.focusY=p.y;this.userPanned=true;if(zoom)this.zoom=zoom;this.applyView();}
  focusMission(id){this.followMission=id;const a=[...this.actors.values()].find(a=>a.missionId===id&&a.image.visible)||[...this.actors.values()].find(a=>a.missionId===id);const m=(this.state.missions||[]).find(m=>m.id===id),quest=m&&QUESTS.find(q=>q.id===m.questId),site=quest&&QUEST_SITES[quest.id];
   const p=a?.image.visible?{x:a.x,y:a.y}:site?gridPoint(site.x,site.y):null;if(!p)return;this.focusX=p.x;this.focusY=p.y;this.userPanned=true;this.applyView();}
  roomFor(m){let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
@@ -356,7 +376,7 @@ export class GuildRenderer {
   bind('pointermove',e=>{const p=this.screenPoint(e);this.hover=this.worldPoint(p);if(!this.pointers.has(e.pointerId))return;this.pointers.set(e.pointerId,p);
    if(this.pointers.size===2&&this.pinch){const[a,b]=[...this.pointers.values()];this.setZoom(this.pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/this.pinch.dist);return;}
    if(this.drag?.id===e.pointerId&&this.drag.item){const d=this.drag,t=gridPosition(this.worldPoint(p).x,this.worldPoint(p).y);d.moved=true;d.last=p;this.setPending(t.x-d.offset.x,t.y-d.offset.y);return;}
-   if(this.drag?.id===e.pointerId){const d=this.drag;if(Math.hypot(p.x-d.start.x,p.y-d.start.y)>6){d.moved=true;clearTimeout(d.hold);}if(d.moved){this.userPanned=true;this.followMission=null;this.focusX-=(p.x-d.last.x)/this.camera.zoom;this.focusY-=(p.y-d.last.y)/this.camera.zoom;this.applyView();}d.last=p;}});
+   if(this.drag?.id===e.pointerId){const d=this.drag;if(Math.hypot(p.x-d.start.x,p.y-d.start.y)>6){d.moved=true;clearTimeout(d.hold);}if(d.moved){this.userPanned=true;this.followMission=null;this.clampFocus?.();this.focusX-=(p.x-d.last.x)/this.camera.zoom;this.focusY-=(p.y-d.last.y)/this.camera.zoom;this.applyView();}d.last=p;}});
   bind('pointerup',e=>{const p=this.screenPoint(e);if(this.drag?.id===e.pointerId){clearTimeout(this.drag.hold);if(this.drag.item)this.canvas.style.cursor='crosshair';else if(!this.drag.moved)this.select(this.worldPoint(p));}this.pointers.delete(e.pointerId);if(this.pointers.size<2)this.pinch=null;if(!this.pointers.size)this.drag=null;});
   bind('pointercancel',e=>{clearTimeout(this.drag?.hold);this.pointers.delete(e.pointerId);this.drag=null;this.pinch=null;});bind('pointerleave',()=>{if(!this.drag)this.hover=null;});
   bind('wheel',e=>{e.preventDefault();const p=this.screenPoint(e),before=this.worldPoint(p);this.setZoom(this.zoom*Math.exp(-e.deltaY*.001));const after=this.worldPoint(p);this.focusX+=before.x-after.x;this.focusY+=before.y-after.y;this.applyView();},{passive:false});
