@@ -250,3 +250,40 @@ export const ADVENTURER_RANK_RULES = {
 export const RANK_POWER = { F: 1, E: 1.04, D: 1.08, C: 1.13, B: 1.19, A: 1.26, S: 1.34 };
 /** Class changes: tier 2 needs rank D, level 5 and a dojo; tier 3 waits for rank B in the full game. */
 export const CLASS_TIERS = { 2: { rank: 'D', level: 5, dojo: 1, fee: 150 }, 3: { rank: 'B', level: 13, dojo: 3, fee: 400 } };
+
+// ---- The living world: hunting grounds, monster stats and how each class fights in real time. ----
+/** Hunting grounds on the world map (grid units). Adventurers walk the road waypoints out and back. */
+export const HUNT_ZONES = {
+  meadow: { name: 'ทุ่งใบชา', rank: 'F', x: -24, y: 25, r: 6.5, via: [[6, 17.5], [-12, 17.5], [-18, 19.5], [-23, 22]], species: ['leafSlime', 'hornHare', 'fuzzBee', 'thornling'], count: 8 },
+  woods: { name: 'ป่าต้นโอ๊ก', rank: 'E', x: 2, y: -25, r: 6, via: [[2, 8], [2, -2], [2, -12], [1, -20]], species: ['mushHopper', 'acornBeetle', 'mossWolf'], count: 7 },
+  hills: { name: 'เนินผลึก', rank: 'D', x: 55, y: 15, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15]], species: ['pebbleCrab', 'crystalBat', 'marbleGolem'], count: 7 },
+  mist: { name: 'ป่าหมอกจันทร์', rank: 'C', x: 0, y: -44, r: 6, via: [[2, 8], [2, -2], [2, -12], [1, -20], [5, -28], [2, -36]], species: ['mistWisp', 'lanternGhost', 'glowMoth'], count: 7 },
+};
+/** Monster combat stats: hit points, damage per hit, seconds between hits, reach, walking speed (tiles/s), XP and coin drop. */
+export const MONSTER_STATS = {
+  leafSlime: { hp: 40, atk: 4, rate: 1.5, reach: .8, speed: .7, xp: 6, gold: [2, 5], mat: 'herb' },
+  hornHare: { hp: 50, atk: 6, rate: 1.3, reach: .8, speed: 1.1, xp: 8, gold: [3, 6], mat: 'wood' },
+  fuzzBee: { hp: 44, atk: 5, rate: 1.2, reach: .9, speed: 1, xp: 7, gold: [3, 6], mat: 'herb' },
+  thornling: { hp: 70, atk: 7, rate: 1.6, reach: 1.1, speed: 0, xp: 9, gold: [4, 7], mat: 'wood' },
+  mushHopper: { hp: 75, atk: 8, rate: 1.4, reach: .8, speed: .8, xp: 12, gold: [5, 9], mat: 'herb' },
+  acornBeetle: { hp: 115, atk: 9, rate: 1.6, reach: .8, speed: .6, xp: 14, gold: [6, 10], mat: 'wood' },
+  mossWolf: { hp: 120, atk: 13, rate: 1.2, reach: .9, speed: 1.3, xp: 17, gold: [7, 12], mat: 'herb' },
+  pebbleCrab: { hp: 160, atk: 14, rate: 1.5, reach: .8, speed: .6, xp: 22, gold: [9, 15], mat: 'stone' },
+  crystalBat: { hp: 140, atk: 16, rate: 1.2, reach: .9, speed: 1.2, xp: 24, gold: [10, 16], mat: 'stone' },
+  marbleGolem: { hp: 300, atk: 22, rate: 2, reach: 1, speed: .45, xp: 36, gold: [14, 22], mat: 'stone' },
+  mistWisp: { hp: 220, atk: 22, rate: 1.3, reach: 1, speed: 1, xp: 34, gold: [14, 22], mat: 'herb' },
+  lanternGhost: { hp: 240, atk: 26, rate: 1.5, reach: 1.2, speed: .9, xp: 38, gold: [16, 24], mat: 'herb' },
+  glowMoth: { hp: 200, atk: 20, rate: 1.1, reach: .9, speed: 1.1, xp: 32, gold: [13, 20], mat: 'herb' },
+  hollowKeeper: { hp: 900, atk: 26, rate: 1.8, reach: 1.2, speed: .6, xp: 160, gold: [80, 120], mat: 'wood', boss: true },
+  bellGuardian: { hp: 1800, atk: 40, rate: 2, reach: 1.4, speed: .5, xp: 320, gold: [160, 220], mat: 'stone', boss: true },
+  heartGuardian: { hp: 3000, atk: 55, rate: 2, reach: 1.5, speed: .5, xp: 520, gold: [260, 340], mat: 'herb', boss: true },
+};
+/** How each class line fights: reach in tiles, seconds between attacks, damage multiplier, and a signature skill. */
+export const CLASS_COMBAT = {
+  warrior: { reach: .9, rate: 1.1, dmg: 1, skill: 'guard', skillName: 'กำแพงโล่', skillCd: 9 },
+  archer: { reach: 4.5, rate: 1.2, dmg: .9, skill: 'volley', skillName: 'ยิงสามดอก', skillCd: 8 },
+  mage: { reach: 4, rate: 1.6, dmg: 1.3, skill: 'fireball', skillName: 'ลูกไฟ', skillCd: 10 },
+  healer: { reach: 3.5, rate: 1.5, dmg: .55, skill: 'blessing', skillName: 'แสงอวยพร', skillCd: 12 },
+};
+/** The guild's share of what its members earn hunting, and the trading-post fee everyone pays when selling loot. */
+export const HUNT_ECONOMY = { guildCut: 0.2, marketFee: 0.05, matPrice: 0.8 };

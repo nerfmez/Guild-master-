@@ -1,6 +1,9 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,RANK_POWER,CLASS_TIERS } from './content.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES } from './content.js';
+const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
+import { tickLife, createWorld, rallyDefenders, freeStats, spawnMonster, pointIn, worldRandom, INN, drainFx } from './life.js';
+export { drainFx, freeStats, INN };
 export const SAVE_VERSION = 5;
 export const DAY_LENGTH = 240;
 const RESOURCE_KEYS = ['gold', 'wood', 'stone', 'herb'];
@@ -35,7 +38,7 @@ const roomLevel = (state, type) => state.facilities.reduce((sum, facility) => su
 const bestRoomLevel = (state, type) => Math.max(0, ...state.facilities.filter(room => room.type === type).map(room => room.level));
 const memberById = (state, id) => state.members.find(member => member.id === id);
 // Away on a mission, or on an errand in the village (a lesson, an exam, a class trial).
-const isBusy = (state, memberId) => state.missions.some(mission => mission.status === 'active' && mission.memberIds.includes(memberId)) || Boolean(memberById(state, memberId)?.errand);
+const isBusy = (state, memberId) => state.missions.some(mission => mission.status === 'active' && mission.memberIds.includes(memberId)) || Boolean(memberById(state, memberId)?.errand) || Boolean(state.world?.hunters?.some(h => h.id === memberId));
 const availableMember = (state, id) => memberById(state, id) && !isBusy(state, id);
 const finiteNumber = n => typeof n === 'number' && Number.isFinite(n);
 /** Authored content for a named member, or the stored biography of a rookie who walked in. */
@@ -91,7 +94,7 @@ export function createGame(seed = 123, options = {}) {
     settings: { speed: 1, sound: true, paused: false },
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0,
-    applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
+    policy: { memberHunting: true }, world: createWorld(seed), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
     record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, trade: 0 }, idleBank: 0,
   };
   if (options.opening) {
@@ -1025,6 +1028,57 @@ function settleIdle(state, force = false) {
     transact(state, { gold }, 'ดอกผลกองทุนและค่าแผงตลาด', 1);
   }
 }
+// ---- The living world: the helpers life.js needs from the guild. ----
+export const hunterOf = (state, id) => state.world?.hunters?.find(h => h.id === id) || null;
+function lifeContext(state) {
+  return {
+    stats: member => getMemberStats(state, member), addXp: (member, xp) => addXp(state, member, xp), xpNeeded,
+    log: (text, type) => addLog(state, text, type), income: (gold, reason) => transact(state, { gold }, reason, 1),
+    prosperity: n => { state.village.prosperity += n; }, price: key => marketPrice(state, key), marketAdd: (key, n) => { state.market[key] = (state.market[key] || 0) + n; },
+    zoneOpen: zone => hasRank(state, zone.rank), guildRankIndex: () => rankIndex(state.rank), door: () => guildDoor(state),
+    bond: (a, b) => state.bonds[bondKey(a, b)] || 0, freeTarget: () => Math.min(14, 2 + getVillageInfo(state).level * 2),
+    freeToHunt: member => state.policy?.memberHunting !== false && !introActive(state) && !isBusy(state, member.id) && member.energy >= 70 && member.injury <= 15 && member.autoWork !== false && member.task !== 'train' && !member.waitingReason,
+    freeToDefend: member => !isBusy(state, member.id) && member.injury <= 40 && member.energy >= 20,
+    onSpecialKill: (monster, hunter) => onSpecialKill(state, monster, hunter), onRaidReach: monster => onRaidReach(state, monster),
+  };
+}
+function onSpecialKill(state, monster) { state.director?.onKill?.(monster); directorKill(state, monster); }
+function onRaidReach(state, monster) { directorRaidReach(state, monster); }
+function directorKill() {}
+function directorRaidReach(state, monster) { monster.dead = true; }
+/** Invite a free adventurer who has come to like the guild. */
+function inviteFree(state, payload) {
+  const w = state.world, f = w?.free.find(x => x.id === payload.freeId && x.mode === 'town');
+  if (!f) return failure('ไม่พบนักผจญภัยคนนี้ในเมือง');
+  const stats = getGuildStats(state), fee = inviteFee(f);
+  if (stats.memberCount >= stats.memberCap) return failure('เตียงพักเต็ม วางเตียงเพิ่มก่อน');
+  if (f.affinity < 40 && state.rep < f.level * 25) return failure(`${f.name}ยังไม่สนใจเข้ากิลด์ (ความประทับใจ ${f.affinity}/40)`);
+  if (state.gold < fee) return failure(`ค่าแรกเข้า ${fee} G ไม่พอ`);
+  transact(state, { gold: fee }, `รับ ${f.name} เข้ากิลด์`);
+  const member = createMember({ id: `r-${state.nextId++}`, name: f.name, class: f.class, trait: f.trait, hair: f.hair, description: f.description, rookie: true }, f.level);
+  member.rank = f.rank; member.purse = f.purse; member.xp = f.xp;
+  state.members.push(member);
+  w.free = w.free.filter(x => x !== f);
+  addLog(state, `${f.name} นักผจญภัยอิสระ ตกลงเข้าร่วมกิลด์แล้ว!`, 'member');
+  return success(`${f.name} เข้าร่วมกิลด์แล้ว`);
+}
+export const inviteFee = f => 60 + f.level * 35;
+function sanitizeWorld(data, state, ids) {
+  const fresh = createWorld(state.seed);
+  if (!data || typeof data !== 'object') return fresh;
+  const num = n => finiteNumber(n) && Math.abs(n) < 1e7;
+  const monsters = (Array.isArray(data.monsters) ? data.monsters : []).filter(m => m && typeof m.id === 'string' && MONSTER_STATS_KEYS.has(m.species) && num(m.x) && num(m.y) && num(m.hp)).slice(0, 120);
+  const free = (Array.isArray(data.free) ? data.free : []).filter(f => f && /^fa-\d+$/.test(f.id) && JOBS[f.class] && !JOBS[f.class].parent && TRAIT_NAMES.includes(f.trait) && typeof f.name === 'string' && f.name.length <= 20
+    && Number.isInteger(f.level) && f.level >= 1 && f.level <= MAX_LEVEL && num(f.x) && num(f.y)).slice(0, 30);
+  const freeIds = new Set(free.map(f => f.id));
+  const hunters = (Array.isArray(data.hunters) ? data.hunters : []).filter(h => h && (h.kind === 'member' ? ids.has(h.id) : freeIds.has(h.id)) && num(h.x) && num(h.y) && num(h.hp) && h.bag && typeof h.party === 'string').slice(0, 60);
+  const hunterIds = new Set(hunters.map(h => h.id));
+  for (const f of free) if (f.mode === 'out' && !hunterIds.has(f.id)) f.mode = 'town';
+  const porters = (Array.isArray(data.porters) ? data.porters : []).filter(p => p && hunterIds.has(p.target) && num(p.x) && num(p.y) && Array.isArray(p.path)).slice(0, 20);
+  return { ...fresh, rng: Number.isInteger(data.rng) && data.rng > 0 ? data.rng >>> 0 : fresh.rng, nextId: Number.isInteger(data.nextId) && data.nextId > 0 ? data.nextId : 1,
+    monsters, free, hunters, porters, freeClock: num(data.freeClock) ? data.freeClock : 30, departClock: num(data.departClock) ? data.departClock : 3, kills: Number.isInteger(data.kills) ? data.kills : 0 };
+}
+
 // ---- Adventurer ranks, lessons and exams: errands in the village. ----
 /** A member may join work up to one rank above their own. */
 const rankAllows = (member, quest) => ADVENTURER_RANKS.indexOf(quest.rank) <= memberRankIndex(member) + 1;
@@ -1312,6 +1366,7 @@ export function tick(state, seconds) {
     tickApplicants(state, step);
     tickErrands(state);
     tickVillage(state, step);
+    tickLife(state, lifeContext(state), step);
     if (state.clock >= DAY_LENGTH - 0.00001) {
       state.clock = 0;
       state.day += 1;
@@ -1505,6 +1560,8 @@ function command(state, type, payload = {}) {
     }
     case 'recruit': return recruit(state, payload);
     case 'declineApplicant': return declineApplicant(state, payload);
+    case 'inviteFree': return inviteFree(state, payload);
+    case 'setPolicy': { state.policy = { ...(state.policy || {}) }; if (payload.memberHunting !== undefined) state.policy.memberHunting = Boolean(payload.memberHunting); return success(state.policy.memberHunting ? 'สมาชิกออกล่ามอนเองได้' : 'สมาชิกอยู่ประจำกิลด์ รอรับงาน'); }
     case 'setTask': {
       const member = memberById(state, payload.memberId);
       if (!member) return failure('ไม่พบสมาชิก');
@@ -1706,6 +1763,8 @@ export function deserializeGame(source) {
   state.market = Object.fromEntries(Object.keys(MATERIALS).map(k => [k, Number.isInteger(data.market?.[k]) && data.market[k] >= 0 && data.market[k] < 1000000 ? data.market[k] : defaults.market[k]]));
   const stock = n => Number.isInteger(n) && n >= 0 && n < 1000 ? n : 0;
   state.shops = { ration: stock(data.shops?.ration), potion: stock(data.shops?.potion), gear: Object.fromEntries(Object.entries(data.shops?.gear || {}).filter(([id, n]) => EQUIPMENT_BY_ID[id] && !EQUIPMENT_BY_ID[id].loot && stock(n) > 0)) };
+  state.world = sanitizeWorld(data.world, state, ids);
+  state.policy = { memberHunting: data.policy?.memberHunting !== false };
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
   // Older saves count the quests they already cleared as their record of work.
   const jobs = data.record?.jobs ?? Object.values(state.completedQuests).reduce((sum, n) => sum + n, 0);

@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getAdventurerRank, classChoices, marketPrice, tradeQuote, addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
+import { getAdventurerRank, classChoices, marketPrice, tradeQuote, addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame as createLivingGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
 import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
+// Most tests check one system at a time, so members stay at the guild instead of wandering off to hunt.
+function createGame(...args) { const state = createLivingGame(...args); state.policy.memberHunting = false; return state; }
 // Villagers bring petitions over time; tests post one straight to the board when none is waiting.
 function ensurePetition(state, questId) {
   if (!state.petitions.some(p => p.questId === questId && p.status === 'posted' && !p.missionId)) addPetition(state, questId, { status: 'posted' });
@@ -729,4 +731,62 @@ test('adventurers rank up by level, merit points and an exam at the arena; ranks
   // Tier-3 classes are visible goals for the full game.
   lune.class = 'sage';
   assert.match(classChoices(state, lune)[0].reason, /เกมเต็ม/);
+});
+
+test('the living world: members hunt in real time, carry the fallen home, sell loot and pay the guild its share', () => {
+  const state = createLivingGame(61);
+  assert.ok(state.policy.memberHunting);
+  let left = false;
+  for (let t = 0; t < 40 && !left; t++) { tick(state, 3); left = state.world.hunters.some(h => h.kind === 'member'); }
+  assert.ok(left, 'rested members head out to hunt on their own');
+  const hunter = state.world.hunters.find(h => h.kind === 'member');
+  assert.equal(hunter.zone, 'meadow', 'rank F members hunt the meadow');
+  assert.equal(previewMission(state, 'patrol', [hunter.id]).ok, false, 'a hunter is away from the guild');
+  assert.ok(state.world.monsters.filter(m => m.zone === 'meadow').length >= 8, 'the meadow is stocked');
+  assert.deepEqual(deserializeGame(serializeGame(state)).world.hunters.length, state.world.hunters.length, 'a hunt survives save and load');
+  const gold = state.gold, kills = state.world.kills;
+  for (let t = 0; t < 120 && state.world.hunters.some(h => h.id === hunter.id); t++) tick(state, 5);
+  assert.ok(!state.world.hunters.some(h => h.id === hunter.id), 'the party comes home');
+  assert.ok(state.world.kills > kills, 'monsters were fought and beaten');
+  assert.ok(state.gold > gold - 200, 'the guild took its share of the hunt');
+  const member = state.members.find(m => m.id === hunter.id);
+  assert.ok(member.purse > 0, 'the member keeps most of what they earned');
+  // A knocked-out hunter is carried home by a friend, or by porters from the guild.
+  const s2 = createLivingGame(62);
+  for (let t = 0; t < 40 && !s2.world.hunters.length; t++) tick(s2, 3);
+  const h2 = s2.world.hunters.find(h => h.kind === 'member');
+  for (let t = 0; t < 40 && h2.mode === 'go'; t++) tick(s2, 2);
+  h2.hp = 1;
+  const monster = s2.world.monsters.find(m => !m.dead && m.zone === h2.zone);
+  Object.assign(monster, { x: h2.x + .3, y: h2.y, target: h2.id, cd: 0 });
+  const potionsBefore = s2.members.find(m => m.id === h2.id).pack.potion;
+  for (let t = 0; t < 20 && h2.mode !== 'carried'; t++) tick(s2, .5);
+  assert.equal(h2.mode, 'carried', 'they fall and are carried, never killed');
+  assert.equal(potionsBefore, 0);
+  for (let t = 0; t < 200 && s2.world.hunters.some(h => h.id === h2.id); t++) tick(s2, 2);
+  const fallen = s2.members.find(m => m.id === h2.id);
+  assert.ok(fallen.injury >= 30, 'home again, they need the infirmary');
+});
+
+test('free adventurers live at the inn, hunt on their own, and can be invited once they like the guild', () => {
+  const state = createLivingGame(71);
+  state.policy.memberHunting = false;
+  state.world.freeClock = 0;
+  tick(state, 1);
+  const f = state.world.free[0];
+  assert.ok(f && /^fa-/.test(f.id), 'someone moves into the inn');
+  assert.equal(act(state, 'inviteFree', { freeId: f.id }).ok, false, 'arriving strangers do not join at once');
+  let out = false;
+  for (let t = 0; t < 100 && !out; t++) { f.mode = f.mode === 'arrive' ? 'town' : f.mode; tick(state, 3); out = f.mode === 'out'; }
+  assert.ok(out, 'free adventurers hunt on their own');
+  f.affinity = 50;
+  for (let t = 0; t < 150 && f.mode === 'out'; t++) tick(state, 4);
+  let placed = false;
+  for (let y = 4.5; y < 9.5 && !placed; y += 0.25) for (let x = 5.5; x < 12.5 && !placed; x += 0.25) placed = act(state, 'build', { type: 'dorm', x, y }).ok;
+  state.gold = 3000;
+  assert.equal(act(state, 'inviteFree', { freeId: f.id }).ok, true);
+  const joined = state.members.at(-1);
+  assert.equal(joined.name, f.name);
+  assert.ok(!state.world.free.includes(f));
+  assert.deepEqual(deserializeGame(serializeGame(state)).members.at(-1), joined);
 });
