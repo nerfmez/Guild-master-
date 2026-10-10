@@ -7,7 +7,7 @@ import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FO
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
 import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
-import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,makeDojo,HOME_STYLES,makeOutdoor,makeStall,makeArena,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
+import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,makeDojo,makeShop,makeSmithyShop,HOME_STYLES,makeOutdoor,makeStall,makeArena,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 export class GuildRenderer {
@@ -139,7 +139,7 @@ export class GuildRenderer {
  // A village home; its chimney (if any) puffs smoke.
  addHome(style,seed,x,y){
   const st=style==='dojo'?{w:3.6,h:3}:HOME_STYLES[style],key='home-'+style,p=gridPoint(x,y),c=gridPoint(x+st.w/2,y+(style==='dojo'?2:st.h/2));let s=this.homeSprites?.get(key);
-  if(!s||!this.scene.textures.exists(key)){s=style==='dojo'?makeDojo(seed):makeHome(style,seed);(this.homeSprites??=new Map()).set(key,s);this.texture(key,s.canvas);}
+  if(!s||!this.scene.textures.exists(key)){s=style==='dojo'?makeDojo(seed):style==='store'?makeShop(seed):style==='smithy'?makeSmithyShop(seed):makeHome(style,seed);(this.homeSprites??=new Map()).set(key,s);this.texture(key,s.canvas);}
   if(s.smoke)(this.chimneys??=[]).push({x:p.x+s.smoke.x,y:p.y+s.smoke.y,dark:s.smoke.dark,clock:Math.random()});
   return this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(c.y+4);
  }

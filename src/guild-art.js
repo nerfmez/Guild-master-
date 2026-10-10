@@ -197,37 +197,47 @@ export const HOME_STYLES={
 };
 /** The arena where the guild association holds rank exams: a sand ring with a fence, banners and, as it grows, stands. */
 export function makeArena(level=1){
- const w=4,h=3;
- return stamp(220,170,96,100,c=>{
+ // The guild association's exam ground: a ringed sand floor, stands for onlookers, a judge's podium and practice targets.
+ const w=4.2,h=3.4;
+ return stamp(240,200,104,112,c=>{
   top(c,-.2,-.2,w+.4,h+.4,0,'#5f705040');
-  top(c,0,0,w,h,0,'#d8c39a',C.edge);top(c,.5,.4,w-1,h-.8,.2,'#e3cfa6','#c9b088');
-  for(let k=0;k<6;k++){const[x,y]=q(.6+((k*1.7)%2.8),.6+((k*.9)%1.8),.3);R(c,x,y,2,1,'#c9b088');}
-  stroke(c,[w/2,.4,.3],[w/2,h-.4,.3],'#fff4dc');
-  const post=(x,y)=>cube(c,x-.05,y-.05,.1,.1,0,9,'#8f6a4c','#b98a60','#6f5240');
-  for(let x=0;x<=w;x+=.5){post(x,0);}for(let y=.5;y<=h;y+=.5){post(0,y);}
-  stroke(c,[0,0,7],[w,0,7],'#b98a60',2);stroke(c,[0,0,7],[0,h,7],'#b98a60',2);
-  if(level>=2){cube(c,-.9,-.3,.7,h+.6,0,10,'#a88d6c','#c4b08e','#8f7b61');cube(c,-.6,-.3,.4,h+.6,10,8,'#a88d6c','#d4bf9a','#8f7b61');}
-  if(level>=3){cube(c,-.3,-.9,w+.6,.7,0,10,'#a88d6c','#c4b08e','#8f7b61');}
-  for(const [x,y,col] of [[0,0,'#d77d6a'],[w,0,'#6f9ad1'],[0,h,'#7fa37a']]){cube(c,x-.05,y-.05,.1,.1,0,34,'#6f5240','#8f6a4c','#5a463f');const[fx,fy]=q(x,y,33);P(c,[[fx,fy],[fx+11,fy+3],[fx,fy+7]],col);L(c,fx,fy,fx+11,fy+3,C.ink);}
-  for(let x=0;x<=w;x+=.5)post(x,h);for(let y=.5;y<h;y+=.5)post(w,y);
-  stroke(c,[0,h,7],[w,h,7],'#c99d78',2);stroke(c,[w,0,7],[w,h,7],'#c99d78',2);
-  const[sx,sy]=q(w/2,h,9);R(c,sx-9,sy-12,18,9,C.ink);R(c,sx-8,sy-11,16,7,'#f4e5c9');R(c,sx-5,sy-9,10,1,'#8a6446');R(c,sx-4,sy-7,8,1,'#8a6446');
+  top(c,0,0,w,h,0,'#bdb5a3',C.edge);top(c,.25,.25,w-.5,h-.5,.5,'#e3cfa6','#c9b088');
+  for(let x=.3;x<w-.2;x+=.6)for(let y=.3;y<h-.2;y+=.6){const[px,py]=q(x+((y*7)%.3),y,.6);R(c,px,py,2,1,'#d4bf96');}
+  // Painted ring in the middle of the floor.
+  for(let k=0;k<24;k++){const a=k/24*Math.PI*2,b2=(k+1)/24*Math.PI*2;stroke(c,[w/2+Math.cos(a)*1.1,h/2+.2+Math.sin(a)*.9,.6],[w/2+Math.cos(b2)*1.1,h/2+.2+Math.sin(b2)*.9,.6],'#fff4dc');}
+  // Stands along the back two sides, with onlookers once the arena grows.
+  const tiers=level>=2?3:2;
+  for(let t=0;t<tiers;t++){cube(c,-.6-t*.32,-.6,.32,h+.4,0,6+t*6,'#a88d6c','#c9b08e','#8f7b61');cube(c,-.6,-.6-t*.32,w+.4,.32,0,6+t*6,'#a88d6c','#c9b08e','#8f7b61');}
+  if(level>=2)for(let k=0;k<10;k++){const onBack=k%2,[px,py]=onBack?q(.3+k*.38,-.75-((k>>1)%2)*.3,14+((k>>1)%2)*6):q(-.75-((k>>1)%2)*.3,.3+k*.3,14+((k>>1)%2)*6);R(c,px-1,py-6,3,4,['#d98978','#8fa0b1','#e8b04a','#7fae5a'][k%4]);E(c,px,py-8,1.5,1.5,'#f7d4ae');}
+  // Gate arch at the front-left with the association's banner.
+  const[gx,gy]=q(.2,h+.05,0),[hx,hy]=q(1.2,h+.05,0);R(c,gx-2,gy-30,4,30,'#8a8f88');R(c,hx-2,hy-30,4,30,'#8a8f88');L(c,gx,gy-30,hx,hy-30,'#6b4f3a',4);
+  {const[mx,my]=q(.7,h+.05,26);R(c,mx-6,my-2,12,14,'#b85a4a');R(c,mx-6,my-2,12,2,'#d9806e');R(c,mx-2,my+2,4,4,'#f4e5c9');R(c,mx-1,my+7,2,3,'#f4e5c9');}
+  // Judge's podium with a flag, two practice targets.
+  cube(c,w-.9,.2,.6,.5,0,12,'#8a6446','#b08a68','#6b4f3a');{const[fx,fy]=q(w-.6,.45,12);R(c,fx,fy-22,1,22,'#5a3f30');R(c,fx+1,fy-22,8,5,'#6f9ad1');E(c,fx-3,fy-4,2,2,'#f7d4ae');R(c,fx-5,fy-2,5,4,'#5a4a6a');}
+  for(const[x,y]of[[w-.6,h-.8],[w-1.3,h-.5]]){const[px,py]=q(x,y,.6);R(c,px-1,py-14,2,14,'#6b4f3a');E(c,px,py-17,5,5,'#efe6d2');E(c,px,py-17,3.5,3.5,'#d9584a');E(c,px,py-17,2,2,'#efe6d2');E(c,px,py-17,.8,.8,'#d9584a');}
+  if(level>=3)for(const[x,y]of[[w,0],[w,h],[0,h]]){const[px,py]=q(x,y,0);R(c,px-2,py-16,4,16,'#8a8f88');E(c,px,py-18,3,2,'#f4b860');E(c,px,py-20,1.5,2,'#fff1c4');}
  });
 }
-/** A market stall: counter of goods under a striped canopy. */
 export function makeStall(seed=1,variant=0){
- const [a,b]=[['#d77d6a','#f4e5c9'],['#7fa37a','#f4e5c9'],['#6f9ad1','#f4e5c9']][variant%3],goods=['#e2a93c','#d98978','#9fc27a','#e8cd8c','#c98a4a','#b7aec9'];
+ // Each stall sells something different: produce, cloth and pots, or herbs and potions.
+ const [a,b]=[['#d77d6a','#f4e5c9'],['#7fa37a','#f4e5c9'],['#6f9ad1','#f4e5c9']][variant%3];
  return object(c=>{
-  top(c,-.1,-.1,1.8,1.3,0,'#5f705040');
-  for(const [x,y] of [[0,0],[1.52,0]])cube(c,x,y,.08,.08,0,32,'#8f6a4c','#b98a60','#6f5240');
-  cube(c,.05,.1,1.5,.35,0,8,'#a88d6c','#c4b08e','#8f7b61');
-  cube(c,0,.6,1.6,.45,0,12,'#b98a60','#e5bc87','#85634c');
-  for(let k=0;k<5;k++){const[x,y]=q(.2+k*.3,.82,13);E(c,x-1,y-1,3,2,goods[(k+variant)%6]);E(c,x+2,y,2.5,1.8,goods[(k+variant+2)%6]);R(c,x-1,y-3,1,1,'#fff8e7');}
-  for(const [x,y] of [[0,.95],[1.52,.95]])cube(c,x,y,.08,.08,0,27,'#8f6a4c','#b98a60','#6f5240');
-  for(let k=0;k<6;k++){const u0=-.06+k*.285;face(c,[[u0,-.12,35],[u0+.285,-.12,35],[u0+.285,1.12,28],[u0,1.12,28]],k%2?b:a,C.ink);}
-  for(let k=0;k<6;k++){const u0=-.06+k*.285;face(c,[[u0,1.12,28],[u0+.285,1.12,28],[u0+.285,1.12,24],[u0,1.12,24]],k%2?a:b,C.edge);}
-  for(let k=0;k<2;k++){const[x,y]=q(1.75,.3+k*.4,0);R(c,x-4,y-9,9,9,'#85634c');R(c,x-3,y-8,7,7,'#c79b6a');R(c,x-3,y-5,7,1,'#a3805a');}
- },120,110,56,66);
+  top(c,-.15,-.1,2.1,1.6,0,'#5f705040');
+  for(const [x,y] of [[0,0],[1.72,0]])cube(c,x,y,.08,.08,0,38,'#8f6a4c','#b98a60','#6f5240');
+  cube(c,.05,.05,1.7,.4,0,10,'#a88d6c','#c4b08e','#8f7b61');
+  cube(c,0,.6,1.8,.55,0,13,'#b98a60','#e5bc87','#85634c');stroke(c,[0,1.15,6],[1.8,1.15,6],'#85634c');
+  const ware=(k,x,y)=>{const[px,py]=q(x,y,14);
+   if(variant%3===0){if(k%3===0){E(c,px,py-2,4,3,'#d9853e');R(c,px,py-6,1,2,'#6f8a52');}else if(k%3===1){for(const[dx,dy]of[[-2,0],[2,0],[0,-2]]){E(c,px+dx,py+dy-1,2,2,'#d8604f');R(c,px+dx,py+dy-2,1,1,'#f09a86');}}else{E(c,px,py-2,3.5,2.5,'#7fae5a');E(c,px,py-3,2,1.5,'#a8cc90');}}
+   else if(variant%3===1){if(k%2){R(c,px-4,py-4,8,4,['#c98a72','#8fa0b1','#d6b072'][k%3]);R(c,px-4,py-4,8,1,'#fff3e0');}else{E(c,px,py-3,3,3,'#b07a55');R(c,px-1,py-7,2,2,'#8a5a3e');R(c,px-2,py-3,4,1,'#d8a07a');}}
+   else{R(c,px-1,py-5,3,5,['#7fd0c4','#d9584a','#b98ad1','#e8b04a'][k%4]);R(c,px,py-6,1,1,'#ffffff');R(c,px+3,py-2,3,2,'#6f9a62');}};
+  for(let k=0;k<6;k++)ware(k,.18+k*.27,.82+(k%2)*.12);
+  // Striped canopy sloping toward the front.
+  for(let k=0;k<7;k++){const u0=-.1+k*.29;face(c,[[u0,-.15,40],[u0+.29,-.15,40],[u0+.29,.55,33],[u0,.55,33]],k%2?b:a);}
+  for(let k=0;k<7;k++){const[px,py]=q(-.1+k*.29+.145,.55,33);E(c,px,py+1,4,2,k%2?b:a);}
+  stroke(c,[-.1,.55,33],[1.93,.55,33],C.ink);
+  // A crate and a basket at the stall's foot.
+  cube(c,1.9,.9,.35,.35,0,7,'#b58b64','#d0a87d','#8a6446');const[bx,by]=q(-.2,1.25,0);E(c,bx,by-3,5,3,'#c9a77f');E(c,bx,by-5,4,2,'#9fc27a');
+ },150,120,64,56);
 }
 export function makeHome(name,seed=1){
  const s=HOME_STYLES[name]||HOME_STYLES.thatch,{w,h,z,ridge,storeys=1}=s,pitch=s.pitch||(ridge==='y'?w:h)*11,o=.16,[r0,r1,rl,rk]=ROOFS[s.roof],[w0,w1]=WALLS[s.wall],r=rng(seed),peak=z+pitch;
@@ -333,6 +343,41 @@ export function makeDojo(seed=149){
   for(const [x,y] of [[.6,2.6],[2.7,2.55]]){const [px,py]=q(x,y,0);R(c,px-1,py-20,3,20,'#6b4f3a');R(c,px-7,py-15,15,2,'#6b4f3a');E(c,px,py-13,4,6,'#d9c08a');E(c,px,py-22,3,3,'#e6cf8e');R(c,px-3,py-12,6,1,'#a3824a');}
   {const [px,py]=q(3.3,.9,0);R(c,px-6,py-18,14,2,'#6b4f3a');R(c,px-6,py-8,14,2,'#6b4f3a');R(c,px-6,py-18,2,18,'#5a3f30');R(c,px+6,py-18,2,18,'#5a3f30');L(c,px-3,py-22,px-3,py-2,'#c4ccd0');L(c,px+1,py-24,px+1,py-2,'#a77a55');L(c,px+4,py-21,px+4,py-2,'#c4ccd0');}
  });
+}
+/** Draw on top of a home sprite: same foot, extra margin around it for things set out front. */
+function dressHome(base,pad,paint){return stamp(base.canvas.width+pad*2,base.canvas.height+pad,base.footX+pad,base.footY,c=>{c.drawImage(base.canvas,-base.footX,-base.footY);paint(c);});}
+/** General store: a goods-filled window, a table of wares, barrels, sacks and a chalkboard out front. */
+export function makeShop(seed=131){
+ const base=makeHome('store',seed),{w,h}=HOME_STYLES.store;
+ const out=dressHome(base,30,c=>{
+  // Shop window: shelves of bottles and loaves behind the glass.
+  face(c,[[.2,h,9],[.95,h,9],[.95,h,22],[.2,h,22]],'#5a463f',C.ink);face(c,[[.24,h+.01,10],[.91,h+.01,10],[.91,h+.01,21],[.24,h+.01,21]],'#cfe3dc');
+  for(const zz of [12,17])stroke(c,[.24,h+.02,zz],[.91,h+.02,zz],'#8a6446');
+  for(let k=0;k<6;k++){const[x,y]=q(.3+k*.11,h+.02,13+(k%2)*5);R(c,x,y-3,2,3,['#d9584a','#6f9ad1','#7fae5a','#e8b04a','#b98ad1','#d9584a'][k]);R(c,x,y-4,1,1,'#ffffff');}
+  // Table of wares, barrels, sacks and a chalkboard sign.
+  cube(c,.1,h+.25,.9,.38,0,9,'#b98a60','#e5bc87','#85634c');
+  for(let k=0;k<5;k++){const[x,y]=q(.2+k*.17,h+.42,10);E(c,x,y-1,3,2,['#e2a93c','#d98978','#9fc27a','#c98a4a','#e8cd8c'][k]);R(c,x-1,y-3,1,1,'#fff8e7');}
+  for(const [x,y] of [[2.05,h+.35],[2.4,h+.55]]){const[px,py]=q(x,y,0);E(c,px,py-1,6,2.5,'#6b4f3a');R(c,px-6,py-12,12,11,'#94735a');R(c,px-6,py-12,3,11,'#b08a68');for(const dy of [-10,-4])R(c,px-6,py+dy,12,1,'#5a463f');E(c,px,py-12,6,2.5,'#c9a77f');}
+  for(const [x,y] of [[1.45,h+.5],[1.7,h+.7]]){const[px,py]=q(x,y,0);E(c,px,py-4,5,5,'#d9c8a0');E(c,px-1,py-5,3,3,'#efe2c0');R(c,px-1,py-10,3,2,'#b8a274');}
+  {const[px,py]=q(1.1,h+.95,0);L(c,px-5,py,px-1,py-15,'#6b4f3a',2);L(c,px+5,py,px+1,py-15,'#6b4f3a',2);R(c,px-5,py-14,10,10,'#3f4a45');R(c,px-4,py-13,8,1,'#e6dfcc');R(c,px-4,py-10,6,1,'#e8b04a');R(c,px-4,py-7,7,1,'#e6dfcc');}
+ });
+ out.smoke=base.smoke&&{...base.smoke};return out;
+}
+/** Smithy: the forge annex glows, swords and a shield hang on a rack, a quench barrel stands by the anvil. */
+export function makeSmithyShop(seed=31,frame=0){
+ const base=makeHome('smithy',seed),{w,h}=HOME_STYLES.smithy;
+ const out=dressHome(base,30,c=>{
+  const [gx,gy]=q(w+1.05,.9,5);for(let k=3;k>=1;k--)E(c,gx,gy,6+k*4,4+k*3,`rgba(244,160,80,${(frame?.12:.08)*(4-k)})`);
+  for(let k=0;k<4;k++){const[sx,sy]=q(w+1.25+(k%2)*.12,1.5,10+k*3+frame*2);R(c,sx+((k*5+frame*3)%7)-3,sy,1,1,k%2?'#fff1c4':'#f4b860');}
+  // Weapon rack with swords and a round shield.
+  const[rx,ry]=q(.4,h+.35,0);R(c,rx-12,ry-22,26,2,'#6b4f3a');R(c,rx-12,ry-10,26,2,'#6b4f3a');R(c,rx-12,ry-22,2,22,'#5a3f30');R(c,rx+12,ry-22,2,22,'#5a3f30');
+  for(const dx of [-7,-2,3]){L(c,rx+dx,ry-27,rx+dx,ry-3,'#c4ccd0');R(c,rx+dx-2,ry-8,5,1,'#8a6446');R(c,rx+dx,ry-28,1,1,'#ffffff');}
+  E(c,rx+9,ry-15,5,6,'#8a6446');E(c,rx+9,ry-15,3,4,'#c9a050');R(c,rx+8,ry-16,2,2,'#e8c878');
+  // Quench barrel and a stack of iron bars.
+  const[bx,by]=q(w-.2,h+.4,0);E(c,bx,by-1,6,2.5,'#5a463f');R(c,bx-6,by-11,12,10,'#7b5d45');R(c,bx-6,by-11,3,10,'#94735a');R(c,bx-6,by-8,12,1,'#4f4540');E(c,bx,by-11,6,2.5,'#6f9ab0');R(c,bx-2,by-12,3,1,'#c8e3e7');
+  for(let k=0;k<3;k++){const[ix,iy]=q(w-.9,h+.45+k*.08,k*2);R(c,ix-6,iy-2,12,2,'#6f7478');R(c,ix-6,iy-2,12,1,'#9aa2a8');}
+ });
+ out.smoke=base.smoke&&{...base.smoke};return out;
 }
 export function makeOutdoor(type){
  return object(c=>{

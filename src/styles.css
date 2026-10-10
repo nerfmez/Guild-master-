@@ -325,3 +325,5 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .village-goal small{font-size:11px;letter-spacing:.04em;color:#b0503f;font-weight:600}
 .village-goal b{font-size:15px;color:#5a4a36}
 .village-goal ul{margin:4px 0 0;padding-left:18px;display:grid;gap:3px;font-size:13px;color:#6f5a3a}
+
+.toast.clickable{pointer-events:auto;cursor:pointer;text-decoration:underline;text-decoration-color:#a58c6166;text-underline-offset:3px}

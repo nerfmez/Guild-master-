@@ -1106,6 +1106,11 @@ function tickVillage(state, step) {
   settleIdle(state);
   for (const member of state.members) {
     if (isBusy(state, member.id)) continue;
+    // A member who is ready, rested and can pay their own fee goes to the arena by themselves.
+    if (member.energy >= 50 && member.injury <= 20 && !member.waitingReason) {
+      const rank = getAdventurerRank(state, member);
+      if (rank.eligible && rank.chance >= 0.35 && (member.purse || 0) >= rank.rule.fee && startExam(state, member).ok) continue;
+    }
     member.shopClock = (member.shopClock ?? (hashId(member.id) % 8)) - step;
     if (member.shopClock > 0) continue;
     member.shopClock = 8;
