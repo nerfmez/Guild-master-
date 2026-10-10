@@ -216,3 +216,17 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .route span small{font-size:9.5px;color:var(--muted)}
 .route span.done{filter:none;opacity:1;background:#e6edd6;border-color:#9fb68f}
 .route span.here{filter:none;opacity:1;background:#fff1c4;border-color:#e2b55a;animation:goal-glow 1.6s ease-in-out infinite}
+/* R21: chest loot. */
+.loot-table,.report-loot>div{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.loot{position:relative;display:grid;justify-items:center;gap:1px;width:78px;padding:6px 4px 5px;border-radius:9px;background:#fffaee;border:1px solid #e3d3b0;text-align:center}
+.loot canvas{width:30px;height:30px;image-rendering:pixelated}.loot>b{width:30px;height:30px;display:grid;place-items:center;font-size:18px;color:#b08a3a}
+.loot small{font-size:10px;line-height:1.3;color:#6f5a3a}.loot i{font-style:normal;font-size:9px;font-weight:700;color:#9b8b70}
+.loot.uncommon{border-color:#a9c99a;background:#f2f7ea}.loot.uncommon i{color:#5f8250}
+.loot.rare{border-color:#9fbbe0;background:#eef3fb}.loot.rare i{color:#4f78ad}
+.loot.legendary{border-color:#e2b55a;background:#fff6dd;box-shadow:0 0 0 2px #f4d49a66}.loot.legendary i{color:#b07d1d}
+.report-loot{margin:10px 0 4px}.report-loot>small{display:block;font-size:11px;font-weight:600;color:#9b7a4a;margin-bottom:6px}
+.report-loot .loot{animation:chip-pop .35s ease-out both}.report-loot .loot:nth-child(2){animation-delay:.12s}.report-loot .loot:nth-child(3){animation-delay:.24s}
+.report-loot .loot.legendary{animation:chip-pop .35s ease-out both,goal-glow 1.6s .4s ease-in-out infinite}
+.luck-row{display:flex;align-items:center;gap:8px}.luck-row b{font-size:12px}.luck-row small{font-size:10.5px;color:var(--muted)}
+.luck-stars{font-size:13px;letter-spacing:1px;color:#e2a93c}.luck-stars i{font-style:normal;color:#e3d8c0}
+.item-card.treasure{border-color:#9fbbe0}.item-card.treasure.legendary{border-color:#e2b55a;background:#fff8e6}

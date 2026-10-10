@@ -1,6 +1,6 @@
 /* Top-down dungeon view of a mission: one generator, themed per region, laid out per quest. */
 import { drawSprite, drawFoe } from './render.js';
-import { JOBS } from './content.js';
+import { JOBS, RARITIES } from './content.js';
 
 const T = 10, COLS = 40, ROWS = 22, W = COLS * T, H = ROWS * T;
 const THEMES = {
@@ -159,8 +159,13 @@ export function drawDungeonScene(canvas, mission, quest, state, options = {}) {
     const x = chest.x * T, y = chest.y * T;
     rect(c, x - 1, y + 1, 14, 10, '#4f4540'); rect(c, x, y + 4, 12, 6, '#b5835a'); rect(c, x, y + 6, 12, 1, '#e7bd74'); rect(c, x + 5, y + 5, 2, 3, '#e7bd74');
     if (opened) { rect(c, x, y - 2, 12, 4, '#8f6646'); rect(c, x + 2, y + 3, 8, 2, '#f4d49a'); } else { rect(c, x, y + 1, 12, 4, '#c8946a'); rect(c, x, y + 1, 12, 1, '#e3b487'); }
+    // Sparkles take the colour of what the chest held; rare and legendary finds glow longer.
+    const tier = mission.loot?.[chest.room - 1]?.tier || 'common', glow = RARITIES[tier]?.color || '#fff1c4', long = tier === 'rare' || tier === 'legendary' ? 2.4 : 1.2;
     const age = t - (memory.openAt[chest.room] ?? -9);
-    if (age >= 0 && age < 1.2) { c.globalAlpha = 1 - age / 1.2; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + age * 3; rect(c, x + 6 + Math.cos(a) * (4 + age * 10), y - 2 + Math.sin(a) * (3 + age * 6) - age * 8, 2, 2, '#fff1c4'); } c.globalAlpha = 1; }
+    if (age >= 0 && age < long) { c.globalAlpha = 1 - age / long; for (let i = 0; i < (long > 2 ? 8 : 4); i++) { const a = i * Math.PI * 2 / (long > 2 ? 8 : 4) + age * 3; rect(c, x + 6 + Math.cos(a) * (4 + age * 10), y - 2 + Math.sin(a) * (3 + age * 6) - age * 8, 2, 2, i % 2 ? '#fff1c4' : glow); }
+      if (tier !== 'common') { rect(c, x + 3, y - 12 - age * 6, 6, 6, '#4f4540'); rect(c, x + 4, y - 11 - age * 6, 4, 4, glow); rect(c, x + 4, y - 11 - age * 6, 2, 1, '#ffffff'); }
+      c.globalAlpha = 1; }
+    if (opened && (tier === 'rare' || tier === 'legendary')) { c.globalAlpha = .25 + Math.sin(t * 4) * .1; rect(c, x - 2, y - 1, 16, 12, glow); c.globalAlpha = 1; }
   }
   // Enemies: two minions in each encounter room and the boss; cleared rooms are empty.
   const cleared = room => stage.back ? (room < 3 || won !== false) : stage.fight > 0 ? room < stage.fight : room < stage.target;

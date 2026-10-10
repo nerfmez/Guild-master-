@@ -424,3 +424,26 @@ test('guild master profile is cleaned, saved and editable', async () => {
   assert.equal(state.profile.guildName, 'กิลด์ใบอ่อน');
   assert.equal(createGame().profile, undefined);
 });
+
+test('missions roll quest-specific chest loot, and luck finds rarer treasure', async () => {
+  const { getTeamLuck } = await import('../src/game.js');
+  const { LOOT, EQUIPMENT } = await import('../src/content.js');
+  const state = createGame(11);
+  const mission = dispatch(state);
+  assert.equal(mission.loot.length, 3);
+  const allowed = new Set(Object.values(LOOT.patrol).flat().map(e => e.id || e.key));
+  for (const entry of mission.loot) assert.ok(allowed.has(entry.id || entry.key), 'patrol chests come from the patrol table');
+  const inventory = Object.values(state.inventory).reduce((a, b) => a + b, 0);
+  complete(state, mission);
+  assert.equal(mission.result.success, true);
+  assert.equal(mission.result.loot.length, 3);
+  const items = mission.result.loot.filter(e => e.kind === 'item').length;
+  assert.equal(Object.values(state.inventory).reduce((a, b) => a + b, 0), inventory + items);
+  assert.equal(deserializeGame(serializeGame(state)).missions.at(-1).result.loot.length, 3);
+  // A scout, observant trait and a careful plan raise luck; luck shifts rolls toward rare finds.
+  assert.ok(getTeamLuck(state, ['mira', 'finn', 'lune'], 'cautious', 1.3) > getTeamLuck(state, ['mira', 'lune', 'noa'], 'bold', 1));
+  const { rollLoot } = await import('../src/game.js');
+  const rareShare = luck => { const s = createGame(5); let rare = 0; for (let i = 0; i < 400; i++) rare += rollLoot(s, 'mistpath', luck).filter(e => e.tier === 'rare' || e.tier === 'legendary').length; return rare / 1200; };
+  assert.ok(rareShare(0.45) > rareShare(0) * 1.6, 'high luck finds clearly more rare treasure');
+  assert.ok(EQUIPMENT.filter(e => e.loot).every(e => e.workshopLevel === 99), 'treasures cannot be crafted');
+});

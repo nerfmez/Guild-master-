@@ -1,5 +1,5 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES } from './content.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES } from './content.js';
 
 export const SAVE_VERSION = 4;
 export const DAY_LENGTH = 240;
@@ -11,9 +11,9 @@ const EQUIPMENT_BY_ID = Object.fromEntries(EQUIPMENT.map(item => [item.id, item]
 const QUEST_BY_ID = Object.fromEntries(QUESTS.map(quest => [quest.id, quest]));
 const MEMBER_BY_ID = Object.fromEntries(MEMBERS.map(member => [member.id, member]));
 const TRAIT_BONUSES = {
-  'ใจเย็น': { injuryReduction: 3, health: 5 }, 'ช่างสังเกต': { power: 1, scouting: 0.04 },
+  'ใจเย็น': { injuryReduction: 3, health: 5 }, 'ช่างสังเกต': { power: 1, scouting: 0.04, luck: 0.05 },
   'ใฝ่รู้': { training: 0.04 }, 'อ่อนโยน': { healing: 0.04, morale: 0.006 },
-  'รักอิสระ': { scouting: 0.04, power: 1 }, 'ขยัน': { training: 0.035 },
+  'รักอิสระ': { scouting: 0.04, power: 1, luck: 0.03 }, 'ขยัน': { training: 0.035 },
   'ร่าเริง': { morale: 0.015 }, 'รอบคอบ': { injuryReduction: 3 },
   'กล้าหาญ': { power: 2 }, 'ช่างพูด': { morale: 0.012 },
   'อดทน': { recovery: 0.025, health: 6 }, 'สุขุม': { injuryReduction: 2, power: 1 },
@@ -254,6 +254,42 @@ function improveBonds(state, ids, amount) {
   }
 }
 
+/** Chance of better chest finds: scouts, observant traits, lucky charms, careful plans and a strong team. */
+export function getTeamLuck(state, memberIds = [], policy = 'balanced', readiness = 0) {
+  const members = memberIds.map(id => memberById(state, id)).filter(Boolean);
+  let luck = members.some(member => JOBS[member.class]?.role === 'scout') ? 0.12 : 0;
+  for (const member of members) {
+    luck += traitOf(member).luck || 0;
+    for (const slot of ['weapon', 'accessory']) luck += EQUIPMENT_BY_ID[member.equipment?.[slot]]?.luck || 0;
+  }
+  luck += policy === 'cautious' ? 0.06 : policy === 'bold' ? -0.04 : 0;
+  luck += clamp(((readiness || 0) - 1) * 0.15, 0, 0.08);
+  return Math.round(clamp(luck, 0, 0.45) * 100) / 100;
+}
+/** Three chests per mission (two rooms and the boss); luck moves weight from common to rare finds. */
+export function rollLoot(state, questId, luck) {
+  const table = LOOT[questId];
+  if (!table) return [];
+  return [0, 1, 2].map(index => {
+    const weights = { common: RARITIES.common.weight * (1 - luck) * (index === 2 ? 0.5 : 1), uncommon: RARITIES.uncommon.weight * (1 + luck),
+      rare: RARITIES.rare.weight * (1 + luck * 4), legendary: RARITIES.legendary.weight * (1 + luck * 6) * (index === 2 ? 2 : 1) };
+    let pick = nextRandom(state) * Object.values(weights).reduce((a, b) => a + b, 0), tier = 'common';
+    for (const [name, weight] of Object.entries(weights)) { if (pick < weight) { tier = name; break; } pick -= weight; }
+    const list = table[tier] || table.common, entry = list[Math.floor(nextRandom(state) * list.length) % list.length];
+    return entry.kind === 'mat' ? { tier, kind: 'mat', key: entry.key, amount: entry.min + Math.floor(nextRandom(state) * (entry.max - entry.min + 1)) } : { tier, kind: 'item', id: entry.id };
+  });
+}
+function grantLoot(state, mission, count) {
+  const found = [];
+  for (const entry of (mission.loot || []).slice(0, count)) {
+    if (entry.kind === 'mat') transact(state, { [entry.key]: entry.amount }, 'หีบสมบัติ', 1);
+    else if ((state.inventory[entry.id] || 0) < 24) state.inventory[entry.id] = (state.inventory[entry.id] || 0) + 1;
+    else transact(state, { gold: 40 }, 'ขายของซ้ำจากหีบ', 1);
+    found.push(entry);
+    if (entry.kind === 'item' && (entry.tier === 'rare' || entry.tier === 'legendary')) addLog(state, `พบสมบัติ${RARITIES[entry.tier].name}: ${EQUIPMENT_BY_ID[entry.id].name}!`, 'loot');
+  }
+  return found;
+}
 export function previewMission(state, questId, memberIds = [], policy = 'balanced') {
   const quest = QUEST_BY_ID[questId];
   const selectedPolicy = MISSION_POLICIES[policy];
@@ -275,7 +311,8 @@ export function previewMission(state, questId, memberIds = [], policy = 'balance
   if (!reason && getGuildStats(state).activeMissions >= getGuildStats(state).teamCap) reason = 'ทีมภารกิจเต็มแล้ว';
   if (!reason && !canAfford(state, quest.cost)) reason = 'เสบียงไม่เพียงพอ';
   if (!reason && state.missions.some(mission => mission.status === 'active' && mission.questId === quest.id)) reason = 'ภารกิจนี้มีทีมเดินทางอยู่แล้ว';
-  return { ok: !reason, reason, power, difficulty: quest.difficulty, readiness, roles, missingRoles,
+  const luck = getTeamLuck(state, Array.isArray(memberIds) ? memberIds : [], policy, readiness);
+  return { ok: !reason, reason, power, difficulty: quest.difficulty, readiness, roles, missingRoles, luck,
     duration: Math.round(quest.duration * (selectedPolicy?.duration || 1)), cost: { ...quest.cost },
     energy: Math.round(quest.energy * (selectedPolicy?.energy || 1)),
     verdict: readiness >= 1.25 ? 'พร้อมมาก' : readiness >= 0.95 ? 'พร้อมเดินทาง' : readiness >= 0.72 ? 'เสี่ยงบาดเจ็บ' : 'ควรฝึกและเตรียมอุปกรณ์', policy,
@@ -429,6 +466,8 @@ function sendMission(state, payload) {
     combat: { partyHp: maxHp, partyMaxHp: maxHp, enemyHp: quest.difficulty * 5, enemyMaxHp: quest.difficulty * 5,
       enemyName: quest.enemy, wave: 1, lastStrike: 0, log: [] },
   };
+  mission.luck = preview.luck;
+  mission.loot = rollLoot(state, quest.id, preview.luck);
   state.missions.push(mission);
   party.forEach(member => { member.task = 'mission'; });
   addLog(state, `ส่ง ${party.map(member => member.name).join(' · ')} ไป${quest.name}`, 'mission');
@@ -511,6 +550,7 @@ function resolveMission(state, mission) {
     state.completedQuests[quest.id] = (state.completedQuests[quest.id] || 0) + 1;
     state.questRuns[quest.id] = (state.questRuns[quest.id] || 0) + 1;
     mission.result = { success: true, reward: { ...rewards, rep }, title: 'กลับบ้านอย่างปลอดภัย', message: `${quest.name} สำเร็จ ได้ ${rewards.gold} เหรียญ และชื่อเสียง ${rep}` };
+    mission.result.loot = grantLoot(state, mission, 3);
     state.goals.firstMission = true;
     improveBonds(state, mission.memberIds, 9);
     if (quest.id === 'hollow') state.story.chapter = Math.max(2, state.story.chapter);
@@ -525,6 +565,7 @@ function resolveMission(state, mission) {
     addLog(state, mission.result.message, 'success');
   } else {
     mission.result = { success: false, reward: {}, title: 'ถอยกลับมาพัก', message: `ทีมถอยจาก${quest.name} ทุกคนกลับมาแล้ว ลองฝึกและเตรียมอุปกรณ์ก่อนออกใหม่` };
+    mission.result.loot = grantLoot(state, mission, 1);
     addLog(state, mission.result.message, 'warning');
   }
   mission.memberIds.forEach(id => {
@@ -958,6 +999,10 @@ export function deserializeGame(source) {
       validateNumber(mission, 'decisionDamage', -1, 1);
       if (!mission.combat || !finiteNumber(mission.combat.partyMaxHp) || !finiteNumber(mission.combat.enemyMaxHp) || mission.combat.partyMaxHp <= 0 || mission.combat.enemyMaxHp <= 0) throw new Error('ข้อมูลต่อสู้ไม่ถูกต้อง');
       mission.combat.log = Array.isArray(mission.combat.log) ? mission.combat.log.slice(0, 4) : [];
+      const validLoot = entry => entry && RARITIES[entry.tier] && ((entry.kind === 'mat' && RESOURCE_KEYS.includes(entry.key) && Number.isInteger(entry.amount) && entry.amount >= 0 && entry.amount < 10000) || (entry.kind === 'item' && EQUIPMENT_BY_ID[entry.id]));
+      mission.loot = Array.isArray(mission.loot) ? mission.loot.filter(validLoot).slice(0, 3) : [];
+      mission.luck = finiteNumber(mission.luck) ? clamp(mission.luck, 0, 0.45) : 0;
+      if (mission.result) mission.result.loot = Array.isArray(mission.result.loot) ? mission.result.loot.filter(validLoot).slice(0, 3) : [];
       if (mission.event) {
         if (!Array.isArray(mission.event.choices) || mission.event.choices.some(choice => !['help', 'press', 'rest'].includes(choice.id))) throw new Error('ตัวเลือกภารกิจไม่ถูกต้อง');
       }

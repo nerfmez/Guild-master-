@@ -84,6 +84,16 @@ export const EQUIPMENT = [
   { id: 'crystal-wand', name: 'ไม้เท้าผลึก', slot: 'weapon', classes: ['mage'], power: 18, health: 5, cost: { gold: 230, wood: 5, stone: 16 }, unlockRank: 'D', workshopLevel: 2, color: '#afa5cb', description: 'เวทสะท้อนแสงออกจากผลึก' },
   { id: 'bloom-staff', name: 'ไม้เท้าผลิบาน', slot: 'weapon', classes: ['healer'], power: 14, health: 20, cost: { gold: 210, wood: 9, herb: 12 }, unlockRank: 'D', workshopLevel: 2, color: '#a7c3ad', description: 'ดอกไม้ที่ปลายไม้เท้าไม่เคยเหี่ยว' },
   { id: 'moon-charm', name: 'เครื่องรางหมอกจันทร์', slot: 'accessory', classes: [], power: 9, health: 22, cost: { gold: 220, stone: 10, herb: 10 }, unlockRank: 'B', workshopLevel: 3, color: '#bac8d4', description: 'ช่วยให้หาทางกลับได้แม้ในหมอก' },
+  // Treasures: found only in mission chests, never crafted.
+  { id: 'sprout-charm', name: 'เครื่องรางใบอ่อนนำโชค', slot: 'accessory', classes: [], power: 4, health: 14, luck: 0.08, loot: true, rarity: 'rare', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#a9c99a', description: 'ใบไม้ที่ไม่เคยร่วง ช่วยให้สังเกตหีบซ่อนได้ง่ายขึ้น' },
+  { id: 'starlight-bow', name: 'ธนูแสงดาว', slot: 'weapon', classes: ['archer'], power: 12, health: 4, loot: true, rarity: 'rare', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#e7d394', description: 'สายธนูเรืองแสงจาง ๆ ยามค่ำ' },
+  { id: 'dew-charm', name: 'จี้น้ำค้างใบชา', slot: 'accessory', classes: [], power: 6, health: 18, loot: true, rarity: 'legendary', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#bfe0d6', description: 'หยดน้ำค้างแรกของทุ่งใบชา เย็นสดชื่นเสมอ' },
+  { id: 'gear-amulet', name: 'จี้เฟืองโบราณ', slot: 'accessory', classes: [], power: 9, health: 16, loot: true, rarity: 'rare', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#c9b47e', description: 'เฟืองจากหอระฆังที่ยังหมุนเบา ๆ' },
+  { id: 'echo-blade', name: 'ดาบเสียงก้อง', slot: 'weapon', classes: ['warrior'], power: 22, health: 20, loot: true, rarity: 'legendary', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#d2d8e2', description: 'ทุกครั้งที่ฟันจะมีเสียงระฆังเบา ๆ' },
+  { id: 'moonpetal-staff', name: 'ไม้เท้ากลีบจันทร์', slot: 'weapon', classes: ['healer'], power: 18, health: 28, loot: true, rarity: 'rare', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#d7d0ef', description: 'กลีบดอกที่บานเฉพาะคืนหมอกลง' },
+  { id: 'fox-charm', name: 'เครื่องรางขนจิ้งจอกหมอก', slot: 'accessory', classes: [], power: 12, health: 20, luck: 0.06, loot: true, rarity: 'rare', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#e8e3f2', description: 'จิ้งจอกหมอกทิ้งไว้ให้คนที่ใจดีกับป่า' },
+  { id: 'lantern-wand', name: 'คทาตะเกียงหมอก', slot: 'weapon', classes: ['mage'], power: 25, health: 6, loot: true, rarity: 'legendary', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#f0dca0', description: 'แสงในตะเกียงไม่เคยดับ แม้ในหมอกหนาที่สุด' },
+  { id: 'heart-gem', name: 'อัญมณีหัวใจป่า', slot: 'accessory', classes: [], power: 16, health: 30, luck: 0.1, loot: true, rarity: 'legendary', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#9fd3a8', description: 'เต้นเป็นจังหวะเดียวกับป่าทั้งผืน' },
 ];
 export const GUILD_EVENTS = [
   { id: 'tea', name: 'วงน้ำชายามบ่าย', description: 'สมาชิกที่อยู่บ้านฟื้นพลัง 15 และขวัญ 12 เพิ่มความสนิท', cost: { gold: 70, herb: 3 }, requires: 'kitchen', cooldown: 120 },
@@ -93,4 +103,25 @@ export const MISSION_POLICIES = {
   balanced: { name: 'สมดุล', duration: 1, power: 1, energy: 1 },
   cautious: { name: 'รอบคอบ', duration: 1.2, power: 1.12, energy: 0.9 },
   bold: { name: 'เร่งเดินทาง', duration: 0.85, power: 0.9, energy: 1.2 },
+};
+
+export const RARITIES = {
+  common: { name: 'ธรรมดา', weight: 60, color: '#b9ad97' },
+  uncommon: { name: 'ดี', weight: 28, color: '#7fae6f' },
+  rare: { name: 'หายาก', weight: 10, color: '#6f9ad1' },
+  legendary: { name: 'ตำนาน', weight: 1, color: '#e2a93c' },
+};
+/** What each quest's chests can hold, by rarity. Materials give a random amount in range. */
+const mat = (key, min, max) => ({ kind: 'mat', key, min, max });
+const gear = id => ({ kind: 'item', id });
+export const LOOT = {
+  patrol: { common: [mat('wood', 2, 4), mat('gold', 15, 30)], uncommon: [mat('herb', 2, 4), gear('ribbon')], rare: [gear('sprout-charm'), gear('starlight-bow')], legendary: [gear('dew-charm')] },
+  herbs: { common: [mat('herb', 2, 5), mat('wood', 2, 3)], uncommon: [gear('tea-staff'), mat('herb', 5, 8)], rare: [gear('sprout-charm'), gear('starlight-bow')], legendary: [gear('dew-charm')] },
+  escort: { common: [mat('gold', 25, 45), mat('wood', 3, 5)], uncommon: [gear('oak-blade'), gear('ribbon')], rare: [gear('starlight-bow'), gear('sprout-charm')], legendary: [gear('dew-charm')] },
+  hollow: { common: [mat('stone', 3, 6), mat('herb', 2, 4)], uncommon: [gear('moon-wand'), mat('gold', 40, 70)], rare: [gear('gear-amulet'), gear('bell-blade')], legendary: [gear('echo-blade')] },
+  crystals: { common: [mat('stone', 4, 8), mat('gold', 30, 50)], uncommon: [gear('crystal-wand'), mat('stone', 8, 12)], rare: [gear('gear-amulet'), gear('wind-bow')], legendary: [gear('echo-blade')] },
+  ruins: { common: [mat('stone', 5, 9), mat('gold', 40, 70)], uncommon: [gear('bell-blade'), gear('bloom-staff')], rare: [gear('gear-amulet'), gear('crystal-wand')], legendary: [gear('echo-blade')] },
+  mistpath: { common: [mat('herb', 4, 8), mat('wood', 4, 7)], uncommon: [gear('wind-bow'), gear('moon-charm')], rare: [gear('moonpetal-staff'), gear('fox-charm')], legendary: [gear('lantern-wand')] },
+  rescue: { common: [mat('herb', 5, 9), mat('gold', 60, 90)], uncommon: [gear('bloom-staff'), gear('moon-charm')], rare: [gear('fox-charm'), gear('moonpetal-staff')], legendary: [gear('lantern-wand')] },
+  heart: { common: [mat('gold', 80, 120), mat('herb', 6, 10)], uncommon: [gear('moon-charm'), gear('crystal-wand')], rare: [gear('fox-charm'), gear('lantern-wand')], legendary: [gear('heart-gem')] },
 };
