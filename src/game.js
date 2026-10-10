@@ -1,7 +1,7 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES } from './content.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS } from './content.js';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const DAY_LENGTH = 240;
 const RESOURCE_KEYS = ['gold', 'wood', 'stone', 'herb'];
 const MAX_LEVEL = 20;
@@ -60,7 +60,7 @@ function canAfford(state, cost) {
 
 function createMember(content, level = 1) {
   return { id: content.id, name: content.name, class: content.class, level, xp: 0, energy: 100, morale: 80,
-    injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null };
+    injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null, purse: 0 };
 }
 
 export function createGame(seed = 123, options = {}) {
@@ -82,6 +82,8 @@ export function createGame(seed = 123, options = {}) {
     settings: { speed: 1, sound: true, paused: false },
     story: { chapter: 1, finished: false }, eventCooldowns: {}, daily: { missionCounts: {}, work: {}, garden: false },
     bankruptcyDays: 0,
+    petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
+    upgrades: { signboard: 0, contracts: 0, clerk: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0 }, idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -89,9 +91,11 @@ export function createGame(seed = 123, options = {}) {
     state.intro = { step: 'reception', timer: 0, visitors: [], next: [], after: null };
     state.profile = normalizeProfile(options.profile);
     addLog(state, `${state.profile.masterName} รับบ้านเก่าข้างต้นไม้มาเปิดเป็น${state.profile.guildName} เริ่มจากวางโต๊ะรับคำร้อง`, 'story');
+    syncImportant(state);
     return state;
   }
   addLog(state, 'บ้านเก่าข้างต้นไม้เปิดเป็นกิลด์แล้ว ส่งสมาชิกไปลาดตระเวนทางหมู่บ้านเพื่อเริ่มต้น', 'story');
+  syncImportant(state);
   return state;
 }
 
@@ -186,7 +190,7 @@ export function getGuildStats(state) {
   const today = state.ledger.filter(entry => entry.day === state.day);
   const memberCap = Math.min(12, roomLevel(state, 'dorm') * 4);
   return { power: state.members.reduce((sum, member) => sum + getMemberStats(state, member).power, 0),
-    memberCount: state.members.length, memberCap, teamCap: hasRank(state, 'E') && roomLevel(state, 'dispatch') ? 2 : 1,
+    memberCount: state.members.length, memberCap, teamCap: (hasRank(state, 'E') && roomLevel(state, 'dispatch') ? 2 : 1) + (bestRoomLevel(state, 'board') >= 2 ? 1 : 0) + (bestRoomLevel(state, 'board') >= 3 ? 1 : 0),
     activeMissions: state.missions.filter(mission => mission.status === 'active').length,
     recoveryRate: 0.16 + bestRoomLevel(state, 'dorm') * 0.045 + bestRoomLevel(state, 'kitchen') * 0.025,
     restSlots: roomLevel(state, 'dorm') * 2, trainingSlots: roomLevel(state, 'training') * 2,
@@ -494,6 +498,12 @@ function sendMission(state, payload) {
   const preview = previewMission(state, payload.questId, payload.memberIds, payload.policy || 'balanced');
   if (!preview.ok) return failure(preview.reason);
   const quest = QUEST_BY_ID[payload.questId];
+  state.petitions ??= [];
+  const petition = payload.petitionId ? state.petitions.find(p => p.id === payload.petitionId)
+    : state.petitions.filter(p => p.questId === quest.id && p.status === 'posted' && !p.missionId).sort((a, b) => Number(b.important) - Number(a.important))[0];
+  if (!petition || petition.questId !== quest.id || petition.status !== 'posted' || petition.missionId) return failure('ยังไม่มีคำร้องนี้บนกระดาน รับคำร้องจากชาวบ้านก่อน');
+  if (payload.plan !== undefined && !PAYOUT_PLANS[payload.plan]) return failure('แผนค่าตอบแทนไม่ถูกต้อง');
+  if (payload.plan) petition.plan = payload.plan;
   const party = payload.memberIds.map(id => memberById(state, id));
   const maxHp = party.reduce((sum, member) => sum + getMemberStats(state, member).health, 0);
   transact(state, quest.cost, `เสบียง: ${quest.name}`);
@@ -507,9 +517,13 @@ function sendMission(state, payload) {
   };
   mission.luck = preview.luck;
   mission.loot = rollLoot(state, quest.id, preview.luck);
+  mission.petition = { id: petition.id, fee: petition.fee, plan: petition.plan, client: petition.client, important: petition.important };
+  mission.prep = payload.auto ? 5 : 0;
+  if (payload.auto) mission.auto = true;
+  petition.status = 'taken'; petition.missionId = mission.id;
   state.missions.push(mission);
   party.forEach(member => { member.task = 'mission'; });
-  addLog(state, `ส่ง ${party.map(member => member.name).join(' · ')} ไป${quest.name}`, 'mission');
+  addLog(state, payload.auto ? `${party.map(member => member.name).join(' · ')} หยิบงาน “${quest.name}” จากกระดานแล้ว` : `ส่ง ${party.map(member => member.name).join(' · ')} ไป${quest.name}`, 'mission');
   return success(`ทีมออกเดินทางไป${quest.name}แล้ว`);
 }
 
@@ -583,12 +597,21 @@ function resolveMission(state, mission) {
     const multiplier = !wasCompleted ? 1 : dailyCount >= 3 ? 0.35 : 0.7;
     const rewards = Object.fromEntries(RESOURCE_KEYS.map(key => [key, Math.floor((quest.reward[key] || 0) * multiplier)]));
     rewards.herb += mission.bonusHerb || 0;
-    transact(state, rewards, `รางวัล: ${quest.name}`, 1);
+    let wages = 0;
+    if (mission.petition) {
+      // The client pays the fee; the guild keeps its commission and the team shares the rest.
+      const pay = getPayout(state, Math.floor(mission.petition.fee * multiplier), mission.petition.plan);
+      rewards.gold = pay.guild; wages = pay.adventurers;
+      mission.memberIds.forEach(id => { const member = memberById(state, id); member.purse = (member.purse || 0) + wages / mission.memberIds.length; });
+      state.village.prosperity += pay.fee * 0.15;
+    }
+    transact(state, rewards, mission.petition ? `ค่านายหน้า: ${quest.name}` : `รางวัล: ${quest.name}`, 1);
     const rep = Math.max(2, Math.round(quest.reward.rep * multiplier * (1 + roomLevel(state, 'reception') * 0.05)));
     state.rep += rep;
     state.completedQuests[quest.id] = (state.completedQuests[quest.id] || 0) + 1;
     state.questRuns[quest.id] = (state.questRuns[quest.id] || 0) + 1;
-    mission.result = { success: true, reward: { ...rewards, rep }, title: 'กลับบ้านอย่างปลอดภัย', message: `${quest.name} สำเร็จ ได้ ${rewards.gold} เหรียญ และชื่อเสียง ${rep}` };
+    mission.result = { success: true, reward: { ...rewards, rep }, wages: Math.round(wages), title: 'กลับบ้านอย่างปลอดภัย', message: mission.petition ? `${quest.name} สำเร็จ ${mission.petition.client}จ่าย ${Math.floor(mission.petition.fee * multiplier)} G · กิลด์ได้ค่านายหน้า ${rewards.gold} G · ทีมได้ ${Math.round(wages)} G` : `${quest.name} สำเร็จ ได้ ${rewards.gold} เหรียญ และชื่อเสียง ${rep}` };
+    if (mission.petition) state.petitions = state.petitions.filter(p => p.id !== mission.petition.id);
     mission.result.loot = grantLoot(state, mission, 3);
     state.goals.firstMission = true;
     improveBonds(state, mission.memberIds, 9);
@@ -604,6 +627,7 @@ function resolveMission(state, mission) {
     addLog(state, mission.result.message, 'success');
   } else {
     mission.result = { success: false, reward: {}, title: 'ถอยกลับมาพัก', message: `ทีมถอยจาก${quest.name} ทุกคนกลับมาแล้ว ลองฝึกและเตรียมอุปกรณ์ก่อนออกใหม่` };
+    reopenPetition(state, mission);
     mission.result.loot = grantLoot(state, mission, 1);
     addLog(state, mission.result.message, 'warning');
   }
@@ -611,7 +635,7 @@ function resolveMission(state, mission) {
     const member = memberById(state, id);
     member.task = 'rest';
     member.energy = clamp(member.energy - mission.energyCost, 0, 100);
-    member.morale = clamp(member.morale + (won ? 7 : -9), 20, 100);
+    member.morale = clamp(member.morale + (won ? 7 : -9) + (won && mission.petition ? PAYOUT_PLANS[mission.petition.plan]?.morale || 0 : 0), 20, 100);
     const injury = won ? Math.max(0, Math.round((1.12 - readiness) * 23 + mission.risk * 3)) : 16 + Math.round(mission.risk * 10);
     const healerReduction = mission.roles?.includes('heal') ? 3 : 0;
     member.injury = clamp(member.injury + Math.max(0, injury - (traitOf(member).injuryReduction || 0) - healerReduction), 0, 100);
@@ -622,6 +646,11 @@ function resolveMission(state, mission) {
   trimMissions(state);
 }
 
+/** A failed or recalled job goes back on the board for another try. */
+function reopenPetition(state, mission) {
+  const petition = mission.petition && state.petitions?.find(p => p.id === mission.petition.id);
+  if (petition) { petition.status = 'posted'; petition.missionId = null; petition.age = 0; }
+}
 function trimMissions(state) {
   const past = state.missions.filter(mission => mission.status !== 'active');
   if (past.length > 20) {
@@ -652,6 +681,10 @@ function dailyUpdate(state) {
   } else state.bankruptcyDays = 0;
   const garden = roomLevel(state, 'garden');
   if (garden) transact(state, { herb: garden * 2 }, 'เก็บสมุนไพรจากสวน', 1);
+  const shop = state.village?.shop || 0, market = state.village?.market || 0;
+  if (shop) transact(state, { gold: shop * 20 }, 'ค่าเช่าร้านค้าในหมู่บ้าน', 1);
+  if (market) transact(state, { wood: market * 3, stone: market * 2, herb: market * 2 }, 'ของจากตลาดนัด', 1);
+  settleIdle(state, true);
   state.daily = { missionCounts: {}, work: {}, garden: Boolean(garden) };
   if (state.day % 3 === 0) {
     const choices = ['ชาวบ้านฝากขนมปังมาให้กิลด์ สมาชิกทุกคนขวัญดีขึ้น', 'เด็ก ๆ นำภาพวาดทีมกิลด์มาติดผนัง ทุกคนยิ้มให้กัน'];
@@ -659,6 +692,250 @@ function dailyUpdate(state) {
     state.members.forEach(member => { member.morale = clamp(member.morale + 4, 0, 100); });
     addLog(state, text, 'cozy');
   }
+}
+
+
+// ---- Petitions: villagers bring requests, the guild posts them, adventurers take them. ----
+const IMPORTANT_QUESTS = new Set(['patrol', ...Object.values(RANK_REQUIREMENTS).map(r => r.quest).filter(Boolean), ...QUESTS.filter(q => q.story).map(q => q.id), ...QUESTS.map(q => q.requires).filter(Boolean)]);
+const PETITION_WALK = 0.9;
+const BOARD_LIFETIME = 720;
+/** Story and rank steps stay "important" (reserved for the player) until first cleared. */
+export function isImportantQuest(state, questId) { return IMPORTANT_QUESTS.has(questId) && !state.completedQuests[questId]; }
+function petitionRandom(state) {
+  let x = state.petitionRng | 0;
+  x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+  state.petitionRng = x >>> 0 || 7;
+  return state.petitionRng / 4294967296;
+}
+const questOpen = (state, quest) => hasRank(state, quest.rank) && (!quest.requires || state.completedQuests[quest.requires]);
+/** Where a client's home door is, for walking times; lots come from content, the inn and bakery stand by the guild. */
+export function petitionHome(home) {
+  if (home === 'inn') return { x: -2.2, y: 10.8 };
+  if (home === 'bakery') return { x: 24.3, y: 15.8 };
+  if (home === 'elder') return { x: 0.3, y: -0.5 };
+  const lot = VILLAGE_LOTS.houses[home];
+  return lot ? { x: lot.x + 1.2, y: lot.y + 2.4 } : { x: 2, y: 18 };
+}
+export function guildDoor(state) { const b = buildingRect(state); return { x: b.x + b.w / 2, y: b.y + b.h + 0.6 }; }
+export function petitionWalkTime(state, home) { const a = petitionHome(home), b = guildDoor(state); return Math.round((Math.abs(a.x - b.x) + Math.abs(a.y - b.y)) / PETITION_WALK + 3); }
+export function getPayout(state, fee, planId = 'standard') {
+  const plan = PAYOUT_PLANS[planId] || PAYOUT_PLANS.standard, bonus = Math.min(0.4, (state.upgrades?.contracts || 0) * 0.04);
+  const guild = Math.min(fee, Math.round(fee * (1 - plan.share + bonus)));
+  return { fee, guild, adventurers: fee - guild, plan };
+}
+function syncImportant(state) {
+  state.petitions ??= [];
+  for (const quest of QUESTS) {
+    if (!isImportantQuest(state, quest.id) || !questOpen(state, quest)) continue;
+    if (state.petitions.some(p => p.questId === quest.id && p.important)) continue;
+    state.petitions.push({ id: `pet-${state.nextId++}`, questId: quest.id, client: 'ผู้ใหญ่บ้าน', seed: 7, home: 'elder', important: true, reserved: true,
+      fee: Math.round(quest.reward.gold * FEE_MULTIPLIER), plan: 'standard', status: 'posted', eta: 0, etaTotal: 20, patience: 80, age: 0, missionId: null });
+  }
+}
+export function getVillageInfo(state) {
+  const v = state.village || { prosperity: 0, houses: 3 };
+  let index = 0;
+  for (let i = 0; i < VILLAGE_LEVELS.length; i++) if (v.prosperity >= VILLAGE_LEVELS[i].prosperity) index = i;
+  const now = VILLAGE_LEVELS[index], next = VILLAGE_LEVELS[index + 1] || null;
+  return { level: now.level, name: now.name, prosperity: Math.floor(v.prosperity), next, progress: next ? clamp((v.prosperity - now.prosperity) / (next.prosperity - now.prosperity), 0, 1) : 1,
+    houses: v.houses, maxHouses: Math.min(VILLAGE_LOTS.houses.length, 2 + now.level * 2), shop: v.shop || 0, market: v.market || 0, smithy: v.smithy || 0,
+    interval: petitionInterval(state), maxWaiting: 2 + Math.floor(now.level / 2), maxPosted: 4 + roomLevel(state, 'reception'), idleRate: idleRate(state) };
+}
+function petitionInterval(state) {
+  const houses = state.village?.houses || 0, sign = state.upgrades?.signboard || 0;
+  return Math.max(10, Math.round(52 / ((1 + sign * 0.1) * (1 + houses * 0.12))));
+}
+/** Gold per second that keeps flowing in, even while the game is closed. */
+export function idleRate(state) { return Math.round(((state.upgrades?.coffer || 0) * 0.25 + (state.village?.market || 0) * 0.15) * 100) / 100; }
+const levelCost = (base, growth, level) => Object.fromEntries(Object.entries(base).map(([key, value]) => [key, Math.ceil(value * Math.pow(growth, level))]));
+export function getGuildUpgradeCost(state, id) { const u = GUILD_UPGRADES[id]; return u ? levelCost(u.base, u.growth, state.upgrades?.[id] || 0) : null; }
+export function getProjectCost(state, id) { const p = VILLAGE_PROJECTS[id]; if (!p) return null; const level = id === 'house' ? Math.max(0, (state.village?.houses || 0) - 3) : state.village?.[id] || 0; return levelCost(p.base, p.growth, level); }
+export function getProjectStatus(state, id) {
+  const p = VILLAGE_PROJECTS[id], info = getVillageInfo(state);
+  if (!p) return { ok: false, reason: 'ไม่พบโครงการ', level: 0 };
+  const level = id === 'house' ? info.houses : info[id], max = id === 'house' ? info.maxHouses : p.max;
+  let reason = '';
+  if (info.level < p.villageLevel) reason = `ต้องเป็น${VILLAGE_LEVELS[p.villageLevel - 1].name} (ระดับ ${p.villageLevel})`;
+  else if (level >= p.max) reason = 'สร้างครบแล้ว';
+  else if (level >= max) reason = `หมู่บ้านระดับ ${info.level} มีที่ดินว่างครบแล้ว ให้หมู่บ้านเติบโตก่อน`;
+  else if (!canAfford(state, getProjectCost(state, id))) reason = 'ทรัพยากรไม่เพียงพอ';
+  return { ok: !reason, reason, level, max: p.max, cost: getProjectCost(state, id) };
+}
+export const SHOP_GOODS = { wood: { amount: 10, gold: 34 }, stone: { amount: 10, gold: 46 }, herb: { amount: 5, gold: 30 } };
+
+/** Add a petition straight to the desk or the board (used by the village flow and by tests). */
+export function addPetition(state, questId, options = {}) {
+  const quest = QUEST_BY_ID[questId];
+  if (!quest) return null;
+  const homes = [...Array(Math.min(state.village?.houses || 0, VILLAGE_LOTS.houses.length)).keys(), 'inn', 'bakery'];
+  const home = options.home ?? homes[Math.floor(petitionRandom(state) * homes.length) % homes.length];
+  const status = options.status || 'coming', eta = petitionWalkTime(state, home);
+  const petition = { id: `pet-${state.nextId++}`, questId, client: VILLAGER_NAMES[Math.floor(petitionRandom(state) * VILLAGER_NAMES.length) % VILLAGER_NAMES.length],
+    seed: Math.floor(petitionRandom(state) * 100000), home, important: false, reserved: false,
+    fee: Math.round(quest.reward.gold * FEE_MULTIPLIER * (0.85 + petitionRandom(state) * 0.3)), plan: options.plan || state.payoutPlan || 'standard',
+    status, eta: status === 'coming' ? eta : 0, etaTotal: eta, patience: 80 + (state.upgrades?.clerk || 0) * 25, age: 0, missionId: null };
+  state.petitions.push(petition);
+  return petition;
+}
+function spawnPetition(state) {
+  const open = QUESTS.filter(q => questOpen(state, q) && !q.final && !isImportantQuest(state, q.id)
+    && state.petitions.filter(p => p.questId === q.id).length < 2);
+  if (!open.length) return null;
+  const weights = open.map(q => 1 + rankIndex(q.rank) * 0.8);
+  let pick = petitionRandom(state) * weights.reduce((a, b) => a + b, 0), quest = open[0];
+  for (let i = 0; i < open.length; i++) { if (pick < weights[i]) { quest = open[i]; break; } pick -= weights[i]; }
+  return addPetition(state, quest.id);
+}
+function postPetition(state, petition, planId) {
+  petition.status = 'posted'; petition.plan = PAYOUT_PLANS[planId] ? planId : 'standard'; petition.age = 0;
+  state.village.prosperity += 4;
+}
+/** Free adventurers: at home, rested, not training, and willing to take board work. */
+function freeForBoard(state, member) {
+  return !isBusy(state, member.id) && member.task !== 'train' && member.energy >= 70 && member.injury <= 15 && member.autoWork !== false;
+}
+/** The smallest strong-enough team from the free adventurers: cover roles, then add the strongest until ready. */
+function pickBoardTeam(state, quest, planId) {
+  const plan = PAYOUT_PLANS[planId] || PAYOUT_PLANS.standard;
+  const pool = state.members.filter(member => freeForBoard(state, member));
+  if (!pool.length) return null;
+  const score = member => getMemberStats(state, member).power;
+  const team = [];
+  const ready = () => previewMission(state, quest.id, team.map(m => m.id), 'balanced').readiness >= plan.readiness + 0.1;
+  for (const role of quest.tags) {
+    if (team.length >= 3 || (team.length && ready())) break;
+    const pick = pool.filter(m => !team.includes(m) && getMemberStats(state, m).role === role).sort((a, b) => score(b) - score(a))[0];
+    if (pick) team.push(pick);
+  }
+  for (const member of pool.filter(m => !team.includes(m)).sort((a, b) => score(b) - score(a))) { if (team.length >= 3 || (team.length && ready())) break; team.push(member); }
+  const preview = previewMission(state, quest.id, team.map(m => m.id), 'balanced');
+  return preview.ok && preview.readiness >= plan.readiness ? team.map(m => m.id) : null;
+}
+function tickPetitions(state, step) {
+  state.petitions ??= [];
+  syncImportant(state);
+  const desk = roomLevel(state, 'reception') > 0, info = getVillageInfo(state);
+  if (desk && !introActive(state)) {
+    state.petitionClock -= step;
+    if (state.petitionClock <= 0) {
+      state.petitionClock = info.interval * (0.75 + petitionRandom(state) * 0.5);
+      const queued = state.petitions.filter(p => p.status === 'coming' || p.status === 'waiting').length;
+      const posted = state.petitions.filter(p => p.status === 'posted' && !p.important).length;
+      if (queued < info.maxWaiting && posted < info.maxPosted) spawnPetition(state);
+    }
+  }
+  for (const petition of [...state.petitions]) {
+    if (petition.status === 'coming') {
+      petition.eta -= step;
+      if (petition.eta <= 0) { petition.status = 'waiting'; petition.eta = 0; addLog(state, `${petition.client}มาส่งคำร้อง “${QUEST_BY_ID[petition.questId].name}” ที่โต๊ะรับคำร้อง`, 'petition'); }
+    } else if (petition.status === 'waiting') {
+      const posted = state.petitions.filter(p => p.status === 'posted' && !p.important).length;
+      if ((state.upgrades?.clerk || 0) > 0 && posted < info.maxPosted) { postPetition(state, petition, state.payoutPlan); addLog(state, `เสมียนรับคำร้อง “${QUEST_BY_ID[petition.questId].name}” ขึ้นกระดานแล้ว`, 'petition'); continue; }
+      petition.patience -= step;
+      if (petition.patience <= 0) { state.petitions = state.petitions.filter(p => p !== petition); addLog(state, `${petition.client}รอนานเกินไปเลยกลับบ้านก่อน`, 'info'); }
+    } else if (petition.status === 'posted') {
+      petition.age += step;
+      if (!petition.important && petition.age > BOARD_LIFETIME) { state.petitions = state.petitions.filter(p => p !== petition); addLog(state, `คำร้อง “${QUEST_BY_ID[petition.questId].name}” ไม่มีใครรับจนหมดเวลา ชาวบ้านไปหาทางอื่นแล้ว`, 'warning'); }
+    }
+  }
+  // Adventurers with nothing to do walk to the board and take work they can handle.
+  if (!roomLevel(state, 'board')) return;
+  const stats = getGuildStats(state);
+  if (stats.activeMissions >= stats.teamCap) return;
+  const board = state.petitions.filter(p => p.status === 'posted' && !p.reserved && !p.missionId && p.age >= 8 / (PAYOUT_PLANS[p.plan]?.eager || 1))
+    .sort((a, b) => (PAYOUT_PLANS[b.plan]?.share || 0) * b.fee - (PAYOUT_PLANS[a.plan]?.share || 0) * a.fee);
+  for (const petition of board) {
+    const quest = QUEST_BY_ID[petition.questId];
+    if (state.missions.some(m => m.status === 'active' && m.questId === quest.id) || !canAfford(state, quest.cost)) continue;
+    const team = pickBoardTeam(state, quest, petition.plan);
+    if (!team) continue;
+    const result = sendMission(state, { questId: quest.id, memberIds: team, policy: 'balanced', petitionId: petition.id, auto: true });
+    if (result.ok) break;
+  }
+}
+function settleIdle(state, force = false) {
+  if (state.idleBank >= 40 || (force && state.idleBank >= 1)) {
+    const gold = Math.floor(state.idleBank);
+    state.idleBank -= gold;
+    transact(state, { gold }, 'ดอกผลกองทุนและค่าแผงตลาด', 1);
+  }
+}
+function tickVillage(state, step) {
+  state.idleBank = (state.idleBank || 0) + idleRate(state) * step;
+  settleIdle(state);
+  const shop = state.village?.shop || 0;
+  if (!shop) return;
+  for (const member of state.members) {
+    if (isBusy(state, member.id) || !(member.purse >= 1)) continue;
+    const spend = Math.min(member.purse, (0.25 + shop * 0.15) * step);
+    member.purse -= spend;
+    member.morale = clamp(member.morale + spend * 0.12, 0, 100);
+    state.village.prosperity += spend * 0.6;
+  }
+}
+function buyUpgrade(state, payload) {
+  const u = GUILD_UPGRADES[payload.upgradeId];
+  if (!u) return failure('ไม่พบการพัฒนา');
+  const level = state.upgrades[payload.upgradeId] || 0;
+  if (level >= u.max) return failure('พัฒนาถึงระดับสูงสุดแล้ว');
+  const cost = getGuildUpgradeCost(state, payload.upgradeId);
+  if (!canAfford(state, cost)) return failure('ทรัพยากรไม่เพียงพอ');
+  transact(state, cost, `พัฒนา${u.name}`);
+  state.upgrades[payload.upgradeId] = level + 1;
+  addLog(state, `${u.name} เป็นระดับ ${level + 1}`, 'build');
+  return success(`${u.name} ระดับ ${level + 1}`);
+}
+function buildProject(state, payload) {
+  const id = payload.projectId, p = VILLAGE_PROJECTS[id], status = getProjectStatus(state, id);
+  if (!status.ok) return failure(status.reason);
+  transact(state, status.cost, `หมู่บ้าน: ${p.name}`);
+  if (id === 'house') state.village.houses += 1; else state.village[id] = (state.village[id] || 0) + 1;
+  const before = getVillageInfo(state).level;
+  state.village.prosperity += p.prosperity;
+  const after = getVillageInfo(state);
+  addLog(state, id === 'house' ? 'ครอบครัวใหม่ย้ายเข้าบ้านหลังใหม่ในหมู่บ้าน' : `${p.name}ระดับ ${state.village[id]} เปิดในหมู่บ้านแล้ว`, 'build');
+  if (after.level > before) addLog(state, `หมู่บ้านเติบโตเป็น “${after.name}” บ้านเรือนขยายและมีที่ดินว่างเพิ่ม`, 'rank');
+  return success(id === 'house' ? 'สร้างบ้านใหม่แล้ว' : `${p.name}ระดับ ${state.village[id]}`);
+}
+function buyMaterial(state, payload) {
+  const good = SHOP_GOODS[payload.key];
+  if (!good) return failure('ร้านไม่มีของชนิดนี้');
+  if (!(state.village?.shop > 0)) return failure('ต้องสร้างร้านค้าในหมู่บ้านก่อน');
+  if (state.gold < good.gold) return failure('เหรียญไม่เพียงพอ');
+  transact(state, { gold: good.gold }, `ซื้อ${({ wood: 'ไม้', stone: 'หิน', herb: 'สมุนไพร' })[payload.key]}จากร้านค้า`);
+  transact(state, { [payload.key]: good.amount }, 'ของจากร้านค้า', 1);
+  state.village.prosperity += good.gold * 0.2;
+  return success(`ซื้อแล้ว +${good.amount}`);
+}
+/** Income earned while the game was closed: the coffer and market keep paying for up to two hours. */
+function collectIdle(state, payload) {
+  const seconds = clamp(Number(payload.seconds) || 0, 0, 7200), gold = Math.floor(idleRate(state) * seconds);
+  if (gold < 1) return failure('ยังไม่มีดอกผลสะสม');
+  transact(state, { gold }, 'ดอกผลระหว่างปิดเกม', 1);
+  return { ok: true, message: `ระหว่างที่ไม่อยู่ กองทุนและตลาดได้ ${gold} G`, gold };
+}
+function petitionCommand(state, type, payload) {
+  const petition = state.petitions.find(p => p.id === payload.petitionId);
+  if (!petition) return failure('ไม่พบคำร้องนี้');
+  if (type === 'acceptPetition') {
+    if (petition.status !== 'waiting') return failure('คำร้องนี้ยังไม่ถึงโต๊ะหรือรับไปแล้ว');
+    if (state.petitions.filter(p => p.status === 'posted' && !p.important).length >= getVillageInfo(state).maxPosted) return failure('กระดานเต็มแล้ว อัปเกรดโต๊ะรับคำร้องหรือรอให้งานเดิมเสร็จ');
+    if (payload.plan && !PAYOUT_PLANS[payload.plan]) return failure('แผนค่าตอบแทนไม่ถูกต้อง');
+    postPetition(state, petition, payload.plan || state.payoutPlan);
+    addLog(state, `รับคำร้องของ${petition.client}: ${QUEST_BY_ID[petition.questId].name} (${PAYOUT_PLANS[petition.plan].name})`, 'petition');
+    return success('ติดคำร้องบนกระดานแล้ว');
+  }
+  if (type === 'declinePetition') {
+    if (petition.important) return failure('คำร้องสำคัญปฏิเสธไม่ได้');
+    if (petition.missionId) return failure('มีทีมรับงานนี้อยู่');
+    state.petitions = state.petitions.filter(p => p !== petition);
+    return success('ปฏิเสธคำร้องอย่างสุภาพแล้ว');
+  }
+  // setPetition: change payout plan or reserve for the player's own pick.
+  if (petition.status !== 'posted' || petition.missionId) return failure('แก้ได้เฉพาะคำร้องบนกระดานที่ยังไม่มีคนรับ');
+  if (payload.plan !== undefined) { if (!PAYOUT_PLANS[payload.plan]) return failure('แผนค่าตอบแทนไม่ถูกต้อง'); petition.plan = payload.plan; }
+  if (payload.reserved !== undefined) petition.reserved = petition.important || Boolean(payload.reserved);
+  return success(petition.reserved ? 'จองงานนี้ไว้ให้ทีมที่คุณเลือก' : 'เปิดให้นักผจญภัยหยิบเอง');
 }
 
 /** Advance game time. Callers choose speed; tick itself never reads the DOM or timers. */
@@ -711,6 +988,7 @@ export function tick(state, seconds) {
     }
     for (const mission of [...state.missions]) {
       if (mission.status !== 'active') continue;
+      if (mission.prep > 0) { mission.prep = Math.max(0, mission.prep - step); continue; }
       mission.progress += step;
       const quest = QUEST_BY_ID[mission.questId];
       const hasDecision = quest.story || (quest.id === 'patrol' && !state.completedQuests.patrol);
@@ -722,6 +1000,8 @@ export function tick(state, seconds) {
       if (mission.progress >= mission.duration) resolveMission(state, mission);
     }
     if (state.intro) advanceIntro(state, step);
+    tickPetitions(state, step);
+    tickVillage(state, step);
     if (state.clock >= DAY_LENGTH - 0.00001) {
       state.clock = 0;
       state.day += 1;
@@ -808,14 +1088,17 @@ function expand(state) {
   return success('ขยายที่ดินกิลด์แล้ว');
 }
 
+/** The village smithy takes 10% off the gold of every recipe per level. */
+export function getCraftCost(state, item) { const off = Math.min(0.3, (state.village?.smithy || 0) * 0.1); return { ...item.cost, gold: Math.round((item.cost.gold || 0) * (1 - off)) }; }
 function craft(state, payload) {
   const item = EQUIPMENT_BY_ID[payload.equipmentId];
   if (!item) return failure('ไม่พบสูตรอุปกรณ์');
   if (!hasRank(state, item.unlockRank)) return failure(`สูตรนี้ต้องมีกิลด์ระดับ ${item.unlockRank}`);
   if (bestRoomLevel(state, 'workshop') < item.workshopLevel) return failure(`ต้องมีโต๊ะช่างระดับ ${item.workshopLevel}`);
-  if (!canAfford(state, item.cost)) return failure('วัตถุดิบไม่เพียงพอ');
+  const cost = getCraftCost(state, item);
+  if (!canAfford(state, cost)) return failure('วัตถุดิบไม่เพียงพอ');
   if ((state.inventory[item.id] || 0) >= 24) return failure('มีอุปกรณ์ชนิดนี้มากเพียงพอแล้ว');
-  transact(state, item.cost, `สร้าง${item.name}`);
+  transact(state, cost, `สร้าง${item.name}`);
   state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
   state.goals.firstCraft = true;
   addLog(state, `โต๊ะช่างสร้าง${item.name}แล้ว เลือกสมาชิกเพื่อสวมใส่ได้`, 'craft');
@@ -888,7 +1171,14 @@ function command(state, type, payload = {}) {
     case 'sellItem': return sellItem(state, payload);
     case 'autoEquip': return autoEquip(state);
     case 'setProfile': state.profile = normalizeProfile({ ...(state.profile || DEFAULT_PROFILE), ...payload }); return success(`บันทึกข้อมูล${state.profile.guildName}แล้ว`);
-    case 'sendMission': return sendMission(state, payload);
+    case 'sendMission': return sendMission(state, { ...payload, auto: false });
+    case 'acceptPetition': case 'declinePetition': case 'setPetition': return petitionCommand(state, type, payload);
+    case 'setPayoutPlan': if (!PAYOUT_PLANS[payload.plan]) return failure('แผนค่าตอบแทนไม่ถูกต้อง'); state.payoutPlan = payload.plan; return success(`ตั้งค่าตอบแทนเริ่มต้นเป็น${PAYOUT_PLANS[payload.plan].name}`);
+    case 'setAutoWork': { const member = memberById(state, payload.memberId); if (!member) return failure('ไม่พบสมาชิก'); member.autoWork = Boolean(payload.autoWork); return success(member.autoWork ? `${member.name} หยิบงานจากกระดานเองได้` : `${member.name} รอให้คุณเลือกงานให้`); }
+    case 'buyUpgrade': return buyUpgrade(state, payload);
+    case 'buildProject': return buildProject(state, payload);
+    case 'buyMaterial': return buyMaterial(state, payload);
+    case 'collectIdle': return collectIdle(state, payload);
     case 'chooseEvent': return chooseEvent(state, payload);
     case 'recallMission': {
       const mission = state.missions.find(item => item.id === payload.missionId && item.status === 'active');
@@ -896,6 +1186,7 @@ function command(state, type, payload = {}) {
       mission.status = 'recalled'; mission.finishedAt = state.elapsed;
       mission.result = { success: false, reward: {}, title: 'กลับก่อนอย่างปลอดภัย', message: 'เรียกทีมกลับแล้ว เสบียงที่ใช้ไปไม่คืน' };
       mission.memberIds.forEach(id => { const member = memberById(state, id); member.task = 'rest'; member.energy = Math.max(0, member.energy - Math.round(mission.energyCost * clamp(mission.progress / mission.duration, 0, 1))); });
+      reopenPetition(state, mission);
       addLog(state, `เรียกทีม${QUEST_BY_ID[mission.questId].name}กลับกิลด์`, 'mission');
       trimMissions(state);
       return success('เรียกทีมกลับแล้ว');
@@ -950,7 +1241,7 @@ export function deserializeGame(source) {
   const savedChecksum = data.checksum;
   delete data.checksum;
   if (savedChecksum !== undefined && (typeof savedChecksum !== 'string' || savedChecksum !== saveChecksum(JSON.stringify(data)))) throw new Error('ไฟล์เซฟเสียหายหรือข้อมูลถูกเปลี่ยนหลังบันทึก');
-  if (![1,2,3,SAVE_VERSION].includes(data.version)) throw new Error('เวอร์ชันเซฟนี้ยังไม่รองรับ');
+  if (![1,2,3,4,SAVE_VERSION].includes(data.version)) throw new Error('เวอร์ชันเซฟนี้ยังไม่รองรับ');
   // Clone through JSON above; imports can never change the caller's previous state.
   const defaults = createGame(data.seed || 123);
   const state = { ...defaults, ...data };
@@ -989,6 +1280,8 @@ export function deserializeGame(source) {
       if (normalized.equipment[slot] !== null && (!item || item.slot !== slot || (item.classes.length && !item.classes.includes(baseClass)))) throw new Error('อุปกรณ์สมาชิกไม่ถูกต้อง');
     }
     if (!finiteNumber(normalized.trainingProgress) || normalized.trainingProgress < 0) normalized.trainingProgress = 0;
+    if (!finiteNumber(normalized.purse) || normalized.purse < 0 || normalized.purse > 100000000) normalized.purse = 0;
+    if (normalized.autoWork !== undefined) normalized.autoWork = Boolean(normalized.autoWork);
     return normalized;
   });
   if (!Array.isArray(state.facilities) || state.facilities.length < (opening ? 0 : 1) || state.facilities.length > 100) throw new Error('รายชื่อห้องไม่ถูกต้อง');
@@ -1043,12 +1336,38 @@ export function deserializeGame(source) {
       const validLoot = entry => entry && RARITIES[entry.tier] && ((entry.kind === 'mat' && RESOURCE_KEYS.includes(entry.key) && Number.isInteger(entry.amount) && entry.amount >= 0 && entry.amount < 10000) || (entry.kind === 'item' && EQUIPMENT_BY_ID[entry.id]));
       mission.loot = Array.isArray(mission.loot) ? mission.loot.filter(validLoot).slice(0, 3) : [];
       mission.luck = finiteNumber(mission.luck) ? clamp(mission.luck, 0, 0.45) : 0;
+      mission.prep = finiteNumber(mission.prep) ? clamp(mission.prep, 0, 10) : 0;
       if (mission.result) mission.result.loot = Array.isArray(mission.result.loot) ? mission.result.loot.filter(validLoot).slice(0, 3) : [];
       if (mission.event) {
         if (!Array.isArray(mission.event.choices) || mission.event.choices.some(choice => !['help', 'press', 'rest'].includes(choice.id))) throw new Error('ตัวเลือกภารกิจไม่ถูกต้อง');
       }
     }
   }
+  // Petitions, idle upgrades and the village (save v5); older saves start with an empty board.
+  const validPetition = p => p && typeof p.id === 'string' && QUEST_BY_ID[p.questId] && ['coming', 'waiting', 'posted', 'taken'].includes(p.status) && finiteNumber(p.fee) && p.fee >= 0 && p.fee < 1000000 && PAYOUT_PLANS[p.plan];
+  const petitionIds = new Set();
+  state.petitions = (Array.isArray(data.petitions) ? data.petitions : []).filter(validPetition).slice(0, 40).filter(p => !petitionIds.has(p.id) && petitionIds.add(p.id)).map(p => {
+    const mission = p.missionId ? state.missions.find(m => m.id === p.missionId && m.status === 'active') : null;
+    return { id: p.id, questId: p.questId, client: String(p.client || 'ชาวบ้าน').slice(0, 30), seed: finiteNumber(p.seed) ? p.seed : 1,
+      home: p.home === 'inn' || p.home === 'bakery' || p.home === 'elder' || (Number.isInteger(p.home) && p.home >= 0 && p.home < VILLAGE_LOTS.houses.length) ? p.home : 'inn',
+      important: Boolean(p.important), reserved: Boolean(p.reserved || p.important), fee: Math.round(p.fee), plan: p.plan,
+      status: p.status === 'taken' && !mission ? 'posted' : p.status, eta: finiteNumber(p.eta) ? clamp(p.eta, 0, 600) : 0, etaTotal: finiteNumber(p.etaTotal) ? clamp(p.etaTotal, 1, 600) : 20,
+      patience: finiteNumber(p.patience) ? clamp(p.patience, 0, 1000) : 80, age: finiteNumber(p.age) ? clamp(p.age, 0, 100000) : 0, missionId: mission ? mission.id : null };
+  });
+  for (const mission of state.missions) {
+    if (mission.petition && (!finiteNumber(mission.petition.fee) || mission.petition.fee < 0 || !PAYOUT_PLANS[mission.petition.plan])) throw new Error('ค่าจ้างภารกิจไม่ถูกต้อง');
+  }
+  state.petitionClock = finiteNumber(data.petitionClock) ? clamp(data.petitionClock, 0, 1000) : 20;
+  state.petitionRng = Number.isInteger(data.petitionRng) && data.petitionRng > 0 ? data.petitionRng >>> 0 : defaults.petitionRng;
+  state.payoutPlan = PAYOUT_PLANS[data.payoutPlan] ? data.payoutPlan : 'standard';
+  state.upgrades = { ...defaults.upgrades };
+  for (const [id, u] of Object.entries(GUILD_UPGRADES)) { const level = data.upgrades?.[id] ?? 0; if (!Number.isInteger(level) || level < 0 || level > u.max) throw new Error('ระดับการพัฒนากิลด์ไม่ถูกต้อง'); state.upgrades[id] = level; }
+  const village = { ...defaults.village, ...(data.village && typeof data.village === 'object' ? data.village : {}) };
+  validateNumber(village, 'prosperity', 0, 1000000000);
+  validateNumber(village, 'houses', 0, VILLAGE_LOTS.houses.length, true);
+  for (const id of ['shop', 'market', 'smithy']) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
+  state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy };
+  state.idleBank = finiteNumber(data.idleBank) ? clamp(data.idleBank, 0, 1000000) : 0;
   if (data.foundTreasures !== undefined) state.foundTreasures = Array.isArray(data.foundTreasures) ? [...new Set(data.foundTreasures.filter(id => EQUIPMENT_BY_ID[id]?.loot))] : [];
   state.inventory = { ...(data.inventory || {}) };
   if (!state.inventory || typeof state.inventory !== 'object' || Array.isArray(state.inventory)) throw new Error('คลังอุปกรณ์ไม่ถูกต้อง');
@@ -1074,7 +1393,8 @@ export function deserializeGame(source) {
   for (const [id, value] of Object.entries(state.eventCooldowns)) if (!GUILD_EVENTS.some(event => event.id === id) || !finiteNumber(value) || value < 0 || value > 1000000000) throw new Error('เวลากิจกรรมไม่ถูกต้อง');
   state.log = Array.isArray(data.log) ? data.log.filter(item => item && typeof item.text === 'string' && item.text.length < 1000).slice(0, MAX_LOG) : defaults.log;
   state.ledger = Array.isArray(data.ledger) ? data.ledger.filter(item => item && typeof item.text === 'string' && finiteNumber(item.gold)).slice(0, MAX_LEDGER) : [];
-  state.nextId = Math.max(Number.isInteger(data.nextId) ? data.nextId : 10, ...[...roomIds,...partitionIds, ...missionIds].map(id => (Number(id.split('-').pop()) || 0) + 1));
+  state.nextId = Math.max(Number.isInteger(data.nextId) ? data.nextId : 10, ...[...roomIds,...partitionIds, ...missionIds, ...petitionIds].map(id => (Number(id.split('-').pop()) || 0) + 1));
+  syncImportant(state);
   state.rng = state.rng >>> 0 || 123;
   state.members.forEach(member => { if (assigned.has(member.id)) member.task = 'mission'; else if (member.task === 'mission') member.task = 'rest'; });
   state.version = SAVE_VERSION;

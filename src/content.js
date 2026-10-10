@@ -34,6 +34,7 @@ export const FACILITIES = {
   garden: { id: 'garden', name: 'แปลงสมุนไพร', description: 'เก็บสมุนไพรวันละครั้ง และช่วยให้กิลด์ร่มรื่น', w: 2, h: 2, cost: { gold: 180, wood: 8, stone: 2 }, unlockRank: 'E', color: '#aac3a0', maxLevel: 3 },
   library: { id: 'library', name: 'ชั้นตำรา', description: 'ฝึกได้เร็วขึ้นและรับมือภารกิจเวทได้ดี', w: 2, h: 0.75, cost: { gold: 420, wood: 18, stone: 8 }, unlockRank: 'D', color: '#acb8d0', maxLevel: 3 },
   lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'เพิ่มขวัญกำลังใจ เปิดมื้อเลี้ยงกิลด์', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
+  board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยที่ว่างมาหยิบงานเอง ระดับ 2 และ 3 เพิ่มทีมที่ออกงานพร้อมกันได้อีกทีมละ 1', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
   dispatch: { id: 'dispatch', name: 'โต๊ะวางแผน', description: 'เปิดทีมภารกิจที่สองเมื่อกิลด์ถึงระดับ E', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'E', color: '#9ebdb9', maxLevel: 3 },
 };
 export const ROOM_TYPES={
@@ -124,4 +125,67 @@ export const LOOT = {
   mistpath: { common: [mat('herb', 4, 8), mat('wood', 4, 7)], uncommon: [gear('wind-bow'), gear('moon-charm')], rare: [gear('moonpetal-staff'), gear('fox-charm')], legendary: [gear('lantern-wand')] },
   rescue: { common: [mat('herb', 5, 9), mat('gold', 60, 90)], uncommon: [gear('bloom-staff'), gear('moon-charm')], rare: [gear('fox-charm'), gear('moonpetal-staff')], legendary: [gear('lantern-wand')] },
   heart: { common: [mat('gold', 80, 120), mat('herb', 6, 10)], uncommon: [gear('moon-charm'), gear('crystal-wand')], rare: [gear('fox-charm'), gear('lantern-wand')], legendary: [gear('heart-gem')] },
+};
+
+// ---- Petitions: villagers walk to the guild with requests; the guild posts them on the board. ----
+/** Share of the client's fee paid to the adventurers; the guild keeps the rest as commission. */
+export const PAYOUT_PLANS = {
+  generous: { name: 'ใจดี', share: 0.8, eager: 1.8, readiness: 0.85, morale: 6, description: 'นักผจญภัยได้ 80% รีบมาหยิบงาน ขวัญดีขึ้น' },
+  standard: { name: 'มาตรฐาน', share: 0.65, eager: 1, readiness: 0.95, morale: 0, description: 'นักผจญภัยได้ 65% กิลด์ได้ 35%' },
+  thrifty: { name: 'ประหยัด', share: 0.5, eager: 0.45, readiness: 1.1, morale: -6, description: 'กิลด์ได้ครึ่งหนึ่ง แต่ไม่ค่อยมีใครอยากหยิบงาน' },
+};
+/** Client fee as a multiple of the quest's listed gold. */
+export const FEE_MULTIPLIER = 2.8;
+export const VILLAGER_NAMES = ['ป้าบัว', 'ลุงมั่น', 'น้องข้าวปุ้น', 'คุณนายพลอย', 'ตาโต', 'ยายเย็น', 'พี่ต้นกล้า', 'ช่างหิน', 'แม่ค้าส้มจี๊ด', 'คนเลี้ยงแกะ', 'หนูน้ำผึ้ง', 'ลุงคนเฝ้าสะพาน', 'นักเดินทางผ่านทาง', 'คุณครูดาว'];
+export const PETITION_LINES = {
+  patrol: 'ทางกลับบ้านมีเสียงแปลก ๆ ตอนเย็น ช่วยไปดูให้หน่อยได้ไหม',
+  herbs: 'ใบชาแสงดาวใกล้หมดแล้ว ร้านต้องใช้ทำชาให้ทั้งหมู่บ้าน',
+  escort: 'รถขนขนมปังต้องผ่านทางที่หมูป่าชอบออกมา ขอคนคุ้มกันด้วย',
+  hollow: 'ได้ยินเสียงระฆังจากใต้ต้นโอ๊กทุกคืนเลย',
+  crystals: 'ช่างตีเหล็กอยากได้ผลึกจากทางเก่า จ่ายดีนะ',
+  ruins: 'อยากกลับไปดูบ้านเก่าที่หอระฆังสักครั้ง',
+  mistpath: 'หมอกปิดทางเดินป่าอีกแล้ว คนหาของป่าเข้าไม่ได้',
+  rescue: 'ทีมสำรวจยังไม่กลับมา ได้โปรดช่วยตามหา',
+  heart: 'ป่าเงียบผิดปกติ ต้นไม้ใหญ่ดูอ่อนแรง',
+};
+
+// ---- Idle guild upgrades: levels with growing cost, each a small permanent boost. ----
+export const GUILD_UPGRADES = {
+  signboard: { name: 'ป้ายประกาศกิลด์', icon: '📜', max: 10, base: { gold: 140, wood: 4 }, growth: 1.55, description: 'ชาวบ้านมาส่งคำร้องถี่ขึ้น 10% ต่อระดับ' },
+  contracts: { name: 'สมุดสัญญา', icon: '✒', max: 10, base: { gold: 200, stone: 2 }, growth: 1.6, description: 'ค่านายหน้ากิลด์เพิ่ม 4% ของค่าจ้างต่อระดับ' },
+  clerk: { name: 'เสมียนต้อนรับ', icon: '🛎', max: 5, base: { gold: 260, wood: 6 }, growth: 1.8, description: 'รับคำร้องทั่วไปแทนคุณตามแผนค่าตอบแทนที่ตั้งไว้ และชาวบ้านรอนานขึ้น' },
+  coffer: { name: 'กองทุนกิลด์', icon: '◈', max: 12, base: { gold: 180 }, growth: 1.6, description: 'ดอกผล 0.25 G ต่อวินาทีต่อระดับ เก็บต่อแม้ปิดเกม (สูงสุด 2 ชั่วโมง)' },
+};
+
+// ---- The village: homes and businesses that grow with prosperity. ----
+export const VILLAGE_LEVELS = [
+  { level: 1, prosperity: 0, name: 'หมู่บ้านเล็ก ๆ' },
+  { level: 2, prosperity: 250, name: 'หมู่บ้านอบอุ่น' },
+  { level: 3, prosperity: 700, name: 'หมู่บ้านคึกคัก' },
+  { level: 4, prosperity: 1500, name: 'ตำบลริมทาง' },
+  { level: 5, prosperity: 3000, name: 'เมืองใบอ่อน' },
+];
+export const VILLAGE_PROJECTS = {
+  house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง' },
+  shop: { name: 'ร้านค้า', icon: '🛍', max: 3, villageLevel: 1, base: { gold: 300, wood: 18, stone: 8 }, growth: 1.9, prosperity: 140, description: 'นักผจญภัยใช้เงินส่วนตัวซื้อของกิน ขวัญดีขึ้น · กิลด์ได้ค่าเช่าวันละ 20 G ต่อระดับ · ซื้อวัตถุดิบได้' },
+  market: { name: 'ตลาดนัด', icon: '🧺', max: 3, villageLevel: 2, base: { gold: 420, wood: 20, stone: 14 }, growth: 1.9, prosperity: 200, description: 'แผงค้าส่งไม้ หิน สมุนไพรให้กิลด์ทุกวัน และเก็บค่าแผง 0.15 G/วินาทีต่อระดับ' },
+  smithy: { name: 'โรงตีเหล็ก', icon: '⚒', max: 3, villageLevel: 3, base: { gold: 520, wood: 16, stone: 24 }, growth: 1.9, prosperity: 260, description: 'ลดค่าเงินคราฟต์อุปกรณ์ 10% ต่อระดับ' },
+};
+/** Where homes and businesses stand on the world map (grid units, top-left of the footprint). */
+export const VILLAGE_LOTS = {
+  houses: [
+    { x: -2, y: 21.5, seed: 44, styles: ['thatch', 'cabin', 'brick'] },
+    { x: 8, y: 21.5, seed: 52, styles: ['cabin', 'thatch', 'stone'] },
+    { x: 14, y: 22, seed: 63, styles: ['thatch', 'brick', 'tall'] },
+    { x: 24, y: 21.5, seed: 75, styles: ['cabin', 'brick', 'stone'] },
+    { x: -8, y: -3, seed: 88, styles: ['thatch', 'tall', 'tall'] },
+    { x: 30, y: 21.5, seed: 91, styles: ['thatch', 'cabin', 'brick'] },
+    { x: -10, y: 24.5, seed: 97, styles: ['cabin', 'stone', 'stone'] },
+    { x: 21, y: 25.5, seed: 103, styles: ['thatch', 'brick', 'tall'] },
+    { x: 3.5, y: 25, seed: 109, styles: ['cabin', 'thatch', 'brick'] },
+    { x: 27.5, y: 25.5, seed: 117, styles: ['thatch', 'stone', 'tall'] },
+  ],
+  shop: { x: -9, y: 13.2, seed: 131, style: 'store' },
+  market: { x: 34, y: 12.4, seed: 137 },
+  smithy: { x: -9, y: 20.5, seed: 31, style: 'smithy' },
 };

@@ -1,10 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
+import { addPetition, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
 import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
+// Villagers bring petitions over time; tests post one straight to the board when none is waiting.
+function ensurePetition(state, questId) {
+  if (!state.petitions.some(p => p.questId === questId && p.status === 'posted' && !p.missionId)) addPetition(state, questId, { status: 'posted' });
+}
 function dispatch(state, questId = 'patrol', ids = party, policy = 'balanced') {
+  ensurePetition(state, questId);
   const result = act(state, 'sendMission', { questId, memberIds: ids, policy });
   assert.equal(result.ok, true, result.message);
   return state.missions.at(-1);
@@ -122,6 +127,7 @@ test('two teams require dispatch room, beds and six unique available members', (
   assert.equal(act(state, 'recruit', { memberId: 'sera' }).ok, true);
   assert.equal(act(state, 'recruit', { memberId: 'toma' }).ok, true);
   dispatch(state);
+  ensurePetition(state, 'herbs');
   assert.equal(act(state, 'sendMission', { questId: 'herbs', memberIds: ['noa', 'sera', 'toma'] }).ok, false);
   assert.equal(act(state, 'build', { type: 'dispatch', x: 5.5, y: 6.5, rotation:2 }).ok, true);
   assert.equal(getGuildStats(state).teamCap, 2);
@@ -162,7 +168,7 @@ test('version one bookkeeping migrates safely and unavailable stories cannot be 
   data.version = 1;
   delete data.daily; delete data.goals; delete data.eventCooldowns; delete data.inventory;
   const state = deserializeGame(JSON.stringify(data));
-  assert.equal(state.version, 4);
+  assert.equal(state.version, 5);
   assert.ok(state.daily.missionCounts);
   assert.equal(act(state, 'sendMission', { questId: 'heart', memberIds: party }).ok, false);
   state.rep = 999;
@@ -341,7 +347,7 @@ test('old room saves migrate to furnishings while retaining progress and rejecti
  const old=createGame(27);old.version=2;delete old.building;
  const places=[[4,3],[8,3],[12,3],[4,6],[8,6],[12,6]];
  old.facilities.forEach((f,i)=>{f.x=places[i][0];f.y=places[i][1];delete f.rotation;});old.facilities[1].level=2;old.gold=2314;old.members[0].level=4;
- const migrated=deserializeGame(JSON.stringify(old));assert.equal(migrated.version,4);assert.equal(migrated.gold,2314);assert.equal(migrated.members[0].level,4);assert.equal(migrated.facilities[1].level,2);assert.equal(migrated.facilities.length,6);assert.doesNotThrow(()=>serializeGame(migrated));
+ const migrated=deserializeGame(JSON.stringify(old));assert.equal(migrated.version,5);assert.equal(migrated.gold,2314);assert.equal(migrated.members[0].level,4);assert.equal(migrated.facilities[1].level,2);assert.equal(migrated.facilities.length,6);assert.doesNotThrow(()=>serializeGame(migrated));
  old.facilities[1].x=old.facilities[0].x;assert.throws(()=>deserializeGame(JSON.stringify(old)),/ผัง/);
 });
 
@@ -475,4 +481,128 @@ test('items can be sold and auto-equip gives each member the best gear', async (
   assert.equal(act(state, 'sellItem', { equipmentId: 'oak-blade' }).ok, true);
   assert.equal(state.gold, gold + getSellPrice('oak-blade'));
   assert.equal(act(state, 'sellItem', { equipmentId: 'oak-blade' }).ok, false);
+});
+
+test('villagers walk in with petitions; the guild accepts, declines or lets them leave', () => {
+  const state = createGame(5);
+  state.petitionClock = 1;
+  tick(state, 2);
+  const petition = state.petitions.find(p => !p.important);
+  assert.ok(petition, 'a villager sets out with a request');
+  assert.equal(petition.status, 'coming');
+  assert.ok(petition.eta > 3, 'the walk from home takes time');
+  tick(state, petition.eta + 0.5);
+  assert.equal(petition.status, 'waiting');
+  const before = JSON.stringify(state);
+  assert.equal(act(state, 'acceptPetition', { petitionId: petition.id, plan: 'cheap' }).ok, false);
+  assert.equal(JSON.stringify(state), before);
+  assert.equal(act(state, 'acceptPetition', { petitionId: petition.id, plan: 'generous' }).ok, true);
+  assert.equal(petition.status, 'posted');
+  assert.equal(petition.plan, 'generous');
+  // Without acceptance a villager waits a while, then goes home.
+  const other = addPetition(state, 'herbs', { status: 'waiting' });
+  tick(state, other.patience + 1);
+  assert.ok(!state.petitions.includes(other));
+  const third = addPetition(state, 'herbs', { status: 'waiting' });
+  assert.equal(act(state, 'declinePetition', { petitionId: third.id }).ok, true);
+  assert.ok(!state.petitions.includes(third));
+  const important = state.petitions.find(p => p.important);
+  assert.equal(important.questId, 'patrol');
+  assert.equal(act(state, 'declinePetition', { petitionId: important.id }).ok, false);
+  assert.deepEqual(deserializeGame(serializeGame(state)), state);
+});
+
+test('board jobs pay the team their share and the guild its commission', () => {
+  const state = createGame(8);
+  const petition = state.petitions.find(p => p.questId === 'patrol');
+  const gold = state.gold;
+  act(state, 'sendMission', { questId: 'patrol', memberIds: party, petitionId: petition.id, plan: 'thrifty' });
+  assert.equal(petition.status, 'taken');
+  const mission = state.missions.at(-1);
+  complete(state, mission);
+  assert.equal(mission.status, 'completed');
+  assert.ok(!state.petitions.includes(petition), 'finished petitions leave the board');
+  const purse = party.reduce((sum, id) => sum + state.members.find(m => m.id === id).purse, 0);
+  assert.equal(Math.round(purse), Math.round(petition.fee / 2));
+  assert.ok(state.gold - gold >= Math.floor(petition.fee / 2) - 1);
+  assert.ok(state.village.prosperity > 0);
+  assert.ok(!state.petitions.some(p => p.questId === 'patrol'), 'cleared story steps stop coming as important letters');
+});
+
+test('free adventurers walk to the board and take unreserved work by themselves', () => {
+  const state = createGame(11);
+  const job = addPetition(state, 'herbs', { status: 'posted', plan: 'generous' });
+  tick(state, 20);
+  assert.equal(job.missionId, null, 'nobody picks up work without a board');
+  assert.ok(state.petitions.some(p => p.important && !p.missionId), 'important work waits for the player');
+  let placed = false;
+  for (let y = 4.5; y < 9.5 && !placed; y += 0.25) for (let x = 5.5; x < 12.5 && !placed; x += 0.25) placed = act(state, 'build', { type: 'board', x, y }).ok;
+  assert.ok(placed, 'the board fits in the starting hall');
+  act(state, 'setPetition', { petitionId: job.id, reserved: true });
+  tick(state, 20);
+  assert.equal(job.missionId, null, 'reserved work is left for the player');
+  act(state, 'setPetition', { petitionId: job.id, reserved: false });
+  tick(state, 10);
+  assert.ok(job.missionId, 'an idle adventurer took the job');
+  const mission = state.missions.find(m => m.id === job.missionId);
+  assert.equal(mission.auto, true);
+  assert.ok(mission.memberIds.length >= 1 && mission.memberIds.length <= 3);
+  assert.equal(previewMission(state, 'herbs', mission.memberIds).ok, false, 'the team is busy');
+  assert.equal(act(state, 'recallMission', { missionId: mission.id }).ok, true);
+  assert.equal(job.status, 'posted', 'recalled work returns to the board');
+  assert.equal(job.missionId, null);
+  assert.doesNotThrow(() => serializeGame(state));
+});
+
+test('idle guild upgrades and village projects grow income, petitions and the village', () => {
+  const state = createGame(3);
+  state.gold = 20000; state.wood = 500; state.stone = 500; state.herb = 100;
+  const interval = getVillageInfo(state).interval;
+  assert.equal(act(state, 'buyUpgrade', { upgradeId: 'signboard' }).ok, true);
+  assert.ok(getVillageInfo(state).interval < interval);
+  assert.ok(getGuildUpgradeCost(state, 'signboard').gold > 140, 'each level costs more');
+  assert.equal(act(state, 'buyUpgrade', { upgradeId: 'coffer' }).ok, true);
+  const gold = state.gold;
+  tick(state, 200);
+  assert.ok(state.gold > gold, 'the coffer pays while time passes');
+  const offline = act(state, 'collectIdle', { seconds: 99999 });
+  assert.equal(offline.gold, Math.floor(0.25 * 7200), 'offline income is capped at two hours');
+  assert.equal(act(state, 'buildProject', { projectId: 'market' }).ok, false, 'market needs a bigger village');
+  assert.equal(act(state, 'buildProject', { projectId: 'shop' }).ok, true);
+  assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, true);
+  assert.equal(state.village.houses, 4);
+  assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, false, 'a small village only has so many lots');
+  state.village.prosperity = 800;
+  assert.equal(getVillageInfo(state).level, 3);
+  assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, true);
+  assert.equal(act(state, 'buildProject', { projectId: 'market' }).ok, true);
+  assert.equal(act(state, 'buildProject', { projectId: 'smithy' }).ok, true);
+  assert.equal(getCraftCost(state, { cost: { gold: 100, wood: 5 } }).gold, 90);
+  const wood = state.wood;
+  assert.equal(act(state, 'buyMaterial', { key: 'wood' }).ok, true);
+  assert.equal(state.wood, wood + 10);
+  // Adventurers spend their wages in the village shop: morale up, village more prosperous.
+  const mira = state.members.find(m => m.id === 'mira');
+  mira.purse = 50; mira.morale = 60;
+  const prosperity = state.village.prosperity;
+  tick(state, 30);
+  assert.ok(mira.purse < 50 && mira.morale > 60 && state.village.prosperity > prosperity);
+  const restored = deserializeGame(serializeGame(state));
+  assert.deepEqual(restored.village, state.village);
+  assert.deepEqual(restored.upgrades, state.upgrades);
+  const data = JSON.parse(serializeGame(state)); delete data.checksum; data.upgrades.coffer = 99;
+  assert.throws(() => deserializeGame(JSON.stringify(data)));
+});
+
+test('version four saves gain an empty board, important letters and a starting village', () => {
+  const old = createGame(13);
+  old.version = 4;
+  for (const key of ['petitions', 'petitionClock', 'petitionRng', 'payoutPlan', 'upgrades', 'village', 'idleBank']) delete old[key];
+  old.members.forEach(member => { delete member.purse; });
+  const state = deserializeGame(JSON.stringify(old));
+  assert.equal(state.version, 5);
+  assert.equal(state.village.houses, 3);
+  assert.ok(state.petitions.some(p => p.questId === 'patrol' && p.important));
+  assert.equal(state.members[0].purse, 0);
+  complete(state, dispatch(state));
 });
