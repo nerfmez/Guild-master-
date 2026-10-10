@@ -206,3 +206,4 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .go-button:disabled{box-shadow:none}
 @media(max-width:620px){.qgrid{grid-template-columns:1fr 1fr;gap:7px}.qbody{padding:7px 8px 9px}.qbody>b{font-size:13px}.qinfo span:last-child{display:none}.roster{grid-template-columns:1fr 1fr}.slot{min-height:98px}.slot canvas{width:44px;height:50px}}
 .go-button:disabled{background:#cfc6b2;border-color:#bdb39d;color:#fff;opacity:1}
+.go-button{position:static}
