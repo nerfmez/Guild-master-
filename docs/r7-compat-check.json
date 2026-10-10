@@ -1,15 +1,15 @@
 {
-  "file": "play-r7-1f5334aa.html",
-  "sha256": "1f5334aa1bc263c9e019189153591a34980053f24221037ef5ea71a12d6fa104",
-  "bytes": 2002568,
+  "file": "play-r7-a84d5301.html",
+  "sha256": "a84d53016570dbe7e98b9f566621355e74b76d4a8f9ca33391e514196233d36b",
+  "bytes": 2025764,
   "classicInline": true,
   "cases": [
     {
       "mode": "restricted-canvas",
       "renderer": "Canvas",
       "scenePixels": {
-        "grassDetail": 369614,
-        "warm": 305610,
+        "grassDetail": 369380,
+        "warm": 305645,
         "blueRoof": 7539,
         "floor": {
           "warm": 576,

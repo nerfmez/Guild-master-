@@ -1,5 +1,5 @@
 import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,buildingRect,partitionSize,partitionRect,pointInRect } from './site.js';
-import { FACILITIES,VILLAGE_LOTS } from './content.js';
+import { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
 import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { QUESTS } from './content.js';
@@ -7,7 +7,7 @@ import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FO
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
 import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
-import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,HOME_STYLES,makeOutdoor,makeStall,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
+import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,HOME_STYLES,makeOutdoor,makeStall,makeArena,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 export class GuildRenderer {
@@ -38,7 +38,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R31',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R32',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -315,6 +315,19 @@ export class GuildRenderer {
   }
   for(const [id,party] of this.parties)if(!live.has(id)){party.foe?.destroy();party.num?.destroy();party.tag?.destroy();this.parties.delete(id);}
  }
+ // A member on an errand walks out along the road to the dojo or arena, stays a while, and walks back.
+ updateErrand(a,playing){
+  const e=a.member.errand,lot=VILLAGE_LOTS[e.kind==='exam'?'arena':'dojo'],b=buildingRect(this.state),door={x:b.x+b.w/2,y:b.y+b.h+.4};
+  const site=e.kind==='exam'?{x:lot.x+2+((hash(a.member.id)%3)-1)*.5,y:lot.y+1.5}:{x:lot.x+1.3,y:lot.y+2.9};
+  const route=[door,{x:door.x,y:17.5},{x:site.x,y:17.5},site],total=route.slice(1).reduce((s,p,k)=>s+Math.hypot(p.x-route[k].x,p.y-route[k].y),0);
+  const r=Math.max(0,Math.min(1,(this.state.elapsed-e.start)/((e.end-e.start)||1))),walk=.3;
+  const along=d=>{let left=d;for(let k=1;k<route.length;k++){const p=route[k-1],q=route[k],len=Math.hypot(q.x-p.x,q.y-p.y);if(left<=len||k===route.length-1){const f=len?Math.max(0,Math.min(1,left/len)):0;return{x:p.x+(q.x-p.x)*f,y:p.y+(q.y-p.y)*f};}left-=len;}return route[route.length-1];};
+  const pos=r<walk?along(total*r/walk):r>1-walk?along(total*(1-r)/walk):site,p=gridPoint(pos.x,pos.y),dx=p.x-a.x,dy=p.y-a.y,moving=Math.hypot(dx,dy)>.05;
+  if(moving)a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
+  a.x=p.x;a.y=p.y;const t=(this.realTime||0)+hash(a.member.id)%7;
+  const pose=moving&&playing?'walk'+(Math.floor(this.elapsed*8)%4):e.kind==='classTrial'?(Math.floor(t*1.5)%2?'breath':'idle'):'train'+(Math.floor(t*(e.kind==='exam'?3:2.4))%2);
+  a.image.setVisible(true).setTexture(`actor-${a.member.id}-${a.member.class}-${pose.startsWith('train')?'south':a.direction}-${pose}`).setPosition(Math.round(p.x),Math.round(p.y)).setDepth(Math.round(p.y)+.3);
+ }
  updateTraveler(a,playing){
   const m=(this.state.missions||[]).find(m=>(m.status==='active'||m.status==='decision')&&m.memberIds.includes(a.member.id)),quest=m&&QUESTS.find(q=>q.id===m.questId);
   if(!m||!quest){a.image.setVisible(false);return;}
@@ -339,13 +352,14 @@ export class GuildRenderer {
  syncVillage(){
   if(!this.scene||!this.state||!this.worldProps)return;const v=getVillageInfo(this.state),tier=v.level>=5?2:v.level>=3?1:0,want=[];
   VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses)want.push({key:'h'+i,style:lot.styles[tier],seed:lot.seed,x:lot.x,y:lot.y});else if(i<v.maxHouses)want.push({key:'h'+i,lot:true,x:lot.x+.6,y:lot.y+1.6});});
-  for(const [id,need] of [['shop',1],['market',2],['smithy',3]]){const lot=VILLAGE_LOTS[id];if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:lot.x,y:lot.y}:{key:id,style:lot.style,seed:lot.seed,x:lot.x,y:lot.y});else if(v.level>=need)want.push({key:id,lot:true,x:lot.x+.8,y:lot.y+1.6});}
+  for(const id of ['shop','market','smithy','dojo','arena']){const lot=VILLAGE_LOTS[id],need=VILLAGE_PROJECTS[id].villageLevel;if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:lot.x,y:lot.y}:id==='arena'?{key:id,arena:v[id],x:lot.x,y:lot.y}:{key:id,style:lot.style,seed:lot.seed,x:lot.x,y:lot.y});else if(v.level>=need)want.push({key:id,lot:true,x:lot.x+.8,y:lot.y+1.6});}
   const sig=JSON.stringify(want);if(sig===this.villageSig)return;const first=this.villageSig===null;this.villageSig=sig;
   const old=this.villageProps,next=new Map();
-  for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.style);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
+  for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.style);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
    const images=[],before=(this.chimneys||[]).length;
    if(w.lot){const s=makeSignpost('ที่ดินว่าง');if(!this.scene.textures.exists('lot-sign'))this.texture('lot-sign',s.canvas);const p=gridPoint(w.x,w.y);images.push(this.scene.add.image(p.x-s.footX,p.y-s.footY,'lot-sign').setOrigin(0).setDepth(p.y).setAlpha(.9));}
    else if(w.market){for(let k=0;k<w.market;k++){const key='stall-'+k,sp=makeStall(w.seed+k,k);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const at=[[0,0],[2.1,.3],[.9,2.1]][k],p=gridPoint(w.x+at[0],w.y+at[1]),c=gridPoint(w.x+at[0]+.8,w.y+at[1]+.6);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+4));}}
+   else if(w.arena){const key='arena-'+w.arena,sp=makeArena(w.arena);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+2,w.y+1.5);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y-20));}
    else images.push(this.addHome(w.style,w.seed,w.x,w.y));
    const chimneys=(this.chimneys||[]).slice(before);
    for(const image of images){this.worldProps.push(image);if(!first&&!w.lot){const y=image.y;image.y=y-18;this.scene.tweens.add({targets:image,y,duration:420,ease:'Bounce.easeOut'});}}
@@ -402,7 +416,7 @@ export class GuildRenderer {
   const idleKey=this.signature+'|'+this.state.members.map(m=>m.id).join(',');if(this.idleKey!==idleKey){this.idleKey=idleKey;const hall=buildingRect(this.state),spots=getWalkableSpots(this.state),claimed=[];this.idleSpots=this.state.members.map((m,i)=>{const desired=[{x:2.5,y:2.5},{x:4.25,y:2},{x:5,y:3.5},{x:1.75,y:2.75}][i%4],tx=hall.x+desired.x,ty=hall.y+desired.y+(Math.floor(i/4)*.6);const p=spots.filter(p=>claimed.every(q=>Math.hypot(p.x-q.x,p.y-q.y)>=.8)).sort((a,b)=>(a.x-tx)**2+(a.y-ty)**2-((b.x-tx)**2+(b.y-ty)**2))[0]||spots[i%spots.length];claimed.push(p);return p;});}
   // Adventurers who just took a board job gather at the board for a moment before heading out.
   this.prepping=new Set(this.state.missions.filter(m=>m.status==='active'&&m.prep>0).flatMap(m=>m.memberIds));
-  const away=new Set(this.state.missions.filter(m=>['active','decision'].includes(m.status)&&!(m.prep>0)).flatMap(m=>m.memberIds));
+  const away=new Set([...this.state.missions.filter(m=>['active','decision'].includes(m.status)&&!(m.prep>0)).flatMap(m=>m.memberIds),...this.state.members.filter(m=>m.errand).map(m=>m.id)]);
   for(const m of this.state.members){const room=this.roomFor(m),b=room&&getRoomSize(room.type,room.rotation||0),n=hash(m.id);
    if(!b)continue;const roommates=this.state.members.filter(other=>this.roomFor(other)?.id===room.id),slot=roommates.findIndex(other=>other.id===m.id);
    const entry=getFacilityEntry(room),hall=buildingRect(this.state),idle=m.energy>=95&&!m.injury&&m.task==='rest',index=this.state.members.findIndex(other=>other.id===m.id);
@@ -461,7 +475,7 @@ export class GuildRenderer {
   if(!this.ready)return;const playing=!this.frozen&&!document.hidden&&!this.state.settings?.paused&&!document.getElementById('confirm-dialog').open&&!document.getElementById('settings-dialog').open;
   const elapsed=playing?dt*(this.state.settings?.speed||1):0;this.elapsed+=elapsed;this.realTime=(this.realTime||0)+dt;
   for(const a of this.actors.values()){
-   if(a.away){a.emote?.setVisible(false);this.updateTraveler(a,playing);continue;}a.clock+=elapsed;
+   if(a.away){a.emote?.setVisible(false);if(a.member.errand)this.updateErrand(a,playing);else this.updateTraveler(a,playing);continue;}a.clock+=elapsed;
    if(!a.path?.length&&a.clock>6){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
    const p=a.path?.[0];let walking=false;if(p){const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy);walking=d>1;
     if(d<=1)a.path.shift();else{const step=Math.min(d,elapsed*22);a.x+=dx/d*step;a.y+=dy/d*step;a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}}

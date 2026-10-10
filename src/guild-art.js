@@ -192,8 +192,28 @@ export const HOME_STYLES={
  smithy:{w:2.6,h:2.3,z:30,ridge:'y',roof:'dusk',wall:'stone',forge:true,sign:'anvil',chimney:[.45,.5],smoke:'dark'},
  brick:{w:2.6,h:2.2,z:32,ridge:'x',roof:'moss',wall:'brick',shutters:'#6f8fb0',chimney:[2.1,.6],dormer:true},
  tall:{w:2,h:2,z:56,ridge:'y',roof:'plum',wall:'timber',storeys:2,pitch:30,flowers:true,shutters:'#c98a72'},
+ dojo:{w:2.8,h:2.4,z:30,ridge:'x',roof:'dusk',wall:'timber',sign:'sword',porch:true,lantern:true,shutters:'#8a6a4a'},
  store:{w:2.6,h:2.3,z:32,ridge:'x',roof:'moss',wall:'timber',awning:['#7fa37a','#f4e5c9'],sign:'bag',chimney:[2.1,.5],flowers:true},
 };
+/** The arena where the guild association holds rank exams: a sand ring with a fence, banners and, as it grows, stands. */
+export function makeArena(level=1){
+ const w=4,h=3;
+ return stamp(220,170,96,100,c=>{
+  top(c,-.2,-.2,w+.4,h+.4,0,'#5f705040');
+  top(c,0,0,w,h,0,'#d8c39a',C.edge);top(c,.5,.4,w-1,h-.8,.2,'#e3cfa6','#c9b088');
+  for(let k=0;k<6;k++){const[x,y]=q(.6+((k*1.7)%2.8),.6+((k*.9)%1.8),.3);R(c,x,y,2,1,'#c9b088');}
+  stroke(c,[w/2,.4,.3],[w/2,h-.4,.3],'#fff4dc');
+  const post=(x,y)=>cube(c,x-.05,y-.05,.1,.1,0,9,'#8f6a4c','#b98a60','#6f5240');
+  for(let x=0;x<=w;x+=.5){post(x,0);}for(let y=.5;y<=h;y+=.5){post(0,y);}
+  stroke(c,[0,0,7],[w,0,7],'#b98a60',2);stroke(c,[0,0,7],[0,h,7],'#b98a60',2);
+  if(level>=2){cube(c,-.9,-.3,.7,h+.6,0,10,'#a88d6c','#c4b08e','#8f7b61');cube(c,-.6,-.3,.4,h+.6,10,8,'#a88d6c','#d4bf9a','#8f7b61');}
+  if(level>=3){cube(c,-.3,-.9,w+.6,.7,0,10,'#a88d6c','#c4b08e','#8f7b61');}
+  for(const [x,y,col] of [[0,0,'#d77d6a'],[w,0,'#6f9ad1'],[0,h,'#7fa37a']]){cube(c,x-.05,y-.05,.1,.1,0,34,'#6f5240','#8f6a4c','#5a463f');const[fx,fy]=q(x,y,33);P(c,[[fx,fy],[fx+11,fy+3],[fx,fy+7]],col);L(c,fx,fy,fx+11,fy+3,C.ink);}
+  for(let x=0;x<=w;x+=.5)post(x,h);for(let y=.5;y<h;y+=.5)post(w,y);
+  stroke(c,[0,h,7],[w,h,7],'#c99d78',2);stroke(c,[w,0,7],[w,h,7],'#c99d78',2);
+  const[sx,sy]=q(w/2,h,9);R(c,sx-9,sy-12,18,9,C.ink);R(c,sx-8,sy-11,16,7,'#f4e5c9');R(c,sx-5,sy-9,10,1,'#8a6446');R(c,sx-4,sy-7,8,1,'#8a6446');
+ });
+}
 /** A market stall: counter of goods under a striped canopy. */
 export function makeStall(seed=1,variant=0){
  const [a,b]=[['#d77d6a','#f4e5c9'],['#7fa37a','#f4e5c9'],['#6f9ad1','#f4e5c9']][variant%3],goods=['#e2a93c','#d98978','#9fc27a','#e8cd8c','#c98a4a','#b7aec9'];
@@ -269,7 +289,7 @@ export function makeHome(name,seed=1){
   if(s.chimney){const [cx,cy]=s.chimney,base=ridge==='y'?z+pitch*(1-Math.abs(cx+.18-w/2)/(w/2+o)):z+pitch*(1-Math.abs(cy+.18-h/2)/(h/2+o));cube(c,cx,cy,.36,.36,base-8,22,'#b8b0a0','#d6cfbe','#948c7d');top(c,cx+.06,cy+.06,.24,.24,base+14.2,'#4f4540');smoke=q(cx+.18,cy+.18,base+16);}
   if(s.forge){cube(c,w+.15,.3,.9,1.5,0,18,'#a59e8b','#8f877a','#857d70');face(c,[[w+.1,.2,24],[w+1.15,.2,16],[w+1.15,1.9,16],[w+.1,1.9,24]],r1,C.ink);quad((u,zz)=>[w+1.05,u,zz],.55,1.25,0,11,'#3f3530');quad((u,zz)=>[w+1.06,u,zz],.7,1.1,1,6,'#e8935a');quad((u,zz)=>[w+1.07,u,zz],.8,1,1,4,'#fff1c4');cube(c,w+1.3,1.55,.35,.22,0,6,'#5f5a5a','#8a8484','#4a4545');cube(c,w+1.22,1.5,.5,.32,6,3,'#5f5a5a','#9a9494','#4a4545');}
   if(s.sign){const at=ridge==='x'?F:S,u=ridge==='x'?w-.12:.12,[sx,sy]=q(...(at===F?F(w+.05,z-6):S(-.05,z-6)));R(c,sx,sy,9,1,C.ink);R(c,sx+2,sy+1,1,3,C.ink);R(c,sx+7,sy+1,1,3,C.ink);R(c,sx,sy+4,10,9,C.edge);R(c,sx+1,sy+5,8,7,'#e8c99a');
-   if(s.sign==='bread'){E(c,sx+5,sy+9,3,2,'#c98a4a');R(c,sx+3,sy+8,1,1,'#f0c890');R(c,sx+6,sy+8,1,1,'#f0c890');}else if(s.sign==='bag'){R(c,sx+3,sy+7,4,5,'#c9a06a');R(c,sx+4,sy+6,2,1,'#8a6446');R(c,sx+3,sy+8,4,1,'#e8c070');}else if(s.sign==='anvil'){R(c,sx+2,sy+7,6,2,'#5f5a5a');R(c,sx+4,sy+9,2,2,'#5f5a5a');R(c,sx+3,sy+11,4,1,'#5f5a5a');}else{R(c,sx+3,sy+7,4,5,'#e8c070');R(c,sx+3,sy+6,4,1,'#fff7ea');R(c,sx+7,sy+8,1,3,'#b8946a');}}
+   if(s.sign==='bread'){E(c,sx+5,sy+9,3,2,'#c98a4a');R(c,sx+3,sy+8,1,1,'#f0c890');R(c,sx+6,sy+8,1,1,'#f0c890');}else if(s.sign==='sword'){R(c,sx+5,sy+6,1,6,'#8f9a98');R(c,sx+3,sy+10,5,1,'#8a6446');R(c,sx+5,sy+11,1,2,'#8a6446');}else if(s.sign==='bag'){R(c,sx+3,sy+7,4,5,'#c9a06a');R(c,sx+4,sy+6,2,1,'#8a6446');R(c,sx+3,sy+8,4,1,'#e8c070');}else if(s.sign==='anvil'){R(c,sx+2,sy+7,6,2,'#5f5a5a');R(c,sx+4,sy+9,2,2,'#5f5a5a');R(c,sx+3,sy+11,4,1,'#5f5a5a');}else{R(c,sx+3,sy+7,4,5,'#e8c070');R(c,sx+3,sy+6,4,1,'#fff7ea');R(c,sx+7,sy+8,1,3,'#b8946a');}}
   if(s.lantern){const [lx,ly]=q(...F(.15,z/2-4));R(c,lx-2,ly-6,5,6,'#5a463f');R(c,lx-1,ly-5,3,4,'#f4d48a');R(c,lx,ly-8,1,2,'#5a463f');}
   if(s.woodpile){for(let k=0;k<3;k++)for(let m=0;m<3-k;m++){const [lx,ly]=q(w+.18,.3+m*.28+k*.14,3+k*5);E(c,lx,ly,2.6,2.6,'#8a6446');E(c,lx,ly,1.4,1.4,'#d9b083');}}
  });
