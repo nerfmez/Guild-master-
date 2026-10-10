@@ -314,3 +314,14 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
 .follow-chip button#fc-stop{padding:4px 0;width:36px}
 @keyframes fc-pulse{50%{box-shadow:0 0 0 6px #d9584a14}}
 @media (prefers-reduced-motion:reduce){.fc-dot{animation:none}}
+
+/* Coach mark: the dock button the current goal needs pulses with a short tip. */
+.dock-btn.coach{border-color:#d9584a;background:#fff3e0;animation:coach-pulse 1.3s ease-in-out infinite}
+.dock-btn.coach::after{content:attr(data-coach-tip);position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);padding:5px 10px;border-radius:8px;background:#5a4a36;color:#fff7ea;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 4px 10px #2a221640;pointer-events:none}
+.dock-btn.coach::before{content:'';position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#5a4a36;border-bottom:0}
+@keyframes coach-pulse{50%{box-shadow:0 0 0 6px #d9584a33}}
+@media (prefers-reduced-motion:reduce){.dock-btn.coach{animation:none}}
+.village-goal{display:grid;gap:4px;margin-bottom:12px;padding:12px 14px;border:1px solid #d9584a66;border-left-width:1px;border-radius:10px;background:#fff3e0}
+.village-goal small{font-size:11px;letter-spacing:.04em;color:#b0503f;font-weight:600}
+.village-goal b{font-size:15px;color:#5a4a36}
+.village-goal ul{margin:4px 0 0;padding-left:18px;display:grid;gap:3px;font-size:13px;color:#6f5a3a}

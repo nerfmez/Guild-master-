@@ -100,7 +100,10 @@ function renderMarket(v){
  const stock=[...(v.shop?Object.entries(CONSUMABLES).map(([id,c])=>`<span>${h(c.name)} <b>${n(state.shops?.[id])}</b><small>${c.price} G</small></span>`):[]),...(v.smithy?Object.entries(state.shops?.gear||{}).map(([id,c])=>`<span>${h(item(id)?.name)} <b>${n(c)}</b><small>${n(gearPrice(item(id)))} G</small></span>`):[])].join('');
  return `<div class="section-title">ตลาดหมู่บ้าน<small>ราคาขึ้นลงตามของในตลาด</small></div><div class="market-grid">${cards}</div><p class="tiny-note">ขายมากราคาจะตก ของขาดตลาดราคาจะขึ้น ทุกเช้าร้านในหมู่บ้านซื้อวัตถุดิบจากตลาดไปทำของขาย</p>${v.shop||v.smithy?`<div class="section-title">ของในร้าน<small>นักผจญภัยซื้อด้วยเงินตัวเอง</small></div><div class="stock-row">${stock||'<span>ร้านยังไม่มีของ ตลาดขาดวัตถุดิบ</span>'}</div>`:''}`;}
 function renderVillage(){const v=getVillageInfo(state);
- return `<div class="village-hero"><small>หมู่บ้านรอบกิลด์ · ระดับ ${v.level}</small><h2>${h(v.name)}</h2><p>ความรุ่งเรือง ${n(v.prosperity)}${v.next?' / '+n(v.next.prosperity):''} · บ้าน ${v.houses}/${v.maxHouses} หลัง</p><div class="progress"><i style="width:${pct(v.progress,1)}%"></i></div><small>${v.next?`ถึง “${h(v.next.name)}” แล้วบ้านเรือนจะใหญ่ขึ้นและมีที่ดินว่างเพิ่ม`:'หมู่บ้านเติบโตเต็มที่แล้ว'}</small></div>
+ // When the next guild rank needs a bigger village, say so plainly and list what raises it.
+ const need=getRankProgress(state)?.merits?.find(m=>m.kind==='village'&&!m.ok);
+ const goal=need?`<div class="village-goal"><small>เป้าหมายเลื่อนแรงค์กิลด์</small><b>${h(need.label)} · ตอนนี้ระดับ ${v.level}</b><ul><li>ทำคำร้องที่ชาวบ้านมาส่ง ค่าจ้างส่วนหนึ่งจะกลายเป็นความรุ่งเรือง</li><li>สร้างบ้านหรือร้านในหมู่บ้าน จากปุ่มด้านล่างของหน้านี้</li><li>นักผจญภัยซื้อของในร้านของหมู่บ้าน</li></ul></div>`:'';
+ return goal+`<div class="village-hero"><small>หมู่บ้านรอบกิลด์ · ระดับ ${v.level}</small><h2>${h(v.name)}</h2><p>ความรุ่งเรือง ${n(v.prosperity)}${v.next?' / '+n(v.next.prosperity):''} · บ้าน ${v.houses}/${v.maxHouses} หลัง</p><div class="progress"><i style="width:${pct(v.progress,1)}%"></i></div><small>${v.next?`ถึง “${h(v.next.name)}” แล้วบ้านเรือนจะใหญ่ขึ้นและมีที่ดินว่างเพิ่ม`:'หมู่บ้านเติบโตเต็มที่แล้ว'}</small></div>
  <div class="stat-grid"><div class="stat-box">ชาวบ้านมาส่งคำร้อง<b>ราวทุก ${v.interval} วินาที</b></div><div class="stat-box">รายได้ระหว่างไม่อยู่<b>${v.idleRate} G/วินาที</b></div></div><p class="tiny-note">หมู่บ้านรุ่งเรืองขึ้นเมื่อทำคำร้องสำเร็จ เมื่อนักผจญภัยใช้เงินในร้านค้า และเมื่อสร้างสิ่งใหม่ บ้านที่สร้างจะปรากฏบนแผนที่และโตขึ้นตามระดับหมู่บ้าน</p>
  <div class="section-title">พัฒนาหมู่บ้าน</div><div class="upgrade-grid">${Object.entries(VILLAGE_PROJECTS).map(([id,p])=>{const st=getProjectStatus(state,id);return `<div class="upgrade-card"><div class="up-head"><span class="up-icon">${p.icon}</span><div><b>${h(p.name)}</b><small>${id==='house'?`${st.level}/${v.maxHouses} หลัง`:`ระดับ ${st.level}/${p.max}`}</small></div></div><p>${h(p.description)}</p>${st.level>=st.max?'':`<span class="build-cost">${h(moneyCost(st.cost))}</span>`}<button class="${st.ok?'primary':''}" data-build-project="${id}" ${st.ok?'':'disabled'}>${st.ok?(id==='house'?'สร้างบ้าน':st.level?'ขยาย':'สร้าง'):h(st.reason)}</button></div>`;}).join('')}</div>
  ${renderMarket(v)}
@@ -197,15 +200,30 @@ function goalInfo(){if(introActive(state)){const g=introGoal();if(g)return g;}co
  if(!pr||pr.future){const id=['mistpath','rescue','heart'].find(id=>!state.completedQuests?.[id]),q=QUESTS.find(q=>q.id===id),lock=getAvailableQuests(state).find(x=>x.id===id);return{label:'บทสุดท้ายของเดโม่',title:q?.name||'รักษาหัวใจป่า',meta:lock?.locked?lock.lockReason:'งานสำคัญที่ป่าหมอกจันทร์ · แตะเพื่อเลือกทีม',action:'quest:'+(id||'heart'),urgent:!lock?.locked&&!missions.length};}
  const exam=QUESTS.find(q=>q.id===pr.exam);
  if(pr.examReady&&!pr.examPassed)return{label:'สอบเลื่อนระดับ',title:`สอบเป็นกิลด์ ${pr.rank}: ${exam?.name||''}`,meta:'จดหมายจากสมาคมกิลด์มาถึงแล้ว · เลือกทีมที่พร้อมที่สุด',action:'quest:'+pr.exam,urgent:true};
- const missing=pr.merits.filter(m=>!m.ok),done=pr.merits.length-missing.length+(pr.rep>=pr.repNeeded?1:0);
- return{label:'เป้าหมาย',title:`เลื่อนเป็นกิลด์ระดับ ${pr.rank}`,meta:[pr.rep<pr.repNeeded?`ชื่อเสียง ${n(pr.rep)}/${n(pr.repNeeded)}`:'ชื่อเสียงครบแล้ว',...missing.slice(0,2).map(m=>`${m.label} ${n(m.have)}/${n(m.need)}`)].join(' · '),progress:done/(pr.merits.length+1),action:'quests'};}
-function syncGoal(){const g=goalInfo(),card=$('goal-card');if(!card)return;const html=`<small>${h(g.label)}</small><b>${h(g.title)}</b><span>${h(g.meta)}</span>${g.progress!=null?`<i class="goal-progress"><i style="width:${pct(g.progress,1)}%"></i></i>`:''}`;if(card.__html!==html){card.innerHTML=html;card.__html=html;}card.dataset.goal=g.action;card.classList.toggle('urgent',!!g.urgent);}
+ const missing=pr.merits.filter(m=>!m.ok),done=pr.merits.length-missing.length+(pr.rep>=pr.repNeeded?1:0),progress=done/(pr.merits.length+1);
+ // Point the card at the menu that fixes the first missing merit, so nobody is left guessing where to go.
+ const step=missing[0],how=step&&MERIT_HELP[step.kind];
+ if(how)return{label:`เลื่อนเป็นกิลด์ ${pr.rank} · เหลือ ${missing.length+(pr.rep<pr.repNeeded?1:0)} ข้อ`,title:`${step.label} (${n(step.have)}/${n(step.need)})`,meta:how.meta,progress,action:how.action,coach:how.coach};
+ return{label:'เป้าหมาย',title:`เลื่อนเป็นกิลด์ระดับ ${pr.rank}`,meta:[pr.rep<pr.repNeeded?`ชื่อเสียง ${n(pr.rep)}/${n(pr.repNeeded)}`:'ชื่อเสียงครบแล้ว',...missing.slice(0,2).map(m=>`${m.label} ${n(m.have)}/${n(m.need)}`)].join(' · '),progress,action:'quests'};}
+const MERIT_HELP={
+ village:{meta:'แตะเพื่อเปิดเมนู “หมู่บ้าน” ด้านล่าง · สร้างบ้านหรือร้านให้ชาวบ้าน และทำคำร้องให้ชาวบ้าน หมู่บ้านจะรุ่งเรืองขึ้น',action:'village',coach:'village'},
+ members:{meta:'แตะเพื่อเปิดเมนู “สมาชิก” · รับคนที่มาสมัครหรือประกาศรับสมาชิกใหม่',action:'members',coach:'members'},
+ ranked:{meta:'แตะเพื่อเปิดเมนู “สมาชิก” · ส่งสมาชิกที่พร้อมไปสอบเลื่อนแรงค์',action:'members',coach:'members'},
+ classed:{meta:'แตะเพื่อเปิดเมนู “สมาชิก” · ให้สมาชิกเลื่อนอาชีพขั้นที่ 2',action:'members',coach:'members'},
+ geared:{meta:'แตะเพื่อเปิดเมนู “คราฟต์” · ทำหรือมอบอาวุธให้สมาชิก',action:'workshop',coach:'workshop'},
+ board:{meta:'แตะเพื่อวางกระดานคำร้องในกิลด์',action:'build:board'},
+};
+function syncGoal(){const g=goalInfo(),card=$('goal-card');if(!card)return;const html=`<small>${h(g.label)}</small><b>${h(g.title)}</b><span>${h(g.meta)}</span>${g.progress!=null?`<i class="goal-progress"><i style="width:${pct(g.progress,1)}%"></i></i>`:''}`;if(card.__html!==html){card.innerHTML=html;card.__html=html;}card.dataset.goal=g.action;card.classList.toggle('urgent',!!g.urgent);syncCoach(g.coach);}
+// A pulsing hint on the dock button the current goal needs, until the player has opened that menu once for it.
+let coachSeen=null;
+function syncCoach(tab){if(!coachSeen){coachSeen={};try{coachSeen=JSON.parse(localStorage.getItem('guild-master:coach')||'{}');}catch{}}const seen=coachSeen;if(tab&&ui.tab===tab&&$('management-dialog').open){seen[tab]=true;try{localStorage.setItem('guild-master:coach',JSON.stringify(seen));}catch{}}
+ for(const b of document.querySelectorAll('#dock .dock-btn')){const on=!!tab&&b.dataset.tab===tab&&!seen[tab];b.classList.toggle('coach',on);if(on)b.dataset.coachTip=tab==='village'?'พัฒนาหมู่บ้านที่นี่':tab==='members'?'ดูสมาชิกที่นี่':'เปิดที่นี่';}}
 function runGoal(action){const[kind,id]=String(action).split(':');if(kind==='none')return;if(kind==='visit'){showVisitors();return;}cancelBuild();
  if(kind==='build'&&id){closeMenu();ui.buildType=id;ui.moveId=null;ui.facilityId=null;renderer?.setMoveMode(null);renderer?.setBuildMode(id);syncUI();return;}
  if(kind==='quest'){navigate('quests');const q=QUESTS.find(q=>q.id===id);if(q){ui.region=q.region;ui.questId=id;}syncUI();return;}
  if(kind==='member'&&id){navigate('members');ui.memberId=id;syncUI();return;}
  if(kind==='mission'){openMenu();ui.tab='quests';ui.missionId=id;ui.questId=null;syncUI();return;}
- navigate(['build','members','village'].includes(kind)?kind:'quests');}
+ navigate(['build','members','village','workshop'].includes(kind)?kind:'quests');}
 $('goal-card').addEventListener('click',()=>runGoal($('goal-card').dataset.goal));
 
 // Mission report: a clear payoff when a team comes home.
