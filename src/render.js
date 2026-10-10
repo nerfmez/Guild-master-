@@ -218,6 +218,17 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
   const train=pose==='train0'?0:pose==='train1'?1:-1,work=pose==='work0'?0:pose==='work1'?1:-1;
   const dark=tone(color,-.3),light=tone(color,.35),hairLight=tone(hair,.3),pants=tone(color,-.5);
   c.save();c.translate(Math.round(x),Math.round(y));if(facing<0||direction==='west')c.scale(-1,1);
+  if(pose==='bed'){
+    // Asleep in bed: only the head shows on the pillow, the body is under the blanket.
+    c.translate(0,12);
+    poly(c,[[-4,-19],[4,-19],[6,-17],[6,-11],[4,-9],[-4,-9],[-6,-11],[-6,-17]],OUTLINE);
+    poly(c,[[-4,-18],[4,-18],[5,-17],[5,-11],[4,-10],[-4,-10],[-5,-11],[-5,-17]],skin);
+    rect(c,-4,-18,8,1,hair);rect(c,-5,-17,10,2,hair);rect(c,-5,-15,1,4,hair);rect(c,4,-15,1,4,hair);rect(c,-2,-15,2,1,hair);rect(c,-3,-17,2,1,hairLight);
+    if(long){rect(c,-7,-15,2,6,hair);rect(c,5,-15,2,6,hair);}
+    rect(c,-3,-12,2,1,'#3a2f2b');rect(c,1,-12,2,1,'#3a2f2b');rect(c,-4,-11,1,1,'#f19a8a');rect(c,3,-11,1,1,'#f19a8a');
+    rect(c,-6,-9,12,2,OUTLINE);rect(c,-5,-9,10,1,P.cream);
+    c.restore();return;
+  }
   rect(c,-4,-1,8,2,'#3b382c30');
   // Feet: a pixel of lift alternates between the legs.
   rect(c,-3+(side?step:0),-3+(step>0?-1:0),2,3,OUTLINE);rect(c,1-(side?step:0),-3+(step<0?-1:0),2,3,OUTLINE);

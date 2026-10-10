@@ -33,7 +33,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R17',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R18',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -145,7 +145,16 @@ export class GuildRenderer {
    const anchor=room.x+','+room.y+','+room.rotation;if(a.roomAnchor&&a.roomAnchor!==anchor){a.x=target.x;a.y=target.y;a.path=[];}a.roomAnchor=anchor;
    a.member=m;a.home=target;a.logicalHome=logical;a.away=away.has(m.id);a.image.setVisible(!a.away);if(this.frozen){a.x=target.x;a.y=target.y;}
   }
+  this.assignBeds();
   this.syncMaster();
+ }
+ // Up to two people share a bed's pillow: sleepers in the dorm, patients in the infirmary.
+ assignBeds(){
+  const pillow=(f,lx)=>{const d=FACILITIES[f.type],r=f.rotation||0,ly=.33,[x,y]=r===1?[d.h-ly,lx]:r===2?[d.w-lx,d.h-ly]:r===3?[ly,d.w-lx]:[lx,ly];const p=gridPoint(f.x+x,f.y+y),base=gridPoint(f.x,f.y);return{x:p.x,y:p.y-13,depth:base.y+(d.w+d.h)*6+1};};
+  const used=new Map();
+  for(const a of this.actors.values()){a.bed=null;const m=a.member;if(!m||a.away||m.id==='master')continue;const f=this.state.facilities.find(f=>f.id===a.roomId);if(!f||!['dorm','infirmary'].includes(f.type))continue;
+   const wants=f.type==='dorm'?m.task==='rest'&&m.energy<95&&!m.injury&&!m.waitingReason:m.injury>0;if(!wants)continue;
+   const k=used.get(f.id)||0;if(k>=2)continue;used.set(f.id,k+1);a.bed=pillow(f,k?.68:.3);}
  }
  syncMaster(){
   // The player's guild master keeps the reception desk, or waits by the door before it exists.
@@ -163,7 +172,7 @@ export class GuildRenderer {
  }
  arrive(ids){this.arrivals??=new Set();for(const id of ids)this.arrivals.add(id);}
  bakeActor(m){for(const direction of ['south','east','north','west']){
-  for(const pose of ['idle','breath','blink','sleep','train0','train1','work0','work1'])this.texture(`actor-${m.id}-${m.class}-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
+  for(const pose of direction==='south'?['idle','breath','blink','sleep','train0','train1','work0','work1','bed']:['idle','breath','blink','sleep','train0','train1','work0','work1'])this.texture(`actor-${m.id}-${m.class}-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
   for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
  emoteTexture(kind){const key='emote-'+kind;if(this.scene.textures.exists(key))return key;const c=document.createElement('canvas');c.width=14;c.height=12;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
   const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
@@ -187,11 +196,14 @@ export class GuildRenderer {
    else if(home&&m.task==='work')pose='work'+(Math.floor(t*2.2)%2);
    else if(home&&m.task==='rest'&&m.energy<95&&!m.waitingReason&&!m.injury)pose='sleep';
    else pose=t%4.3<.15?'blink':Math.floor(t*1.5)%2?'breath':'idle';
+   const inBed=a.bed&&home&&!walking&&(pose==='sleep'||m.injury>0);if(inBed)pose='bed';
    const facing=pose.startsWith('walk')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
-   a.image.setTexture(`actor-${m.id}-${m.class}-${facing}-${pose}`).setPosition(Math.round(a.x),Math.round(a.y)).setDepth(Math.round(a.y)+(hash(m.id)%89)/100);
-   const emote=pose==='sleep'?'z':home&&m.injury>0?'heal':null;
+   a.image.setTexture(`actor-${m.id}-${m.class}-${facing}-${pose}`);
+   if(inBed)a.image.setPosition(Math.round(a.bed.x),Math.round(a.bed.y)).setDepth(a.bed.depth+(hash(m.id)%89)/1000);
+   else a.image.setPosition(Math.round(a.x),Math.round(a.y)).setDepth(Math.round(a.y)+(hash(m.id)%89)/100);
+   const emote=pose==='sleep'||(pose==='bed'&&!m.injury)?'z':home&&m.injury>0?'heal':null;
    if(emote){if(!a.emote)a.emote=this.scene.add.image(0,0,this.emoteTexture(emote)).setOrigin(.5,1);if(a.emoteKind!==emote){a.emote.setTexture(this.emoteTexture(emote));a.emoteKind=emote;}
-    const float=Math.sin(t*2.2)*1.5;a.emote.setVisible(true).setPosition(Math.round(a.x+7),Math.round(a.y-24+float)).setDepth(Math.round(a.y)+1).setAlpha(.75+Math.sin(t*2.2)*.25);}
+    const float=Math.sin(t*2.2)*1.5;const ex=inBed?a.bed.x+5:a.x+7,ey=inBed?a.bed.y-12:a.y-24;a.emote.setVisible(true).setPosition(Math.round(ex),Math.round(ey+float)).setDepth((inBed?a.bed.depth:Math.round(a.y))+1).setAlpha(.75+Math.sin(t*2.2)*.25);}
    else a.emote?.setVisible(false);
   }
 
