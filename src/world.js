@@ -35,7 +35,7 @@ export class GuildRenderer {
  recoverCanvas(error,force=false){
   clearTimeout(this.bootTimer);
   if(error)console.warn('Guild scene startup:',error.message||error);
-  if(this.renderType===Phaser.CANVAS&&!force){this.ready=false;this.showStatus('ฉากยังเปิดไม่สำเร็จ ลองเปิดฉากอีกครั้ง',true);return;}
+  if(this.renderType===Phaser.CANVAS&&!force){this.ready=false;window.guildBoot?.fail(error||new Error('ตัววาดฉาก Canvas เริ่มทำงานไม่สำเร็จ'));const button=document.querySelector('#scene-status button');if(button)button.onclick=()=>this.recoverCanvas(undefined,true);return;}
   const canvas=this.canvas.cloneNode(false);this.canvas.replaceWith(canvas);
   // A failed boot has no next frame to process Phaser's deferred destruction.
   if(this.game){this.game.destroy(false);this.game.runDestroy();}
@@ -54,7 +54,7 @@ export class GuildRenderer {
   this.decorate();this.ghost=this.scene.add.graphics().setDepth(9999);this.bindInput();
   this.game.scale.on('resize',size=>{this.width=size.width;this.height=size.height;this.applyView();});
   this.center();this.rebuild();this.syncActors();this.canvas.dataset.renderer='Phaser '+(this.renderType===Phaser.WEBGL?'WebGL':'Canvas');
-  clearTimeout(this.bootTimer);const status=document.getElementById('scene-status');if(status)status.hidden=true;
+  clearTimeout(this.bootTimer);window.guildBoot?.ready();const status=document.getElementById('scene-status');if(status)status.hidden=true;
   if(this.renderType===Phaser.WEBGL)this.canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();queueMicrotask(()=>this.recoverCanvas());},{once:true});
   this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
  }

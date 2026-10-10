@@ -23,3 +23,13 @@
 หลังผู้ใช้รายงานว่าไฟล์ Canvas ยังแสดงเฉพาะของกับตัวละคร จึงส่งเกมผ่าน HTTPS ของ Sites เป็นอีกทางเลือก พร้อมรหัส R6 ที่ชื่อแท็บและแบรนด์ เกมและ renderer เท่ากับ export 3fe732e0 ทุกไบต์หลังแทนข้อความรุ่นกลับ; ไม่อ้างว่าอาการบนเครื่องผู้ใช้แก้แล้ว จนกว่าจะมีผลจากเครื่องจริง
 
 Native deployment สำเร็จ ดู [WEB-DELIVERY.json](WEB-DELIVERY.json) ไม่ได้ตรวจ browser บน hosted Site: สภาพแวดล้อม managed ไม่มี control-browser skill จึงใช้ข้อจำกัดการตรวจตาม Sites workflow
+
+## ไฟล์ดาวน์โหลด R7
+
+หลังผู้ใช้รายงาน R6 ไม่ขึ้น เปลี่ยน exporter จาก gzip → DecompressionStream → Blob script → ES module เป็น classic inline scripts ทั้ง runtime และแอป โดยใช้ callback ในการแทนข้อความ HTML เพื่อรักษาโค้ด runtime ทุกอักขระ เพิ่มตัวแจ้งข้อผิดพลาดก่อนเริ่ม Phaser และแสดงเวอร์ชันกับสาเหตุถ้าเริ่มฉากไม่สำเร็จ
+
+`npm test` ผ่าน 19/19, `npm run build` และ `npm run export` ผ่าน `node tests/standalone-compat.mjs` เปิดไฟล์ `play-r7-2a92e1ac.html` SHA-256 `2a92e1acd10c6723125c6e4034194d5120705bd077c312a784b9b4f7048b41a2` ขนาด 1,634,987 bytes ทั้ง Canvas และ WebGL โดยไม่โหลด HTTP/HTTPS
+
+กรณี Canvas ปิด WebGL, DecompressionStream, Blob URL และ dynamic script loading ตรวจสีของพิกเซลพื้นไม้ในพื้นที่ว่างและถนนหินโดยตรง รวมจำนวนพิกเซลลายหญ้า พื้น/ผนัง และหลังคาบ้าน จึงไม่ผ่านถ้าเห็นเพียงพื้นสีเดียวกับเฟอร์นิเจอร์ สร้างห้อง 3×3 และโหลดเซฟได้ทั้งสอง renderer; viewport มือถือ 390×844 เต็มจอ จำลอง Canvas เปิดไม่ได้แล้วเห็นสาเหตุและปุ่มลองใหม่ รายละเอียด [r7-compat-check.json](r7-compat-check.json)
+
+ตรวจภาพไฟล์เดียวกันที่ 1536×864 และ 390×844, DPR 2 และ Android user agent ใน Chromium การจำลองนี้ไม่ใช่ Samsung Internet/content:// บนแท็บเล็ตจริง สาเหตุของความล้มเหลวบนเครื่องผู้ใช้ยังไม่ได้ยืนยันจาก device console หรือผลเปิด R7 ไม่รันทดสอบ UI แคมเปญทั้งหมดซ้ำในรอบแก้ตัวโหลดนี้

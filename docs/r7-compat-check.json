@@ -1,0 +1,52 @@
+{
+  "file": "play-r7-2a92e1ac.html",
+  "sha256": "2a92e1acd10c6723125c6e4034194d5120705bd077c312a784b9b4f7048b41a2",
+  "bytes": 1634987,
+  "classicInline": true,
+  "cases": [
+    {
+      "mode": "restricted-canvas",
+      "renderer": "Canvas",
+      "scenePixels": {
+        "grassDetail": 320342,
+        "warm": 268196,
+        "blueRoof": 29091,
+        "floor": {
+          "warm": 576,
+          "total": 576
+        },
+        "road": {
+          "warm": 495,
+          "total": 600
+        }
+      },
+      "roomPlacement": true,
+      "saveReload": true,
+      "externalRequests": 0,
+      "errors": []
+    },
+    {
+      "mode": "webgl",
+      "renderer": "WebGL",
+      "scenePixels": {
+        "grassDetail": 321111,
+        "warm": 267565,
+        "blueRoof": 28930,
+        "floor": {
+          "warm": 576,
+          "total": 576
+        },
+        "road": {
+          "warm": 495,
+          "total": 600
+        }
+      },
+      "roomPlacement": true,
+      "saveReload": true,
+      "externalRequests": 0,
+      "errors": []
+    }
+  ],
+  "actualAndroidDeviceTested": false,
+  "visibleFailure": true
+}

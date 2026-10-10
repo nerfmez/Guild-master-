@@ -5,16 +5,16 @@
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
  <meta name="theme-color" content="#939c32">
  <meta name="description" content="กิลด์ใบอ่อน — บ้านของนักผจญภัยในหมู่บ้านพิกเซล">
- <title>กิลด์ใบอ่อน · R6</title>
+ <title>กิลด์ใบอ่อน · R7</title>
  <link rel="icon" type="image/svg+xml" href="./assets/leaf.svg">
  <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
  <div id="app">
   <main class="world-area" aria-label="พื้นที่กิลด์">
-   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์…</span><button hidden>เปิดฉากอีกครั้ง</button></div></div>
+   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์ · R7…</span><button hidden>เปิดฉากอีกครั้ง</button><noscript>ต้องเปิด JavaScript ในเบราว์เซอร์เพื่อเล่นเกม</noscript></div></div>
    <header class="topbar">
-    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong>กิลด์ใบอ่อน</strong><small>LITTLE LEAF GUILD · R6</small></div></div>
+    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong>กิลด์ใบอ่อน</strong><small>LITTLE LEAF GUILD · R7</small></div></div>
     <div id="resources" class="resources" aria-label="ทรัพยากรกิลด์"></div>
     <div id="calendar" class="calendar"></div>
    </header>
@@ -46,6 +46,7 @@
   <input type="file" id="import-file" accept="application/json,.json" hidden>
   <noscript>เกมนี้ต้องเปิด JavaScript เพื่อเล่น</noscript>
  </div>
+ <script src="./src/boot.js"></script>
  <script src="./node_modules/phaser/dist/phaser.min.js"></script>
  <script src="./src/art/core.js"></script><script src="./src/art/terrain.js"></script><script src="./src/art/buildings.js"></script><script src="./src/art/nature.js"></script><script src="./src/art/props.js"></script>
  <script type="module" src="./src/app.js"></script>

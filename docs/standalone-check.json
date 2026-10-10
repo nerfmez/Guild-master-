@@ -54,11 +54,14 @@
   ],
   "actualAndroidDeviceTested": false,
   "latestDelivery": {
-    "release": "R6",
-    "file": "play-r6-6c4044a9.html",
-    "sha256": "6c4044a9885b38049186156c0368c8d73d5b86a60a7a0a91985de744b8324f38",
-    "url": "https://little-leaf-guild-play.ballboy-lnw.chatgpt.site",
-    "brandingOnlyVariantVerified": true,
-    "deviceIssueConfirmedResolved": false
+    "release": "R7",
+    "file": "play-r7-2a92e1ac.html",
+    "sha256": "2a92e1acd10c6723125c6e4034194d5120705bd077c312a784b9b4f7048b41a2",
+    "bytes": 1634987,
+    "brandingOnlyVariantVerified": false,
+    "classicInline": true,
+    "compatibilityReport": "r7-compat-check.json",
+    "deviceIssueConfirmedResolved": false,
+    "actualAndroidDeviceTested": false
   }
 }

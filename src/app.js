@@ -15,7 +15,7 @@ state.settings??={};
 state.settings.paused=false;
 let ui={tab:'home',questId:null,memberId:null,facilityId:null,missionId:null,region:'meadow',selected:new Set(),policy:'balanced',buildType:null,moveId:null,roomPlacement:null,moveRoomId:null,partitionId:null,roomWidth:3,roomHeight:3,zoom:1,paused:false,speed:state.settings.speed||1,sound:!!state.settings.sound,tutorial:!state.completedQuests?.patrol};
 let renderer;
-try{renderer=new GuildRenderer($('guild-world'),onSceneSelect);renderer.setState(state);}catch(error){console.error(error);$('scene-status').querySelector('span').textContent='ฉากเปิดไม่ได้ กรุณาเปิดไฟล์ใหม่ด้วยเบราว์เซอร์';}
+try{renderer=new GuildRenderer($('guild-world'),onSceneSelect);renderer.setState(state);}catch(error){console.error(error);window.guildBoot?.fail(error);}
 let audioContext;
 function playChime(){if(!ui.sound)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();audioContext.resume();const now=audioContext.currentTime;for(const [i,f] of [523.25,659.25,783.99].entries()){const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sine';osc.frequency.value=f;gain.gain.setValueAtTime(0,now+i*.065);gain.gain.linearRampToValueAtTime(.035,now+i*.065+.012);gain.gain.exponentialRampToValueAtTime(.001,now+i*.065+.23);osc.connect(gain);gain.connect(audioContext.destination);osc.start(now+i*.065);osc.stop(now+i*.065+.24);}}catch{}}
 function toast(text,error=false){const node=document.createElement('div');node.className='toast'+(error?' error':' success');node.textContent=text;$('toasts').appendChild(node);setTimeout(()=>node.remove(),5500);while($('toasts').children.length>3)$('toasts').firstChild.remove();}
