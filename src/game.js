@@ -1184,7 +1184,11 @@ function buyUpgrade(state, payload) {
 function buildProject(state, payload) {
   const id = payload.projectId, p = VILLAGE_PROJECTS[id], status = getProjectStatus(state, id);
   if (!status.ok) return failure(status.reason);
+  // The player picks where a new building stands; upgrades stay where they are.
+  const key = id === 'house' ? 'h' + state.village.houses : id, spot = payload.spot;
+  if (spot && (!finiteNumber(spot.x) || !finiteNumber(spot.y) || Math.abs(spot.x) > 90 || Math.abs(spot.y) > 90)) return failure('ตำแหน่งที่ตั้งไม่ถูกต้อง');
   transact(state, status.cost, `หมู่บ้าน: ${p.name}`);
+  if (spot && !state.village.lots?.[key]) state.village.lots = { ...(state.village.lots || {}), [key]: { x: Math.round(spot.x * 4) / 4, y: Math.round(spot.y * 4) / 4 } };
   if (id === 'house') state.village.houses += 1; else state.village[id] = (state.village[id] || 0) + 1;
   if (id === 'shop' || id === 'smithy') restockShops(state);
   const before = getVillageInfo(state).level;
@@ -1685,6 +1689,8 @@ export function deserializeGame(source) {
   validateNumber(village, 'houses', 0, VILLAGE_LOTS.houses.length, true);
   for (const id of ['shop', 'market', 'smithy', 'dojo', 'arena']) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
   state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy, dojo: village.dojo, arena: village.arena, trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
+  const lots = Object.fromEntries(Object.entries(village.lots && typeof village.lots === 'object' ? village.lots : {}).filter(([key, lot]) => /^(h\d{1,2}|shop|market|smithy|dojo|arena)$/.test(key) && lot && finiteNumber(lot.x) && finiteNumber(lot.y) && Math.abs(lot.x) <= 90 && Math.abs(lot.y) <= 90).map(([key, lot]) => [key, { x: lot.x, y: lot.y }]));
+  if (Object.keys(lots).length) state.village.lots = lots;
   state.idleBank = finiteNumber(data.idleBank) ? clamp(data.idleBank, 0, 1000000) : 0;
   const appIds = new Set();
   state.applicants = (Array.isArray(data.applicants) ? data.applicants : []).filter(a => a && typeof a.id === 'string' && !appIds.has(a.id) && appIds.add(a.id) && ['coming', 'waiting'].includes(a.status)

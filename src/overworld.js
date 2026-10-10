@@ -329,3 +329,22 @@ export function monsterSpawns() {
   return out;
 }
 
+
+// ---- Where the player may put a village building ----
+/** Footprints (grid units) of village buildings, for placement and clearance. */
+export const VILLAGE_FOOTPRINT = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4] };
+/**
+ * Why a building cannot stand on this rectangle, or null when it can.
+ * blockers: rectangles {x,y,w,h} already taken (guild land, roads, other buildings, trees).
+ */
+export function villageSpotProblem(x, y, w, h, blockers = []) {
+  const cx = x + w / 2, cy = y + h / 2;
+  if (Math.hypot(cx - VILLAGE.x, cy - VILLAGE.y) > 30) return 'ไกลหมู่บ้านเกินไป';
+  if (blockers.some(b => x < b.x + b.w && x + w > b.x && y < b.y + b.h && y + h > b.y)) return 'ทับสิ่งก่อสร้างหรือถนนในหมู่บ้าน';
+  if (FIELDS.some(f => x < f.x + f.w + .8 && x + w > f.x - .8 && y < f.y + f.h + .8 && y + h > f.y - .8)) return 'ทับแปลงเกษตร';
+  for (let sy = y; sy <= y + h + .01; sy += h / 3) for (let sx = x; sx <= x + w + .01; sx += w / 3) {
+    if (inWater(sx, sy, .4)) return 'ติดน้ำ';
+    if (nearPath(sx, sy, .9)) return 'ทับทางเดิน';
+  }
+  return null;
+}

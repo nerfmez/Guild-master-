@@ -296,6 +296,44 @@ export function makeHome(name,seed=1){
  if(smoke)result.smoke={x:smoke[0],y:smoke[1],dark:s.smoke==='dark'};
  return result;
 }
+/** The village dojo: a low hall under a two-tier roof, sliding doors open onto a sand yard with practice dummies. Footprint 3.6×3. */
+export function makeDojo(seed=149){
+ return stamp(220,190,96,118,c=>{
+  const quad=(pts,col,edge)=>face(c,pts,col,edge),sand='#dccb9c';
+  top(c,-.1,-.1,3.9,3.3,0,'#5f705040');
+  // Sand yard with rake lines in front of the hall.
+  top(c,0,2.1,3.6,.9,0,sand,'#c4b080');for(let x=.2;x<3.5;x+=.35)stroke(c,[x,2.15,.1],[x,2.95,.1],'#cdbb8a');
+  // Stone plinth and steps.
+  cube(c,-.1,-.1,3.2,2.2,0,5,'#a59d8f','#cfc7b4','#8f877a');cube(c,1.2,2.1,.7,.3,0,3,'#a59d8f','#cfc7b4','#8f877a');
+  // Walls: dark posts, sliding paper doors (two pulled open), plank side.
+  quad([[0,2,5],[3,2,5],[3,2,30],[0,2,30]],'#efe6d2',C.ink);
+  for(let u=0;u<=3.01;u+=.6){stroke(c,[u,2,5],[u,2,30],'#5a3f30',3);}
+  for(let u=.05;u<3;u+=.6)for(let zz=9;zz<29;zz+=5)stroke(c,[u,2,zz],[u+.5,2,zz],'#c9bda2');
+  for(const u of [1.2,1.8]){quad([[u+.04,2,5],[u+.56,2,5],[u+.56,2,28],[u+.04,2,28]],'#3f3530');quad([[u+.06,2.01,5],[u+.54,2.01,5],[u+.54,2.01,9],[u+.06,2.01,9]],'#c9b98a');}
+  {const [dx,dy]=q(1.75,2.01,14);R(c,dx-1,dy-8,3,10,'#8a6446');R(c,dx-4,dy-6,9,2,'#8a6446');E(c,dx,dy-11,3,3,'#d9c08a');}
+  quad([[3,0,5],[3,2,5],[3,2,30],[3,0,30]],'#8a6446',C.ink);for(let zz=9;zz<30;zz+=4)stroke(c,[3,0,zz],[3,2,zz],'#6f4f38');for(const u of [0,1,2])stroke(c,[3,u,5],[3,u,30],'#5a3f30',3);
+  stroke(c,[0,2,30],[3,2,30],'#5a3f30',3);stroke(c,[3,0,30],[3,2,30],'#5a3f30',3);
+  // Lower roof skirt with upturned corners.
+  const tile='#5f6670',tileDark='#4c525c',tileLight='#7a828c';
+  quad([[-.35,-.35,30],[3.35,-.35,30],[2.6,.3,40],[.4,.3,40]],tileDark,C.ink);
+  quad([[-.35,2.35,30],[3.35,2.35,30],[2.6,1.7,40],[.4,1.7,40]],tile,C.ink);
+  quad([[3.35,-.35,30],[3.35,2.35,30],[2.6,1.7,40],[2.6,.3,40]],tileDark,C.ink);
+  for(let u=-.2;u<3.3;u+=.25)stroke(c,[u,2.35,30],[u*.6+.4*.4+.4*(1-.6)+u*0,1.7,40],tileLight);
+  for(const [x,y] of [[-.35,2.35],[3.35,2.35],[3.35,-.35]]){const [px,py]=q(x,y,30);P(c,[[px-4,py+1],[px+4,py+1],[px+(x<0?-5:5),py-5]],tileDark);}
+  // Upper storey and gable roof.
+  cube(c,.45,.35,2.1,1.3,40,7,'#efe6d2','#efe6d2','#d8cdb4');
+  quad([[.15,.4,47],[2.85,.4,47],[2.85,1,60],[.15,1,60]],tileDark,C.ink);
+  quad([[.15,1.6,47],[2.85,1.6,47],[2.85,1,60],[.15,1,60]],tile,C.ink);
+  quad([[2.86,.4,47],[2.86,1,60],[2.86,1.6,47]],'#8a6446',C.ink);for(let k=1;k<4;k++)stroke(c,[2.87,1-.15*k,48+k*2],[2.87,1+.15*k,48+k*2],'#c9a77f');
+  stroke(c,[.1,1,61],[2.9,1,61],C.ink,3);for(const x of [.05,2.95]){const [px,py]=q(x,1,61);R(c,px-2,py-5,4,4,'#4c525c');R(c,px+(x<1?-4:2),py-7,3,3,'#4c525c');}
+  // Name board over the entrance: crossed swords.
+  {const [bx,by]=q(1.5,2.02,34);R(c,bx-14,by-5,28,11,'#3f3530');R(c,bx-13,by-4,26,9,'#5a3f30');R(c,bx-13,by-4,26,1,'#c9a050');R(c,bx-13,by+4,26,1,'#c9a050');L(c,bx-6,by-2,bx+5,by+3,'#e6dfcc');L(c,bx+6,by-2,bx-5,by+3,'#e6dfcc');R(c,bx-1,by,2,2,'#c9a050');}
+  // Banners on poles at the yard corners, practice dummies and a weapon rack.
+  for(const [x,y] of [[.1,2.95],[3.45,2.95]]){const [px,py]=q(x,y,0);R(c,px,py-46,2,46,'#5a3f30');R(c,px+2,py-44,7,18,'#b85a4a');R(c,px+2,py-44,7,2,'#d9806e');R(c,px+4,py-38,3,3,'#f4e5c9');R(c,px+3,py-26,2,3,'#b85a4a');R(c,px+6,py-26,2,4,'#b85a4a');}
+  for(const [x,y] of [[.6,2.6],[2.7,2.55]]){const [px,py]=q(x,y,0);R(c,px-1,py-20,3,20,'#6b4f3a');R(c,px-7,py-15,15,2,'#6b4f3a');E(c,px,py-13,4,6,'#d9c08a');E(c,px,py-22,3,3,'#e6cf8e');R(c,px-3,py-12,6,1,'#a3824a');}
+  {const [px,py]=q(3.3,.9,0);R(c,px-6,py-18,14,2,'#6b4f3a');R(c,px-6,py-8,14,2,'#6b4f3a');R(c,px-6,py-18,2,18,'#5a3f30');R(c,px+6,py-18,2,18,'#5a3f30');L(c,px-3,py-22,px-3,py-2,'#c4ccd0');L(c,px+1,py-24,px+1,py-2,'#a77a55');L(c,px+4,py-21,px+4,py-2,'#c4ccd0');}
+ });
+}
 export function makeOutdoor(type){
  return object(c=>{
   if(type==='well'){

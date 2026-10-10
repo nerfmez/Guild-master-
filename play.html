@@ -1664,7 +1664,7 @@ const VILLAGE_LOTS = {
   shop: { x: -9, y: 13.2, seed: 131, style: 'store' },
   market: { x: 34, y: 12.4, seed: 137 },
   smithy: { x: -9, y: 20.5, seed: 31, style: 'smithy' },
-  dojo: { x: -16, y: 12.2, seed: 149, style: 'dojo' },
+  dojo: { x: -13, y: 4, seed: 149, style: 'dojo' },
   arena: { x: 34.5, y: 5, seed: 151 },
 };
 
@@ -2884,7 +2884,11 @@ function buyUpgrade(state, payload) {
 function buildProject(state, payload) {
   const id = payload.projectId, p = VILLAGE_PROJECTS[id], status = getProjectStatus(state, id);
   if (!status.ok) return failure(status.reason);
+  // The player picks where a new building stands; upgrades stay where they are.
+  const key = id === 'house' ? 'h' + state.village.houses : id, spot = payload.spot;
+  if (spot && (!finiteNumber(spot.x) || !finiteNumber(spot.y) || Math.abs(spot.x) > 90 || Math.abs(spot.y) > 90)) return failure('ตำแหน่งที่ตั้งไม่ถูกต้อง');
   transact(state, status.cost, `หมู่บ้าน: ${p.name}`);
+  if (spot && !state.village.lots?.[key]) state.village.lots = { ...(state.village.lots || {}), [key]: { x: Math.round(spot.x * 4) / 4, y: Math.round(spot.y * 4) / 4 } };
   if (id === 'house') state.village.houses += 1; else state.village[id] = (state.village[id] || 0) + 1;
   if (id === 'shop' || id === 'smithy') restockShops(state);
   const before = getVillageInfo(state).level;
@@ -3385,6 +3389,8 @@ function deserializeGame(source) {
   validateNumber(village, 'houses', 0, VILLAGE_LOTS.houses.length, true);
   for (const id of ['shop', 'market', 'smithy', 'dojo', 'arena']) validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true);
   state.village = { prosperity: village.prosperity, houses: village.houses, shop: village.shop, market: village.market, smithy: village.smithy, dojo: village.dojo, arena: village.arena, trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
+  const lots = Object.fromEntries(Object.entries(village.lots && typeof village.lots === 'object' ? village.lots : {}).filter(([key, lot]) => /^(h\d{1,2}|shop|market|smithy|dojo|arena)$/.test(key) && lot && finiteNumber(lot.x) && finiteNumber(lot.y) && Math.abs(lot.x) <= 90 && Math.abs(lot.y) <= 90).map(([key, lot]) => [key, { x: lot.x, y: lot.y }]));
+  if (Object.keys(lots).length) state.village.lots = lots;
   state.idleBank = finiteNumber(data.idleBank) ? clamp(data.idleBank, 0, 1000000) : 0;
   const appIds = new Set();
   state.applicants = (Array.isArray(data.applicants) ? data.applicants : []).filter(a => a && typeof a.id === 'string' && !appIds.has(a.id) && appIds.add(a.id) && ['coming', 'waiting'].includes(a.status)
@@ -4688,6 +4694,44 @@ function makeHome(name,seed=1){
  if(smoke)result.smoke={x:smoke[0],y:smoke[1],dark:s.smoke==='dark'};
  return result;
 }
+/** The village dojo: a low hall under a two-tier roof, sliding doors open onto a sand yard with practice dummies. Footprint 3.6×3. */
+function makeDojo(seed=149){
+ return stamp(220,190,96,118,c=>{
+  const quad=(pts,col,edge)=>face(c,pts,col,edge),sand='#dccb9c';
+  top(c,-.1,-.1,3.9,3.3,0,'#5f705040');
+  // Sand yard with rake lines in front of the hall.
+  top(c,0,2.1,3.6,.9,0,sand,'#c4b080');for(let x=.2;x<3.5;x+=.35)stroke(c,[x,2.15,.1],[x,2.95,.1],'#cdbb8a');
+  // Stone plinth and steps.
+  cube(c,-.1,-.1,3.2,2.2,0,5,'#a59d8f','#cfc7b4','#8f877a');cube(c,1.2,2.1,.7,.3,0,3,'#a59d8f','#cfc7b4','#8f877a');
+  // Walls: dark posts, sliding paper doors (two pulled open), plank side.
+  quad([[0,2,5],[3,2,5],[3,2,30],[0,2,30]],'#efe6d2',C.ink);
+  for(let u=0;u<=3.01;u+=.6){stroke(c,[u,2,5],[u,2,30],'#5a3f30',3);}
+  for(let u=.05;u<3;u+=.6)for(let zz=9;zz<29;zz+=5)stroke(c,[u,2,zz],[u+.5,2,zz],'#c9bda2');
+  for(const u of [1.2,1.8]){quad([[u+.04,2,5],[u+.56,2,5],[u+.56,2,28],[u+.04,2,28]],'#3f3530');quad([[u+.06,2.01,5],[u+.54,2.01,5],[u+.54,2.01,9],[u+.06,2.01,9]],'#c9b98a');}
+  {const [dx,dy]=q(1.75,2.01,14);R(c,dx-1,dy-8,3,10,'#8a6446');R(c,dx-4,dy-6,9,2,'#8a6446');E(c,dx,dy-11,3,3,'#d9c08a');}
+  quad([[3,0,5],[3,2,5],[3,2,30],[3,0,30]],'#8a6446',C.ink);for(let zz=9;zz<30;zz+=4)stroke(c,[3,0,zz],[3,2,zz],'#6f4f38');for(const u of [0,1,2])stroke(c,[3,u,5],[3,u,30],'#5a3f30',3);
+  stroke(c,[0,2,30],[3,2,30],'#5a3f30',3);stroke(c,[3,0,30],[3,2,30],'#5a3f30',3);
+  // Lower roof skirt with upturned corners.
+  const tile='#5f6670',tileDark='#4c525c',tileLight='#7a828c';
+  quad([[-.35,-.35,30],[3.35,-.35,30],[2.6,.3,40],[.4,.3,40]],tileDark,C.ink);
+  quad([[-.35,2.35,30],[3.35,2.35,30],[2.6,1.7,40],[.4,1.7,40]],tile,C.ink);
+  quad([[3.35,-.35,30],[3.35,2.35,30],[2.6,1.7,40],[2.6,.3,40]],tileDark,C.ink);
+  for(let u=-.2;u<3.3;u+=.25)stroke(c,[u,2.35,30],[u*.6+.4*.4+.4*(1-.6)+u*0,1.7,40],tileLight);
+  for(const [x,y] of [[-.35,2.35],[3.35,2.35],[3.35,-.35]]){const [px,py]=q(x,y,30);P(c,[[px-4,py+1],[px+4,py+1],[px+(x<0?-5:5),py-5]],tileDark);}
+  // Upper storey and gable roof.
+  cube(c,.45,.35,2.1,1.3,40,7,'#efe6d2','#efe6d2','#d8cdb4');
+  quad([[.15,.4,47],[2.85,.4,47],[2.85,1,60],[.15,1,60]],tileDark,C.ink);
+  quad([[.15,1.6,47],[2.85,1.6,47],[2.85,1,60],[.15,1,60]],tile,C.ink);
+  quad([[2.86,.4,47],[2.86,1,60],[2.86,1.6,47]],'#8a6446',C.ink);for(let k=1;k<4;k++)stroke(c,[2.87,1-.15*k,48+k*2],[2.87,1+.15*k,48+k*2],'#c9a77f');
+  stroke(c,[.1,1,61],[2.9,1,61],C.ink,3);for(const x of [.05,2.95]){const [px,py]=q(x,1,61);R(c,px-2,py-5,4,4,'#4c525c');R(c,px+(x<1?-4:2),py-7,3,3,'#4c525c');}
+  // Name board over the entrance: crossed swords.
+  {const [bx,by]=q(1.5,2.02,34);R(c,bx-14,by-5,28,11,'#3f3530');R(c,bx-13,by-4,26,9,'#5a3f30');R(c,bx-13,by-4,26,1,'#c9a050');R(c,bx-13,by+4,26,1,'#c9a050');L(c,bx-6,by-2,bx+5,by+3,'#e6dfcc');L(c,bx+6,by-2,bx-5,by+3,'#e6dfcc');R(c,bx-1,by,2,2,'#c9a050');}
+  // Banners on poles at the yard corners, practice dummies and a weapon rack.
+  for(const [x,y] of [[.1,2.95],[3.45,2.95]]){const [px,py]=q(x,y,0);R(c,px,py-46,2,46,'#5a3f30');R(c,px+2,py-44,7,18,'#b85a4a');R(c,px+2,py-44,7,2,'#d9806e');R(c,px+4,py-38,3,3,'#f4e5c9');R(c,px+3,py-26,2,3,'#b85a4a');R(c,px+6,py-26,2,4,'#b85a4a');}
+  for(const [x,y] of [[.6,2.6],[2.7,2.55]]){const [px,py]=q(x,y,0);R(c,px-1,py-20,3,20,'#6b4f3a');R(c,px-7,py-15,15,2,'#6b4f3a');E(c,px,py-13,4,6,'#d9c08a');E(c,px,py-22,3,3,'#e6cf8e');R(c,px-3,py-12,6,1,'#a3824a');}
+  {const [px,py]=q(3.3,.9,0);R(c,px-6,py-18,14,2,'#6b4f3a');R(c,px-6,py-8,14,2,'#6b4f3a');R(c,px-6,py-18,2,18,'#5a3f30');R(c,px+6,py-18,2,18,'#5a3f30');L(c,px-3,py-22,px-3,py-2,'#c4ccd0');L(c,px+1,py-24,px+1,py-2,'#a77a55');L(c,px+4,py-21,px+4,py-2,'#c4ccd0');}
+ });
+}
 function makeOutdoor(type){
  return object(c=>{
   if(type==='well'){
@@ -4703,7 +4747,7 @@ function makeOutdoor(type){
  });
 }
 
-return {CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y,gridPoint,gridPosition,gridPolygon,makeRoom,makeBuilding,makePartition,makeGround,makeCottage,HOME_STYLES,makeArena,makeStall,makeHome,makeOutdoor};
+return {CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y,gridPoint,gridPosition,gridPolygon,makeRoom,makeBuilding,makePartition,makeGround,makeCottage,HOME_STYLES,makeArena,makeStall,makeHome,makeDojo,makeOutdoor};
 })();
 const WorldArt=(()=>{
 /* Pixel sprites for the overworld scenery: farm plots, windmill, pond life, pasture and wildflowers.
@@ -5800,7 +5844,26 @@ function monsterSpawns() {
 }
 
 
-return {WORLD,BIOMES,PATHS,RIVER,LAKE,BRIDGE,QUEST_SITES,SIGNPOSTS,VILLAGE_HOMES,regionOpen,smoothPath,CREEK,FOOTBRIDGE,biomeAt,nearPath,inWater,questRoute,FIELDS,DOCK,makeGroundPainter,MEADOW_BOX,MEADOW_SCENE,scatterMeadow,ORCHARD,WILD_SCENE,scatterNature,mistTint,makeBridge,makeFog,monsterSpawns};
+// ---- Where the player may put a village building ----
+/** Footprints (grid units) of village buildings, for placement and clearance. */
+const VILLAGE_FOOTPRINT = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4] };
+/**
+ * Why a building cannot stand on this rectangle, or null when it can.
+ * blockers: rectangles {x,y,w,h} already taken (guild land, roads, other buildings, trees).
+ */
+function villageSpotProblem(x, y, w, h, blockers = []) {
+  const cx = x + w / 2, cy = y + h / 2;
+  if (Math.hypot(cx - VILLAGE.x, cy - VILLAGE.y) > 30) return 'ไกลหมู่บ้านเกินไป';
+  if (blockers.some(b => x < b.x + b.w && x + w > b.x && y < b.y + b.h && y + h > b.y)) return 'ทับสิ่งก่อสร้างหรือถนนในหมู่บ้าน';
+  if (FIELDS.some(f => x < f.x + f.w + .8 && x + w > f.x - .8 && y < f.y + f.h + .8 && y + h > f.y - .8)) return 'ทับแปลงเกษตร';
+  for (let sy = y; sy <= y + h + .01; sy += h / 3) for (let sx = x; sx <= x + w + .01; sx += w / 3) {
+    if (inWater(sx, sy, .4)) return 'ติดน้ำ';
+    if (nearPath(sx, sy, .9)) return 'ทับทางเดิน';
+  }
+  return null;
+}
+
+return {WORLD,BIOMES,PATHS,RIVER,LAKE,BRIDGE,QUEST_SITES,SIGNPOSTS,VILLAGE_HOMES,regionOpen,smoothPath,CREEK,FOOTBRIDGE,biomeAt,nearPath,inWater,questRoute,FIELDS,DOCK,makeGroundPainter,MEADOW_BOX,MEADOW_SCENE,scatterMeadow,ORCHARD,WILD_SCENE,scatterNature,mistTint,makeBridge,makeFog,monsterSpawns,VILLAGE_FOOTPRINT,villageSpotProblem};
 })();
 const World=(()=>{
 const { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,siteRoads,buildingRect,partitionSize,partitionRect,pointInRect }=Site;
@@ -5808,11 +5871,11 @@ const { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS }=Content;
 const { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome }=Engine;
 const { makeActorTexture,villagerLook,applicantLook }=Artwork;
 const { QUESTS }=Content;
-const { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,monsterSpawns,inWater,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog }=Overworld;
+const { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog }=Overworld;
 const { SPECIES,makeMonster,questFoe }=Bestiary;
 const { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade }=Landmarks;
 const { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly }=WorldArt;
-const { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,HOME_STYLES,makeOutdoor,makeStall,makeArena,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y }=GuildArtwork;
+const { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,makeDojo,HOME_STYLES,makeOutdoor,makeStall,makeArena,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y }=GuildArtwork;
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 class GuildRenderer {
@@ -5868,7 +5931,7 @@ class GuildRenderer {
   const canvas=this.canvas.cloneNode(false);this.canvas.replaceWith(canvas);
   // A failed boot has no next frame to process Phaser's deferred destruction.
   if(this.game){this.game.destroy(false);this.game.runDestroy();}
-  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.pointers.clear();this.drag=null;this.pinch=null;
+  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.villageGhost=null;this.pointers.clear();this.drag=null;this.pinch=null;
   this.start(Phaser.CANVAS);
  }
  // Baked canvases are registered as plain image sources: a CanvasTexture would read every pixel back with getImageData, which stalls GPU-backed canvases.
@@ -5943,8 +6006,8 @@ class GuildRenderer {
  // ---- The world outside: regions, roads, village, roaming foes and travelling teams. ----
  // A village home; its chimney (if any) puffs smoke.
  addHome(style,seed,x,y){
-  const st=HOME_STYLES[style],key='home-'+style,p=gridPoint(x,y),c=gridPoint(x+st.w/2,y+st.h/2);let s=this.homeSprites?.get(key);
-  if(!s||!this.scene.textures.exists(key)){s=makeHome(style,seed);(this.homeSprites??=new Map()).set(key,s);this.texture(key,s.canvas);}
+  const st=style==='dojo'?{w:3.6,h:3}:HOME_STYLES[style],key='home-'+style,p=gridPoint(x,y),c=gridPoint(x+st.w/2,y+(style==='dojo'?2:st.h/2));let s=this.homeSprites?.get(key);
+  if(!s||!this.scene.textures.exists(key)){s=style==='dojo'?makeDojo(seed):makeHome(style,seed);(this.homeSprites??=new Map()).set(key,s);this.texture(key,s.canvas);}
   if(s.smoke)(this.chimneys??=[]).push({x:p.x+s.smoke.x,y:p.y+s.smoke.y,dark:s.smoke.dark,clock:Math.random()});
   return this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(c.y+4);
  }
@@ -6026,7 +6089,7 @@ class GuildRenderer {
    else tint('wg-'+item.seed,()=>makeTallGrass(item.seed));
   };
   const flora=[...meadowItems.map(item=>({item,meadow:true})),...natureItems.map(item=>({item}))].sort((a,b)=>Math.hypot(a.item.x-10,a.item.y-8)-Math.hypot(b.item.x-10,b.item.y-8));
-  this.decorJob=(function*(){for(const f of flora){const n=this.worldProps.length;(f.meadow?placeMeadow:placeNature)(f.item);for(let k=n;k<this.worldProps.length;k++)this.worldProps[k].setVisible(false);yield;}}).call(this);
+  this.decorJob=(function*(){for(const f of flora){if(this.underBuilding(f.item.x,f.item.y))continue;const n=this.worldProps.length;(f.meadow?placeMeadow:placeNature)(f.item);for(let k=n;k<this.worldProps.length;k++){const img=this.worldProps[k];img.setVisible(false);img.flora={x:f.item.x,y:f.item.y};}yield;}}).call(this);
   this.chimneys=[];this.puffs=[];
   this.villageSig=null;this.villageProps=new Map();this.syncVillage();
   // Landmarks where quests happen.
@@ -6133,7 +6196,7 @@ class GuildRenderer {
  }
  // A member on an errand walks out along the road to the dojo or arena, stays a while, and walks back.
  updateErrand(a,playing){
-  const e=a.member.errand,lot=VILLAGE_LOTS[e.kind==='exam'?'arena':'dojo'],b=buildingRect(this.state),door={x:b.x+b.w/2,y:b.y+b.h+.4};
+  const e=a.member.errand,lot=this.villageLot(e.kind==='exam'?'arena':'dojo'),b=buildingRect(this.state),door={x:b.x+b.w/2,y:b.y+b.h+.4};
   const site=e.kind==='exam'?{x:lot.x+2+((hash(a.member.id)%3)-1)*.5,y:lot.y+1.5}:{x:lot.x+1.3,y:lot.y+2.9};
   const route=[door,{x:door.x,y:17.5},{x:site.x,y:17.5},site],total=route.slice(1).reduce((s,p,k)=>s+Math.hypot(p.x-route[k].x,p.y-route[k].y),0);
   const r=Math.max(0,Math.min(1,(this.state.elapsed-e.start)/((e.end-e.start)||1))),walk=.3;
@@ -6165,10 +6228,33 @@ class GuildRenderer {
    const pending=m.event&&!m.event.resolved,text=`${pending?'! ':''}${quest.name} ${Math.round(ratio*100)}%`;if(party.tag.text!==text)party.tag.setText(text);const tagScale=Math.min(1,1.3/(this.camera?.zoom||1));party.tag.setBackgroundColor(pending?'#fff1c4':'#f8edd3').setScale(tagScale).setPosition(Math.round(p.x),Math.round(p.y-27)).setDepth(p.y+200).setVisible(true);}
  }
  // ---- The village: homes appear on their lots as houses are built and grow with the village level. ----
+ villageLot(key){const own=this.state?.village?.lots?.[key];if(own)return own;return key[0]==='h'&&/^h\d+$/.test(key)?VILLAGE_LOTS.houses[+key.slice(1)]:VILLAGE_LOTS[key];}
+ /** Footprints of the village buildings that stand now (grid units). */
+ villageRects(except){const v=getVillageInfo(this.state),out=[];
+  for(let i=0;i<Math.min(v.houses,VILLAGE_LOTS.houses.length);i++){const key='h'+i;if(key===except)continue;const at=this.villageLot(key),[w,h]=VILLAGE_FOOTPRINT.house;out.push({key,x:at.x,y:at.y,w,h});}
+  for(const id of ['shop','market','smithy','dojo','arena'])if(v[id]&&id!==except){const at=this.villageLot(id),[w,h]=VILLAGE_FOOTPRINT[id];out.push({key:id,x:at.x,y:at.y,w,h});}
+  return out;}
+ underBuilding(x,y){return (this.villageRects()||[]).some(r=>x>r.x-.6&&x<r.x+r.w+.6&&y>r.y-.6&&y<r.y+r.h+.6);}
+ // ---- Choosing where a village building goes: tap the map, see green or red, then confirm. ----
+ villageBlockers(key){const g=this.state.grid||{width:20,height:16},b=buildingRect(this.state);
+  return[{x:-.5,y:-.5,w:g.width+1,h:g.height+1},{x:b.x-1,y:b.y-1,w:b.w+2,h:b.h+3},...siteRoads(this.state),...SITE_COTTAGES.map(c=>({x:c.x-.3,y:c.y-.3,w:c.w+.6,h:c.h+.6})),...SITE_TREES.map(([x,y])=>({x:x-.5,y:y-.5,w:1,h:1})),...this.villageRects(key).map(r=>({x:r.x-.4,y:r.y-.4,w:r.w+.8,h:r.h+.8}))];}
+ startVillagePlacement(key,kind){
+  const [w,h]=VILLAGE_FOOTPRINT[kind]||VILLAGE_FOOTPRINT.house,blockers=this.villageBlockers(key),ok=(x,y)=>!villageSpotProblem(x,y,w,h,blockers);
+  let start=this.villageLot(key)||{x:8,y:21};
+  if(!ok(start.x,start.y))search:for(let r=1;r<30;r+=1)for(let a=0;a<Math.PI*2;a+=.35){const x=Math.round((start.x+Math.cos(a)*r)*4)/4,y=Math.round((start.y+Math.sin(a)*r*.8)*4)/4;if(ok(x,y)){start={x,y};break search;}}
+  this.villagePick={key,kind,w,h,x:start.x,y:start.y,blockers};this.stopFollow?.();
+  const p=gridPoint(start.x+w/2,start.y+h/2);this.focusX=p.x;this.focusY=p.y;this.userPanned=true;this.zoom=Math.max(this.zoom,1);this.applyView();this.updateVillagePick();}
+ updateVillagePick(){const v=this.villagePick;if(!v)return;v.problem=villageSpotProblem(v.x,v.y,v.w,v.h,v.blockers);
+  const g=this.villageGhost??=this.scene.add.graphics().setDepth(9998);g.clear();const pts=gridPolygon(v.x,v.y,v.w,v.h),col=v.problem?0xd9584a:0x6fae5a;
+  g.fillStyle(col,.35);g.fillPoints(pts,true);g.lineStyle(2,col,.95);g.strokePoints(pts,true);g.setVisible(true);
+  this.onVillagePick?.({ok:!v.problem,message:v.problem});}
+ getVillagePick(){const v=this.villagePick;return v?{ok:!v.problem,message:v.problem,x:v.x,y:v.y}:null;}
+ stopVillagePlacement(){this.villagePick=null;this.villageGhost?.clear();}
  syncVillage(){
   if(!this.scene||!this.state||!this.worldProps)return;const v=getVillageInfo(this.state),tier=v.level>=5?2:v.level>=3?1:0,want=[];
-  VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses)want.push({key:'h'+i,style:lot.styles[tier],seed:lot.seed,x:lot.x,y:lot.y});else if(i<v.maxHouses)want.push({key:'h'+i,lot:true,x:lot.x+.6,y:lot.y+1.6});});
-  for(const id of ['shop','market','smithy','dojo','arena']){const lot=VILLAGE_LOTS[id],need=VILLAGE_PROJECTS[id].villageLevel;if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:lot.x,y:lot.y}:id==='arena'?{key:id,arena:v[id],x:lot.x,y:lot.y}:{key:id,style:lot.style,seed:lot.seed,x:lot.x,y:lot.y});else if(v.level>=need)want.push({key:id,lot:true,x:lot.x+.8,y:lot.y+1.6});}
+  // Buildings stand where the player put them (older saves fall back to the original lots).
+  VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses){const at=this.villageLot('h'+i);want.push({key:'h'+i,style:lot.styles[tier],seed:lot.seed,x:at.x,y:at.y});}});
+  for(const id of ['shop','market','smithy','dojo','arena']){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y});}
   const sig=JSON.stringify(want);if(sig===this.villageSig)return;const first=this.villageSig===null;this.villageSig=sig;
   const old=this.villageProps,next=new Map();
   for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.style);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
@@ -6183,6 +6269,8 @@ class GuildRenderer {
    next.set(id,{images,chimneys});}
   for(const e of old.values()){for(const image of e.images){image.destroy();const i=this.worldProps.indexOf(image);if(i>=0)this.worldProps.splice(i,1);}this.chimneys=(this.chimneys||[]).filter(c=>!e.chimneys.includes(c));}
   this.villageProps=next;this.cullClock=0;
+  // Grass and flowers never grow through a building.
+  for(let k=this.worldProps.length-1;k>=0;k--){const img=this.worldProps[k];if(img.flora&&this.underBuilding(img.flora.x,img.flora.y)){img.destroy();this.worldProps.splice(k,1);}}
  }
  // ---- Villagers bringing petitions: they walk from home along the road, in through the door, and wait at the desk. ----
  bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
@@ -6421,6 +6509,7 @@ class GuildRenderer {
  select(p){
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
   if(this.pending){const d=this.footprint();this.setPending(tile.x-d.w/2,tile.y-d.h/2);return;}
+  if(this.villagePick){const v=this.villagePick;v.x=Math.round((tile.x-v.w/2)*4)/4;v.y=Math.round((tile.y-v.h/2)*4)/4;this.updateVillagePick();return;}
   // Small figures get a finger-sized hit area at any zoom; tapping one out in the world follows them.
   const reach=Math.max(9,20/(this.camera?.zoom||1));
   for(const a of [...this.actors.values()].sort((a,b)=>Math.hypot(p.x-a.x,p.y-a.y+12)-Math.hypot(p.x-b.x,p.y-b.y+12)))if(a.image.visible&&Math.abs(p.x-a.x)<reach&&p.y>a.y-30-reach*.6&&p.y<a.y+4+reach*.4){if(a.away&&a.missionId){this.startFollow('member',a.member.id);return;}if(!a.away){this.onSelect({kind:'member',id:a.member.id});return;}}
@@ -6496,7 +6585,8 @@ const chapter=state.story?.chapter||1;$('chapter-label').innerHTML=`<span>CHAPTE
 let objective,meta;if(state.story?.finished){objective='บ้านที่ทุกคนได้กลับมา';meta='แคมเปญสำเร็จ · สำรวจและพัฒนากิลด์ต่อได้';}else if(!state.completedQuests?.patrol){objective='ส่งทีมลาดตระเวนครั้งแรก';meta='เลือกคำร้อง → สมาชิก 3 คน → ส่งทีม';}else{objective=stats.nextRank?`เติบโตสู่กิลด์ระดับ ${stats.nextRank}`:'รักษาหัวใจป่า';const q=QUESTS.find(q=>q.id===stats.nextRankQuest);meta=stats.nextRank?`ชื่อเสียง ${n(state.rep)}/${n(stats.nextRankRep)}${q?' · '+q.name:''}`:'รับคำร้องสุดท้ายที่ป่าหมอกจันทร์';}$('objective').innerHTML=`<small>OUR NEXT LITTLE STEP</small><p>${h(objective)}</p><div class="objective-meta">${h(meta)}</div>`;
 $('pause-button').textContent=ui.paused?'▶':'Ⅱ';$('pause-button').setAttribute('aria-label',ui.paused?'เดินเวลา':'หยุดเวลา');document.querySelectorAll('[data-speed]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.speed)===ui.speed&&!ui.paused);b.setAttribute('aria-pressed',String(Number(b.dataset.speed)===ui.speed&&!ui.paused));});
 syncGoal();const missions=activeMissions();$('journeys-button').classList.toggle('nudge',!missions.length&&state.members.length>=3&&!state.story?.finished);$('journey-count').textContent=missions.length?String(missions.length):'';$('journey-count').classList.toggle('alert',missions.some(m=>missionEventPending(m)));syncBrand();const sheet=$('management-dialog').open,group=['journal','collection'].includes(ui.tab)?'home':ui.tab;document.querySelectorAll('[data-dock]').forEach(b=>b.classList.toggle('active',sheet&&b.dataset.dock===group));let cards=missions.map(m=>{const q=QUESTS.find(q=>q.id===m.questId);return `<div class="journey-card ${missionEventPending(m)?'ready':''}" role="button" tabindex="0" data-open-mission="${h(m.id)}"><div class="journey-art">${m.memberIds.map(id=>state.members.find(x=>x.id===id)).filter(Boolean).map(m=>portrait(m)).join('')}</div><div class="journey-data"><b>${h(q?.name||m.questId)}</b><small>${missionEventPending(m)?'มีเหตุการณ์ · กดดูทีม':m.phase==='battle'?'กำลังต่อสู้ · กดดูทีม':`กำลังสำรวจ · ${Math.max(0,Math.ceil(m.duration-m.progress))} วินาที`}</small><div class="progress"><i style="width:${pct(missionRatio(m),1)}%"></i></div></div></div>`;});for(let i=missions.length;i<Math.min(2,stats.teamCap);i++)cards.push(`<div class="journey-card empty" role="button" tabindex="0" data-tab="quests">+ จัดทีมออกเดินทาง</div>`);if(stats.teamCap<2)cards.push('<div class="journey-card empty" data-tab="build" role="button" tabindex="0">วางโต๊ะวางแผนเพื่อเปิดทีมที่สอง</div>');$('mission-strip').innerHTML=cards.join('');injectIcons($('mission-strip'));
-if(ui.buildType||ui.moveId||ui.roomPlacement||ui.moveRoomId){const room=ui.roomPlacement||state.rooms.find(r=>r.id===ui.moveRoomId);const label=room?ROOM_TYPES[room.type].name+' '+Object.values(partitionSize({...room,rotation:renderer?.rotation||0})).join('×'):ui.buildType?FACILITIES[ui.buildType]?.name:FACILITIES[state.facilities.find(f=>f.id===ui.moveId)?.type]?.name||'ของที่เลือก';$('build-hint').hidden=false;const title=`${ui.moveId||ui.moveRoomId?'ย้าย':'วาง'}${label}`;if($('pb-title').textContent!==title)$('pb-title').textContent=title;$('pb-confirm').textContent=ui.moveId||ui.moveRoomId?'ย้ายมาตรงนี้':'วางตรงนี้';document.body.classList.add('placing');}else{$('build-hint').hidden=true;document.body.classList.remove('placing');}
+if(ui.villagePlace){const pr=VILLAGE_PROJECTS[ui.villagePlace.projectId];$('build-hint').hidden=false;const title='เลือกที่ตั้ง'+pr.name;if($('pb-title').textContent!==title)$('pb-title').textContent=title;$('pb-confirm').textContent='สร้างตรงนี้';$('build-hint').querySelector('[data-rotate-placement]').style.display='none';document.body.classList.add('placing');}
+else if(ui.buildType||ui.moveId||ui.roomPlacement||ui.moveRoomId){$('build-hint').querySelector('[data-rotate-placement]').style.display='';const room=ui.roomPlacement||state.rooms.find(r=>r.id===ui.moveRoomId);const label=room?ROOM_TYPES[room.type].name+' '+Object.values(partitionSize({...room,rotation:renderer?.rotation||0})).join('×'):ui.buildType?FACILITIES[ui.buildType]?.name:FACILITIES[state.facilities.find(f=>f.id===ui.moveId)?.type]?.name||'ของที่เลือก';$('build-hint').hidden=false;const title=`${ui.moveId||ui.moveRoomId?'ย้าย':'วาง'}${label}`;if($('pb-title').textContent!==title)$('pb-title').textContent=title;$('pb-confirm').textContent=ui.moveId||ui.moveRoomId?'ย้ายมาตรงนี้':'วางตรงนี้';document.body.classList.add('placing');}else{$('build-hint').hidden=true;document.body.classList.remove('placing');}
 }
 function syncUI(){syncHUD();document.querySelectorAll('.bottom-nav [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===ui.tab));const headings={collection:'สมุดสะสมสมบัติ',home:profile().guildName,quests:'กระดานคำร้อง',members:'เหล่านักผจญภัย',build:'สร้างและตกแต่ง',workshop:'โต๊ะช่างและคราฟต์',journal:'สมุดบันทึกกิลด์',village:'หมู่บ้านและการพัฒนา'};$('panel-heading').textContent=headings[ui.tab];const scroller=$('panel-content');const top=scroller.scrollTop;const selectValues=new Map([...scroller.querySelectorAll('select[data-equip-select]')].map(e=>[e.dataset.equipSelect,e.value]));const next=({collection:()=>guildTabs()+renderCollection(),home:()=>guildTabs()+renderHome(),quests:renderQuests,members:renderMembers,build:renderBuild,workshop:renderWorkshop,journal:()=>guildTabs()+renderJournal(),village:renderVillage})[ui.tab]();const viewKey=[ui.tab,ui.questId,ui.petitionId,ui.missionId,ui.memberId,ui.facilityId,ui.partitionId].join('|'),moved=scroller.__key!==viewKey;scroller.__key=viewKey;const changed=scroller.__view!==next;if(changed){scroller.innerHTML=next;scroller.__view=next;}scroller.scrollTop=moved?0:top;scroller.querySelectorAll('select[data-equip-select]').forEach(e=>{const old=selectValues.get(e.dataset.equipSelect);if([...e.options].some(o=>o.value===old))e.value=old;});if(changed)injectIcons(scroller);drawMissionScene();}
 
@@ -6560,7 +6650,7 @@ document.addEventListener('click',event=>{const b=event.target.closest('[data-pe
  if(d.decline){if(dispatch('declinePetition',{petitionId:d.decline}))syncUI();return;}
  if(d.reserve){const p=state.petitions.find(p=>p.id===d.reserve);if(p&&dispatch('setPetition',{petitionId:p.id,reserved:!p.reserved}))syncUI();return;}
  if(d.assign){const p=state.petitions.find(p=>p.id===d.assign);if(!p)return;ui.questId=p.questId;ui.petitionId=p.id;ui.missionId=null;ui.selected.clear();ui.region=QUESTS.find(q=>q.id===p.questId)?.region||ui.region;syncUI();return;}
- if(d.buildProject){if(dispatch('buildProject',{projectId:d.buildProject})){renderer?.setState(state);syncUI();}return;}
+ if(d.buildProject){const id=d.buildProject,status=getProjectStatus(state,id);if(status.ok&&renderer?.ready&&(id==='house'||!(state.village?.[id]>0))){closeMenu();ui.buildType=null;ui.moveId=null;ui.villagePlace={projectId:id};renderer.startVillagePlacement(id==='house'?'h'+state.village.houses:id,id==='house'?'house':id);syncHUD();return;}if(dispatch('buildProject',{projectId:id})){renderer?.setState(state);syncUI();}return;}
  if(d.upgradeGuild){if(dispatch('buyUpgrade',{upgradeId:d.upgradeGuild}))syncUI();return;}
  if(d.buyMat){if(dispatch('buyMaterial',{key:d.buyMat}))syncUI();return;}
  if(d.sellMat){if(dispatch('sellMaterial',{key:d.sellMat}))syncUI();return;}
@@ -6604,7 +6694,7 @@ function equipmentCard(e,maxWorkshop){const eligible=state.members.filter(m=>!is
 function renderWorkshop(){const maxWorkshop=Math.max(0,...state.facilities.filter(f=>f.type==='workshop').map(f=>f.level));return `<p class="panel-intro">ของจากการเดินทาง กลายเป็นอุปกรณ์ชิ้นใหม่<br>คราฟต์ก่อน แล้วเลือกสมาชิกเพื่อสวมใส่</p>${EQUIPMENT.filter(e=>!e.loot).map(e=>equipmentCard(e,maxWorkshop)).join('')}${(()=>{const owned=EQUIPMENT.filter(e=>e.loot&&(inventoryCount(e.id)>0||state.members.some(m=>Object.values(m.equipment||{}).includes(e.id))));return owned.length?'<div class="section-title">สมบัติจากการผจญภัย</div>'+owned.map(e=>equipmentCard(e,maxWorkshop)).join(''):'<p class="tiny-note">สมบัติหายากหาได้จากหีบในดันเจียนเท่านั้น ทีมที่โชคดีจะเจอของดีบ่อยขึ้น</p>';})()}`;}
 function renderJournal(){const stats=getGuildStats(state);const nextRequirement=RANK_REQUIREMENTS[stats.nextRank];const nextQuest=QUESTS.find(q=>q.id===nextRequirement?.quest);let goals=state.story?.finished?['ช่วยทีมสำรวจกลับบ้าน','รักษาหัวใจป่า','มีบ้านให้ทุกคนกลับมา']:[stats.nextRank?`ชื่อเสียง ${n(state.rep)} / ${n(nextRequirement?.rep||0)}`:'กิลด์ระดับ A',nextQuest?`สำเร็จคำร้อง ${nextQuest.name}`:'สำเร็จคำร้องรักษาหัวใจป่า'];const ledger=(state.ledger||[]).slice(0,8);return `${state.story?.finished?'<div class="finished-banner"><b>ทุกคนกลับบ้านแล้ว ❧</b><br>จบบทแรกของเดโม่แล้ว ขอบคุณที่ดูแลนักผจญภัยทุกคน เล่นต่อ รับคนใหม่ และพัฒนาหมู่บ้านได้ · แผนที่ใหม่และระดับ B ขึ้นไปจะมาในเกมเต็ม</div>':''}<div class="chapter-card"><small>OUR GUILD STORY · CHAPTER ${state.story?.chapter||1}</small><h2>${state.story?.finished?'บ้านใต้ร่มใบไม้':stats.nextRank?'ก้าวต่อไป · กิลด์ระดับ '+stats.nextRank:'รักษาหัวใจป่า'}</h2><p>จากบ้านเล็กท้ายเมือง สู่สถานที่ที่ผู้คนฝากความหวัง</p></div>${renderPromotion()}<div class="stat-grid"><div class="stat-box">คำร้องที่สำเร็จ<b>${n(Object.values(state.completedQuests||{}).reduce((s,v)=>s+Number(v||0),0))} งาน</b></div><div class="stat-box">ค่าดูแลต่อวัน<b>${n(stats.upkeep)} G</b></div><div class="stat-box">รายรับวันนี้<b>${n(stats.incomeToday)} G</b></div><div class="stat-box">รายจ่ายวันนี้<b>${n(stats.expenseToday)} G</b></div></div><div class="section-title">ช่วงเวลาดี ๆ ในกิลด์</div>${GUILD_EVENTS.map(e=>`<div class="item-card"><b style="font-size:12px">${h(e.name)}</b><p>${h(e.description)}</p><div class="build-cost">${h(moneyCost(e.cost))}</div><button class="secondary full-button" data-host-event="${e.id}" ${!state.facilities.some(f=>f.type===e.requires)||!canAfford(e.cost)?'disabled':''}>${state.facilities.some(f=>f.type===e.requires)?'จัดกิจกรรม':'ต้องมี'+FACILITIES[e.requires].name}</button></div>`).join('')}<div class="section-title">บัญชีล่าสุด</div>${ledger.length?ledger.map(entry=>{const amount=Number(entry.amount||entry.gold||0);return`<div class="ledger-row"><span>${h(entry.label||entry.text||entry.reason||entry.type)} · วันที่ ${entry.day}</span><b class="${amount<0?'negative':''}">${amount>0?'+':''}${n(amount)} G</b></div>`;}).join(''):'<p class="tiny-note">เริ่มรับคำร้องเพื่อเพิ่มรายรับของกิลด์</p>'}<div class="section-title">เรื่องราวที่เกิดขึ้น</div>${(state.log||[]).slice(0,14).map(entry=>`<div class="log-entry"><small>วันที่ ${h(entry.day)} · GUILD MEMORY</small>${h(entry.text)}</div>`).join('')}`;}
 function navigate(tab){ui.partitionId=null;ui.petitionId=null;ui.roomDraftW=null;ui.roomDraftH=null;ui.tab=tab;openMenu();ui.questId=null;ui.memberId=null;ui.facilityId=null;ui.missionId=null;ui.selected.clear();syncUI();$('panel-content').scrollTop=0;}
-function cancelBuild(){ui.buildType=null;ui.moveId=null;ui.roomPlacement=null;ui.moveRoomId=null;renderer?.setRoomMode(null);renderer?.setBuildMode(null);renderer?.setMoveMode(null);syncHUD();}
+function cancelBuild(){if(ui.villagePlace){ui.villagePlace=null;renderer?.stopVillagePlacement();}ui.buildType=null;ui.moveId=null;ui.roomPlacement=null;ui.moveRoomId=null;renderer?.setRoomMode(null);renderer?.setBuildMode(null);renderer?.setMoveMode(null);syncHUD();}
 function onSceneSelect(selection){if(selection.kind==='mission'){openMenu();ui.tab='quests';ui.missionId=selection.id;ui.questId=null;ui.memberId=null;syncUI();return;}if(selection.kind==='pickup'){const f=state.facilities.find(f=>f.id===selection.id);if(!f)return;closeMenu();ui.buildType=null;ui.roomPlacement=null;ui.moveRoomId=null;ui.facilityId=null;ui.moveId=f.id;syncHUD();return;}if(selection.kind==='member'&&selection.id==='master'){cancelBuild();openSetup('edit');return;}if(selection.kind==='room'&&ui.roomPlacement){if(dispatch('buildRoom',{...ui.roomPlacement,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='moveRoom'&&ui.moveRoomId){if(dispatch('moveRoom',{roomId:ui.moveRoomId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='partition'){cancelBuild();navigate('build');ui.partitionId=selection.id;syncUI();}else if(selection.kind==='build'&&ui.buildType){if(dispatch('build',{type:ui.buildType,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='move'&&ui.moveId){if(dispatch('move',{facilityId:ui.moveId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='member'){cancelBuild();navigate('members');ui.memberId=selection.id;syncUI();}else if(selection.kind==='facility'){cancelBuild();navigate('build');ui.facilityId=selection.id;syncUI();}}
 let confirmCallback;
 function confirmAction(title,message,callback){$('confirm-title').textContent=title;$('confirm-message').textContent=message;confirmCallback=callback;$('confirm-dialog').showModal();}
@@ -6740,13 +6830,14 @@ $('management-dialog').addEventListener('close',()=>document.body.classList.remo
 // Placement bar: live validity from the renderer; nothing is placed until the player confirms.
 function updatePlacementBar(info){if(!info?.active)return;const status=$('pb-status'),text=info.ok?'ลากของเพื่อย้าย · แตะพื้นเพื่อย้ายไปตรงนั้น':(info.message||'วางตรงนี้ไม่ได้');if(status.textContent!==text)status.textContent=text;status.classList.toggle('bad',!info.ok);$('build-hint').querySelector('[data-confirm-placement]').disabled=!info.ok;}
 if(renderer)renderer.onPlacement=updatePlacementBar;
+if(renderer)renderer.onVillagePick=info=>{const status=$('pb-status'),text=info.ok?'แตะพื้นที่ว่างรอบหมู่บ้านเพื่อย้ายจุดสร้าง':info.message;if(status.textContent!==text)status.textContent=text;status.classList.toggle('bad',!info.ok);$('build-hint').querySelector('[data-confirm-placement]').disabled=!info.ok;};
 // Follow camera chip: who is being followed, a shortcut to their quest, and a stop button.
 let followInfo=null;
 function updateFollowChip(info){followInfo=info;$('follow-chip').hidden=!info;if(!info)return;$('fc-name').textContent=(info.kind==='member'?'ติดตาม ':'ติดตามทีม ')+info.name;$('fc-sub').textContent=info.quest?'ภารกิจ: '+info.quest:'อยู่ในกิลด์';$('fc-mission').hidden=!info.missionId;}
 if(renderer)renderer.onFollow=updateFollowChip;
 $('fc-stop').addEventListener('click',()=>renderer?.stopFollow());
 $('fc-mission').addEventListener('click',()=>{if(followInfo?.missionId)onSceneSelect({kind:'mission',id:followInfo.missionId});});
-document.addEventListener('click',event=>{if(!event.target.closest('[data-confirm-placement]'))return;const p=renderer?.getPlacement();if(!p?.active)return;if(!p.ok){toast(p.message||'วางตรงนี้ไม่ได้',true);return;}onSceneSelect({kind:p.kind,x:p.x,y:p.y,rotation:p.rotation,facilityId:p.facilityId,roomId:p.roomId});});
+document.addEventListener('click',event=>{if(!event.target.closest('[data-confirm-placement]'))return;if(ui.villagePlace){const v=renderer?.getVillagePick();if(!v)return;if(!v.ok){toast(v.message||'วางตรงนี้ไม่ได้',true);return;}const id=ui.villagePlace.projectId;if(dispatch('buildProject',{projectId:id,spot:{x:v.x,y:v.y}})){ui.villagePlace=null;renderer.stopVillagePlacement();renderer.setState(state);syncUI();}return;}const p=renderer?.getPlacement();if(!p?.active)return;if(!p.ok){toast(p.message||'วางตรงนี้ไม่ได้',true);return;}onSceneSelect({kind:p.kind,x:p.x,y:p.y,rotation:p.rotation,facilityId:p.facilityId,roomId:p.roomId});});
 
 // Chest loot: what a quest can give, the team's luck, and what was found.
 function lootLabel(entry){return entry.kind==='mat'?`${({gold:'เงิน',wood:'ไม้',stone:'หิน',herb:'สมุนไพร'})[entry.key]} +${entry.amount!=null?n(entry.amount):n(entry.min)+'–'+n(entry.max)}`:item(entry.id)?.name||entry.id;}

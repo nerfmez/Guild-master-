@@ -3,11 +3,11 @@ import { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
 import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { QUESTS } from './content.js';
-import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,monsterSpawns,inWater,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
+import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
 import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
-import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,HOME_STYLES,makeOutdoor,makeStall,makeArena,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
+import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,makeDojo,HOME_STYLES,makeOutdoor,makeStall,makeArena,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 export class GuildRenderer {
@@ -63,7 +63,7 @@ export class GuildRenderer {
   const canvas=this.canvas.cloneNode(false);this.canvas.replaceWith(canvas);
   // A failed boot has no next frame to process Phaser's deferred destruction.
   if(this.game){this.game.destroy(false);this.game.runDestroy();}
-  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.pointers.clear();this.drag=null;this.pinch=null;
+  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.villageGhost=null;this.pointers.clear();this.drag=null;this.pinch=null;
   this.start(Phaser.CANVAS);
  }
  // Baked canvases are registered as plain image sources: a CanvasTexture would read every pixel back with getImageData, which stalls GPU-backed canvases.
@@ -138,8 +138,8 @@ export class GuildRenderer {
  // ---- The world outside: regions, roads, village, roaming foes and travelling teams. ----
  // A village home; its chimney (if any) puffs smoke.
  addHome(style,seed,x,y){
-  const st=HOME_STYLES[style],key='home-'+style,p=gridPoint(x,y),c=gridPoint(x+st.w/2,y+st.h/2);let s=this.homeSprites?.get(key);
-  if(!s||!this.scene.textures.exists(key)){s=makeHome(style,seed);(this.homeSprites??=new Map()).set(key,s);this.texture(key,s.canvas);}
+  const st=style==='dojo'?{w:3.6,h:3}:HOME_STYLES[style],key='home-'+style,p=gridPoint(x,y),c=gridPoint(x+st.w/2,y+(style==='dojo'?2:st.h/2));let s=this.homeSprites?.get(key);
+  if(!s||!this.scene.textures.exists(key)){s=style==='dojo'?makeDojo(seed):makeHome(style,seed);(this.homeSprites??=new Map()).set(key,s);this.texture(key,s.canvas);}
   if(s.smoke)(this.chimneys??=[]).push({x:p.x+s.smoke.x,y:p.y+s.smoke.y,dark:s.smoke.dark,clock:Math.random()});
   return this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(c.y+4);
  }
@@ -221,7 +221,7 @@ export class GuildRenderer {
    else tint('wg-'+item.seed,()=>makeTallGrass(item.seed));
   };
   const flora=[...meadowItems.map(item=>({item,meadow:true})),...natureItems.map(item=>({item}))].sort((a,b)=>Math.hypot(a.item.x-10,a.item.y-8)-Math.hypot(b.item.x-10,b.item.y-8));
-  this.decorJob=(function*(){for(const f of flora){const n=this.worldProps.length;(f.meadow?placeMeadow:placeNature)(f.item);for(let k=n;k<this.worldProps.length;k++)this.worldProps[k].setVisible(false);yield;}}).call(this);
+  this.decorJob=(function*(){for(const f of flora){if(this.underBuilding(f.item.x,f.item.y))continue;const n=this.worldProps.length;(f.meadow?placeMeadow:placeNature)(f.item);for(let k=n;k<this.worldProps.length;k++){const img=this.worldProps[k];img.setVisible(false);img.flora={x:f.item.x,y:f.item.y};}yield;}}).call(this);
   this.chimneys=[];this.puffs=[];
   this.villageSig=null;this.villageProps=new Map();this.syncVillage();
   // Landmarks where quests happen.
@@ -328,7 +328,7 @@ export class GuildRenderer {
  }
  // A member on an errand walks out along the road to the dojo or arena, stays a while, and walks back.
  updateErrand(a,playing){
-  const e=a.member.errand,lot=VILLAGE_LOTS[e.kind==='exam'?'arena':'dojo'],b=buildingRect(this.state),door={x:b.x+b.w/2,y:b.y+b.h+.4};
+  const e=a.member.errand,lot=this.villageLot(e.kind==='exam'?'arena':'dojo'),b=buildingRect(this.state),door={x:b.x+b.w/2,y:b.y+b.h+.4};
   const site=e.kind==='exam'?{x:lot.x+2+((hash(a.member.id)%3)-1)*.5,y:lot.y+1.5}:{x:lot.x+1.3,y:lot.y+2.9};
   const route=[door,{x:door.x,y:17.5},{x:site.x,y:17.5},site],total=route.slice(1).reduce((s,p,k)=>s+Math.hypot(p.x-route[k].x,p.y-route[k].y),0);
   const r=Math.max(0,Math.min(1,(this.state.elapsed-e.start)/((e.end-e.start)||1))),walk=.3;
@@ -360,10 +360,33 @@ export class GuildRenderer {
    const pending=m.event&&!m.event.resolved,text=`${pending?'! ':''}${quest.name} ${Math.round(ratio*100)}%`;if(party.tag.text!==text)party.tag.setText(text);const tagScale=Math.min(1,1.3/(this.camera?.zoom||1));party.tag.setBackgroundColor(pending?'#fff1c4':'#f8edd3').setScale(tagScale).setPosition(Math.round(p.x),Math.round(p.y-27)).setDepth(p.y+200).setVisible(true);}
  }
  // ---- The village: homes appear on their lots as houses are built and grow with the village level. ----
+ villageLot(key){const own=this.state?.village?.lots?.[key];if(own)return own;return key[0]==='h'&&/^h\d+$/.test(key)?VILLAGE_LOTS.houses[+key.slice(1)]:VILLAGE_LOTS[key];}
+ /** Footprints of the village buildings that stand now (grid units). */
+ villageRects(except){const v=getVillageInfo(this.state),out=[];
+  for(let i=0;i<Math.min(v.houses,VILLAGE_LOTS.houses.length);i++){const key='h'+i;if(key===except)continue;const at=this.villageLot(key),[w,h]=VILLAGE_FOOTPRINT.house;out.push({key,x:at.x,y:at.y,w,h});}
+  for(const id of ['shop','market','smithy','dojo','arena'])if(v[id]&&id!==except){const at=this.villageLot(id),[w,h]=VILLAGE_FOOTPRINT[id];out.push({key:id,x:at.x,y:at.y,w,h});}
+  return out;}
+ underBuilding(x,y){return (this.villageRects()||[]).some(r=>x>r.x-.6&&x<r.x+r.w+.6&&y>r.y-.6&&y<r.y+r.h+.6);}
+ // ---- Choosing where a village building goes: tap the map, see green or red, then confirm. ----
+ villageBlockers(key){const g=this.state.grid||{width:20,height:16},b=buildingRect(this.state);
+  return[{x:-.5,y:-.5,w:g.width+1,h:g.height+1},{x:b.x-1,y:b.y-1,w:b.w+2,h:b.h+3},...siteRoads(this.state),...SITE_COTTAGES.map(c=>({x:c.x-.3,y:c.y-.3,w:c.w+.6,h:c.h+.6})),...SITE_TREES.map(([x,y])=>({x:x-.5,y:y-.5,w:1,h:1})),...this.villageRects(key).map(r=>({x:r.x-.4,y:r.y-.4,w:r.w+.8,h:r.h+.8}))];}
+ startVillagePlacement(key,kind){
+  const [w,h]=VILLAGE_FOOTPRINT[kind]||VILLAGE_FOOTPRINT.house,blockers=this.villageBlockers(key),ok=(x,y)=>!villageSpotProblem(x,y,w,h,blockers);
+  let start=this.villageLot(key)||{x:8,y:21};
+  if(!ok(start.x,start.y))search:for(let r=1;r<30;r+=1)for(let a=0;a<Math.PI*2;a+=.35){const x=Math.round((start.x+Math.cos(a)*r)*4)/4,y=Math.round((start.y+Math.sin(a)*r*.8)*4)/4;if(ok(x,y)){start={x,y};break search;}}
+  this.villagePick={key,kind,w,h,x:start.x,y:start.y,blockers};this.stopFollow?.();
+  const p=gridPoint(start.x+w/2,start.y+h/2);this.focusX=p.x;this.focusY=p.y;this.userPanned=true;this.zoom=Math.max(this.zoom,1);this.applyView();this.updateVillagePick();}
+ updateVillagePick(){const v=this.villagePick;if(!v)return;v.problem=villageSpotProblem(v.x,v.y,v.w,v.h,v.blockers);
+  const g=this.villageGhost??=this.scene.add.graphics().setDepth(9998);g.clear();const pts=gridPolygon(v.x,v.y,v.w,v.h),col=v.problem?0xd9584a:0x6fae5a;
+  g.fillStyle(col,.35);g.fillPoints(pts,true);g.lineStyle(2,col,.95);g.strokePoints(pts,true);g.setVisible(true);
+  this.onVillagePick?.({ok:!v.problem,message:v.problem});}
+ getVillagePick(){const v=this.villagePick;return v?{ok:!v.problem,message:v.problem,x:v.x,y:v.y}:null;}
+ stopVillagePlacement(){this.villagePick=null;this.villageGhost?.clear();}
  syncVillage(){
   if(!this.scene||!this.state||!this.worldProps)return;const v=getVillageInfo(this.state),tier=v.level>=5?2:v.level>=3?1:0,want=[];
-  VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses)want.push({key:'h'+i,style:lot.styles[tier],seed:lot.seed,x:lot.x,y:lot.y});else if(i<v.maxHouses)want.push({key:'h'+i,lot:true,x:lot.x+.6,y:lot.y+1.6});});
-  for(const id of ['shop','market','smithy','dojo','arena']){const lot=VILLAGE_LOTS[id],need=VILLAGE_PROJECTS[id].villageLevel;if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:lot.x,y:lot.y}:id==='arena'?{key:id,arena:v[id],x:lot.x,y:lot.y}:{key:id,style:lot.style,seed:lot.seed,x:lot.x,y:lot.y});else if(v.level>=need)want.push({key:id,lot:true,x:lot.x+.8,y:lot.y+1.6});}
+  // Buildings stand where the player put them (older saves fall back to the original lots).
+  VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses){const at=this.villageLot('h'+i);want.push({key:'h'+i,style:lot.styles[tier],seed:lot.seed,x:at.x,y:at.y});}});
+  for(const id of ['shop','market','smithy','dojo','arena']){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y});}
   const sig=JSON.stringify(want);if(sig===this.villageSig)return;const first=this.villageSig===null;this.villageSig=sig;
   const old=this.villageProps,next=new Map();
   for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.style);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
@@ -378,6 +401,8 @@ export class GuildRenderer {
    next.set(id,{images,chimneys});}
   for(const e of old.values()){for(const image of e.images){image.destroy();const i=this.worldProps.indexOf(image);if(i>=0)this.worldProps.splice(i,1);}this.chimneys=(this.chimneys||[]).filter(c=>!e.chimneys.includes(c));}
   this.villageProps=next;this.cullClock=0;
+  // Grass and flowers never grow through a building.
+  for(let k=this.worldProps.length-1;k>=0;k--){const img=this.worldProps[k];if(img.flora&&this.underBuilding(img.flora.x,img.flora.y)){img.destroy();this.worldProps.splice(k,1);}}
  }
  // ---- Villagers bringing petitions: they walk from home along the road, in through the door, and wait at the desk. ----
  bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
@@ -616,6 +641,7 @@ export class GuildRenderer {
  select(p){
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
   if(this.pending){const d=this.footprint();this.setPending(tile.x-d.w/2,tile.y-d.h/2);return;}
+  if(this.villagePick){const v=this.villagePick;v.x=Math.round((tile.x-v.w/2)*4)/4;v.y=Math.round((tile.y-v.h/2)*4)/4;this.updateVillagePick();return;}
   // Small figures get a finger-sized hit area at any zoom; tapping one out in the world follows them.
   const reach=Math.max(9,20/(this.camera?.zoom||1));
   for(const a of [...this.actors.values()].sort((a,b)=>Math.hypot(p.x-a.x,p.y-a.y+12)-Math.hypot(p.x-b.x,p.y-b.y+12)))if(a.image.visible&&Math.abs(p.x-a.x)<reach&&p.y>a.y-30-reach*.6&&p.y<a.y+4+reach*.4){if(a.away&&a.missionId){this.startFollow('member',a.member.id);return;}if(!a.away){this.onSelect({kind:'member',id:a.member.id});return;}}

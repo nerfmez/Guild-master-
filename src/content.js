@@ -220,7 +220,7 @@ export const VILLAGE_LOTS = {
   shop: { x: -9, y: 13.2, seed: 131, style: 'store' },
   market: { x: 34, y: 12.4, seed: 137 },
   smithy: { x: -9, y: 20.5, seed: 31, style: 'smithy' },
-  dojo: { x: -16, y: 12.2, seed: 149, style: 'dojo' },
+  dojo: { x: -13, y: 4, seed: 149, style: 'dojo' },
   arena: { x: 34.5, y: 5, seed: 151 },
 };
 
