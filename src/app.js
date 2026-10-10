@@ -237,6 +237,9 @@ function startNewGame(profileDraft){state=createGame(Date.now()%100000+1,{openin
 function showTitle(){document.body.classList.add('on-title');$('title-screen').hidden=false;$('title-continue').hidden=!hasSave;if(hasSave){$('title-save').textContent=`${profile().guildName} · `+(introActive(state)?`บทนำ · วันที่ ${n(state.day)}`:`วันที่ ${n(state.day)} · ระดับ ${state.rank} · สมาชิก ${state.members.length} คน`);}$('title-new').classList.toggle('primary',!hasSave);}
 function hideTitle(){document.body.classList.remove('on-title');$('title-screen').hidden=true;lastFrame=performance.now();}
 $('title-continue').addEventListener('click',()=>{hideTitle();playChime();});
+// Hold the title buttons until the world has finished building, so a tap is never swallowed by a busy startup.
+function titleBusy(busy){for(const id of ['title-continue','title-new'])$(id).disabled=busy;$('title-loading').hidden=!busy;}
+if(renderer&&!renderer.ready){titleBusy(true);const started=Date.now(),wait=setInterval(()=>{if(renderer.ready||Date.now()-started>20000){clearInterval(wait);titleBusy(false);}},200);}
 $('title-new').addEventListener('click',()=>{if(hasSave&&!(introActive(state)&&state.day===1&&!state.facilities.length)){confirmAction('เริ่มกิลด์ใหม่?','เซฟปัจจุบันจะถูกแทนที่ เริ่มจากบ้านว่างหลังแรก',()=>openSetup('new'));return;}openSetup('new');});
 
 // Player identity: the guild master and the guild's name.

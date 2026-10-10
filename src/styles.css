@@ -62,6 +62,10 @@ body.on-title .topbar,body.on-title .screen-bottom,body.on-title .world-actions,
 .title-actions button{display:grid;gap:2px;min-height:58px;padding:9px 14px;font-size:16px;font-weight:600;border-radius:7px}
 .title-actions button small{font-size:11px;font-weight:400;opacity:.85}
 .title-actions button[hidden]{display:none}
+.title-loading{margin:0;font-size:12px;color:#9b7a4a;animation:title-pulse 1.2s ease-in-out infinite alternate}
+.title-actions button:disabled{opacity:.55;cursor:progress}
+@keyframes title-pulse{from{opacity:.45}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.title-loading{animation:none}}
 .title-version{margin-top:10px;font-size:10px;color:#a8977c}
 .story-dialog{max-width:440px;text-align:left}
 .story-dialog p{font-size:14px;line-height:2;color:#6b5c4a}

@@ -71,6 +71,10 @@ body.on-title .topbar,body.on-title .screen-bottom,body.on-title .world-actions,
 .title-actions button{display:grid;gap:2px;min-height:58px;padding:9px 14px;font-size:16px;font-weight:600;border-radius:7px}
 .title-actions button small{font-size:11px;font-weight:400;opacity:.85}
 .title-actions button[hidden]{display:none}
+.title-loading{margin:0;font-size:12px;color:#9b7a4a;animation:title-pulse 1.2s ease-in-out infinite alternate}
+.title-actions button:disabled{opacity:.55;cursor:progress}
+@keyframes title-pulse{from{opacity:.45}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.title-loading{animation:none}}
 .title-version{margin-top:10px;font-size:10px;color:#a8977c}
 .story-dialog{max-width:440px;text-align:left}
 .story-dialog p{font-size:14px;line-height:2;color:#6b5c4a}
@@ -349,7 +353,7 @@ body.placing .screen-bottom,body.placing .goal-card{visibility:hidden}
   <div id="chapter-label" hidden></div><div id="objective" hidden></div><div id="mission-strip" hidden></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <dialog id="settings-dialog"><form method="dialog"><button class="close-dialog" aria-label="ปิด">×</button></form><div id="settings-content"></div></dialog>
-  <div id="title-screen" class="title-screen" hidden><div class="title-card"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA1NiI+PHBhdGggZmlsbD0iI2NlODU3YSIgZD0iTTQgMmg0MHYzOEwyNCA1NCA0IDQweiIvPjxwYXRoIGZpbGw9IiNmZmY0ZGYiIGQ9Ik0yMiA5aDR2MTBoN3Y0aC03djE3aC00VjIzaC03di00aDd6TTExIDI2aDd2NGg0djRoLTd2LTRoLTR6bTI2IDBoLTd2NGgtNHY0aDd2LTRoNHoiLz48L3N2Zz4K" alt=""><small>PIXEL GUILD STORY</small><h1>Guild Master</h1><p>บ้านเล็ก ๆ ของนักผจญภัย ข้างต้นโอ๊กใหญ่</p><div class="title-actions"><button id="title-continue" class="primary" hidden>เล่นต่อ<small id="title-save"></small></button><button id="title-new">เริ่มกิลด์ใหม่<small>เปิดบ้านว่างหลังแรก</small></button></div><span class="title-version">R32</span></div></div>
+  <div id="title-screen" class="title-screen" hidden><div class="title-card"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA1NiI+PHBhdGggZmlsbD0iI2NlODU3YSIgZD0iTTQgMmg0MHYzOEwyNCA1NCA0IDQweiIvPjxwYXRoIGZpbGw9IiNmZmY0ZGYiIGQ9Ik0yMiA5aDR2MTBoN3Y0aC03djE3aC00VjIzaC03di00aDd6TTExIDI2aDd2NGg0djRoLTd2LTRoLTR6bTI2IDBoLTd2NGgtNHY0aDd2LTRoNHoiLz48L3N2Zz4K" alt=""><small>PIXEL GUILD STORY</small><h1>Guild Master</h1><p>บ้านเล็ก ๆ ของนักผจญภัย ข้างต้นโอ๊กใหญ่</p><p id="title-loading" class="title-loading" hidden>กำลังเตรียมโลก…</p><div class="title-actions"><button id="title-continue" class="primary" hidden>เล่นต่อ<small id="title-save"></small></button><button id="title-new">เริ่มกิลด์ใหม่<small>เปิดบ้านว่างหลังแรก</small></button></div><span class="title-version">R32</span></div></div>
   <dialog id="setup-dialog" class="setup-dialog" aria-labelledby="setup-title"><div id="setup-content"></div></dialog>
   <dialog id="story-dialog" class="story-dialog" aria-labelledby="story-title"><div id="story-content"></div></dialog>
   <dialog id="visitor-dialog" class="visitor-dialog" aria-labelledby="visitor-title"><div id="visitor-content"></div></dialog>
@@ -5848,7 +5852,8 @@ class GuildRenderer {
   this.width=this.game.scale.width;this.height=this.game.scale.height;
   const base=makeGround(this.state),grass=document.createElement('canvas');grass.width=128;grass.height=128;
   this.grassCanvas=grass;const gc=grass.getContext('2d');gc.fillStyle='#9cac7d';gc.fillRect(0,0,128,128);let grassSeed=3187;const randomGrass=()=>{grassSeed=(Math.imul(grassSeed,1664525)+1013904223)>>>0;return grassSeed/4294967296;};for(let i=0;i<280;i++){gc.fillStyle=['#97a776','#a8b586','#8fa477','#b9c68d'][i%4];gc.fillRect(Math.floor(randomGrass()*128),Math.floor(randomGrass()*128),1+Math.floor(randomGrass()*5),1);}this.texture('meadow',grass);
-  this.scene.add.tileSprite(-1700,-1200,5400,3000,'meadow').setOrigin(0).setDepth(-10000);
+  // A flat backdrop under the painted ground; a tiled sprite this size cost about a second to build on tablets.
+  this.scene.add.rectangle(-1700,-1200,5400,3000,0x9cac7d).setOrigin(0).setDepth(-10000);
   this.groundImage=this.scene.add.image(0,0,this.texture('ground',base.canvas)).setOrigin(0).setDepth(-9999);
   this.decorate();this.ghost=this.scene.add.graphics().setDepth(9999);this.bindInput();
   this.game.scale.on('resize',size=>{this.width=size.width;this.height=size.height;this.applyView();});
@@ -5948,17 +5953,18 @@ class GuildRenderer {
   for(const [x,y,seed,gold] of M.trees)place(`mt-${seed}-${gold}`,()=>N.makeTree({seed,season:gold?'gold':'green',kind:seed%2?'oak':'birch'}),x,y);
   flat('dock',makeDock(DOCK),at(DOCK.x,DOCK.y));
   // Meadow flora: drifts of themed wildflowers, swaying grass, reeds and lilies on the pond.
-  const blooms=[];
-  for(const item of scatterMeadow()){const v=Math.floor(Math.abs(item.x*7+item.y*13))%2,y=at(item.x,item.y);
-   if(item.kind==='flowers'){place(`fp-${item.theme}-${v}`,()=>makeFlowerPatch(item.theme,v),item.x,item.y,y-4);blooms.push(item);}
+  // Flora is placed a little each frame, nearest the village first, so the game opens without a long freeze.
+  const meadowItems=scatterMeadow(),natureItems=scatterNature();
+  const blooms=[...meadowItems.filter(i=>i.kind==='flowers'),...natureItems.filter(i=>i.kind==='flowers'&&!(i.mist||0)&&i.seed===0)],fireflySpots=natureItems.filter(i=>i.kind==='shroom');
+  const placeMeadow=item=>{const v=Math.floor(Math.abs(item.x*7+item.y*13))%2,y=at(item.x,item.y);
+   if(item.kind==='flowers'){place(`fp-${item.theme}-${v}`,()=>makeFlowerPatch(item.theme,v),item.x,item.y,y-4);}
    else if(item.kind==='tallgrass')place('tg-'+item.seed,()=>makeTallGrass(item.seed),item.x,item.y);
    else if(item.kind==='bush')place('mb-'+item.seed,()=>N.makeBush({seed:item.seed}),item.x,item.y);
    else if(item.kind==='rock')place('mr-'+item.seed,()=>N.makeRock({seed:item.seed,size:'small'}),item.x,item.y);
    else if(item.kind==='reeds')place('reeds-'+item.seed,()=>makeReeds(item.seed),item.x,item.y);
-   else if(item.kind==='lily')place('lily-'+item.seed,()=>makeLily(item.seed),item.x,item.y,y-60);}
+   else if(item.kind==='lily')place('lily-'+item.seed,()=>makeLily(item.seed),item.x,item.y,y-60);};
   // The rest of the world: woods with glades, misty trees, rocky hills.
-  const fireflySpots=[];
-  for(const item of scatterNature()){const m=item.mist||0,k=item.kind,y=at(item.x,item.y),tint=(key,make)=>place(`${key}-${m}`,()=>mistTint(make(),m),item.x,item.y);
+  const placeNature=item=>{const m=item.mist||0,k=item.kind,y=at(item.x,item.y),tint=(key,make)=>place(`${key}-${m}`,()=>mistTint(make(),m),item.x,item.y);
    if(k==='tree')tint(`wt-${item.seed}-${item.gold?1:0}`,()=>N.makeTree({seed:item.seed,season:item.gold?'gold':'green',kind:item.seed%2?'oak':'birch'}));
    else if(k==='pine')tint(`wp-${item.seed}-${item.tone}`,()=>makePine(item.seed,item.tone));
    else if(k==='dead')tint('wdt-'+item.seed,()=>makeDeadTree(item.seed));
@@ -5968,7 +5974,7 @@ class GuildRenderer {
    else if(k==='fern')tint('wfe-'+item.seed,()=>makeFern(item.seed));
    else if(k==='log')tint('wlog-'+item.seed%2,()=>makeFallenLog(item.seed));
    else if(k==='berry')place('wbe-'+item.seed,()=>makeBerryBush(item.seed),item.x,item.y);
-   else if(k==='shroom'){place('wgs-'+item.seed,()=>makeGlowShrooms(item.seed),item.x,item.y);fireflySpots.push(item);}
+   else if(k==='shroom')place('wgs-'+item.seed,()=>makeGlowShrooms(item.seed),item.x,item.y);
    else if(k==='stone')place(`wst-${item.seed%4}-${item.rune?1:0}`,()=>makeStandingStone(item.seed%4,item.rune),item.x,item.y);
    else if(k==='boulders')place('wbo-'+item.seed%4,()=>makeBoulders(item.seed%4),item.x,item.y);
    else if(k==='wall')place('wwall-'+item.seed,()=>makeRuinWall(item.seed,item.len),item.x,item.y);
@@ -5978,13 +5984,15 @@ class GuildRenderer {
    else if(k==='chop')place('wchop',makeChoppingStump,item.x,item.y);
    else if(k==='rock')place(`wr-${item.seed}`,()=>N.makeRock({seed:item.seed,size:item.seed%2?'large':'small'}),item.x,item.y);
    else if(k==='bush')place('wb-'+item.seed,()=>N.makeBush({seed:item.seed}),item.x,item.y);
-   else if(k==='flowers'){tint(`wfl-${item.theme}-${item.seed}`,()=>makeFlowerPatch(item.theme,item.seed));if(!m&&item.seed===0)blooms.push(item);}
+   else if(k==='flowers'){tint(`wfl-${item.theme}-${item.seed}`,()=>makeFlowerPatch(item.theme,item.seed));}
    else if(k==='mushroom')tint('wm-'+item.seed,()=>makeMushrooms(item.seed));
    else if(k==='stump')tint('ws-'+item.seed,()=>makeStump(item.seed));
    else if(k==='drygrass')place('wd-'+item.seed,()=>makeDryGrass(item.seed),item.x,item.y);
    else if(k==='reeds')place('reeds-'+item.seed,()=>makeReeds(item.seed),item.x,item.y);
    else tint('wg-'+item.seed,()=>makeTallGrass(item.seed));
-  }
+  };
+  const flora=[...meadowItems.map(item=>({item,meadow:true})),...natureItems.map(item=>({item}))].sort((a,b)=>Math.hypot(a.item.x-10,a.item.y-8)-Math.hypot(b.item.x-10,b.item.y-8));
+  this.decorJob=(function*(){for(const f of flora){const n=this.worldProps.length;(f.meadow?placeMeadow:placeNature)(f.item);for(let k=n;k<this.worldProps.length;k++)this.worldProps[k].setVisible(false);yield;}}).call(this);
   this.chimneys=[];this.puffs=[];
   this.villageSig=null;this.villageProps=new Map();this.syncVillage();
   // Landmarks where quests happen.
@@ -6049,7 +6057,7 @@ class GuildRenderer {
    const lock=makeSignpost(`ต้องเป็นกิลด์ ${rank}`,true,sign.flip),q=gridPoint(sign.x+2.4,sign.y-2.6);this.texture('lock-'+sign.region+rank,lock.canvas);this.worldSigns.push(this.scene.add.image(q.x-lock.footX,q.y-lock.footY,'lock-'+sign.region+rank).setOrigin(0).setDepth(q.y));}
  }
  updateWorld(dt,playing){
-  if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;this.updateGround();this.updateCritters(dt,t,playing);
+  if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;if(this.decorJob){const start=performance.now();while(performance.now()-start<7)if(this.decorJob.next().done){this.decorJob=null;break;}this.cullClock=0;}this.updateGround();this.updateCritters(dt,t,playing);
   const SPEED={hop:.9,walk:.55,float:.5,root:0};
   for(const f of this.foes){
    const moving=Math.hypot(f.tx-f.x,f.ty-f.y)>.05;
@@ -6611,6 +6619,9 @@ function startNewGame(profileDraft){state=createGame(Date.now()%100000+1,{openin
 function showTitle(){document.body.classList.add('on-title');$('title-screen').hidden=false;$('title-continue').hidden=!hasSave;if(hasSave){$('title-save').textContent=`${profile().guildName} · `+(introActive(state)?`บทนำ · วันที่ ${n(state.day)}`:`วันที่ ${n(state.day)} · ระดับ ${state.rank} · สมาชิก ${state.members.length} คน`);}$('title-new').classList.toggle('primary',!hasSave);}
 function hideTitle(){document.body.classList.remove('on-title');$('title-screen').hidden=true;lastFrame=performance.now();}
 $('title-continue').addEventListener('click',()=>{hideTitle();playChime();});
+// Hold the title buttons until the world has finished building, so a tap is never swallowed by a busy startup.
+function titleBusy(busy){for(const id of ['title-continue','title-new'])$(id).disabled=busy;$('title-loading').hidden=!busy;}
+if(renderer&&!renderer.ready){titleBusy(true);const started=Date.now(),wait=setInterval(()=>{if(renderer.ready||Date.now()-started>20000){clearInterval(wait);titleBusy(false);}},200);}
 $('title-new').addEventListener('click',()=>{if(hasSave&&!(introActive(state)&&state.day===1&&!state.facilities.length)){confirmAction('เริ่มกิลด์ใหม่?','เซฟปัจจุบันจะถูกแทนที่ เริ่มจากบ้านว่างหลังแรก',()=>openSetup('new'));return;}openSetup('new');});
 
 // Player identity: the guild master and the guild's name.

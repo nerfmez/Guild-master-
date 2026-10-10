@@ -74,7 +74,8 @@ export class GuildRenderer {
   this.width=this.game.scale.width;this.height=this.game.scale.height;
   const base=makeGround(this.state),grass=document.createElement('canvas');grass.width=128;grass.height=128;
   this.grassCanvas=grass;const gc=grass.getContext('2d');gc.fillStyle='#9cac7d';gc.fillRect(0,0,128,128);let grassSeed=3187;const randomGrass=()=>{grassSeed=(Math.imul(grassSeed,1664525)+1013904223)>>>0;return grassSeed/4294967296;};for(let i=0;i<280;i++){gc.fillStyle=['#97a776','#a8b586','#8fa477','#b9c68d'][i%4];gc.fillRect(Math.floor(randomGrass()*128),Math.floor(randomGrass()*128),1+Math.floor(randomGrass()*5),1);}this.texture('meadow',grass);
-  this.scene.add.tileSprite(-1700,-1200,5400,3000,'meadow').setOrigin(0).setDepth(-10000);
+  // A flat backdrop under the painted ground; a tiled sprite this size cost about a second to build on tablets.
+  this.scene.add.rectangle(-1700,-1200,5400,3000,0x9cac7d).setOrigin(0).setDepth(-10000);
   this.groundImage=this.scene.add.image(0,0,this.texture('ground',base.canvas)).setOrigin(0).setDepth(-9999);
   this.decorate();this.ghost=this.scene.add.graphics().setDepth(9999);this.bindInput();
   this.game.scale.on('resize',size=>{this.width=size.width;this.height=size.height;this.applyView();});
@@ -174,17 +175,18 @@ export class GuildRenderer {
   for(const [x,y,seed,gold] of M.trees)place(`mt-${seed}-${gold}`,()=>N.makeTree({seed,season:gold?'gold':'green',kind:seed%2?'oak':'birch'}),x,y);
   flat('dock',makeDock(DOCK),at(DOCK.x,DOCK.y));
   // Meadow flora: drifts of themed wildflowers, swaying grass, reeds and lilies on the pond.
-  const blooms=[];
-  for(const item of scatterMeadow()){const v=Math.floor(Math.abs(item.x*7+item.y*13))%2,y=at(item.x,item.y);
-   if(item.kind==='flowers'){place(`fp-${item.theme}-${v}`,()=>makeFlowerPatch(item.theme,v),item.x,item.y,y-4);blooms.push(item);}
+  // Flora is placed a little each frame, nearest the village first, so the game opens without a long freeze.
+  const meadowItems=scatterMeadow(),natureItems=scatterNature();
+  const blooms=[...meadowItems.filter(i=>i.kind==='flowers'),...natureItems.filter(i=>i.kind==='flowers'&&!(i.mist||0)&&i.seed===0)],fireflySpots=natureItems.filter(i=>i.kind==='shroom');
+  const placeMeadow=item=>{const v=Math.floor(Math.abs(item.x*7+item.y*13))%2,y=at(item.x,item.y);
+   if(item.kind==='flowers'){place(`fp-${item.theme}-${v}`,()=>makeFlowerPatch(item.theme,v),item.x,item.y,y-4);}
    else if(item.kind==='tallgrass')place('tg-'+item.seed,()=>makeTallGrass(item.seed),item.x,item.y);
    else if(item.kind==='bush')place('mb-'+item.seed,()=>N.makeBush({seed:item.seed}),item.x,item.y);
    else if(item.kind==='rock')place('mr-'+item.seed,()=>N.makeRock({seed:item.seed,size:'small'}),item.x,item.y);
    else if(item.kind==='reeds')place('reeds-'+item.seed,()=>makeReeds(item.seed),item.x,item.y);
-   else if(item.kind==='lily')place('lily-'+item.seed,()=>makeLily(item.seed),item.x,item.y,y-60);}
+   else if(item.kind==='lily')place('lily-'+item.seed,()=>makeLily(item.seed),item.x,item.y,y-60);};
   // The rest of the world: woods with glades, misty trees, rocky hills.
-  const fireflySpots=[];
-  for(const item of scatterNature()){const m=item.mist||0,k=item.kind,y=at(item.x,item.y),tint=(key,make)=>place(`${key}-${m}`,()=>mistTint(make(),m),item.x,item.y);
+  const placeNature=item=>{const m=item.mist||0,k=item.kind,y=at(item.x,item.y),tint=(key,make)=>place(`${key}-${m}`,()=>mistTint(make(),m),item.x,item.y);
    if(k==='tree')tint(`wt-${item.seed}-${item.gold?1:0}`,()=>N.makeTree({seed:item.seed,season:item.gold?'gold':'green',kind:item.seed%2?'oak':'birch'}));
    else if(k==='pine')tint(`wp-${item.seed}-${item.tone}`,()=>makePine(item.seed,item.tone));
    else if(k==='dead')tint('wdt-'+item.seed,()=>makeDeadTree(item.seed));
@@ -194,7 +196,7 @@ export class GuildRenderer {
    else if(k==='fern')tint('wfe-'+item.seed,()=>makeFern(item.seed));
    else if(k==='log')tint('wlog-'+item.seed%2,()=>makeFallenLog(item.seed));
    else if(k==='berry')place('wbe-'+item.seed,()=>makeBerryBush(item.seed),item.x,item.y);
-   else if(k==='shroom'){place('wgs-'+item.seed,()=>makeGlowShrooms(item.seed),item.x,item.y);fireflySpots.push(item);}
+   else if(k==='shroom')place('wgs-'+item.seed,()=>makeGlowShrooms(item.seed),item.x,item.y);
    else if(k==='stone')place(`wst-${item.seed%4}-${item.rune?1:0}`,()=>makeStandingStone(item.seed%4,item.rune),item.x,item.y);
    else if(k==='boulders')place('wbo-'+item.seed%4,()=>makeBoulders(item.seed%4),item.x,item.y);
    else if(k==='wall')place('wwall-'+item.seed,()=>makeRuinWall(item.seed,item.len),item.x,item.y);
@@ -204,13 +206,15 @@ export class GuildRenderer {
    else if(k==='chop')place('wchop',makeChoppingStump,item.x,item.y);
    else if(k==='rock')place(`wr-${item.seed}`,()=>N.makeRock({seed:item.seed,size:item.seed%2?'large':'small'}),item.x,item.y);
    else if(k==='bush')place('wb-'+item.seed,()=>N.makeBush({seed:item.seed}),item.x,item.y);
-   else if(k==='flowers'){tint(`wfl-${item.theme}-${item.seed}`,()=>makeFlowerPatch(item.theme,item.seed));if(!m&&item.seed===0)blooms.push(item);}
+   else if(k==='flowers'){tint(`wfl-${item.theme}-${item.seed}`,()=>makeFlowerPatch(item.theme,item.seed));}
    else if(k==='mushroom')tint('wm-'+item.seed,()=>makeMushrooms(item.seed));
    else if(k==='stump')tint('ws-'+item.seed,()=>makeStump(item.seed));
    else if(k==='drygrass')place('wd-'+item.seed,()=>makeDryGrass(item.seed),item.x,item.y);
    else if(k==='reeds')place('reeds-'+item.seed,()=>makeReeds(item.seed),item.x,item.y);
    else tint('wg-'+item.seed,()=>makeTallGrass(item.seed));
-  }
+  };
+  const flora=[...meadowItems.map(item=>({item,meadow:true})),...natureItems.map(item=>({item}))].sort((a,b)=>Math.hypot(a.item.x-10,a.item.y-8)-Math.hypot(b.item.x-10,b.item.y-8));
+  this.decorJob=(function*(){for(const f of flora){const n=this.worldProps.length;(f.meadow?placeMeadow:placeNature)(f.item);for(let k=n;k<this.worldProps.length;k++)this.worldProps[k].setVisible(false);yield;}}).call(this);
   this.chimneys=[];this.puffs=[];
   this.villageSig=null;this.villageProps=new Map();this.syncVillage();
   // Landmarks where quests happen.
@@ -275,7 +279,7 @@ export class GuildRenderer {
    const lock=makeSignpost(`ต้องเป็นกิลด์ ${rank}`,true,sign.flip),q=gridPoint(sign.x+2.4,sign.y-2.6);this.texture('lock-'+sign.region+rank,lock.canvas);this.worldSigns.push(this.scene.add.image(q.x-lock.footX,q.y-lock.footY,'lock-'+sign.region+rank).setOrigin(0).setDepth(q.y));}
  }
  updateWorld(dt,playing){
-  if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;this.updateGround();this.updateCritters(dt,t,playing);
+  if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;if(this.decorJob){const start=performance.now();while(performance.now()-start<7)if(this.decorJob.next().done){this.decorJob=null;break;}this.cullClock=0;}this.updateGround();this.updateCritters(dt,t,playing);
   const SPEED={hop:.9,walk:.55,float:.5,root:0};
   for(const f of this.foes){
    const moving=Math.hypot(f.tx-f.x,f.ty-f.y)>.05;
