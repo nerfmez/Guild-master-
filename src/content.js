@@ -5,8 +5,8 @@ export const RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
 export const RANK_REQUIREMENTS = {
   F: { rep: 0, quest: null, merits: [] },
   E: { rep: 40, quest: 'escort', merits: [{ kind: 'jobs', n: 4 }, { kind: 'members', n: 4 }] },
-  D: { rep: 130, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }, { kind: 'ranked', n: 2, rank: 'E' }] },
-  C: { rep: 330, quest: 'ruins', merits: [{ kind: 'jobs', n: 24 }, { kind: 'quests', n: 5 }, { kind: 'members', n: 6 }, { kind: 'geared', n: 4 }, { kind: 'ranked', n: 3, rank: 'D' }] },
+  D: { rep: 160, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }, { kind: 'ranked', n: 2, rank: 'E' }] },
+  C: { rep: 420, quest: 'ruins', merits: [{ kind: 'jobs', n: 24 }, { kind: 'quests', n: 5 }, { kind: 'members', n: 6 }, { kind: 'geared', n: 4 }, { kind: 'ranked', n: 4, rank: 'D' }, { kind: 'classed', n: 2 }] },
   B: { rep: 800, quest: null, future: true, merits: [] },
   A: { rep: 1600, quest: null, future: true, merits: [] },
   S: { rep: 3000, quest: null, future: true, merits: [] },
@@ -16,6 +16,7 @@ export const MERIT_LABELS = {
   board: () => 'มีกระดานคำร้องในกิลด์', village: n => `หมู่บ้านระดับ ${n}`, geared: n => `สมาชิกถืออาวุธ ${n} คน`,
   level: (n, m) => `สมาชิกเลเวล ${m.level}+ อย่างน้อย ${n} คน`,
   ranked: (n, m) => `สมาชิกแรงค์ ${m.rank} ขึ้นไป ${n} คน`,
+  classed: n => `สมาชิกเป็นคลาสขั้น 2 แล้ว ${n} คน`,
 };
 /** What each rank opens, shown on the promotion panel. */
 export const RANK_UNLOCKS = {
@@ -239,9 +240,9 @@ export const CONSUMABLES = {
 // ---- Adventurer ranks: earned one by one with level, personal merit points and an exam at the arena. ----
 export const ADVENTURER_RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
 export const ADVENTURER_RANK_RULES = {
-  E: { level: 3, points: 30, exam: 30, fee: 30, arena: 1, power: 1.04 },
-  D: { level: 5, points: 80, exam: 42, fee: 80, arena: 1, power: 1.08 },
-  C: { level: 9, points: 230, exam: 72, fee: 160, arena: 2, power: 1.13 },
+  E: { level: 3, points: 30, exam: 34, fee: 30, arena: 1, power: 1.04 },
+  D: { level: 6, points: 90, exam: 56, fee: 80, arena: 1, power: 1.08 },
+  C: { level: 9, points: 230, exam: 88, fee: 160, arena: 2, power: 1.13 },
   B: { level: 13, points: 480, exam: 110, fee: 300, arena: 3, power: 1.19, future: true },
   A: { level: 16, points: 900, exam: 160, fee: 500, arena: 3, power: 1.26, future: true },
   S: { level: 20, points: 1600, exam: 230, fee: 900, arena: 3, power: 1.34, future: true },

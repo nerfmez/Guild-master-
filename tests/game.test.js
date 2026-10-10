@@ -577,19 +577,20 @@ test('board teams use their own slots, so the player can still send important wo
   assert.doesNotThrow(() => deserializeGame(serializeGame(state)));
 });
 
-test('a plain player finishes the demo in about an hour, ranks climb by renown and merit, and money circulates', async () => {
+test('a plain player finishes the demo in one to two hours, ranks climb by renown and merit, and money circulates', async () => {
   const { simulate } = await import('./simulate.js');
   for (const seed of [1, 2, 3, 4, 5]) {
     const { state, metrics: m } = simulate(seed, { freePlay: 3600 });
     const min = s => s / 60;
     assert.ok(m.finishedAt !== null, `seed ${seed} finishes the demo story`);
-    assert.ok(min(m.finishedAt) >= 45 && min(m.finishedAt) <= 80, `seed ${seed} demo takes 45-80 game minutes, took ${min(m.finishedAt)}`);
-    assert.ok(min(m.ranks.E) <= 15 && min(m.ranks.D) <= 45 && min(m.ranks.C) <= 70, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
+    assert.ok(min(m.finishedAt) >= 50 && min(m.finishedAt) <= 120, `seed ${seed} demo takes 50-120 game minutes, took ${min(m.finishedAt)}`);
+    assert.ok(min(m.ranks.E) <= 20 && min(m.ranks.D) <= 60 && min(m.ranks.C) <= 105, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
     assert.equal(state.rank, 'C', `seed ${seed} the demo stops at rank C`);
     assert.equal(m.bankruptDays, 0, `seed ${seed} never misses upkeep`);
     assert.equal(m.failures, 0, `seed ${seed} teams only take work they can handle`);
     assert.ok(m.boardRuns >= 30, `seed ${seed} adventurers took board work by themselves (${m.boardRuns})`);
     assert.ok(state.members.filter(member => member.id.startsWith('r-')).length >= 1, `seed ${seed} rookies were drawn in by fame`);
+    assert.ok(state.members.every(member => member.points > 0), `seed ${seed} mentoring gives every member, rookies included, real work`);
     assert.ok(m.trade >= 5000, `seed ${seed} adventurers spent their wages in the village (${Math.round(m.trade)} G)`);
     assert.ok(state.members.every(member => member.equipment.weapon), `seed ${seed} everyone ends up armed`);
     assert.ok(m.village[5] === undefined || m.village[5] > m.finishedAt * 1.3, `seed ${seed} the top village level is left for later`);

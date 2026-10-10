@@ -188,6 +188,8 @@ function goalInfo(){if(introActive(state)){const g=introGoal();if(g)return g;}co
  if(waiting.length)return{label:'ก๊อก ก๊อก',title:`${waiting[0].client}มาส่งคำร้อง`,meta:`${QUESTS.find(q=>q.id===waiting[0].questId)?.name||''} · ◈ ${n(waiting[0].fee)} G · แตะเพื่อรับหรือปฏิเสธ`,action:'quests',urgent:true};
   const door=(state.applicants||[]).find(a=>a.status==='waiting');
  if(door){const look=applicantLook(door);return{label:door.famous?'คนดังมาเยือน!':'มีคนมาสมัคร',title:`${look.name}อยากเข้าร่วมกิลด์`,meta:`${jobName(look.class)} Lv.${door.level} · ค่าแรกเข้า ${n(door.fee)} G · แตะเพื่อดู`,action:'members',urgent:true};}
+ const examReady=state.members.map(m=>({m,r:getAdventurerRank(state,m)})).find(({m,r})=>r.eligible&&!m.errand&&!isAway(m.id)&&(m.purse||0)<r.rule.fee&&r.chance>=.4);
+ if(examReady)return{label:'พร้อมสอบเลื่อนแรงค์',title:`${examReady.m.name}พร้อมสอบแรงค์ ${examReady.r.next}`,meta:`เงินส่วนตัวไม่พอค่าสอบ ${n(examReady.r.rule.fee)} G · โอกาสผ่าน ${Math.round(examReady.r.chance*100)}% · แตะเพื่อให้กิลด์ช่วยออก`,action:'member:'+examReady.m.id,urgent:true};
  if(!state.facilities.some(f=>f.type==='board'))return{label:'ปลดล็อกแล้ว',title:'วางกระดานคำร้อง',meta:`นักผจญภัยที่ว่างจะหยิบงานเอง · ${moneyCost(FACILITIES.board.cost)}`,action:'build:board'};
  if(state.story?.finished)return{label:'จบบทแรก (เดโม่)',title:'บ้านที่ทุกคนได้กลับมา',meta:'เล่นดูแลกิลด์และหมู่บ้านต่อได้ · ระดับ B จะเปิดในเกมเต็ม',action:'village'};
  if(state.rank!=='F'&&!state.facilities.some(f=>f.type==='dispatch'))return{label:'ปลดล็อกแล้ว',title:'วางโต๊ะวางแผน',meta:`ส่งได้สองทีมพร้อมกัน · ${moneyCost(FACILITIES.dispatch.cost)}`,action:'build'};
@@ -201,6 +203,7 @@ function syncGoal(){const g=goalInfo(),card=$('goal-card');if(!card)return;const
 function runGoal(action){const[kind,id]=String(action).split(':');if(kind==='none')return;if(kind==='visit'){showVisitors();return;}cancelBuild();
  if(kind==='build'&&id){closeMenu();ui.buildType=id;ui.moveId=null;ui.facilityId=null;renderer?.setMoveMode(null);renderer?.setBuildMode(id);syncUI();return;}
  if(kind==='quest'){navigate('quests');const q=QUESTS.find(q=>q.id===id);if(q){ui.region=q.region;ui.questId=id;}syncUI();return;}
+ if(kind==='member'&&id){navigate('members');ui.memberId=id;syncUI();return;}
  if(kind==='mission'){openMenu();ui.tab='quests';ui.missionId=id;ui.questId=null;syncUI();return;}
  navigate(['build','members','village'].includes(kind)?kind:'quests');}
 $('goal-card').addEventListener('click',()=>runGoal($('goal-card').dataset.goal));

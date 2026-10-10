@@ -1,6 +1,6 @@
 /** A plain, reasonable player for balance checks: answers petitions, lets the board run,
  * sends the important steps itself, and invests only what the guild has earned. */
-import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, suggestTeam, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress, classChoices } from '../src/game.js';
+import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, suggestTeam, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress, classChoices, getAdventurerRank } from '../src/game.js';
 import { RANKS, GUILD_UPGRADES } from '../src/content.js';
 
 const STEP = 5;
@@ -56,6 +56,8 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
     // The arena lets members rank up; the dojo teaches and holds class trials.
     if (!state.village.arena && getProjectStatus(state, 'arena').ok && state.gold > getProjectStatus(state, 'arena').cost.gold + reserve) { act(state, 'buildProject', { projectId: 'arena' }); say('build arena'); }
     if (RANKS.indexOf(state.rank) >= 1 && !state.village.dojo && getProjectStatus(state, 'dojo').ok && state.gold > getProjectStatus(state, 'dojo').cost.gold + reserve) { act(state, 'buildProject', { projectId: 'dojo' }); say('build dojo'); }
+    // Like a player answering the goal card: sponsor exams for members who are ready but short of the fee.
+    for (const member of state.members) { const r = getAdventurerRank(state, member); if (r.eligible && r.chance >= 0.4 && !member.errand && member.purse < r.rule.fee && state.gold > r.rule.fee + reserve) act(state, 'rankExam', { memberId: member.id }); }
     for (const member of state.members) { const choice = classChoices(state, member).find(c => c.ok); if (choice && act(state, 'specialize', { memberId: member.id, classId: choice.id }).ok) say(`class ${member.id} -> ${choice.id}`); }
     if (state.facilities.filter(f => f.level >= 2).length < 2 && RANKS.indexOf(state.rank) >= 3) for (const f of state.facilities.filter(f => ['dorm', 'training', 'reception'].includes(f.type))) if (canPay(state, getUpgradeCost(state, f.id), reserve)) { act(state, 'upgrade', { facilityId: f.id }); break; }
     act(state, 'autoEquip');
@@ -67,7 +69,12 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
       if (preview.ok && preview.readiness >= 1) { act(state, 'sendMission', { questId: q.id, memberIds: team, policy: 'cautious', petitionId: p.id }); say(`send ${q.id} ${team.join(',')}`); }
     }
     // Members who wait at home train when they can.
-    for (const member of state.members) if (!getMemberStats(state, member).busy && member.task === 'rest' && member.energy > 95 && state.elapsed % 120 < STEP) act(state, 'setTask', { memberId: member.id, task: 'train' });
+    // Before the board, idle members train; afterwards board work and the dojo grow them, so nobody is kept off the board.
+    const hasBoard = state.facilities.some(f => f.type === 'board');
+    for (const member of state.members) {
+      if (hasBoard && member.task === 'train') act(state, 'setTask', { memberId: member.id, task: 'rest' });
+      else if (!hasBoard && !getMemberStats(state, member).busy && member.task === 'rest' && member.energy > 95 && state.elapsed % 120 < STEP) act(state, 'setTask', { memberId: member.id, task: 'train' });
+    }
     // 4. Spend surplus: village first, then idle upgrades, cheapest first.
     const options = [...['house', 'shop', 'market', 'smithy'].map(id => ({ kind: 'project', id, status: getProjectStatus(state, id) })).filter(o => o.status.ok).map(o => ({ ...o, cost: o.status.cost })),
       ...Object.keys(GUILD_UPGRADES).filter(id => state.upgrades[id] < GUILD_UPGRADES[id].max).map(id => ({ kind: 'upgrade', id, cost: getGuildUpgradeCost(state, id) }))].sort((a, b) => a.cost.gold - b.cost.gold);

@@ -1418,8 +1418,8 @@ const RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
 const RANK_REQUIREMENTS = {
   F: { rep: 0, quest: null, merits: [] },
   E: { rep: 40, quest: 'escort', merits: [{ kind: 'jobs', n: 4 }, { kind: 'members', n: 4 }] },
-  D: { rep: 130, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }, { kind: 'ranked', n: 2, rank: 'E' }] },
-  C: { rep: 330, quest: 'ruins', merits: [{ kind: 'jobs', n: 24 }, { kind: 'quests', n: 5 }, { kind: 'members', n: 6 }, { kind: 'geared', n: 4 }, { kind: 'ranked', n: 3, rank: 'D' }] },
+  D: { rep: 160, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }, { kind: 'ranked', n: 2, rank: 'E' }] },
+  C: { rep: 420, quest: 'ruins', merits: [{ kind: 'jobs', n: 24 }, { kind: 'quests', n: 5 }, { kind: 'members', n: 6 }, { kind: 'geared', n: 4 }, { kind: 'ranked', n: 4, rank: 'D' }, { kind: 'classed', n: 2 }] },
   B: { rep: 800, quest: null, future: true, merits: [] },
   A: { rep: 1600, quest: null, future: true, merits: [] },
   S: { rep: 3000, quest: null, future: true, merits: [] },
@@ -1429,6 +1429,7 @@ const MERIT_LABELS = {
   board: () => 'มีกระดานคำร้องในกิลด์', village: n => `หมู่บ้านระดับ ${n}`, geared: n => `สมาชิกถืออาวุธ ${n} คน`,
   level: (n, m) => `สมาชิกเลเวล ${m.level}+ อย่างน้อย ${n} คน`,
   ranked: (n, m) => `สมาชิกแรงค์ ${m.rank} ขึ้นไป ${n} คน`,
+  classed: n => `สมาชิกเป็นคลาสขั้น 2 แล้ว ${n} คน`,
 };
 /** What each rank opens, shown on the promotion panel. */
 const RANK_UNLOCKS = {
@@ -1652,9 +1653,9 @@ const CONSUMABLES = {
 // ---- Adventurer ranks: earned one by one with level, personal merit points and an exam at the arena. ----
 const ADVENTURER_RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
 const ADVENTURER_RANK_RULES = {
-  E: { level: 3, points: 30, exam: 30, fee: 30, arena: 1, power: 1.04 },
-  D: { level: 5, points: 80, exam: 42, fee: 80, arena: 1, power: 1.08 },
-  C: { level: 9, points: 230, exam: 72, fee: 160, arena: 2, power: 1.13 },
+  E: { level: 3, points: 30, exam: 34, fee: 30, arena: 1, power: 1.04 },
+  D: { level: 6, points: 90, exam: 56, fee: 80, arena: 1, power: 1.08 },
+  C: { level: 9, points: 230, exam: 88, fee: 160, arena: 2, power: 1.13 },
   B: { level: 13, points: 480, exam: 110, fee: 300, arena: 3, power: 1.19, future: true },
   A: { level: 16, points: 900, exam: 160, fee: 500, arena: 3, power: 1.26, future: true },
   S: { level: 20, points: 1600, exam: 230, fee: 900, arena: 3, power: 1.34, future: true },
@@ -1896,6 +1897,7 @@ function meritValue(state, merit) {
     case 'village': return getVillageInfo(state).level;
     case 'geared': return state.members.filter(member => member.equipment?.weapon).length;
     case 'level': return state.members.filter(member => member.level >= merit.level).length;
+    case 'classed': return state.members.filter(member => classTier(member.class) >= 2).length;
     case 'ranked': return state.members.filter(member => memberRankIndex(member) >= ADVENTURER_RANKS.indexOf(merit.rank)).length;
     default: return 0;
   }
@@ -2636,6 +2638,10 @@ function pickBoardTeam(state, quest, planId) {
     if (pick) team.push(pick);
   }
   for (const member of pool.filter(m => !team.includes(m)).sort((a, b) => score(b) - score(a))) { if (team.length >= 3 || (team.length && ready())) break; team.push(member); }
+  // Mentoring: a team with room takes along the free junior who most needs the experience.
+  const top = Math.max(-1, ...team.map(memberRankIndex));
+  const junior = team.length && team.length < 3 && pool.filter(m => !team.includes(m) && memberRankIndex(m) < top).sort((a, b) => memberRankIndex(a) - memberRankIndex(b) || (a.points || 0) - (b.points || 0))[0];
+  if (junior) { team.push(junior); if (!ready()) team.pop(); else team.mentored = junior.id; }
   const preview = previewMission(state, quest.id, team.map(m => m.id), 'balanced', { auto: true });
   return preview.ok && preview.readiness >= plan.readiness ? team.map(m => m.id) : null;
 }
@@ -6556,6 +6562,8 @@ function goalInfo(){if(introActive(state)){const g=introGoal();if(g)return g;}co
  if(waiting.length)return{label:'ก๊อก ก๊อก',title:`${waiting[0].client}มาส่งคำร้อง`,meta:`${QUESTS.find(q=>q.id===waiting[0].questId)?.name||''} · ◈ ${n(waiting[0].fee)} G · แตะเพื่อรับหรือปฏิเสธ`,action:'quests',urgent:true};
   const door=(state.applicants||[]).find(a=>a.status==='waiting');
  if(door){const look=applicantLook(door);return{label:door.famous?'คนดังมาเยือน!':'มีคนมาสมัคร',title:`${look.name}อยากเข้าร่วมกิลด์`,meta:`${jobName(look.class)} Lv.${door.level} · ค่าแรกเข้า ${n(door.fee)} G · แตะเพื่อดู`,action:'members',urgent:true};}
+ const examReady=state.members.map(m=>({m,r:getAdventurerRank(state,m)})).find(({m,r})=>r.eligible&&!m.errand&&!isAway(m.id)&&(m.purse||0)<r.rule.fee&&r.chance>=.4);
+ if(examReady)return{label:'พร้อมสอบเลื่อนแรงค์',title:`${examReady.m.name}พร้อมสอบแรงค์ ${examReady.r.next}`,meta:`เงินส่วนตัวไม่พอค่าสอบ ${n(examReady.r.rule.fee)} G · โอกาสผ่าน ${Math.round(examReady.r.chance*100)}% · แตะเพื่อให้กิลด์ช่วยออก`,action:'member:'+examReady.m.id,urgent:true};
  if(!state.facilities.some(f=>f.type==='board'))return{label:'ปลดล็อกแล้ว',title:'วางกระดานคำร้อง',meta:`นักผจญภัยที่ว่างจะหยิบงานเอง · ${moneyCost(FACILITIES.board.cost)}`,action:'build:board'};
  if(state.story?.finished)return{label:'จบบทแรก (เดโม่)',title:'บ้านที่ทุกคนได้กลับมา',meta:'เล่นดูแลกิลด์และหมู่บ้านต่อได้ · ระดับ B จะเปิดในเกมเต็ม',action:'village'};
  if(state.rank!=='F'&&!state.facilities.some(f=>f.type==='dispatch'))return{label:'ปลดล็อกแล้ว',title:'วางโต๊ะวางแผน',meta:`ส่งได้สองทีมพร้อมกัน · ${moneyCost(FACILITIES.dispatch.cost)}`,action:'build'};
@@ -6569,6 +6577,7 @@ function syncGoal(){const g=goalInfo(),card=$('goal-card');if(!card)return;const
 function runGoal(action){const[kind,id]=String(action).split(':');if(kind==='none')return;if(kind==='visit'){showVisitors();return;}cancelBuild();
  if(kind==='build'&&id){closeMenu();ui.buildType=id;ui.moveId=null;ui.facilityId=null;renderer?.setMoveMode(null);renderer?.setBuildMode(id);syncUI();return;}
  if(kind==='quest'){navigate('quests');const q=QUESTS.find(q=>q.id===id);if(q){ui.region=q.region;ui.questId=id;}syncUI();return;}
+ if(kind==='member'&&id){navigate('members');ui.memberId=id;syncUI();return;}
  if(kind==='mission'){openMenu();ui.tab='quests';ui.missionId=id;ui.questId=null;syncUI();return;}
  navigate(['build','members','village'].includes(kind)?kind:'quests');}
 $('goal-card').addEventListener('click',()=>runGoal($('goal-card').dataset.goal));

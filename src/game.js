@@ -228,6 +228,7 @@ function meritValue(state, merit) {
     case 'village': return getVillageInfo(state).level;
     case 'geared': return state.members.filter(member => member.equipment?.weapon).length;
     case 'level': return state.members.filter(member => member.level >= merit.level).length;
+    case 'classed': return state.members.filter(member => classTier(member.class) >= 2).length;
     case 'ranked': return state.members.filter(member => memberRankIndex(member) >= ADVENTURER_RANKS.indexOf(merit.rank)).length;
     default: return 0;
   }
@@ -968,6 +969,10 @@ function pickBoardTeam(state, quest, planId) {
     if (pick) team.push(pick);
   }
   for (const member of pool.filter(m => !team.includes(m)).sort((a, b) => score(b) - score(a))) { if (team.length >= 3 || (team.length && ready())) break; team.push(member); }
+  // Mentoring: a team with room takes along the free junior who most needs the experience.
+  const top = Math.max(-1, ...team.map(memberRankIndex));
+  const junior = team.length && team.length < 3 && pool.filter(m => !team.includes(m) && memberRankIndex(m) < top).sort((a, b) => memberRankIndex(a) - memberRankIndex(b) || (a.points || 0) - (b.points || 0))[0];
+  if (junior) { team.push(junior); if (!ready()) team.pop(); else team.mentored = junior.id; }
   const preview = previewMission(state, quest.id, team.map(m => m.id), 'balanced', { auto: true });
   return preview.ok && preview.readiness >= plan.readiness ? team.map(m => m.id) : null;
 }
