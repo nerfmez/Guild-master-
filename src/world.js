@@ -94,7 +94,7 @@ export class GuildRenderer {
   this.decorateWorld();
   const N=window.VillageNature;
   for(const[x,y,seed,gold]of SITE_TREES){const p=gridPoint(x,y);this.put('tree-'+seed,N.makeTree({seed,season:gold?'gold':'green',kind:seed%4===0?'oak':'birch'}),p.x,p.y);}
-  for(const c of SITE_COTTAGES)this.addHome(c.style,c.seed,c.x,c.y);
+  this.cottageProps=SITE_COTTAGES.map(c=>({key:c.style,images:[this.addHome(c.style,c.seed,c.x,c.y)]}));
   for(const[x,y,seed,gold]of SITE_BUSHES){const p=gridPoint(x,y);this.put('bush-'+seed,N.makeBush({seed,gold:!!gold}),p.x,p.y);}
  }
 
@@ -428,7 +428,7 @@ export class GuildRenderer {
    const chimneys=(this.chimneys||[]).slice(before);
    for(const image of images){this.worldProps.push(image);if(!first&&!w.lot){const y=image.y;image.y=y-18;this.scene.tweens.add({targets:image,y,duration:420,ease:'Bounce.easeOut'});}}
    if(!first&&!w.lot)this.scene.time.delayedCall(220,()=>this.dustPuff(w.x,w.y,2.4,2.2));
-   next.set(id,{images,chimneys});}
+   next.set(id,{key:w.key,images,chimneys});}
   for(const e of old.values()){for(const image of e.images){image.destroy();const i=this.worldProps.indexOf(image);if(i>=0)this.worldProps.splice(i,1);}this.chimneys=(this.chimneys||[]).filter(c=>!e.chimneys.includes(c));}
   this.villageProps=next;this.cullClock=0;
   // Grass and flowers never grow through a building.
@@ -864,6 +864,20 @@ export class GuildRenderer {
   bind('pointercancel',e=>{clearTimeout(this.drag?.hold);this.pointers.delete(e.pointerId);this.drag=null;this.pinch=null;});bind('pointerleave',()=>{if(!this.drag)this.hover=null;});
   bind('wheel',e=>{e.preventDefault();const p=this.screenPoint(e),before=this.worldPoint(p);this.setZoom(this.zoom*Math.exp(-e.deltaY*.001));const after=this.worldPoint(p);this.focusX+=before.x-after.x;this.focusY+=before.y-after.y;this.applyView();},{passive:false});
  }
+ // Test the visible pixels, including mirrored roofs, before falling back to the lot.
+ hitVillageBuilding(p){
+  const entries=[...(this.villageProps?.values()||[]),...(this.cottageProps||[])];
+  const images=entries.flatMap(e=>e.images.map(image=>({key:e.key,image}))).sort((a,b)=>b.image.depth-a.image.depth);
+  for(const {key,image} of images){if(!image.visible||!image.active)continue;
+   const canvas=image.texture.getSourceImage(),width=canvas.width,height=canvas.height;
+   let x=Math.floor((p.x-image.x)/image.scaleX),y=Math.floor((p.y-image.y)/image.scaleY);
+   if(x<0||y<0||x>=width||y>=height)continue;if(image.flipX)x=width-1-x;
+   const alpha=image.texture.__villageAlpha??=canvas.getContext('2d').getImageData(0,0,width,height).data;
+   if(alpha[(y*width+x)*4+3]>50)return key;
+  }
+  const tile=gridPosition(p.x,p.y);
+  return this.villageRects().find(b=>pointInRect(b,tile))?.key||SITE_COTTAGES.find(c=>pointInRect(c,tile))?.style||null;
+ }
  select(p){
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
   if(this.pending){const d=this.footprint();this.setPending(tile.x-d.w/2,tile.y-d.h/2);return;}
@@ -874,6 +888,7 @@ export class GuildRenderer {
   for(const a of [...this.furnitureSprites].sort((a,b)=>b.image.depth-a.image.depth)){const x=Math.floor(p.x-a.image.x),y=Math.floor(p.y-a.image.y);if(x>=0&&y>=0&&x<a.canvas.width&&y<a.canvas.height&&a.alpha[(y*a.canvas.width+x)*4+3]>50){this.onSelect({kind:'facility',id:a.f.id});return;}}
   for(const f of this.state.facilities){const d=getRoomSize(f.type,f.rotation||0);if(tile.x>=f.x&&tile.x<f.x+d.w&&tile.y>=f.y&&tile.y<f.y+d.h){this.onSelect({kind:'facility',id:f.id});return;}}
   for(const room of this.state.rooms||[])if(pointInRect(partitionRect(room),tile)){this.onSelect({kind:'partition',id:room.id});return;}
+  const building=this.hitVillageBuilding(p);if(building)this.onSelect({kind:'villageBuilding',id:building});
  }
  drawGhost(){
   this.ghost.clear();if(!this.buildType&&!this.moveId&&!this.roomMode)return;
