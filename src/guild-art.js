@@ -82,6 +82,18 @@ export function makeRoom(f){
  const d=FACILITIES[f.type],w=d.w,h=d.h;
  const sprite=object(c=>{const previous=projection;projection={r:f.rotation||0,w,h};try{
   if(f.type==='reception'){table(c,1.95,.9);top(c,.35,.12,.7,.46,17.2,'#f6ead0',C.edge);stroke(c,[.43,.2,17.4],[.89,.2,17.4],'#bba787');cube(c,1.38,.22,.2,.2,17,5);}
+  else if(f.type==='bar'){
+   // A back shelf of bottles, the counter with mugs and a tap, and a lamp.
+   cube(c,0,0,1.96,.2,0,28,'#8f6a4c','#b98a60','#6f5240');
+   for(let i=0;i<7;i++){const[x,y]=q(.14+i*.27,.1,29);R(c,x-1,y-9,3,9,['#7fb0c8','#c98a72','#9fd06a','#e8c070'][i%4]);R(c,x,y-11,1,2,'#5a4a3a');}
+   cube(c,0,.48,1.96,.42,0,16,'#a07a58','#d0a274','#7f5f45');top(c,-.02,.46,2,.46,16,'#8a6446',C.edge);
+   for(let i=0;i<4;i++){const[x,y]=q(.3+i*.45,.69,17);R(c,x-2,y-6,5,6,'#e8d29a');R(c,x-2,y-7,5,2,'#fff7ea');R(c,x+3,y-5,1,3,'#c9b077');}
+   const[tx,ty]=q(1.75,.6,17);R(c,tx-1,ty-9,2,9,'#b8946a');R(c,tx-3,ty-10,5,2,'#d9b26f');}
+  else if(f.type==='appraisal'){
+   // A cloth-covered table with a balance scale, a loupe and a gem being weighed.
+   table(c,1.42,.9);top(c,.12,.12,1.18,.62,17.2,'#c9b6d9',C.edge);
+   const[x,y]=q(.45,.42,18);R(c,x,y-14,1,14,'#8a6446');L(c,x-8,y-13,x+8,y-13,'#8a6446',2);E(c,x-8,y-9,4,2,'#d9b26f');E(c,x+8,y-10,4,2,'#d9b26f');R(c,x+7,y-13,3,3,'#7fb6d6');
+   const[gx,gy]=q(1.05,.4,18);E(c,gx,gy-3,4,4,'#5f5a5a');E(c,gx,gy-3,3,3,'#bfe3f0');L(c,gx+3,gy,gx+7,gy+4,'#8a6446',2);}
   else if(f.type==='dorm')bed(c,'#b5adc9');
   else if(f.type==='infirmary')bed(c,'#a6bfae',true);
   else if(f.type==='kitchen'){furnace(c);cube(c,.67,.1,.3,.64,0,12,'#b99370','#e6c697','#94745a');const[x,y]=q(.35,.3,17);E(c,x,y,6,3,'#8d998f');E(c,x,y-2,4,2,'#d6c7a5');}

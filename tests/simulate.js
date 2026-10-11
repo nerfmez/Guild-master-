@@ -1,6 +1,6 @@
 /** A plain, reasonable guild master for balance checks: never sends anyone, lets adventurers take the board's work,
  * raises the pay on jobs nobody takes, and invests only what the guild has earned. */
-import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, boardStatus, getLodging, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress, classChoices, getAdventurerRank } from '../src/game.js';
+import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, boardStatus, getLodging, staffStatus, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress, classChoices, getAdventurerRank } from '../src/game.js';
 import { RANKS, GUILD_UPGRADES, GOODS, PARTS, HOME_NEEDS, EQUIPMENT } from '../src/content.js';
 import { storeUsed, storeCapacity, caravanLoad } from '../src/trade.js';
 import { homeStatus } from '../src/town.js';
@@ -64,6 +64,10 @@ export function simulate(seed = 1, { maxSeconds = 7 * 3600, plan = "standard", l
     if (state.frontier?.camp === 1 && state.gold > 2500) { for (let k = 0; k < 12; k++) for (const key of ['wood', 'stone']) if (state[key] < 70) act(state, 'buyMaterial', { key }); if (act(state, 'upgradeCamp').ok) say('camp 2'); }
     // Story letters say what the guild must prepare first: a planning table, more land.
     for (const p of state.petitions.filter(p => p.important && p.status === 'posted')) { const st = boardStatus(state, p); if (st.kind !== 'locked') continue; if (/โต๊ะวางแผน/.test(st.text) && state.gold > 500) placeSomewhere(state, 'dispatch') || act(state, 'expandBuilding'); if (/ขยายที่ดิน/.test(st.text)) act(state, 'expand'); }
+    // The guild as a home: a bar, an appraisal table, and staff once the guild can afford their wages.
+    if (!state.facilities.some(f => f.type === 'bar') && state.gold > 260 + reserve + 200) placeSomewhere(state, 'bar') || act(state, 'expandBuilding');
+    if (RANKS.indexOf(state.rank) >= 1 && !state.facilities.some(f => f.type === 'appraisal') && state.gold > 240 + reserve + 300) placeSomewhere(state, 'appraisal') || act(state, 'expandBuilding');
+    for (const role of ['receptionist', 'cook', 'registrar', 'appraiser', 'scout']) { const st = staffStatus(state, role); if (st.ok && state.gold > st.hire + 800) { act(state, 'hireStaff', { role }); say(`hire ${role}`); } }
     // More rooms in town when the inn is what holds newcomers back.
     { const room = getLodging(state), st = getProjectStatus(state, 'inn'); if (room.count >= room.cap && room.limit === 'lodging' && st.ok && state.gold > st.cost.gold + reserve + 200) { act(state, 'buildProject', { projectId: 'inn' }); say('inn up'); } }
     // Surplus materials go to the village market, which keeps the shops stocked.

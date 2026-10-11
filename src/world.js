@@ -1,5 +1,5 @@
 import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,siteRoads,buildingRect,partitionSize,partitionRect,pointInRect } from './site.js';
-import { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,MONSTER_STATS,JOBS,VILLAGE_BUSINESSES,JOB_COMBAT } from './content.js';
+import { STAFF,FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,MONSTER_STATS,JOBS,VILLAGE_BUSINESSES,JOB_COMBAT } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
 import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { drainFx } from './life.js';
@@ -43,7 +43,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R42',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R43',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -625,6 +625,11 @@ export class GuildRenderer {
     const p=gridPoint(n.x,n.y),dx=p.x-(s.px??p.x),dy=p.y-(s.py??p.y),moved=Math.hypot(dx,dy)>.05&&playing;s.px=p.x;s.py=p.y;if(moved)s.dir=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
     this.placeBody(s.image,key,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):'idle',s.dir,Math.round(p.y)+.2);});
   }
+  // Guild staff at their stations: the receptionist at the desk, the cook behind the bar, the appraiser at the scales.
+  for(const [role,st] of Object.entries(this.state.staff||{})){const def=STAFF[role],f=def&&this.state.facilities.find(x=>x.type===def.needs);if(!f)continue;
+   const e=getFacilityEntry(f),d=getRoomSize(f.type,f.rotation||0),cx=f.x+d.w/2,cy=f.y+d.h/2,off=role==='registrar'?.6:role==='receptionist'?-.6:0,p=gridPoint(cx+(cx-e.x)*.8+(e.y!==cy?off:0),cy+(cy-e.y)*.8+(e.x!==cx?off:0));
+   const look=villagerLook({seed:hash(role)+3,client:def.name}),key=this.actorKey(look),sp=sprite('staff-'+role,()=>({image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52)}));
+   this.placeBody(sp.image,key,null,p,Math.floor(t*1.5+hash(role)%5)%2?'breath':'idle','south',Math.round(p.y)+.4);}
   for(const [id,s] of this.lifeSprites)if(!seen.has(id)){s.image.destroy();s.shadow?.destroy();s.crown?.destroy();s.label?.destroy();this.lifeSprites.delete(id);}
   this.playFx(dt);
  }
@@ -678,7 +683,7 @@ export class GuildRenderer {
  }
  roomFor(m){if(this.prepping?.has(m.id)){const board=this.state.facilities.find(f=>f.type==='board');if(board)return board;}
   // Adventurers dropping in from town read the board, chat at the counter or eat at the kitchen.
-  if(m.town?.at==='guild'&&m.task==='rest'&&!(m.injury>15)){const types=['board','reception','kitchen','lounge','board'];for(let i=0;i<types.length;i++){const f=this.state.facilities.find(f=>f.type===types[(hash(m.id)+i)%types.length]);if(f)return f;}}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'kitchen':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
+  if(m.town?.at==='guild'&&m.task==='rest'&&!(m.injury>15)){const bar=this.state.facilities.filter(f=>f.type==='bar');if(bar.length&&m.atBar&&this.state.elapsed-m.atBar<40)return bar[hash(m.id)%bar.length];const types=['board','reception','appraisal','lounge','board'];for(let i=0;i<types.length;i++){const f=this.state.facilities.find(f=>f.type===types[(hash(m.id)+i)%types.length]);if(f)return f;}}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'kitchen':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
   if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','board'][hash(m.id)%4];
   // Sleepers and patients are spread over every bed, two to a bed, instead of crowding the first one.
   if(type==='dorm'||type==='infirmary'){const plan=this.bedPlan();const f=plan.get(m.id);if(f)return f;if(type==='dorm'&&this.wantsBed(m))return this.state.facilities.find(f=>f.type==='reception')||this.state.facilities[0];}

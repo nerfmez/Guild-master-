@@ -1,5 +1,5 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,TOWN_CAPS,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
+import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,TOWN_CAPS,STAFF,STAFF_MAX_LEVEL,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
 import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, startExpedition, recallExpedition } from './life.js';
@@ -82,7 +82,7 @@ function canAfford(state, cost) {
 
 function createMember(content, level = 1) {
   const member = { id: content.id, name: content.name, class: content.class, level, xp: 0, energy: 100, morale: 80,
-    injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null, purse: 0, pack: { ration: 0, potion: 0 }, wear: { weapon: 100, accessory: 100 }, rank: content.rank || 'F', points: 0, errand: null, examReadyAt: 0, regular: !content.rookie, autoTrain: false, town: null, unhappy: 0 };
+    injury: 0, task: 'rest', equipment: { weapon: null, accessory: null }, missionsDone: 0, trainingProgress: 0, waitingReason: null, purse: 0, pack: { ration: 0, potion: 0 }, wear: { weapon: 100, accessory: 100 }, rank: content.rank || 'F', points: 0, errand: null, examReadyAt: 0, regular: !content.rookie, autoTrain: false, town: null, unhappy: 0, celebrate: false };
   if (content.rookie) { member.bio = { name: content.name, class: content.class, trait: content.trait, hair: content.hair, description: content.description, rookie: true }; member.hair = content.hair; }
   return member;
 }
@@ -107,7 +107,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, frontier: { camp: 0 }, bounty: null, mastery: { claimed: {} }, exams: createExams(), festivals: createFestivals(), eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0, today: newDay(1), history: [],
     policy: { memberHunting: true, autoPetitions: true, registration: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0, bounties: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
+    record: { jobs: 0, bounties: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -196,8 +196,8 @@ export function getMemberStats(state, memberOrId) {
 // ---- Condition: five things the guild master looks after, which add up to how well an adventurer works. ----
 export const CONDITIONS = [
   { id: 'health', name: 'บาดแผล', icon: '🩹', w: 0.25, badText: 'บาดเจ็บ', fix: ['clinic', 'infirmary'], fixText: 'คลินิกในเมือง เตียงรักษาในกิลด์' },
-  { id: 'rest', name: 'ความเหนื่อย', icon: '💤', w: 0.25, badText: 'เหนื่อยล้า', fix: ['inn', 'kitchen'], fixText: 'ขยายโรงเตี๊ยม เตาทำอาหาร' },
-  { id: 'mood', name: 'อารมณ์', icon: '😊', w: 0.2, badText: 'ขวัญเสีย', fix: ['lounge', 'shop', 'stage'], fixText: 'ชุดโต๊ะน้ำชา ร้านค้า เทศกาล ค่าตอบแทนที่ยุติธรรม' },
+  { id: 'rest', name: 'ความเหนื่อย', icon: '💤', w: 0.25, badText: 'เหนื่อยล้า', fix: ['inn', 'bar', 'kitchen'], fixText: 'ขยายโรงเตี๊ยม บาร์และครัวในกิลด์' },
+  { id: 'mood', name: 'อารมณ์', icon: '😊', w: 0.2, badText: 'ขวัญเสีย', fix: ['bar', 'lounge', 'shop', 'stage'], fixText: 'บาร์ ชุดโต๊ะน้ำชา ร้านค้า เทศกาล ค่าตอบแทนที่ยุติธรรม' },
   { id: 'gear', name: 'อุปกรณ์', icon: '⚔', w: 0.15, badText: 'อุปกรณ์สึก', fix: ['smithy'], fixText: 'โรงตีเหล็ก (ซ่อมและขายของดี) โต๊ะช่าง' },
   { id: 'supplies', name: 'เสบียง', icon: '🎒', w: 0.15, badText: 'ไม่มีเสบียง', fix: ['shop'], fixText: 'ร้านค้า (เสบียงและยา) ตลาดนัด (สมุนไพร)' },
 ];
@@ -236,7 +236,7 @@ export function getEfficiencyReport(state) {
   return { avg, perHead: Math.round(perHead), dims, losses: dims.filter(d => d.gold >= 5).sort((a, b) => b.gold - a.gold), comfort: townComfort(state), trend: last ? Math.round((avg - last.eff) * 100) : 0 };
 }
 /** What one more level of a building would win back each day, from the losses it addresses (a rough estimate shown before buying). */
-const FIX_EFFECT = { clinic: { health: 0.35 }, infirmary: { health: 0.15 }, inn: { rest: 0.2 }, kitchen: { rest: 0.12, mood: 0.06 }, lounge: { mood: 0.25 }, shop: { supplies: 0.4, mood: 0.06 }, market: { supplies: 0.15 }, smithy: { gear: 0.4 }, stage: { mood: 0.12 }, fairground: { mood: 0.08 }, monument: { mood: 0.1 } };
+const FIX_EFFECT = { bar: { rest: 0.1, mood: 0.15 }, clinic: { health: 0.35 }, infirmary: { health: 0.15 }, inn: { rest: 0.2 }, kitchen: { rest: 0.12, mood: 0.06 }, lounge: { mood: 0.25 }, shop: { supplies: 0.4, mood: 0.06 }, market: { supplies: 0.15 }, smithy: { gear: 0.4 }, stage: { mood: 0.12 }, fairground: { mood: 0.08 }, monument: { mood: 0.1 } };
 export function investmentGain(state, id) {
   const fx = FIX_EFFECT[id]; if (!fx) return null;
   const report = getEfficiencyReport(state), parts = Object.entries(fx).map(([dim, f]) => { const d = report.dims.find(x => x.id === dim); return { dim, name: d.name, icon: d.icon, gold: Math.round(d.gold * f * (id === 'shop' && state.village?.shop ? 0.6 : id === 'smithy' && state.village?.smithy ? 0.6 : 1)) }; });
@@ -378,7 +378,7 @@ export function getLodging(state) {
   return { inn, rooms, lodging: inn + rooms, town, cap: Math.min(town, inn + rooms), count, coming, limit: inn + rooms <= town ? 'lodging' : 'town' };
 }
 /** Seconds between newcomers while there is room: renown brings them faster. */
-export function applicantInterval(state) { return Math.max(15, Math.round(45 / (1 + state.rep / 300))); }
+export function applicantInterval(state) { return Math.max(12, Math.round(45 / ((1 + state.rep / 300) * (1 + staffOn(state, 'registrar') * 0.15)))); }
 /** Named regulars stay about a quarter of everyone registered (never fewer than four). */
 export function regularLimit(state) { return Math.max(4, Math.ceil(state.members.length / 4)); }
 const APPLICANT_START = { x: -12, y: 17.5 };
@@ -402,7 +402,7 @@ export function addApplicant(state, memberId = null, options = {}) {
     applicant.rookieId = `r-${state.nextId++}`;
     applicant.bio = { name: pick(fresh.length ? fresh : ROOKIE_NAMES), class: pick(['warrior', 'archer', 'mage', 'healer']), trait: pick(TRAIT_NAMES), hair: pick(HAIR_COLORS), description: pick(ROOKIE_LINES) };
     // Newcomers suit the guild's standing: a famous guild draws adventurers who already have some years behind them.
-    applicant.level = clamp(1 + Math.floor(petitionRandom(state) * (1 + rankIndex(state.rank) * 2.2)), 1, 14);
+    applicant.level = clamp(1 + Math.floor(petitionRandom(state) * (1 + rankIndex(state.rank) * 2.2)) + Math.floor(staffOn(state, 'registrar') / 3), 1, 14);
   }
   if (options.affinity) applicant.fond = true;
   state.applicants.push(applicant);
@@ -444,6 +444,64 @@ function tickApplicants(state, step) {
     applicant.eta -= step;
     if (applicant.eta <= 0) registerApplicant(state, applicant);
   }
+}
+// ---- Guild staff: hired by the master, paid every morning, better with each few days on the job. ----
+export const staffLevel = (state, id) => state.staff?.[id]?.level || 0;
+/** A staff member only works when their station (furniture) is in the hall. */
+export const staffOn = (state, id) => STAFF[id] && roomLevel(state, STAFF[id].needs) ? staffLevel(state, id) : 0;
+export const staffSalary = (id, level) => Math.round(STAFF[id].salary * (1 + 0.35 * (Math.max(1, level) - 1)));
+export function staffStatus(state, id) {
+  const def = STAFF[id], level = staffLevel(state, id);
+  if (!def) return { ok: false, reason: 'ไม่พบตำแหน่งนี้' };
+  const station = FACILITIES[def.needs]?.name || def.needs;
+  let reason = '';
+  if (level) reason = 'จ้างแล้ว';
+  else if (!roomLevel(state, def.needs)) reason = `ต้องวาง${station}ในกิลด์ก่อน`;
+  else if (state.gold < def.hire) reason = `ค่าจ้างแรกเข้า ${def.hire} G ไม่พอ`;
+  return { ok: !reason, reason, level, hired: Boolean(level), working: Boolean(staffOn(state, id)), station, days: state.staff?.[id]?.days || 0, nextAt: level ? level * 2 : 0, salary: staffSalary(id, level || 1), hire: def.hire };
+}
+function hireStaff(state, id) {
+  const st = staffStatus(state, id);
+  if (!st.ok) return failure(st.reason);
+  transact(state, { gold: STAFF[id].hire }, `จ้าง${STAFF[id].name}`);
+  state.staff = { ...(state.staff || {}), [id]: { level: 1, days: 0 } };
+  addLog(state, `${STAFF[id].icon} ${STAFF[id].name}เริ่มงานที่${st.station}แล้ว`, 'build');
+  return success(`จ้าง${STAFF[id].name}แล้ว · เงินเดือน ${st.salary} G/วัน`);
+}
+function fireStaff(state, id) {
+  if (!staffLevel(state, id)) return failure('ยังไม่ได้จ้างตำแหน่งนี้');
+  const staff = { ...state.staff }; delete staff[id]; state.staff = staff;
+  return success(`${STAFF[id].name}ลาออกแล้ว`);
+}
+/** Each morning: salaries are paid, and staff who worked grow more skilled every few days. */
+function payStaff(state) {
+  for (const [id, s] of Object.entries(state.staff || {})) {
+    if (!STAFF[id]) continue;
+    const pay = staffSalary(id, s.level);
+    if (state.gold < pay) { addLog(state, `เงินไม่พอจ่ายเงินเดือน${STAFF[id].name} วันนี้เขาไม่ได้พัฒนาฝีมือ`, 'warning'); continue; }
+    transact(state, { gold: pay }, 'เงินเดือนพนักงาน');
+    if (!staffOn(state, id)) continue;
+    s.days = (s.days || 0) + 1;
+    if (s.level < STAFF_MAX_LEVEL && s.days >= s.level * 2) { s.level += 1; s.days = 0; addLog(state, `${STAFF[id].icon} ${STAFF[id].name}เก่งขึ้นเป็นเลเวล ${s.level}`, 'level'); }
+  }
+}
+/** An adventurer dropping in at the guild eats and drinks at the bar: the guild earns, they rest and cheer up. A team back from a job celebrates. */
+export function barPrice(state, celebrate = false) {
+  const quality = (1 + bestRoomLevel(state, 'kitchen') * 0.25) * (1 + staffOn(state, 'cook') * 0.25);
+  return Math.round((3 + bestRoomLevel(state, 'bar') * 1.5) * quality * (celebrate ? 2.5 : 1));
+}
+function visitGuild(state, member) {
+  const celebrate = Boolean(member.celebrate); member.celebrate = false;
+  if (!roomLevel(state, 'bar')) return;
+  const price = barPrice(state, celebrate);
+  if ((member.purse || 0) < price + 10) return;
+  member.purse -= price;
+  transact(state, { gold: price }, 'บาร์และครัว', 1);
+  state.village.prosperity += price * 0.02;
+  const cook = staffOn(state, 'cook'), kitchen = bestRoomLevel(state, 'kitchen');
+  member.energy = clamp(member.energy + 3 + kitchen + cook, 0, 100);
+  member.morale = clamp(member.morale + 2 + cook + (celebrate ? 5 : 0), 0, 100);
+  member.atBar = state.elapsed;
 }
 /** An unhappy adventurer moves away: their room frees up, friendships and exam places go with them. */
 function leaveTown(state, member) {
@@ -564,7 +622,9 @@ export function previewMission(state, questId, memberIds = [], policy = 'balance
   const bondBonus = Math.min(0.18, teamBonds(state, Array.isArray(memberIds)?memberIds:[]) * 0.0008);
   const libraryBonus = quest.tags.includes('magic') ? bestRoomLevel(state, 'library') * 0.035 : 0;
   const traitBonus = members.reduce((sum, member) => sum + (quest.tags.includes('scout') ? traitOf(member).scouting || 0 : 0) + (quest.tags.includes('heal') ? traitOf(member).healing || 0 : 0), 0);
-  const power = Math.round(members.reduce((sum, member) => sum + getMemberStats(state, member).power, 0) * (1 + roleBonus + bondBonus + libraryBonus + traitBonus) * (selectedPolicy?.power || 1));
+  // Parties that plan together at the guild's party table set out better prepared.
+  const tableBonus = options.auto ? bestRoomLevel(state, 'dispatch') * 0.03 : 0;
+  const power = Math.round(members.reduce((sum, member) => sum + getMemberStats(state, member).power, 0) * (1 + roleBonus + bondBonus + libraryBonus + traitBonus + tableBonus) * (selectedPolicy?.power || 1));
   const readiness = power / quest.difficulty;
   let reason = questLockReason(state, quest);
   if (!reason && !selectedPolicy) reason = 'แผนเดินทางไม่ถูกต้อง';
@@ -890,6 +950,7 @@ function resolveMission(state, mission, outcome) {
     member.wear ??= { weapon: 100, accessory: 100 };
     for (const slot of ['weapon', 'accessory']) if (member.equipment[slot]) member.wear[slot] = Math.max(0, member.wear[slot] - Math.round(7 + mission.risk * 6 + (won ? 0 : 8)));
     member.missionsDone += won ? 1 : 0;
+    if (won) member.celebrate = true;
     maybeRegular(state, member);
     // Personal merit: work above one's rank counts for more, work far below for little.
     const gap = ADVENTURER_RANKS.indexOf(quest.rank) - memberRankIndex(member);
@@ -933,6 +994,7 @@ function closeDay(state) {
 }
 function dailyUpdate(state) {
   closeDay(state);
+  payStaff(state);
   dailyTrade(state, tradeContext(state));
   if (state.bounty && !state.world.monsters.some(m => m.id === state.bounty.monsterId && !m.dead)) state.bounty = null;
   if (state.day % 2 === 0) postBounty(state);
@@ -1020,7 +1082,7 @@ export function getVillageInfo(state) {
 }
 function petitionInterval(state) {
   const people = population(state), sign = state.upgrades?.signboard || 0;
-  return Math.max(34, Math.round(85 / ((1 + sign * 0.1) * (1 + people * 0.03))));
+  return Math.max(34, Math.round(85 / ((1 + sign * 0.1) * (1 + people * 0.03) * (1 + staffOn(state, 'receptionist') * 0.08))));
 }
 /** Gold per second that keeps flowing in, even while the game is closed. */
 export function idleRate(state) { return Math.round(((state.upgrades?.coffer || 0) * 0.25 + (state.village?.market || 0) * 0.15) * 100) / 100; }
@@ -1065,7 +1127,7 @@ export function addPetition(state, questId, options = {}) {
   const petition = { id: `pet-${state.nextId++}`, questId, client: VILLAGER_NAMES[Math.floor(petitionRandom(state) * VILLAGER_NAMES.length) % VILLAGER_NAMES.length],
     seed: Math.floor(petitionRandom(state) * 100000), home, important: false, reserved: false, bonus: 0,
     fee: Math.round(quest.reward.gold * FEE_MULTIPLIER * (0.85 + petitionRandom(state) * 0.3)), plan: options.plan || state.payoutPlan || 'standard',
-    status, eta: status === 'coming' ? eta : 0, etaTotal: eta, patience: 80 + (state.upgrades?.clerk || 0) * 25, age: 0, missionId: null };
+    status, eta: status === 'coming' ? eta : 0, etaTotal: eta, patience: 80 + staffOn(state, 'receptionist') * 25, age: 0, missionId: null };
   state.petitions.push(petition);
   return petition;
 }
@@ -1166,7 +1228,7 @@ function tickPetitions(state, step) {
       const posted = state.petitions.filter(p => p.status === 'posted' && !p.important).length;
       // The desk pins every request up at the guild's usual pay as soon as there is room on the board.
       petition.waited = (petition.waited || 0) + step;
-      if (state.policy?.autoPetitions !== false && petition.waited >= (state.upgrades?.clerk ? 0 : AUTO_PETITION_WAIT) && posted < info.maxPosted) { postPetition(state, petition, state.payoutPlan); addLog(state, `${petition.client}ฝากคำร้อง “${QUEST_BY_ID[petition.questId].name}” ขึ้นกระดานแล้ว`, 'petition'); continue; }
+      if (state.policy?.autoPetitions !== false && petition.waited >= (staffOn(state, 'receptionist') ? 0 : AUTO_PETITION_WAIT) && posted < info.maxPosted) { postPetition(state, petition, state.payoutPlan); addLog(state, `${petition.client}ฝากคำร้อง “${QUEST_BY_ID[petition.questId].name}” ขึ้นกระดานแล้ว`, 'petition'); continue; }
       petition.patience -= step;
       if (petition.patience <= 0) { state.petitions = state.petitions.filter(p => p !== petition); addLog(state, `${petition.client}รอนานเกินไปเลยกลับบ้านก่อน`, 'info'); }
     } else if (petition.status === 'posted') {
@@ -1238,6 +1300,7 @@ function lifeContext(state) {
     onSpecialKill: (monster, hunter) => onSpecialKill(state, monster, hunter), onRaidReach: monster => onRaidReach(state, monster),
     campLevel: () => state.frontier?.camp || 0,
     atHome: member => !isBusy(state, member.id), lodge: member => lodgeSpot(state, member),
+    visitGuild: member => visitGuild(state, member), hallCap: () => 8 + bestRoomLevel(state, 'bar') * 4, hasBar: () => roomLevel(state, 'bar') > 0,
     // Shops, the smithy, the dojo, the market: adventurers in town go where the village has something for them.
     shopSpots: () => villageBuildings(state).filter(b => b.kind !== 'house').map(b => doorOf(b)),
     indoors: member => member.task === 'train' || member.task === 'work' || (member.injury > 15 && roomLevel(state, 'infirmary') > 0) || state.missions.some(m => m.status === 'active' && m.prep > 0 && m.memberIds.includes(member.id)),
@@ -1309,9 +1372,10 @@ function directorContext(state) {
     ready: () => !introActive(state) && Boolean(state.completedQuests.patrol),
     raidLeft: () => w.monsters.filter(m => m.raid && !m.dead).length, removeRaid: () => { w.monsters = w.monsters.filter(m => !m.raid); },
     bossAlive: () => Boolean(bossAlive(state)), removeBoss: () => { w.monsters = w.monsters.filter(m => !m.boss); },
-    spawnRaid: (species, count) => { for (let i = 0; i < count; i++) w.monsters.push(spawnMonster(w, species[i % species.length], 'raid', { x: -15 - (i % 3) * 1.2 - Math.floor(i / 3) * .8, y: 17 + (i % 2) * .9 }, { raid: true })); },
+    spawnRaid: (species, count) => { const weak = 1 - staffOn(state, 'scout') * 0.06; for (let i = 0; i < count; i++) { const m = spawnMonster(w, species[i % species.length], 'raid', { x: -15 - (i % 3) * 1.2 - Math.floor(i / 3) * .8, y: 17 + (i % 2) * .9 }, { raid: true }); m.hp = m.maxHp = Math.round(m.maxHp * weak); w.monsters.push(m); } },
     spawnBoss: (species, zone) => { const z = HUNT_ZONES[zone]; w.monsters.push(spawnMonster(w, species, zone, { x: z.x, y: z.y }, { boss: true })); },
     rally: () => rallyDefenders(state, lifeContext(state)), recallHunters: () => recallHunters(state, lifeContext(state)),
+    scout: () => staffOn(state, 'scout'),
     alert: info => { state.director.alert = { ...info, until: state.elapsed + 45 }; },
     monsterName, memberName: id => MEMBER_BY_ID[id]?.name || id,
     famousCandidate: () => getAvailableRecruits(state).find(m => m.famous && !m.applying && hasRank(state, m.unlockRank))?.id || null,
@@ -1323,6 +1387,7 @@ export function getDirector(state) { return state.director; }
 function tradeContext(state) {
   return {
     income: (gold, reason) => { if (gold > 0) transact(state, { gold }, reason, 1); }, expense: (gold, reason) => { if (gold > 0) transact(state, { gold }, reason); },
+    margin: () => roomLevel(state, 'appraisal') ? bestRoomLevel(state, 'appraisal') * 0.05 + staffOn(state, 'appraiser') * 0.04 : 0,
     log: (text, type) => addLog(state, text, type), random: () => worldRandom(state), villageLevel: () => getVillageInfo(state).level,
     rep: n => { state.rep += n; }, prosperity: n => { state.village.prosperity += n; }, renown: () => state.rep,
     merchants: () => Object.values(state.village.homes || {}).filter(h => h.tier >= 3).length,
@@ -1918,6 +1983,8 @@ function command(state, type, payload = {}) {
     case 'sendMission': return sendMission(state, { ...payload, auto: false });
     case 'acceptPetition': case 'declinePetition': case 'setPetition': case 'boostPetition': return petitionCommand(state, type, payload);
     case 'rally': return rally(state);
+    case 'hireStaff': return hireStaff(state, payload.role);
+    case 'fireStaff': return fireStaff(state, payload.role);
     case 'setPayoutPlan': if (!PAYOUT_PLANS[payload.plan]) return failure('แผนค่าตอบแทนไม่ถูกต้อง'); state.payoutPlan = payload.plan; return success(`ตั้งค่าตอบแทนเริ่มต้นเป็น${PAYOUT_PLANS[payload.plan].name}`);
     case 'setAutoWork': { const member = memberById(state, payload.memberId); if (!member) return failure('ไม่พบสมาชิก'); member.autoWork = Boolean(payload.autoWork); return success(member.autoWork ? `${member.name} หยิบงานจากกระดานเองได้` : `${member.name} รอให้คุณเลือกงานให้`); }
     case 'buyUpgrade': return buyUpgrade(state, payload);
@@ -2067,6 +2134,8 @@ export function deserializeGame(source) {
     // Before registration (save v6) everyone in the guild had been hired by hand: they are the first regulars.
     normalized.regular = !content.rookie || data.version < 6 || Boolean(member.regular);
     normalized.autoTrain = Boolean(member.autoTrain);
+    normalized.celebrate = Boolean(member.celebrate);
+    if (finiteNumber(member.atBar)) normalized.atBar = member.atBar; else delete normalized.atBar;
     normalized.unhappy = finiteNumber(member.unhappy) ? clamp(member.unhappy, 0, 10000) : 0;
     const t = member.town;
     normalized.town = t && ['street', 'guild', 'lodge'].includes(t.at) && ['x', 'y', 'tx', 'ty', 'wait'].every(k => finiteNumber(t[k]) && Math.abs(t[k]) < 1000) ? { x: t.x, y: t.y, tx: t.tx, ty: t.ty, wait: t.wait, at: t.at, ...(['guild', 'lodge', 'town'].includes(t.goal) ? { goal: t.goal } : {}) } : null;
@@ -2228,6 +2297,7 @@ export function deserializeGame(source) {
   const t = data.today;
   state.today = t && typeof t === 'object' ? { day: int(t.day) || state.day, income: book(t.income), expense: book(t.expense), joined: int(t.joined), left: int(t.left), jobs: int(t.jobs), failed: int(t.failed), effSum: finiteNumber(t.effSum) ? clamp(t.effSum, 0, 1e7) : 0, effN: int(t.effN) } : newDay(state.day);
   state.history = (Array.isArray(data.history) ? data.history : []).filter(h => h && typeof h === 'object' && finiteNumber(h.eff)).slice(-7).map(h => ({ day: int(h.day), income: book(h.income), expense: book(h.expense), incomeTotal: finiteNumber(h.incomeTotal) ? h.incomeTotal : 0, expenseTotal: finiteNumber(h.expenseTotal) ? h.expenseTotal : 0, eff: clamp(h.eff, 0, 2), joined: int(h.joined), left: int(h.left), jobs: int(h.jobs), failed: int(h.failed), members: int(h.members), losses: (Array.isArray(h.losses) ? h.losses : []).filter(l => l && CONDITIONS.some(d => d.id === l.id) && finiteNumber(l.gold)).map(l => ({ id: l.id, gold: l.gold })) }));
+  state.staff = Object.fromEntries(Object.entries(data.staff && typeof data.staff === 'object' ? data.staff : {}).filter(([id, v]) => STAFF[id] && v && Number.isInteger(v.level) && v.level >= 1 && v.level <= STAFF_MAX_LEVEL).map(([id, v]) => [id, { level: v.level, days: Number.isInteger(v.days) && v.days >= 0 && v.days < 1000 ? v.days : 0 }]));
   migrateFree(state);
   // Saves from before lodging: the town's inn grows to fit everyone who already lives there.
   if (data.version < 6) while (state.village.inn < VILLAGE_PROJECTS.inn.max && getLodging(state).lodging < state.members.length) state.village.inn += 1;

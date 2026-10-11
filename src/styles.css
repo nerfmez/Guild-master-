@@ -549,3 +549,6 @@ body.on-title .hero-hud{display:none}
 em.eff-good{color:#4f7a3a;font-style:normal;font-weight:700}em.eff-ok{color:#8a6a2a;font-style:normal;font-weight:700}em.eff-bad{color:#b0503c;font-style:normal;font-weight:700}
 .upgrade-card .gain{display:block;color:#4f7a3a;font-weight:700;font-size:11px;margin:2px 0}
 .topbar .resource.eff{pointer-events:auto}
+/* R43: guild staff */
+.staff-card{display:grid;gap:6px;padding:11px 12px;margin:8px 0;border-radius:12px;background:#fffaee;border:1px solid #e3d3b0}.staff-card.hired{border-color:#a6bf90;background:#f4f8ec}
+.staff-head{display:flex;gap:10px;align-items:center}.staff-icon{font-size:24px;width:38px;height:38px;display:grid;place-items:center;border-radius:10px;background:#f5ecd7}.staff-head small{display:block;color:var(--muted);font-size:11px}.staff-card p{margin:0;font-size:12px;line-height:1.6}.staff-card button{justify-self:start;min-height:0;padding:6px 12px;font-size:12px}

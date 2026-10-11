@@ -39,6 +39,9 @@ export function sellLoot(state, ctx, hunter, who) {
   }
   bag.parts = {}; bag.treasures = [];
   who.purse = (who.purse || 0) + paid + elsewhere;
+  // An appraisal table (and an appraiser at it) lets the guild buy a little under what the goods are worth.
+  const margin = paid && ctx.margin ? Math.round(paid * ctx.margin()) : 0;
+  if (margin) ctx.income(margin, 'ส่วนต่างประเมินของ');
   if (paid) { ctx.expense(paid, 'รับซื้อของจากนักผจญภัย'); t.stats.bought += sold; t.stats.spent += paid; remember(t, `${who.name} ขายของ ${sold} ชิ้น · ${paid} G`); }
   if (free && sold) who.affinity = Math.min(100, (who.affinity || 0) + (t.buyRate === 'generous' ? 3 : 1));
   for (const name of found) ctx.log(`💰 ${who.name}เจอ${name}ระหว่างล่า และนำมาขายให้กิลด์!`, 'success');

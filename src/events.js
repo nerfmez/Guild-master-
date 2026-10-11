@@ -131,12 +131,20 @@ export function tickDirector(state, ctx) {
   }
   // A choice left unanswered takes its last, gentlest option.
   if (d.pending && now > d.pending.expires) resolveDecision(state, ctx, d.pending.choices.at(-1).id, true);
-  if (now < d.calmUntil) return;
+  // The intel scout's warning runs out: the raid or the boss arrives as foretold.
+  if (d.incoming && now >= d.incoming.at) { const ev = MAJOR.find(e => e.id === d.incoming.id); delete d.incoming; if (ev && !d.active) startMajor(state, ctx, d, ev); return; }
+  if (now < d.calmUntil || d.incoming) return;
   if (!d.active && !d.pending && now >= d.nextMajor) {
     const ev = chooseWeighted(ctx, MAJOR, d.history);
     d.nextMajor = now + span(ctx, PACING.major); d.calmUntil = now + 60;
     d.nextMinor = Math.max(d.nextMinor, now + 90); d.nextDecision = Math.max(d.nextDecision, now + 240);
-    if (ev) startMajor(state, ctx, d, ev);
+    const scout = ctx.scout?.() || 0;
+    if (ev && scout && (ev.id === 'raid' || ev.id === 'boss')) {
+      d.incoming = { id: ev.id, at: now + scout * 25 };
+      if (ev.id === 'raid') ctx.recallHunters();
+      ctx.log(`🦅 หน่วยข่าวรายงาน: ${ev.id === 'raid' ? 'ฝูงมอนกำลังมุ่งหน้ามาที่หมู่บ้าน' : 'บอสโลกกำลังตื่น'} จะถึงในอีก ${scout * 25} วินาที${ev.id === 'raid' ? ' เรียกนักผจญภัยกลับมาเตรียมตัวแล้ว' : ''}`, 'rank');
+      ctx.alert({ icon: '🦅', title: 'หน่วยข่าวรายงาน', text: `${ev.id === 'raid' ? 'มอนบุก' : 'บอสโลก'}ในอีก ${scout * 25} วินาที`, watch: null });
+    } else if (ev) startMajor(state, ctx, d, ev);
     return;
   }
   if (!d.pending && now >= d.nextDecision) {
@@ -226,6 +234,7 @@ export function sanitizeDirector(data, elapsed = 0) {
   const a = data.active;
   if (a && ['raid', 'boss'].includes(a.id)) d.active = { id: a.id, until: num(a.until, elapsed + 120), total: num(a.total, 1), reached: num(a.reached, 0), zone: text(a.zone, 20) };
   if (data.alert && typeof data.alert === 'object') d.alert = { icon: text(data.alert.icon, 4), title: text(data.alert.title, 80), text: text(data.alert.text), watch: ['raid', 'boss'].includes(data.alert.watch) ? data.alert.watch : null, until: num(data.alert.until, 0) };
+  if (data.incoming && ['raid', 'boss'].includes(data.incoming.id)) d.incoming = { id: data.incoming.id, at: num(data.incoming.at, elapsed) };
   d.history = (Array.isArray(data.history) ? data.history : []).filter(h => h && EVENT_IDS.has(h.id)).slice(0, 14).map(h => ({ id: h.id, title: text(h.title), icon: text(h.icon, 4), day: num(h.day, 1), outcome: text(h.outcome, 120) }));
   return d;
 }

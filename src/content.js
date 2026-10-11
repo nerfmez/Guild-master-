@@ -60,14 +60,16 @@ export const JOBS = {
 export const FACILITIES = {
   reception: { id: 'reception', name: 'โต๊ะรับคำร้อง', description: 'รับคำร้อง เพิ่มชื่อเสียงจากภารกิจ 5% ต่อระดับ', w: 2, h: 1, cost: { gold: 180, wood: 8, stone: 4 }, unlockRank: 'F', color: '#dec6a1', maxLevel: 3 },
   infirmary: { id: 'infirmary', name: 'เตียงรักษา', description: 'รักษาบาดเจ็บพร้อมกัน 2 คนต่อระดับ คนเจ็บมากได้เตียงก่อน', w: 1, h: 2, cost: { gold: 240, wood: 8, stone: 6, herb: 4 }, unlockRank: 'F', color: '#b9cfbf', maxLevel: 3 },
-  kitchen: { id: 'kitchen', name: 'เตาทำอาหาร', description: 'เพิ่มความสดชื่นและเร่งพักฟื้นสมาชิก', w: 1, h: 1, cost: { gold: 200, wood: 10, stone: 4 }, unlockRank: 'F', color: '#e6b799', maxLevel: 3 },
+  kitchen: { id: 'kitchen', name: 'เตาทำอาหาร', description: 'ทำอาหารส่งบาร์: รายได้บาร์ +25% ต่อระดับ คนที่แวะกินฟื้นแรงเร็วขึ้น · ความสบายในเมือง +4 ต่อระดับ', w: 1, h: 1, cost: { gold: 200, wood: 10, stone: 4 }, unlockRank: 'F', color: '#e6b799', maxLevel: 3 },
   training: { id: 'training', name: 'หุ่นฝึก', description: 'ฝึกได้พร้อมกัน 2 คนต่อระดับ สมาชิกผลัดกันใช้จุดฝึก', w: 1, h: 1, cost: { gold: 250, wood: 10, stone: 8 }, unlockRank: 'F', color: '#d1bd96', maxLevel: 3 },
   workshop: { id: 'workshop', name: 'โต๊ะช่าง', description: 'สร้างอาวุธและเครื่องรางจากวัตถุดิบ', w: 2, h: 1, cost: { gold: 260, wood: 12, stone: 8 }, unlockRank: 'F', color: '#aebec2', maxLevel: 3 },
   garden: { id: 'garden', name: 'แปลงสมุนไพร', description: 'เก็บสมุนไพรวันละครั้ง และช่วยให้กิลด์ร่มรื่น', w: 2, h: 2, cost: { gold: 180, wood: 8, stone: 2 }, unlockRank: 'E', color: '#aac3a0', maxLevel: 3 },
   library: { id: 'library', name: 'ชั้นตำรา', description: 'ฝึกได้เร็วขึ้นและรับมือภารกิจเวทได้ดี', w: 2, h: 0.75, cost: { gold: 420, wood: 18, stone: 8 }, unlockRank: 'D', color: '#acb8d0', maxLevel: 3 },
-  lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'เพิ่มขวัญกำลังใจ เปิดมื้อเลี้ยงกิลด์', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
+  lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'มุมนั่งคุยของนักผจญภัย · ความสบายในเมือง +6 ต่อระดับ อารมณ์ของทุกคนดีขึ้น', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
   board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยมาเลือกงานและจับกลุ่มกันเอง รับงานพร้อมกันได้ 2 งานต่อระดับ', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
-  dispatch: { id: 'dispatch', name: 'โต๊ะวางแผน', description: 'ที่นั่งวางแผนของปาร์ตี้ รับงานพร้อมกันได้เพิ่ม 1 งานต่อระดับ', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'E', color: '#9ebdb9', maxLevel: 3 },
+  bar: { id: 'bar', name: 'บาร์', description: 'นักผจญภัยแวะกินดื่มและฉลองหลังทำงานสำเร็จ จ่ายเงินให้กิลด์ ฟื้นแรงและอารมณ์ดีขึ้น · นั่งได้ 4 คนต่อระดับ', w: 2, h: 1, cost: { gold: 260, wood: 14, stone: 4 }, unlockRank: 'F', color: '#c9a07a', maxLevel: 3 },
+  appraisal: { id: 'appraisal', name: 'โต๊ะประเมินของ', description: 'ประเมินของที่รับซื้อจากนักผจญภัย กิลด์ได้ส่วนต่าง 5% ต่อระดับจากทุกชิ้น', w: 1.5, h: 1, cost: { gold: 240, wood: 8, stone: 6 }, unlockRank: 'F', color: '#b9a6c9', maxLevel: 3 },
+  dispatch: { id: 'dispatch', name: 'โต๊ะจับกลุ่มปาร์ตี้', description: 'ปาร์ตี้ที่จับกลุ่มในกิลด์วางแผนกันก่อนออกงาน พลังทีม +3% ต่อระดับ และรับงานพร้อมกันได้เพิ่ม 1 งานต่อระดับ', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'F', color: '#9ebdb9', maxLevel: 3 },
 };
 export const ROOM_TYPES={
  dorm:{name:'ห้องพัก',color:'#dac2a3'},infirmary:{name:'ห้องพยาบาล',color:'#cbd4b9'},
@@ -178,9 +180,9 @@ export const LOOT = {
 // ---- Petitions: villagers walk to the guild with requests; the guild posts them on the board. ----
 /** Share of the client's fee paid to the adventurers; the guild keeps the rest as commission. */
 export const PAYOUT_PLANS = {
-  generous: { name: 'ใจดี', share: 0.8, eager: 1.8, readiness: 0.85, morale: 6, description: 'นักผจญภัยได้ 80% รีบมาหยิบงาน ขวัญดีขึ้น' },
-  standard: { name: 'มาตรฐาน', share: 0.65, eager: 1, readiness: 0.95, morale: 0, description: 'นักผจญภัยได้ 65% กิลด์ได้ 35%' },
-  thrifty: { name: 'ประหยัด', share: 0.5, eager: 0.45, readiness: 1.1, morale: -6, description: 'กิลด์ได้ครึ่งหนึ่ง แต่ไม่ค่อยมีใครอยากหยิบงาน' },
+  generous: { name: 'ใจดี', share: 0.8, eager: 1.8, readiness: 0.9, morale: 6, description: 'นักผจญภัยได้ 80% รีบมาหยิบงาน ขวัญดีขึ้น' },
+  standard: { name: 'มาตรฐาน', share: 0.65, eager: 1, readiness: 1, morale: 0, description: 'นักผจญภัยได้ 65% กิลด์ได้ 35%' },
+  thrifty: { name: 'ประหยัด', share: 0.5, eager: 0.45, readiness: 1.15, morale: -6, description: 'กิลด์ได้ครึ่งหนึ่ง แต่ไม่ค่อยมีใครอยากหยิบงาน' },
 };
 /** Client fee as a multiple of the quest's listed gold. */
 export const FEE_MULTIPLIER = 2.1;
@@ -208,10 +210,18 @@ export const PETITION_LINES = {
 };
 
 // ---- Idle guild upgrades: levels with growing cost, each a small permanent boost. ----
+/** Guild staff: hired by the guild master, paid each morning, better with every few days on the job, and seen at work in the hall. */
+export const STAFF = {
+  receptionist: { name: 'พนักงานต้อนรับ', icon: '🛎', needs: 'reception', hire: 150, salary: 14, desc: 'รับคำร้องขึ้นกระดานทันที ชาวบ้านมาส่งคำร้องถี่ขึ้น 8% ต่อเลเวล' },
+  registrar: { name: 'นายทะเบียน', icon: '📒', needs: 'reception', hire: 220, salary: 18, desc: 'นักผจญภัยหน้าใหม่มาลงทะเบียนเร็วขึ้น 15% ต่อเลเวล และมาพร้อมประสบการณ์มากขึ้น' },
+  appraiser: { name: 'นักประเมินราคา', icon: '🔍', needs: 'appraisal', hire: 260, salary: 20, desc: 'ได้ส่วนต่างเพิ่ม 4% ต่อเลเวลจากทุกของที่รับซื้อ' },
+  scout: { name: 'หน่วยข่าว', icon: '🦅', needs: 'dispatch', hire: 320, salary: 26, desc: 'รู้ข่าวมอนบุกและบอสโลกล่วงหน้า 25 วินาทีต่อเลเวล เรียกคนกลับมาเตรียมตัว ศัตรูอ่อนลง 6% ต่อเลเวล' },
+  cook: { name: 'แม่ครัวและบาร์เทนเดอร์', icon: '🍲', needs: 'bar', hire: 200, salary: 16, desc: 'อาหารและเครื่องดื่มดีขึ้น: รายได้บาร์ +25% ต่อเลเวล คนที่แวะฟื้นแรงและอารมณ์ดีขึ้นอีก' },
+};
+export const STAFF_MAX_LEVEL = 5;
 export const GUILD_UPGRADES = {
   signboard: { name: 'ป้ายประกาศกิลด์', icon: '📜', max: 10, base: { gold: 140, wood: 4 }, growth: 1.55, description: 'ชาวบ้านมาส่งคำร้องถี่ขึ้น 10% ต่อระดับ' },
   contracts: { name: 'สมุดสัญญา', icon: '✒', max: 10, base: { gold: 200, stone: 2 }, growth: 1.6, description: 'ค่านายหน้ากิลด์เพิ่ม 4% ของค่าจ้างต่อระดับ' },
-  clerk: { name: 'เสมียนต้อนรับ', icon: '🛎', max: 5, base: { gold: 260, wood: 6 }, growth: 1.8, description: 'รับคำร้องทั่วไปขึ้นกระดานทันทีที่ชาวบ้านมาถึง และชาวบ้านรอนานขึ้น' },
   storehouse: { name: 'โกดังกิลด์', icon: '📦', max: 8, base: { gold: 160, wood: 12 }, growth: 1.55, description: 'เก็บของที่รับซื้อจากนักผจญภัยได้เพิ่มอีก 40 ชิ้นต่อระดับ' },
   trophyHall: { name: 'หอเกียรติยศ', icon: '🏆', max: 5, base: { gold: 2400, stone: 30 }, growth: 1.7, description: 'จัดแสดงถ้วยรางวัลและชิ้นส่วนบอส ชื่อเสียงจากงานทุกชิ้น +6% ต่อระดับ และผู้มาชมจ่ายค่าเข้า 30 G ต่อระดับทุกวัน' },
   coffer: { name: 'กองทุนกิลด์', icon: '◈', max: 12, base: { gold: 180 }, growth: 1.6, description: 'ดอกผล 0.25 G ต่อวินาทีต่อระดับ เก็บต่อแม้ปิดเกม (สูงสุด 2 ชั่วโมง)' },
