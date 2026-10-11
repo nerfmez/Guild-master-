@@ -19,7 +19,7 @@ const MINOR = [
   { id: 'lanterns', icon: '🏮', weight: 1, when: ctx => ctx.villageLevel() >= 2, run: ctx => { ctx.prosperity(30); ctx.moraleAll(3); return 'คืนโคมลอย ชาวบ้านจุดโคมริมถนน หมู่บ้านคึกคักขึ้น'; } },
   { id: 'shortage', icon: '📉', weight: 1, run: ctx => { ctx.market('herb', -999); return 'สมุนไพรขาดตลาด ราคาพุ่ง ใครมีสมุนไพรเก็บไว้ขายตอนนี้ได้ราคาดี'; } },
   { id: 'swarm', icon: '🐾', weight: 2, run: ctx => { const z = pick(ctx, ctx.openZones()); ctx.swarm(z, 4); return `ข่าวจากนักล่า: มอนที่${ctx.zoneName(z)}ชุกชุมกว่าปกติ`; } },
-  { id: 'stranger', icon: '🍺', weight: 2, run: ctx => { ctx.newFree(); return 'มีนักผจญภัยหน้าใหม่แวะมาพักที่โรงเตี๊ยม'; } },
+  { id: 'stranger', icon: '🍺', weight: 2, run: ctx => { return ctx.newFree() ? 'มีนักผจญภัยหน้าใหม่เดินทางมาลงทะเบียนกับกิลด์' : 'นักผจญภัยผ่านทางแวะดื่มที่โรงเตี๊ยม แต่ห้องพักเต็มเลยเดินทางต่อ'; } },
 ];
 
 /** Choices: each option says what it costs and what it brings. `data` is filled when the event starts. */
@@ -41,7 +41,7 @@ const DECISIONS = [
   { id: 'lostAdventurer', icon: '🔦', weight: 2, title: 'นักผจญภัยหลงทาง', when: ctx => ctx.freeList().length >= 1, text: d => `เพื่อนของ${d.name}มาบอกว่าเขาหายไปที่${d.zone}ตั้งแต่เมื่อคืน`,
     start: ctx => { const f = pick(ctx, ctx.freeList()); return { id: f.id, name: f.name, zone: ctx.zoneName(pick(ctx, ctx.openZones())) }; },
     choices: [
-      { id: 'search', label: 'ส่งคนออกตามหา', desc: 'เงิน −30 · ความประทับใจของเขาต่อกิลด์ +45', apply: (ctx, d) => { ctx.gold(-30, 'ค่าคนตามหานักผจญภัย'); ctx.affinity(d.id, 45); return `${d.name}กลับมาอย่างปลอดภัย และซึ้งใจกิลด์มาก`; } },
+      { id: 'search', label: 'ส่งคนออกตามหา', desc: 'เงิน −30 · ขวัญของเขา +15', apply: (ctx, d) => { ctx.gold(-30, 'ค่าคนตามหานักผจญภัย'); ctx.affinity(d.id, 45); return `${d.name}กลับมาอย่างปลอดภัย และซึ้งใจกิลด์มาก`; } },
       { id: 'wait', label: 'รอดูอีกสักวัน', desc: 'ไม่เสียอะไร', apply: (ctx, d) => `${d.name}เดินกลับมาเองในตอนเย็น เหนื่อยแต่ไม่เป็นไร` },
     ] },
   { id: 'treasureMap', icon: '🗺', weight: 2, title: 'พ่อค้าขายแผนที่ขุมทรัพย์', text: () => 'พ่อค้าแปลกหน้าบอกว่าแผนที่นี้พาไปถึงหีบโบราณ ราคา 150 G',
@@ -58,7 +58,7 @@ const DECISIONS = [
   { id: 'apprentice', icon: '📖', weight: 2, title: 'เด็กหนุ่มขอเป็นศิษย์', when: ctx => ctx.homeMembers().some(m => m.level >= 3), text: d => `เด็กหนุ่มจากหมู่บ้านอยากเรียนวิชาจาก${d.name}`,
     start: ctx => { const m = ctx.homeMembers().filter(x => x.level >= 3).sort((a, b) => b.level - a.level)[0]; return { id: m.id, name: m.name }; },
     choices: [
-      { id: 'teach', label: 'รับสอน', desc: 'ครูแรง −30 · แต้มผลงาน +12 · มีนักผจญภัยหน้าใหม่ที่ชื่นชมกิลด์มาอยู่โรงเตี๊ยม', apply: (ctx, d) => { ctx.energy(d.id, -30); ctx.points(d.id, 12); ctx.newFree(50); return `${d.name}สอนจนค่ำ ศิษย์ใหม่ตั้งใจจะเข้ากิลด์สักวัน`; } },
+      { id: 'teach', label: 'รับสอน', desc: 'ครูแรง −30 · แต้มผลงาน +12 · มีนักผจญภัยหน้าใหม่ที่ชื่นชมกิลด์มาลงทะเบียน', apply: (ctx, d) => { ctx.energy(d.id, -30); ctx.points(d.id, 12); ctx.newFree(50); return `${d.name}สอนจนค่ำ ศิษย์ใหม่ตั้งใจจะเข้ากิลด์สักวัน`; } },
       { id: 'later', label: 'ไว้คราวหน้า', desc: 'ไม่เสียอะไร', apply: () => 'เด็กหนุ่มรับปากว่าจะกลับมาใหม่' },
     ] },
   { id: 'rival', icon: '⚔', weight: 1, title: 'กิลด์คู่แข่งมาเปิดสาขา', when: ctx => ctx.rankIndex() >= 1, text: () => 'กิลด์จากเมืองใหญ่มาตั้งโต๊ะรับงานกลางตลาด เสนอค่าจ้างถูกกว่าเรา',

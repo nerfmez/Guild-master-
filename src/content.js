@@ -59,7 +59,7 @@ export const JOBS = {
 };
 export const FACILITIES = {
   reception: { id: 'reception', name: 'โต๊ะรับคำร้อง', description: 'รับคำร้อง เพิ่มชื่อเสียงจากภารกิจ 5% ต่อระดับ', w: 2, h: 1, cost: { gold: 180, wood: 8, stone: 4 }, unlockRank: 'F', color: '#dec6a1', maxLevel: 3 },
-  dorm: { id: 'dorm', name: 'เตียงพัก', description: 'เพิ่มพื้นที่พักให้สมาชิก 4 คนและรองรับการพัก 2 คนต่อระดับ', w: 1, h: 2, cost: { gold: 220, wood: 12, stone: 3 }, unlockRank: 'F', color: '#bbaac9', maxLevel: 3 },
+  dorm: { id: 'dorm', name: 'เตียงงีบ', description: 'นักผจญภัยพักที่โรงเตี๊ยมในเมือง เตียงในกิลด์ไว้ให้คนแวะงีบ ฟื้นแรงเร็วขึ้นต่อระดับ', w: 1, h: 2, cost: { gold: 220, wood: 12, stone: 3 }, unlockRank: 'F', color: '#bbaac9', maxLevel: 3 },
   infirmary: { id: 'infirmary', name: 'เตียงรักษา', description: 'รักษาบาดเจ็บพร้อมกัน 2 คนต่อระดับ คนเจ็บมากได้เตียงก่อน', w: 1, h: 2, cost: { gold: 240, wood: 8, stone: 6, herb: 4 }, unlockRank: 'F', color: '#b9cfbf', maxLevel: 3 },
   kitchen: { id: 'kitchen', name: 'เตาทำอาหาร', description: 'เพิ่มความสดชื่นและเร่งพักฟื้นสมาชิก', w: 1, h: 1, cost: { gold: 200, wood: 10, stone: 4 }, unlockRank: 'F', color: '#e6b799', maxLevel: 3 },
   training: { id: 'training', name: 'หุ่นฝึก', description: 'ฝึกได้พร้อมกัน 2 คนต่อระดับ สมาชิกผลัดกันใช้จุดฝึก', w: 1, h: 1, cost: { gold: 250, wood: 10, stone: 8 }, unlockRank: 'F', color: '#d1bd96', maxLevel: 3 },
@@ -67,8 +67,8 @@ export const FACILITIES = {
   garden: { id: 'garden', name: 'แปลงสมุนไพร', description: 'เก็บสมุนไพรวันละครั้ง และช่วยให้กิลด์ร่มรื่น', w: 2, h: 2, cost: { gold: 180, wood: 8, stone: 2 }, unlockRank: 'E', color: '#aac3a0', maxLevel: 3 },
   library: { id: 'library', name: 'ชั้นตำรา', description: 'ฝึกได้เร็วขึ้นและรับมือภารกิจเวทได้ดี', w: 2, h: 0.75, cost: { gold: 420, wood: 18, stone: 8 }, unlockRank: 'D', color: '#acb8d0', maxLevel: 3 },
   lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'เพิ่มขวัญกำลังใจ เปิดมื้อเลี้ยงกิลด์', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
-  board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยที่ว่างมาหยิบงานเอง ออกงานเองได้พร้อมกัน 1 ทีมต่อระดับ แยกจากทีมที่คุณส่ง', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
-  dispatch: { id: 'dispatch', name: 'โต๊ะวางแผน', description: 'เปิดทีมภารกิจที่สองเมื่อกิลด์ถึงระดับ E', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'E', color: '#9ebdb9', maxLevel: 3 },
+  board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยมาเลือกงานและจับกลุ่มกันเอง รับงานพร้อมกันได้ 2 งานต่อระดับ', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
+  dispatch: { id: 'dispatch', name: 'โต๊ะวางแผน', description: 'ที่นั่งวางแผนของปาร์ตี้ รับงานพร้อมกันได้เพิ่ม 1 งานต่อระดับ', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'E', color: '#9ebdb9', maxLevel: 3 },
 };
 export const ROOM_TYPES={
  dorm:{name:'ห้องพัก',color:'#dac2a3'},infirmary:{name:'ห้องพยาบาล',color:'#cbd4b9'},
@@ -184,7 +184,7 @@ export const PAYOUT_PLANS = {
   thrifty: { name: 'ประหยัด', share: 0.5, eager: 0.45, readiness: 1.1, morale: -6, description: 'กิลด์ได้ครึ่งหนึ่ง แต่ไม่ค่อยมีใครอยากหยิบงาน' },
 };
 /** Client fee as a multiple of the quest's listed gold. */
-export const FEE_MULTIPLIER = 2.8;
+export const FEE_MULTIPLIER = 2.1;
 export const VILLAGER_NAMES = ['ป้าบัว', 'ลุงมั่น', 'น้องข้าวปุ้น', 'คุณนายพลอย', 'ตาโต', 'ยายเย็น', 'พี่ต้นกล้า', 'ช่างหิน', 'แม่ค้าส้มจี๊ด', 'คนเลี้ยงแกะ', 'หนูน้ำผึ้ง', 'ลุงคนเฝ้าสะพาน', 'นักเดินทางผ่านทาง', 'คุณครูดาว'];
 export const PETITION_LINES = {
   patrol: 'ทางกลับบ้านมีเสียงแปลก ๆ ตอนเย็น ช่วยไปดูให้หน่อยได้ไหม',
@@ -219,12 +219,14 @@ export const GUILD_UPGRADES = {
 };
 
 // ---- The village: homes and businesses that grow with prosperity. ----
+/** Most adventurers a town of each level draws in (also limited by lodging: the inn and rooms let in houses). */
+export const TOWN_CAPS = [15, 20, 25, 40, 60];
 export const VILLAGE_LEVELS = [
   { level: 1, prosperity: 0, population: 0, name: 'หมู่บ้านเล็ก ๆ' },
   { level: 2, prosperity: 250, population: 10, name: 'หมู่บ้านอบอุ่น' },
   { level: 3, prosperity: 900, population: 20, name: 'หมู่บ้านคึกคัก' },
   { level: 4, prosperity: 2600, population: 34, name: 'ตำบลริมทาง' },
-  { level: 5, prosperity: 8500, population: 55, name: 'เมืองใบอ่อน' },
+  { level: 5, prosperity: 16000, population: 60, name: 'เมืองใบอ่อน' },
 ];
 /** Homes grow by themselves when what their families need is close by. */
 export const HOUSE_TIERS = [
@@ -248,7 +250,8 @@ export const HOUSE_UPGRADES = [
   { needs: ['food', 'goods', 'road', 'safety', 'leisure'], level: 3, time: 380 },
 ];
 export const VILLAGE_PROJECTS = {
-  house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง' },
+  inn: { name: 'โรงเตี๊ยม', icon: '🛏', max: 4, villageLevel: 1, base: { gold: 180, wood: 16, stone: 6 }, growth: 1.75, prosperity: 120, description: 'ต่อเติมห้องพักให้นักผจญภัยอีก 8 คนต่อระดับ คนมาอยู่เมืองได้มากขึ้น' },
+  house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง และมีห้องเช่าให้นักผจญภัย 2 คน' },
   shop: { name: 'ร้านค้า', icon: '🛍', max: 3, villageLevel: 1, base: { gold: 240, wood: 14, stone: 6 }, growth: 1.9, prosperity: 140, description: 'ขายเสบียงและยาให้นักผจญภัยด้วยเงินของพวกเขาเอง (ใช้สมุนไพรจากตลาด) · ขนมช่วยขวัญ · กิลด์ได้ค่าเช่าวันละ 20 G ต่อระดับ' },
   market: { name: 'ตลาดนัด', icon: '🧺', max: 3, villageLevel: 2, base: { gold: 420, wood: 20, stone: 14 }, growth: 1.9, prosperity: 200, description: 'แผงค้าส่งไม้ หิน สมุนไพรให้กิลด์ทุกวัน และเก็บค่าแผง 0.15 G/วินาทีต่อระดับ' },
   dojo: { name: 'โรงฝึก', icon: '🥋', max: 3, villageLevel: 1, base: { gold: 280, wood: 20, stone: 8 }, growth: 2, prosperity: 160, description: 'นักผจญภัยจ่ายค่าเรียนเองเพื่อฝึกกับครู ได้ XP มาก (วันละ 1 คอร์สต่อระดับ) · พิธีเปลี่ยนคลาสขั้น 2 ระดับ 3 สำหรับคลาสขั้น 3 ในเกมเต็ม' },
@@ -298,7 +301,10 @@ export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 
 
 // ---- Applicants: fame draws newcomers to the door; famous adventurers come only when the guild suits them. ----
 export const TRAIT_NAMES = ['ใจเย็น', 'ช่างสังเกต', 'ใฝ่รู้', 'อ่อนโยน', 'รักอิสระ', 'ขยัน', 'ร่าเริง', 'รอบคอบ', 'กล้าหาญ', 'ช่างพูด', 'อดทน', 'สุขุม'];
-export const ROOKIE_NAMES = ['ปิ่น', 'ต้นข้าว', 'โอ๊ต', 'มะปราง', 'ภู', 'น้ำหวาน', 'กิ่ง', 'ตะวัน', 'ใบเตย', 'ก้อนหิน', 'ฝ้าย', 'เมฆ', 'แพรว', 'บุญมา', 'ขนุน', 'ดาวเรือง', 'สายลม', 'ปุยฝ้าย'];
+export const ROOKIE_NAMES = ['ปิ่น', 'ต้นข้าว', 'โอ๊ต', 'มะปราง', 'ภู', 'น้ำหวาน', 'กิ่ง', 'ตะวัน', 'ใบเตย', 'ก้อนหิน', 'ฝ้าย', 'เมฆ', 'แพรว', 'บุญมา', 'ขนุน', 'ดาวเรือง', 'สายลม', 'ปุยฝ้าย',
+  'ข้าวหอม', 'มะลิ', 'พายุ', 'ลำธาร', 'ส้มโอ', 'ไผ่', 'หมอก', 'ทองดี', 'เพชร', 'รุ้ง', 'ขิง', 'ตาล', 'นิล', 'แสงเดือน', 'ใบบัว', 'โกโก้', 'ทับทิม', 'ศิลา', 'วายุ', 'ชบา',
+  'มินท์', 'แก้ว', 'อัคนี', 'ดอกแก้ว', 'กระถิน', 'ปลายฟ้า', 'โบตั๋น', 'คีรี', 'ธารา', 'ฟ้าใส', 'น้ำค้าง', 'ลูกชิ้น', 'ทรายทอง', 'เกล็ด', 'จันทร์', 'สน', 'ลูกเกด', 'มะนาว', 'ภูผา', 'นที',
+  'ฟางข้าว', 'พริกไทย', 'ข้าวโพด', 'ดาวเหนือ', 'กาแฟ', 'ปลาทู', 'เมล็ด', 'ฝนพรำ', 'อำพัน', 'คราม', 'ปีกนก', 'ทานตะวัน', 'เทียน', 'ลูกหว้า'];
 export const ROOKIE_LINES = ['เด็กจากหมู่บ้านข้าง ๆ ที่อยากเห็นโลกกว้าง', 'เคยช่วยพ่อเฝ้าไร่ เลยไม่กลัวหมูป่า', 'อ่านนิทานนักผจญภัยจนจำได้ทุกเล่ม', 'ฝึกมาเองจากหนังสือเก่า ๆ ในห้องสมุด', 'มาตามคำบอกเล่าว่ากิลด์นี้ใจดี', 'อยากเก็บเงินซื้อดาบเล่มแรกของตัวเอง', 'ได้ยินชื่อกิลด์จากชาวบ้านที่เคยได้รับความช่วยเหลือ'];
 export const HAIR_COLORS = ['#5b4637', '#8b5a3c', '#d9b26f', '#a66c59', '#6f6a8f', '#e9e2d0', '#73818d', '#c79894', '#82976a'];
 

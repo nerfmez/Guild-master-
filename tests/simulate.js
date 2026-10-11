@@ -1,6 +1,6 @@
-/** A plain, reasonable player for balance checks: answers petitions, lets the board run,
- * sends the important steps itself, and invests only what the guild has earned. */
-import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, suggestTeam, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress, classChoices, getAdventurerRank } from '../src/game.js';
+/** A plain, reasonable guild master for balance checks: never sends anyone, lets adventurers take the board's work,
+ * raises the pay on jobs nobody takes, and invests only what the guild has earned. */
+import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, boardStatus, getLodging, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress, classChoices, getAdventurerRank } from '../src/game.js';
 import { RANKS, GUILD_UPGRADES, GOODS, PARTS, HOME_NEEDS, EQUIPMENT } from '../src/content.js';
 import { storeUsed, storeCapacity, caravanLoad } from '../src/trade.js';
 import { homeStatus } from '../src/town.js';
@@ -46,20 +46,26 @@ export function simulate(seed = 1, { maxSeconds = 7 * 3600, plan = "standard", l
     if (state.story.finished && m.finishedAt === null) { m.finishedAt = Math.round(state.elapsed); say('story finished'); }
     if (m.finishedAt !== null && state.elapsed >= m.finishedAt + freePlay) break;
 
-    // 1. Answer petitions at the desk.
-    for (const p of state.petitions.filter(p => p.status === 'waiting')) act(state, 'acceptPetition', { petitionId: p.id, plan });
+    // 1. Jobs nobody takes: thrifty pay goes up to standard, an important or hard job gets a bonus on top.
+    if (state.elapsed % 30 < STEP) for (const p of state.petitions.filter(p => p.status === 'posted' && !p.missionId)) {
+      const st = boardStatus(state, p);
+      if (st.kind === 'pay' && p.plan === 'thrifty') act(state, 'setPetition', { petitionId: p.id, plan: 'standard' });
+      else if ((st.kind === 'pay' || (p.important && st.kind === 'hard' && st.readiness >= st.need - 0.2)) && state.gold > 800 + (p.bonus || 0) * 2) act(state, 'boostPetition', { petitionId: p.id });
+    }
     // 2. Guild essentials, in order of need.
     const stats = getGuildStats(state), reserve = 150;
     if (!state.facilities.some(f => f.type === 'board') && state.gold >= 120 + reserve) placeSomewhere(state, 'board');
-    if (RANKS.indexOf(state.rank) >= 1 && !state.facilities.some(f => f.type === 'dispatch') && state.gold > 340 + reserve) placeSomewhere(state, 'dispatch') || act(state, 'expandBuilding');
-    const memberGoal = RANKS.indexOf(state.rank) >= 3 ? Math.max(maxMembers, 10) : maxMembers;
-    if (state.frontier?.camp === 1 && state.gold > 2500) { for (let k = 0; k < 12; k++) for (const key of ['wood', 'stone']) if (state[key] < 70) act(state, 'buyMaterial', { key }); if (act(state, 'upgradeCamp').ok) say('camp 2'); }
-    if (stats.memberCount >= stats.memberCap && state.members.length < memberGoal && stats.memberCap < 12 && state.gold > 400 + reserve) placeSomewhere(state, 'dorm') || act(state, 'expandBuilding');
-    // Applicants come to the door; hire while there is room, the fee is affordable and the guild needs hands.
-    for (const a of state.applicants.filter(a => a.status === 'waiting')) {
-      if (state.members.length < memberGoal && getGuildStats(state).memberCount < getGuildStats(state).memberCap && state.gold > a.fee + reserve) { act(state, 'recruit', { applicantId: a.id }); say(`hire ${a.memberId || a.bio.name} lv${a.level}`); }
-      else if (state.members.length >= memberGoal) act(state, 'declineApplicant', { applicantId: a.id });
+    // A full board leaves jobs waiting: grow it, then add a planning table.
+    if (stats.boardMissions >= stats.boardCap && state.petitions.some(p => boardStatus(state, p).kind === 'slots')) {
+      const board = state.facilities.filter(f => f.type === 'board').sort((a, b) => a.level - b.level)[0];
+      if (board && board.level < 3 && canPay(state, getUpgradeCost(state, board.id), reserve + 200)) { act(state, 'upgrade', { facilityId: board.id }); say('board up'); }
+      else if (RANKS.indexOf(state.rank) >= 1 && state.gold > 340 + reserve + 200) placeSomewhere(state, 'dispatch') || act(state, 'expandBuilding');
     }
+    if (state.frontier?.camp === 1 && state.gold > 2500) { for (let k = 0; k < 12; k++) for (const key of ['wood', 'stone']) if (state[key] < 70) act(state, 'buyMaterial', { key }); if (act(state, 'upgradeCamp').ok) say('camp 2'); }
+    // Story letters say what the guild must prepare first: a planning table, more land.
+    for (const p of state.petitions.filter(p => p.important && p.status === 'posted')) { const st = boardStatus(state, p); if (st.kind !== 'locked') continue; if (/โต๊ะวางแผน/.test(st.text) && state.gold > 500) placeSomewhere(state, 'dispatch') || act(state, 'expandBuilding'); if (/ขยายที่ดิน/.test(st.text)) act(state, 'expand'); }
+    // More rooms in town when the inn is what holds newcomers back.
+    { const room = getLodging(state), st = getProjectStatus(state, 'inn'); if (room.count >= room.cap && room.limit === 'lodging' && st.ok && state.gold > st.cost.gold + reserve + 200) { act(state, 'buildProject', { projectId: 'inn' }); say('inn up'); } }
     // Surplus materials go to the village market, which keeps the shops stocked.
     for (const key of ['wood', 'stone', 'herb']) if (state[key] > 80 && state.market[key] < 60) act(state, 'sellMaterial', { key });
     if (RANKS.indexOf(state.rank) >= 3 && state.landLevel < 1) act(state, 'expand');
@@ -72,37 +78,17 @@ export function simulate(seed = 1, { maxSeconds = 7 * 3600, plan = "standard", l
     // Like a player answering the goal card: sponsor exams for members who are ready but short of the fee.
     for (const member of state.members) { const r = getAdventurerRank(state, member); if (r.eligible && r.chance >= 0.4 && !member.errand && member.purse < r.rule.fee && state.gold > r.rule.fee + reserve) act(state, 'rankExam', { memberId: member.id }); }
     for (const member of state.members) { const choice = classChoices(state, member).find(c => c.ok); if (choice && act(state, 'specialize', { memberId: member.id, classId: choice.id }).ok) say(`class ${member.id} -> ${choice.id}`); }
-    if (state.facilities.filter(f => f.level >= 2).length < 2 && RANKS.indexOf(state.rank) >= 3) for (const f of state.facilities.filter(f => ['dorm', 'training', 'reception'].includes(f.type))) if (canPay(state, getUpgradeCost(state, f.id), reserve)) { act(state, 'upgrade', { facilityId: f.id }); break; }
+    if (state.facilities.filter(f => f.level >= 2).length < 2 && RANKS.indexOf(state.rank) >= 3) for (const f of state.facilities.filter(f => ['kitchen', 'training', 'reception'].includes(f.type))) if (canPay(state, getUpgradeCost(state, f.id), reserve)) { act(state, 'upgrade', { facilityId: f.id }); break; }
     // Late game: forge frontier gear from the store's monster parts when the guild can spare the gold.
     if (state.rank === 'B' && state.elapsed % 120 < STEP) for (const item of EQUIPMENT.filter(e => e.parts)) if (state.gold > 3000) act(state, 'craft', { equipmentId: item.id });
     act(state, 'autoEquip');
-    // The goal card asks for a new kind of work: the player sends a team to something the guild has never done.
-    const progress = getRankProgress(state);
-    if (progress?.merits?.some(x => x.kind === 'quests' && !x.ok) && !state.missions.some(x => x.status === 'active' && !x.auto)) {
-      const fresh = getAvailableQuests(state).find(q => !q.locked && !state.completedQuests[q.id] && !q.story && !q.final);
-      if (fresh) { const team = suggestTeam(state, fresh.id, 'cautious'), pv = previewMission(state, fresh.id, team, 'cautious'); if (pv.ok && pv.readiness >= 1) act(state, 'sendMission', { questId: fresh.id, memberIds: team, policy: 'cautious' }); }
-    }
-    // 3. The player's own teams take the important steps.
-    for (const p of state.petitions.filter(p => p.important && !p.missionId)) {
-      const q = getAvailableQuests(state).find(q => q.id === p.questId);
-      if (!q || q.locked) continue;
-      const team = suggestTeam(state, q.id, 'cautious'), preview = previewMission(state, q.id, team, 'cautious');
-      if (preview.ok && preview.readiness >= 1) { act(state, 'sendMission', { questId: q.id, memberIds: team, policy: 'cautious', petitionId: p.id }); say(`send ${q.id} ${team.join(',')}`); }
-    }
-    // Members who wait at home train when they can.
-    // Before the board, idle members train; afterwards board work and the dojo grow them, so nobody is kept off the board.
-    const hasBoard = state.facilities.some(f => f.type === 'board');
-    for (const member of state.members) {
-      if (hasBoard && member.task === 'train') act(state, 'setTask', { memberId: member.id, task: 'rest' });
-      else if (!hasBoard && !getMemberStats(state, member).busy && member.task === 'rest' && member.energy > 95 && state.elapsed % 120 < STEP) act(state, 'setTask', { memberId: member.id, task: 'train' });
-    }
     // Trade: parts no workshop wants go to the town's merchants; a caravan leaves when the wagon would be well filled.
     const t = state.trade, used = storeUsed(t);
     if (used > storeCapacity(state) * 0.5) for (const id of Object.keys(t.store)) if (!PARTS[id].forge && !(state.village[GOODS[Object.keys(GOODS).find(g => GOODS[g].kind === PARTS[id].kind)].workshop] > 0)) act(state, 'wholesale', { id, count: 'all' });
     if (state.village.caravan && !t.caravan && caravanLoad(state).count >= 15) { act(state, 'sendCaravan', { escort: state.gold > 1500 }); m.caravans = (m.caravans || 0) + 1; }
     for (const [i, x] of t.treasures.entries()) { act(state, t.displayed.length < 3 ? 'displayTreasure' : 'sellTreasure', { index: i }); break; }
     // 4. Spend surplus: village first, then idle upgrades, cheapest first.
-    const options = [...['house', 'shop', 'market', 'smithy', 'tannery', 'apothecary', 'jeweler', 'caravan', 'monument'].map(id => ({ kind: 'project', id, status: getProjectStatus(state, id) })).filter(o => o.status.ok).map(o => ({ ...o, cost: o.status.cost })),
+    const options = [...['house', 'inn', 'shop', 'market', 'smithy', 'tannery', 'apothecary', 'jeweler', 'caravan', 'monument'].map(id => ({ kind: 'project', id, status: getProjectStatus(state, id) })).filter(o => o.status.ok).map(o => ({ ...o, cost: o.status.cost })),
       ...Object.keys(GUILD_UPGRADES).filter(id => state.upgrades[id] < GUILD_UPGRADES[id].max).map(id => ({ kind: 'upgrade', id, cost: getGuildUpgradeCost(state, id) }))].sort((a, b) => a.cost.gold - b.cost.gold);
     // Homes tell the player what they lack: build what the first unmet need asks for, and houses when people are short.
     const vi = getVillageInfo(state), wants = new Set();

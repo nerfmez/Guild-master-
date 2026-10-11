@@ -76,6 +76,51 @@ function tickTown(state, ctx, step) {
   }
 }
 
+// ---- Residents: registered adventurers at home live in town — their room, the market, the guild hall. ----
+const GUILD_VISITORS = 8, STROLL = 1.1;
+function chooseErrand(state, ctx, m, inside) {
+  const w = state.world, t = m.town, r = rand(w);
+  if (m.energy < 50 || m.injury > 20) t.goal = 'lodge';
+  else if (r < 0.3 && inside < GUILD_VISITORS) t.goal = 'guild';
+  else if (r < 0.85) t.goal = 'town';
+  else t.goal = 'lodge';
+  const at = t.goal === 'guild' ? ctx.door() : t.goal === 'lodge' ? ctx.lodge(m) : (([x, y]) => ({ x: x + (rand(w) - .5) * 1.4, y: y + (rand(w) - .5) * .8 }))(pick(w, TOWN_SPOTS));
+  t.tx = at.x; t.ty = at.y; t.at = 'street';
+}
+function tickResidents(state, ctx, step) {
+  if (!ctx.atHome) return;
+  let inside = state.members.filter(m => m.town?.at === 'guild').length;
+  for (const m of state.members) {
+    if (!ctx.atHome(m)) { m.town = null; continue; }
+    if (!m.town) { const d = ctx.door(); m.town = { x: d.x, y: d.y, tx: d.x, ty: d.y, wait: 0, at: 'street', goal: 'town' }; }
+    const t = m.town, indoors = ctx.indoors(m);
+    // Training, chores and treatment happen in the guild hall: walk there first.
+    if (indoors && t.at !== 'guild' && t.goal !== 'guild') { const d = ctx.door(); Object.assign(t, { at: 'street', goal: 'guild', tx: d.x, ty: d.y }); }
+    if (t.at === 'street') {
+      const d = Math.hypot(t.tx - t.x, t.ty - t.y);
+      if (d > .05) { const s = Math.min(d, step * STROLL); t.x += (t.tx - t.x) / d * s; t.y += (t.ty - t.y) / d * s; continue; }
+      if (t.goal === 'guild' && (indoors || inside < GUILD_VISITORS)) { t.at = 'guild'; t.wait = 8 + rand(state.world) * 14; inside += 1; continue; }
+      if (t.goal === 'lodge') { t.at = 'lodge'; t.wait = 15 + rand(state.world) * 25; continue; }
+      if ((t.wait -= step) > 0) continue;
+      t.wait = 4 + rand(state.world) * 9; chooseErrand(state, ctx, m, inside);
+      continue;
+    }
+    if (indoors) continue;
+    // Resting in their room until fresh, or a short visit to the guild hall.
+    if ((t.wait -= step) > 0 || (t.at === 'lodge' && m.energy < 85 && t.wait > -90)) continue;
+    if (t.at === 'guild') inside -= 1;
+    const out = t.at === 'guild' ? ctx.door() : ctx.lodge(m);
+    Object.assign(t, { x: out.x, y: out.y, wait: 2 + rand(state.world) * 4 });
+    chooseErrand(state, ctx, m, inside);
+  }
+}
+/** The guild calls everyone fit to fight to a world boss's ground (the rally bounty). */
+export function rallyToBoss(state, ctx, zoneId, fit) {
+  const w = state.world, party = `pt-${w.nextId++}`, door = ctx.door(), out = [];
+  for (const m of state.members.filter(fit)) { m.task = 'rest'; w.hunters.push(makeHunter(state, ctx, m, 'member', zoneId, party, m.town ? { x: m.town.x, y: m.town.y } : door)); out.push(m); }
+  return out;
+}
+
 // ---- Departures ----
 function chooseZone(ctx, rank, power) {
   const zones = Object.entries(HUNT_ZONES).filter(([, z]) => ctx.zoneOpen(z) && rankIdx(z.rank) <= rankIdx(rank) + 1);
@@ -103,11 +148,12 @@ function departures(state, ctx) {
   const ready = state.members.filter(m => ctx.freeToHunt(m));
   while (ready.length) {
     const lead = ready.shift(), lp = ctx.stats(lead), zone = chooseZone(ctx, lead.rank, lp.basePower);
-    if (!zone || rand(w) > 0.45) continue;
+    if (!zone || rand(w) > 0.3) continue;
     const mates = ready.filter(m => chooseZone(ctx, m.rank, ctx.stats(m).basePower) === zone).sort((a, b) => ctx.bond(lead.id, b.id) - ctx.bond(lead.id, a.id)).slice(0, rand(w) < .35 ? 0 : 2);
     mates.forEach(m => ready.splice(ready.indexOf(m), 1));
     const party = `pt-${w.nextId++}`, door = ctx.door();
-    for (const m of [lead, ...mates]) { m.task = 'rest'; w.hunters.push(makeHunter(state, ctx, m, 'member', zone, party, door)); }
+    // They set off from wherever they are in town: the market, the inn, the guild steps.
+    for (const m of [lead, ...mates]) { m.task = 'rest'; m.autoTrain = false; w.hunters.push(makeHunter(state, ctx, m, 'member', zone, party, m.town ? { x: m.town.x, y: m.town.y } : door)); }
     ctx.log(`${[lead, ...mates].map(m => m.name).join(' · ')} ออกไปล่ามอนที่${HUNT_ZONES[zone].name}`, 'hunt');
   }
   // Free adventurers go alone or in pairs.
@@ -454,6 +500,7 @@ export function tickLife(state, ctx, step) {
     const dt = Math.min(SUB, left); left -= dt;
     stockZones(state, ctx, dt);
     tickTown(state, ctx, dt);
+    tickResidents(state, ctx, dt);
     w.departClock -= dt;
     if (w.departClock <= 0) { w.departClock = 3; departures(state, ctx); }
     stepHunters(state, ctx, dt);
