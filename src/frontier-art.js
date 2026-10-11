@@ -19,7 +19,7 @@ const clamp01 = v => Math.max(0, Math.min(1, v));
  */
 export function frontierWeights(x, y, n) {
   const C = FRONTIER_BIOMES.canyon, P = FRONTIER_BIOMES.peak, dc = Math.hypot(x - C.x, y - C.y) / C.r, dp = Math.hypot(x - P.x, y - P.y) / P.r;
-  const east = clamp01((x - 80) / 12 + n * .8), share = clamp01(.5 + (dp - dc) * 2.2);
+  const east = clamp01((x - 80) / 12 + n * .8), share = clamp01(.5 + (dp - dc) * .9 + n * 1.6);
   return { canyon: Math.max(clamp01((1 - dc) * 1.4 + n), east * share), peak: Math.max(clamp01((1 - dp) * 1.4 + n), east * (1 - share)) };
 }
 // The same value noise the overworld uses, so scenery agrees with the painted ground.
@@ -46,15 +46,14 @@ export function makeRedBoulder(seed = 0) {
     A.rect(c, 14, 17, 10, 1, '#e0aa70'); A.rect(c, 31, 22, 6, 1, '#e0aa70');
   });
 }
-/** Hoodoo: a tall weathered column with a darker cap stone balanced on top. */
+/** Hoodoo: a knobbly weathered column, pinched between soft layers, with a darker cap stone balanced on top. */
 export function makeHoodoo(seed = 0) {
-  const r = rand(seed + 1331), H = 40 + seed * 14, w = 44, h = H + 22, cx = 22, footY = h - 5;
+  const r = rand(seed + 1331), H = 38 + seed * 14, w = 48, h = H + 24, cx = 23, footY = h - 5, knobs = 2 + seed, phase = r() * 2, lean = (r() - .5) * 6;
   return sprite(w, h, cx, footY, (c, A) => {
-    A.ellipse(c, cx + 2, footY, 16, 3.5, '#00000026');
-    const stepsL = Array.from({ length: 30 }, () => Math.floor(r() * 3) - 1);
-    paintRock(c, A, y => { const t = (footY - y) / H; if (t < 0 || t > 1) return []; const half = 9 - Math.sin(t * Math.PI * 2.2) * 2.4 - t * 2 + (t < .12 ? (0.12 - t) * 30 : 0), s = stepsL[Math.floor((footY - y) / 4) % 30]; return [[cx - half + s, cx + half]]; }, footY - H, footY, ROCK.canyon, 5 + seed, seed + 61);
-    const capY = footY - H; stones(c, A, [[cx + 1, capY - 3, 12, 6]], ['#5a3428', '#8a4a33', '#a55c3c', '#c97a52']);
-    A.rect(c, cx - 6, capY - 8, 7, 1, '#d08a5e');
+    A.ellipse(c, cx + 3, footY, 17, 3.5, '#00000026');
+    paintRock(c, A, y => { const t = (footY - y) / H; if (t < 0 || t > 1) return []; const bulge = Math.abs(Math.sin(t * Math.PI * knobs + phase)), half = 6.5 + bulge * 3.2 - t * 1.6 + (t < .14 ? (.14 - t) * 50 : 0), x = cx + lean * t; return [[x - half - (y % 5 === 0 ? 1 : 0), x + half + 1]]; }, footY - H, footY, ROCK.canyon, { seed: seed + 61 });
+    const capY = footY - H + 1, x = cx + lean; stones(c, A, [[x + 1, capY - 3, 12, 5.5]], ['#4a2a20', '#7a3f2c', '#9a553a', '#c27a52']);
+    A.rect(c, x - 7, capY - 7, 8, 1, '#d08a5e');
   });
 }
 export function makeDryShrub(seed = 0) {
@@ -167,15 +166,16 @@ export const FRONTIER_LANDMARKS = {
   harpy: { x: S.harpy.x + 2.2, y: S.harpy.y - 3, clear: 5 },
   emberdig: { x: S.emberdig.x + 2, y: S.emberdig.y - 1.4, clear: 5 },
   wyrm: { x: S.wyrm.x, y: S.wyrm.y, clear: 6 },
-  drakes: { x: S.drakes.x + 1.6, y: S.drakes.y - 1.4, clear: 4.5 },
+  drakes: { x: S.drakes.x + 3, y: S.drakes.y, clear: 4.5 },
   matriarch: { x: S.matriarch.x + 1.8, y: S.matriarch.y - 1.6, clear: 4 },
   dragon: { x: CALDERA.x, y: CALDERA.y, clear: 8.5 },
 };
 // Hand-placed rock set pieces that frame the canyon.
 const MESAS = [[84, 4, 1], [104, 9.5, 0], [114, 26, 2], [93, 34, 1], [79, 26, 0], [124, 34, 0], [138, 20, 2], [108, 44, 1]];
-const ARCHES = [[100.5, 30, 0], [131, 10, 1]];
+const ARCHES = [[100.5, 30, 0], [122, 31, 1]];
 const HOODOO_GROUPS = [[89.5, 21, 3], [108.5, 13.2, 2], [97.5, 41, 3], [117.5, 21.5, 2], [80.5, 17.5, 2], [128, 28, 3]];
 
+/** Places the frontier's landmarks and scenery; returns { camp } (the camp's image) so the renderer can swap it as the camp grows. */
 export function decorateFrontier(api) {
   const { place, anim, at } = api, r = rng(70707), C = FRONTIER_CAMP;
   // Lines no scenery may cover: the trails themselves and each quest's last steps off the trail to its site.
@@ -189,7 +189,8 @@ export function decorateFrontier(api) {
   const blocked = (x, y, pad = 1.5) => trails.some(p => distLine(p, x, y) < pad) || hops.some(h => distLine(h, x, y) < pad * .8) || keep.some(k => Math.hypot(k.x - x, k.y - y) < k.r);
 
   // ---- Landmarks ----
-  anim('lm-frontier-camp', f => makeFrontierCamp(0, f), 3, 3, C.x, C.y);
+  // api.campLevel (0..3, optional) picks how built-up the outpost is; the textures are keyed per level.
+  const level = Math.max(0, Math.min(3, api.campLevel | 0)), camp = anim(level ? 'lm-frontier-camp-l' + level : 'lm-frontier-camp', f => makeFrontierCamp(level, f), 3, 3, C.x, C.y);
   const L = FRONTIER_LANDMARKS;
   anim('lm-harpy', makeHarpyCliff, 2, 1.2, L.harpy.x, L.harpy.y);
   anim('lm-ember', makeEmberMine, 3, 2.5, L.emberdig.x, L.emberdig.y);
@@ -229,4 +230,5 @@ export function decorateFrontier(api) {
   }
   // A few vents ring the caldera so the summit always smokes.
   for (const [dx, dy, seed] of [[-2, 8.5, 0], [8.5, 3, 1], [-9, -1, 1], [6, -7.5, 0]]) { const x = CALDERA.x + dx, y = CALDERA.y + dy; if (!blocked(x, y, 1.2)) anim('fr-vent-' + seed, fr => makeLavaVent(seed, fr), 3, 3.5, x, y); }
+  return { camp };
 }

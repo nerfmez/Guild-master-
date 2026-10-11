@@ -85,7 +85,7 @@ const TONES = {
   // Red Wind Canyon: rust and ochre sandstone; Sleeping Dragon Peak: slate and obsidian with lava in its cracks.
   canyon: ['#c99467', '#d19e70', '#bd875d'].map(hex), peak: ['#6c6670', '#746e77', '#625c66'].map(hex),
   sandLight: hex('#e2bf8e'), sandDrift: ['#d9b281', '#e0bb8a'].map(hex), crack: hex('#93583e'), crackLip: hex('#dcae80'), redPebble: hex('#a8673f'),
-  ash: ['#8c8689', '#9a9496'].map(hex), obsidian: hex('#3b3640'), glint: hex('#a9a1bd'), lava: ['#f7c35a', '#ec7a35', '#b3402a'].map(hex), scorch: hex('#4d4650'),
+  ash: ['#8c8689', '#9a9496'].map(hex), trailC: ['#e6c597', '#ecd0a6'].map(hex), trailCEdge: hex('#b9845a'), trailP: ['#a39ba4', '#b0a8b0'].map(hex), trailPEdge: hex('#4f4856'), obsidian: hex('#3b3640'), glint: hex('#a9a1bd'), lava: ['#f7c35a', '#ec7a35', '#b3402a'].map(hex), scorch: hex('#4d4650'),
   dirt: ['#ddc9a2', '#d4bf97', '#e4d2ad'].map(hex), dirtEdge: hex('#c4ad86'), pebble: hex('#bfb39b'),
   water: ['#94bcc6', '#9cc4cd'].map(hex), shine: hex('#c8e3e7'), bank: hex('#7c9372'), sand: hex('#cfc19a'),
   wheatSoil: ['#b39d6d', '#a28c5f'].map(hex), vegSoil: ['#8f7656', '#7c6548'].map(hex),
@@ -139,8 +139,13 @@ export function makeGroundPainter(left, top, size, scale = 2) {
     if (cd < cw + .22) { put(i, t < .6 - (cd - cw) * 2 ? TONES.bank : TONES.mossBank); return; }
     // Paths: solid dirt near the village, wearing into a patchy trail further out and fading away at the end.
     if (pd < 1) {
-      const wear = clamp01(1 - (I(11) - 21) / 24), taper = clamp01(I(9) / 6), half = (.24 + .26 * wear) * (.3 + .7 * taper), solid = (.45 + .55 * wear) * (.25 + .75 * taper), a = 1 - pd / half;
-      if (a > -.35) {
+      const wear = Math.max(clamp01(1 - (I(11) - 21) / 24), clamp01((I(15) + I(16)) * 1.5) * .55), taper = clamp01(I(9) / 6), half = (.24 + .26 * wear) * (.3 + .7 * taper), solid = (.45 + .55 * wear) * (.25 + .75 * taper), a = 1 - pd / half;
+      const fw = I(15) + I(16);
+      if (fw > .3 && a > -.35) {
+        const m = noise(x * 1.1 + 3, y * 1.1) * .6 + t * .4, cut = .85 * (.6 + a), canyon = I(15) >= I(16);
+        if (a > 0 && m < cut) { put(i, h < .03 ? TONES.pebble : canyon ? TONES.trailC[noise(x * 2, y * 2) > .62 ? 1 : 0] : TONES.trailP[noise(x * 2, y * 2) > .62 ? 1 : 0]); return; }
+        if (m < cut + .18) { put(i, canyon ? TONES.trailCEdge : TONES.trailPEdge); return; }
+      } else if (a > -.35) {
         const m = noise(x * 1.1 + 3, y * 1.1) * .6 + t * .4, cut = solid * (.6 + a) - (1 - solid) * .2;
         if (a > 0 && m < cut) { put(i, h < .02 ? TONES.pebble : TONES.dirt[noise(x * 2, y * 2) > .62 ? 1 : h < .3 ? 2 : 0]); return; }
         if (m < cut + .16) { put(i, a > -.1 && t < .5 ? TONES.dirtEdge : TONES.worn); return; }
@@ -171,31 +176,34 @@ export function makeGroundPainter(left, top, size, scale = 2) {
   /** Frontier ground before the shared grass mix: the caldera's scorched lava field takes over near the summit. Returns true when painted. */
   function frontierPixel(i, x, y, A, B, t, h, wc, wk) {
     const cd = I(17);
-    if (wk < .3 || cd > 15) return false;
+    if (wk < .3 || cd > 9) return false;
     // Lava seams: thin glowing cracks that widen toward the caldera, with a scorched rim around each.
-    const heat = clamp01(1 - cd / 15), seam = Math.abs(noise(x * .62 + 31, y * .62 - 7) - .5), seam2 = Math.abs(noise(x * 1.1 - 13, y * 1.1 + 40) - .5), w = .012 + heat * .03;
-    if (seam < w * .45 || (heat > .5 && seam2 < w * .3)) { put(i, h < .3 ? TONES.lava[0] : TONES.lava[1]); return true; }
-    if (seam < w || (heat > .5 && seam2 < w * .6)) { put(i, t < .5 ? TONES.lava[2] : TONES.lava[1]); return true; }
-    if (seam < w * 1.9 + heat * .02) { put(i, t < .6 ? TONES.obsidian : TONES.scorch); return true; }
+    const heat = clamp01(1 - cd / 9), seam = Math.abs(noise(x * .45 + 31, y * .45 - 7) - .5), seam2 = Math.abs(noise(x * .9 - 13, y * .9 + 40) - .5), w = .004 + heat * .02;
+    if (noise(x * .35 - 9, y * .35 + 4) < .42 - heat * .3) return false;
+    if (seam < w * .45 || (heat > .7 && seam2 < w * .25)) { put(i, h < .3 ? TONES.lava[0] : TONES.lava[1]); return true; }
+    if (seam < w || (heat > .7 && seam2 < w * .5)) { put(i, t < .5 ? TONES.lava[2] : TONES.lava[1]); return true; }
+    if (seam < w * 1.8 + .004) { put(i, t < .6 ? TONES.obsidian : TONES.scorch); return true; }
     if (heat > .35 && I(13) < .42 + heat * .1 && t < (heat - .3) * 1.4) { put(i, TONES.scorch); return true; }
     return false;
   }
   /** Frontier ground texture after the blended base: wind streaks, cracks and drifted sand in the canyon; ash and obsidian on the peak. */
   function frontierTexture(i, x, y, A, B, t, h, wc, wk) {
-    if (wc >= wk) {
+    // Which texture wins is dithered across the seam, so canyon sand frays into the peak's ash instead of stopping at a line.
+    if (wc - wk > (t - .5) * .9 + (noise(x * .6 + 17, y * .6) - .5) * .5) {
       // Wind streaks run across the screen, the way the canyon wind blows.
-      const streak = noise(A * .09 + 7, B * 1.25), drift = I(13);
-      if (streak > .72 && t < (streak - .72) * 5) { put(i, TONES.sandLight); return; }
+      const streak = noise(A * .2 + 7, B * 1.1) * (.55 + noise(A * .03, B * .06) * .6), drift = I(13);
+      if (streak > .66 && t < (streak - .66) * 4) { put(i, TONES.sandLight); return; }
       if (drift > .66 && t < (drift - .66) * 4.5) { put(i, TONES.sandDrift[h < .5 ? 0 : 1]); return; }
       const crack = Math.abs(noise(x * .8 + 11, y * .8 - 3) - .5);
-      if (drift < .5 && crack < .014) { put(i, TONES.crack); return; }
-      if (drift < .5 && crack < .024 && t < .35) { put(i, TONES.crackLip); return; }
+      const pan = noise(x * .07 + 3, y * .07 - 8) > .56;
+      if (pan && drift < .5 && crack < .012) { put(i, TONES.crack); return; }
+      if (pan && drift < .5 && crack < .02 && t < .35) { put(i, TONES.crackLip); return; }
       if (h > .986) put(i, TONES.redPebble);
     } else {
       const ash = noise(x * .17 + 5, y * .17 - 9);
       if (ash > .6 && t < (ash - .6) * 4) { put(i, TONES.ash[h < .5 ? 0 : 1]); return; }
       const fault = Math.abs(noise(x * .9 - 21, y * .9 + 4) - .5);
-      if (ash < .45 && fault < .013) { put(i, TONES.obsidian); return; }
+      if (ash < .45 && fault < .01 && noise(x * .07 - 5, y * .07 + 2) > .55) { put(i, TONES.obsidian); return; }
       if (h > .992) put(i, TONES.glint); else if (h > .982) put(i, TONES.obsidian);
     }
   }

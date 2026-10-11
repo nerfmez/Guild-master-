@@ -321,6 +321,8 @@ export const HUNT_ZONES = {
   woods: { name: 'ป่าต้นโอ๊ก', rank: 'E', x: 2, y: -25, r: 6, via: [[2, 8], [2, -2], [2, -12], [1, -20]], species: ['mushHopper', 'acornBeetle', 'mossWolf'], count: 7 },
   hills: { name: 'เนินผลึก', rank: 'D', x: 55, y: 15, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15]], species: ['pebbleCrab', 'crystalBat', 'marbleGolem'], count: 7 },
   mist: { name: 'ป่าหมอกจันทร์', rank: 'C', x: 0, y: -44, r: 6, via: [[2, 8], [2, -2], [2, -12], [1, -20], [5, -28], [2, -36]], species: ['mistWisp', 'lanternGhost', 'glowMoth'], count: 7 },
+  canyon: { name: 'หุบผาลมแดง', rank: 'B', x: 94, y: 25.5, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [62, 10.5], [70, 9.5], [78, 11.5], [86, 15], [94, 17.5]], species: ['dustLizard', 'cliffHarpy', 'emberImp'], count: 7 },
+  peak: { name: 'ยอดเขามังกรหลับ', rank: 'B', x: 112.5, y: -1.5, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [62, 10.5], [70, 9.5], [78, 11.5], [86, 15], [94, 17.5], [102, 19], [110, 17], [114, 10], [117, 3]], species: ['stoneDrake', 'magmaTortoise', 'stormRoc'], count: 6 },
 };
 /** Monster combat stats: hit points, damage per hit, seconds between hits, reach, walking speed (tiles/s), XP and coin drop.
     trait gives each creature its own way to fight:

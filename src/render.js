@@ -324,6 +324,9 @@ export function drawItemIcon(canvas,type='sword',size=40) {
   } else if(name==='people') {
     box(c,-14,-1,13,14,P.blue,P.deep); box(c,-12,-12,9,10,P.skin,P.deep); rect(c,-12,-12,9,3,'#795b50');
     box(c,1,-3,14,16,P.coral,P.deep); box(c,3,-15,10,11,P.skin,P.deep); rect(c,3,-15,10,4,'#d9be87');
+  } else if(name==='lantern') {
+    rect(c,-1,-15,2,4,P.woodDark); poly(c,[[-8,-11],[8,-11],[11,-2],[8,10],[-8,10],[-11,-2]],P.woodDark); poly(c,[[-6,-9],[6,-9],[9,-2],[6,8],[-6,8],[-9,-2]],P.coral);
+    rect(c,-4,-8,3,15,P.coralLight); rect(c,-7,-3,14,2,P.gold); rect(c,-5,9,10,3,P.gold); rect(c,-1,12,2,4,P.gold); rect(c,2,-6,2,3,P.cream);
   } else if(name==='banner') {
     rect(c,-11,-15,3,30,P.woodDark); rect(c,-9,-14,20,17,P.coral); poly(c,[[-9,3],[1,-1],[11,3],[11,6],[1,2],[-9,6]],P.coral); rect(c,-7,-13,2,14,P.coralLight); rect(c,-1,-10,5,9,P.cream); rect(c,-3,-7,9,3,P.cream);
   } else if(/staff|wand|magic/.test(name)) {

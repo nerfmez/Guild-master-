@@ -1,7 +1,7 @@
 /* The living world: adventurers (guild members and free adventurers) walk out to hunting grounds,
    fight monsters in real time, carry fallen friends home, and sell their loot in the village.
    Pure simulation: game.js calls tickLife with a small context of its own helpers. */
-import { siteQuestRoute, SITE_QUEST_SITES } from './site.js';
+import { siteQuestRoute, SITE_QUEST_SITES, FRONTIER_CAMP } from './site.js';
 import { HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES, JOB_COMBAT } from './content.js';
 
 const SUB = 0.25;          // seconds per combat step
@@ -38,7 +38,7 @@ function stockZones(state, ctx, step) {
   const w = state.world;
   for (const [zoneId, zone] of Object.entries(HUNT_ZONES)) {
     if (!ctx.zoneOpen(zone)) continue;
-    const living = w.monsters.filter(m => m.zone === zoneId && !m.raid && !m.boss);
+    const living = w.monsters.filter(m => m.zone === zoneId && !m.raid && !m.boss && !m.elite);
     for (const m of living) if (m.dead) { m.respawn -= step; if (m.respawn <= 0) { const p = pointIn(w, zone); Object.assign(m, { dead: false, hp: m.maxHp, x: p.x, y: p.y, hx: p.x, hy: p.y, target: null }); } }
     for (let i = living.length; i < zone.count; i++) w.monsters.push(spawnMonster(w, pick(w, zone.species), zoneId, pointIn(w, zone)));
   }
@@ -49,7 +49,7 @@ export function spawnMonster(w, species, zone, p, extra = {}) {
 }
 
 // ---- Free adventurers: they live at the inn, hunt on their own and spend in the village. ----
-export function freeLevelRank(level) { return level >= 9 ? 'C' : level >= 6 ? 'D' : level >= 3 ? 'E' : 'F'; }
+export function freeLevelRank(level) { return level >= 13 ? 'B' : level >= 9 ? 'C' : level >= 6 ? 'D' : level >= 3 ? 'E' : 'F'; }
 function newFree(state, ctx) {
   const w = state.world, used = new Set([...state.members.map(m => m.name), ...w.free.map(f => f.name)]);
   const names = ROOKIE_NAMES.filter(n => !used.has(n));
@@ -94,7 +94,7 @@ function makeHunter(state, ctx, who, kind, zoneId, party, start) {
     bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 7 + Math.floor(rand(w) * 4) };
 }
 export function freeStats(f) {
-  const job = JOBS[f.class], power = (job.power + (f.level - 1) * 2.7 + 4) * ({ F: 1, E: 1.04, D: 1.08, C: 1.13 }[f.rank] || 1);
+  const job = JOBS[f.class], power = (job.power + (f.level - 1) * 2.7 + 4) * ({ F: 1, E: 1.04, D: 1.08, C: 1.13, B: 1.19 }[f.rank] || 1);
   return { basePower: Math.round(power), health: Math.round(job.health + (f.level - 1) * 8), role: job.role };
 }
 function departures(state, ctx) {
@@ -152,7 +152,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   const part = MONSTER_PART[m.species];
   if (part && rand(state.world) < TRADE_RULES.partChance) { h.bag.parts ??= {}; h.bag.parts[part] = (h.bag.parts[part] || 0) + (s.boss ? 5 : 1); }
   const zoneRank = rankIdx(HUNT_ZONES[m.zone]?.rank || 'F');
-  if (s.boss || rand(state.world) < TRADE_RULES.treasureChance * (1 + zoneRank * 0.5)) {
+  if (s.boss || m.elite || rand(state.world) < TRADE_RULES.treasureChance * (1 + zoneRank * 0.5)) {
     const pool = Object.entries(TREASURES).filter(([, t]) => !t.boss && rankIdx(t.rank) <= zoneRank).map(([id]) => id);
     h.bag.treasures ??= [];
     if (s.boss) h.bag.treasures.push('rustCrown');
@@ -165,7 +165,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
     if (o.kind === 'member') { ctx.addXp(who, share); const gap = rankIdx(HUNT_ZONES[o.zone]?.rank || 'F') - rankIdx(who.rank); o.bag.merit += gap >= 1 ? 2 : gap === 0 ? 1 : .3; }
     else freeXp(ctx, who, share);
   }
-  if (m.raid || m.boss) ctx.onSpecialKill?.(m, h);
+  if (m.raid || m.boss || m.elite) ctx.onSpecialKill?.(m, h);
 }
 function freeXp(ctx, f, amount) {
   f.xp += amount;
@@ -429,7 +429,7 @@ export function tickLife(state, ctx, step) {
     tickHero(state, ctx, dt);
     tickExpeditions(state, ctx, dt);
     for (const m of w.monsters) if (!m.dead) monsterAct(state, ctx, m, dt);
-    w.monsters = w.monsters.filter(m => !(m.dead && (m.raid || m.boss || m.swarm || m.quest)));
+    w.monsters = w.monsters.filter(m => !(m.dead && (m.raid || m.boss || m.swarm || m.quest || m.elite)));
     arrangeCarry(state, ctx);
     tickPorters(state, ctx, dt);
   }
@@ -562,7 +562,7 @@ export const QUEST_BOSS = { patrol: 'hornHare', herbs: 'thornling', escort: 'flu
 /** Fields the raiders go for: crops in the wheat field, sheep in the pasture. */
 export const DEFEND_FIELDS = { farmraid: { x: -24.5, y: 12.7, r: 2.4, kind: 'crops', name: 'ไร่ข้าวสาลี' }, pasture: { x: -21, y: 29, r: 3, kind: 'flock', name: 'ฝูงแกะ' } };
 export const EXPEDITION = { waves: [0.25, 0.3, 0.45], hpPerDifficulty: 5.4, atkPerDifficulty: 0.17, eventWait: 30, wagonSpeed: .85, gatherTime: 7, defendGap: 22 };
-export const CAMP_AT = { x: 88, y: 17 };
+export const CAMP_AT = FRONTIER_CAMP;
 const scenarioOf = quest => quest?.scenario || 'explore';
 const missionOf = (state, id) => state.missions?.find(x => x.id === id);
 /** Send the party out: each member becomes a walker on the world map heading for the quest's site. */
@@ -579,7 +579,9 @@ export function startExpedition(state, ctx, mission, quest) {
     const hp = Math.round(120 + quest.difficulty * 3);
     rt.wagon = { x: door.x, y: door.y + .6, hp, maxHp: hp, path: route.slice(1).map(p => ({ x: p.x, y: p.y })), total: 0, done: 0, moving: false };
     for (let i = 1; i < route.length; i++) rt.wagon.total += dist(route[i - 1], route[i]);
-    rt.ambush = [.3, .6, .88]; rt.stage = 'escort';
+    // Ambushes wait until the wagon has left the village behind, then spread over the rest of the road.
+    const out = Math.min(.5, 20 / Math.max(1, rt.wagon.total));
+    rt.ambush = [.25, .6, .92].map(f => out + (1 - out) * f); rt.stage = 'escort';
   }
   if (kind === 'defend') {
     const field = DEFEND_FIELDS[quest.id] || { x: site.x, y: site.y - 2.5, r: 2.4, kind: 'crops', name: 'ไร่' };

@@ -5,16 +5,16 @@
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
  <meta name="theme-color" content="#939c32">
  <meta name="description" content="Guild Master — บ้านของนักผจญภัยในหมู่บ้านพิกเซล">
- <title>Guild Master · R38</title>
+ <title>Guild Master · R39</title>
  <link rel="icon" type="image/svg+xml" href="./assets/leaf.svg">
  <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
  <div id="app">
   <main class="world-area" aria-label="พื้นที่กิลด์">
-   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์ · R38…</span><button hidden>เปิดฉากอีกครั้ง</button><noscript>ต้องเปิด JavaScript ในเบราว์เซอร์เพื่อเล่นเกม</noscript></div></div>
+   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์ · R39…</span><button hidden>เปิดฉากอีกครั้ง</button><noscript>ต้องเปิด JavaScript ในเบราว์เซอร์เพื่อเล่นเกม</noscript></div></div>
    <header class="topbar">
-    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong id="brand-name">Guild Master</strong><small id="brand-sub">GUILD MASTER · R38</small></div></div>
+    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong id="brand-name">Guild Master</strong><small id="brand-sub">GUILD MASTER · R39</small></div></div>
     <div id="resources" class="resources" aria-label="ทรัพยากรกิลด์"></div>
     <div id="calendar" class="calendar"></div>
    </header>
@@ -32,6 +32,7 @@
      <button class="dock-btn" data-tab="members" data-dock="members"><canvas class="dock-icon" width="40" height="40" data-item="people"></canvas><span>สมาชิก</span></button>
      <button class="dock-btn" data-tab="village" data-dock="village"><canvas class="dock-icon" width="40" height="40" data-item="house"></canvas><span>หมู่บ้าน</span></button>
      <button class="dock-btn" data-tab="market" data-dock="market"><canvas class="dock-icon" width="40" height="40" data-item="coin"></canvas><span>ตลาด</span><em id="market-count" class="dock-badge"></em></button>
+     <button class="dock-btn" data-tab="festival" data-dock="festival"><canvas class="dock-icon" width="40" height="40" data-item="lantern"></canvas><span>เทศกาล</span><em id="festival-count" class="dock-badge"></em></button>
      <button class="dock-btn" data-tab="workshop" data-dock="workshop"><canvas class="dock-icon" width="40" height="40" data-item="sword"></canvas><span>คราฟต์</span></button>
      <button id="menu-button" class="dock-btn" data-tab="home" data-dock="home" aria-haspopup="dialog" aria-controls="management-dialog"><canvas class="dock-icon" width="40" height="40" data-item="banner"></canvas><span>กิลด์</span></button>
     </nav>
@@ -39,7 +40,7 @@
   </main>
   <dialog id="management-dialog" class="management-dialog" aria-labelledby="panel-heading">
    <aside class="notebook">
-    <div class="notebook-top"><div><small>GUILD MASTER · R38</small><h1 id="panel-heading">เมนูกิลด์</h1></div><button id="menu-close" class="close-dialog" aria-label="กลับสู่ฉาก">×</button></div>
+    <div class="notebook-top"><div><small>GUILD MASTER · R39</small><h1 id="panel-heading">เมนูกิลด์</h1></div><button id="menu-close" class="close-dialog" aria-label="กลับสู่ฉาก">×</button></div>
     <div class="menu-body">
      <nav class="bottom-nav" aria-label="เมนูกิลด์">
       <button data-tab="home"><span>⌂</span>ภาพรวม</button><button data-tab="quests"><span>▤</span>คำร้อง</button><button data-tab="members"><span>♟</span>สมาชิก</button><button data-tab="build"><span>▧</span>ห้องและต่อเติม</button><button data-tab="workshop"><span>⚒</span>คราฟต์</button><button data-tab="village"><span>⌂</span>หมู่บ้าน</button><button data-tab="journal"><span>✦</span>บันทึก</button>
@@ -53,10 +54,12 @@
   <div id="chapter-label" hidden></div><div id="objective" hidden></div><div id="mission-strip" hidden></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <dialog id="settings-dialog"><form method="dialog"><button class="close-dialog" aria-label="ปิด">×</button></form><div id="settings-content"></div></dialog>
-  <div id="title-screen" class="title-screen" hidden><div class="title-card"><img src="./assets/leaf.svg" alt=""><small>PIXEL GUILD STORY</small><h1>Guild Master</h1><p>บ้านเล็ก ๆ ของนักผจญภัย ข้างต้นโอ๊กใหญ่</p><p id="title-loading" class="title-loading" hidden>กำลังเตรียมโลก…</p><div class="title-actions"><button id="title-continue" class="primary" hidden>เล่นต่อ<small id="title-save"></small></button><button id="title-new">เริ่มกิลด์ใหม่<small>เปิดบ้านว่างหลังแรก</small></button></div><span class="title-version">R38</span></div></div>
+  <div id="title-screen" class="title-screen" hidden><div class="title-card"><img src="./assets/leaf.svg" alt=""><small>PIXEL GUILD STORY</small><h1>Guild Master</h1><p>บ้านเล็ก ๆ ของนักผจญภัย ข้างต้นโอ๊กใหญ่</p><p id="title-loading" class="title-loading" hidden>กำลังเตรียมโลก…</p><div class="title-actions"><button id="title-continue" class="primary" hidden>เล่นต่อ<small id="title-save"></small></button><button id="title-new">เริ่มกิลด์ใหม่<small>เปิดบ้านว่างหลังแรก</small></button></div><span class="title-version">R39</span></div></div>
   <dialog id="setup-dialog" class="setup-dialog" aria-labelledby="setup-title"><div id="setup-content"></div></dialog>
   <dialog id="story-dialog" class="story-dialog" aria-labelledby="story-title"><div id="story-content"></div></dialog>
   <dialog id="visitor-dialog" class="visitor-dialog" aria-labelledby="visitor-title"><div id="visitor-content"></div></dialog>
+  <dialog id="lesson-dialog" class="lesson-dialog" aria-labelledby="lesson-body"><div id="lesson-body"></div><div class="lesson-actions"><button class="secondary" data-lesson-close>ไว้ทีหลัง</button><button class="primary" data-lesson-go>ไปทำเลย</button></div></dialog>
+  <dialog id="show-dialog" class="dungeon-dialog show-dialog" aria-labelledby="show-title"><div class="dd-head"><b id="show-title"></b><button class="close-dialog" data-show-close aria-label="ปิด">×</button></div><canvas id="show-canvas" class="dungeon-view" width="960" height="540"></canvas></dialog>
   <dialog id="dungeon-dialog" class="dungeon-dialog" aria-labelledby="dd-title"><div class="dd-head"><b id="dd-title"></b><button class="close-dialog" data-dungeon-close aria-label="ปิด">×</button></div><canvas id="dungeon-big" class="dungeon-view" width="800" height="440"></canvas></dialog>
   <dialog id="event-dialog" class="event-dialog" aria-labelledby="event-title"><div id="event-content"></div></dialog>
   <dialog id="report-dialog" class="report-dialog" aria-labelledby="report-title"><div id="report-content"></div></dialog>

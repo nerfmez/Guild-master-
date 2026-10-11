@@ -9,9 +9,10 @@ import { QUESTS,REGIONS } from './content.js';
 import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
 import { decorateFrontier } from './frontier-art.js';
+import { makeFrontierCamp } from './landmarks.js';
 import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
-import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,makeDojo,makeShop,makeSmithyShop,HOME_STYLES,makeOutdoor,makeStall,makeArena,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
+import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,makeDojo,makeShop,makeSmithyShop,HOME_STYLES,makeOutdoor,makeStall,makeArena,makeFairground,makeStage,makeFestivalDecor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 export class GuildRenderer {
@@ -42,7 +43,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R38',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R39',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -249,7 +250,7 @@ export class GuildRenderer {
   place('lm-camp',makeLostCamp,S.rescue.x-1.9,S.rescue.y-1.8);
   anim('lm-fire',makeCampfire,3,7,S.rescue.x+1.1,S.rescue.y-.8);
   anim('lm-heart',makeHeartTree,2,.9,S.heart.x+3,S.heart.y-3);
-  decorateFrontier({place,anim,flat,bake,at,scene:this.scene,props:this.worldProps,animated:this.animated});
+  const frontier=decorateFrontier({place,anim,flat,bake,at,scene:this.scene,props:this.worldProps,animated:this.animated,campLevel:this.state.frontier?.camp||0});this.campSprite=frontier?.camp||null;this.campShown=this.state.frontier?.camp||0;
   for(const sign of SIGNPOSTS)place('sign-'+sign.region,()=>makeSignpost(sign.text,false,sign.flip),sign.x,sign.y);
   // Little lives: sheep in the pasture, ducks on the pond, butterflies over the flowers.
   const puff=dark=>{const c=document.createElement('canvas');c.width=c.height=10;const g=c.getContext('2d');g.fillStyle=dark?'#8d8782':'#f4f0e6';g.fillRect(2,0,6,10);g.fillRect(0,2,10,6);g.fillRect(1,1,8,8);g.fillStyle=dark?'#a9a39d':'#ffffff';g.fillRect(2,2,4,3);return{canvas:c};};bake('puff',()=>puff(false));bake('puff-dark',()=>puff(true));
@@ -298,7 +299,9 @@ export class GuildRenderer {
    const lock=makeSignpost(`ต้องเป็นกิลด์ ${rank}`,true,sign.flip),q=gridPoint(sign.x+2.4,sign.y-2.6);this.texture('lock-'+sign.region+rank,lock.canvas);this.worldSigns.push(this.scene.add.image(q.x-lock.footX,q.y-lock.footY,'lock-'+sign.region+rank).setOrigin(0).setDepth(q.y));}
  }
  updateWorld(dt,playing){
-  if(!this.foes)return;this.refreshWorldSigns();const t=this.realTime||0;if(this.decorJob){const start=performance.now();while(performance.now()-start<7)if(this.decorJob.next().done){this.decorJob=null;break;}this.cullClock=0;}this.updateGround();this.updateCritters(dt,t,playing);
+  if(!this.foes)return;
+  // The frontier camp grows in place when the guild upgrades it.
+  const camp=this.state.frontier?.camp||0;if(this.campSprite&&camp!==this.campShown){this.campShown=camp;const key=camp?'lm-frontier-camp-l'+camp:'lm-frontier-camp';for(let f=0;f<3;f++)if(!this.scene.textures.exists(`${key}-${f}`))this.texture(`${key}-${f}`,makeFrontierCamp(camp,f).canvas);const a=this.animated?.find(x=>x.image===this.campSprite);if(a)a.key=key;this.campSprite.setTexture(key+'-0');}this.refreshWorldSigns();const t=this.realTime||0;if(this.decorJob){const start=performance.now();while(performance.now()-start<7)if(this.decorJob.next().done){this.decorJob=null;break;}this.cullClock=0;}this.updateGround();this.updateCritters(dt,t,playing);
   const SPEED={hop:.9,walk:.55,float:.5,root:0};
   for(const f of this.foes){
    const moving=Math.hypot(f.tx-f.x,f.ty-f.y)>.05;
@@ -340,10 +343,10 @@ export class GuildRenderer {
  }
  // A member on an errand walks out along the road to the dojo or arena, stays a while, and walks back.
  updateErrand(a,playing){
-  const e=a.member.errand,lot=this.villageLot(e.kind==='exam'?'arena':'dojo'),b=buildingRect(this.state),door={x:b.x+b.w/2,y:b.y+b.h+.4};
-  const site=e.kind==='exam'?{x:lot.x+2+((hash(a.member.id)%3)-1)*.5,y:lot.y+1.5}:{x:lot.x+1.3,y:lot.y+2.9};
+  const e=a.member.errand,lot=this.villageLot(e.kind==='exam'||e.kind==='festival'?'arena':'dojo'),b=buildingRect(this.state),door={x:b.x+b.w/2,y:b.y+b.h+.4};
+  const site=e.kind==='exam'||e.kind==='festival'?{x:lot.x+2+((hash(a.member.id)%3)-1)*.5,y:lot.y+1.5}:{x:lot.x+1.3,y:lot.y+2.9};
   const route=[door,{x:door.x,y:17.5},{x:site.x,y:17.5},site],total=route.slice(1).reduce((s,p,k)=>s+Math.hypot(p.x-route[k].x,p.y-route[k].y),0);
-  const r=Math.max(0,Math.min(1,(this.state.elapsed-e.start)/((e.end-e.start)||1))),walk=.3;
+  const r=Math.max(0,Math.min(1,(this.state.elapsed-e.start)/((e.end-e.start)||1))),walk=e.kind==='exam'||e.kind==='festival'?.12:.3;
   const along=d=>{let left=d;for(let k=1;k<route.length;k++){const p=route[k-1],q=route[k],len=Math.hypot(q.x-p.x,q.y-p.y);if(left<=len||k===route.length-1){const f=len?Math.max(0,Math.min(1,left/len)):0;return{x:p.x+(q.x-p.x)*f,y:p.y+(q.y-p.y)*f};}left-=len;}return route[route.length-1];};
   const pos=r<walk?along(total*r/walk):r>1-walk?along(total*(1-r)/walk):site,p=gridPoint(pos.x,pos.y),dx=p.x-a.x,dy=p.y-a.y,moving=Math.hypot(dx,dy)>.05;
   if(moving)a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
@@ -410,14 +413,15 @@ export class GuildRenderer {
   // Buildings stand where the player put them (older saves fall back to the original lots); each home looks as grown as its family.
   const homeStyle=(lot,tier)=>tier<3?lot.styles[tier]:lot.styles[2]==='tall'?'stone':'tall';
   VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses){const at=this.villageLot('h'+i);want.push({key:'h'+i,style:homeStyle(lot,homeOf(this.state,'h'+i).tier),seed:lot.seed,x:at.x,y:at.y,rot:at.rot||0});}});
-  for(const id of VILLAGE_BUSINESSES){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y,rot:at.rot||0});}
+  for(const id of VILLAGE_BUSINESSES){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:id==='fairground'||id==='stage'?{key:id,fest:id,level:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y,rot:at.rot||0});}
   const sig=JSON.stringify(want);if(sig===this.villageSig)return;const first=this.villageSig===null;this.villageSig=sig;
   const old=this.villageProps,next=new Map();
-  for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.style)+':'+w.x+','+w.y+','+(w.rot||0);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
+  for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.fest?w.fest+w.level:w.style)+':'+w.x+','+w.y+','+(w.rot||0);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
    const images=[],before=(this.chimneys||[]).length;
    if(w.lot){const s=makeSignpost('ที่ดินว่าง');if(!this.scene.textures.exists('lot-sign'))this.texture('lot-sign',s.canvas);const p=gridPoint(w.x,w.y);images.push(this.scene.add.image(p.x-s.footX,p.y-s.footY,'lot-sign').setOrigin(0).setDepth(p.y).setAlpha(.9));}
    else if(w.market){for(let k=0;k<w.market;k++){const key='stall-'+k,sp=makeStall(w.seed+k,k);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const at=[[0,0],[2.1,.3],[.9,2.1]][k],p=gridPoint(w.x+at[0],w.y+at[1]),c=gridPoint(w.x+at[0]+.8,w.y+at[1]+.6);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+4));}}
    else if(w.arena){const key='arena-'+w.arena,sp=makeArena(w.arena);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+2,w.y+1.5);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y-20));}
+   else if(w.fest){const make=w.fest==='stage'?makeStage:makeFairground,[fw,fh]=w.fest==='stage'?[3.4,2.8]:[5,4];for(let f=0;f<2;f++){const k=`${w.fest}-${w.level}-${f}`;if(!this.scene.textures.exists(k))this.texture(k,make(w.level,f).canvas);}const sp=make(w.level,0),p=gridPoint(w.x,w.y),c=gridPoint(w.x+fw/2,w.y+fh/2),img=this.scene.add.image(p.x-sp.footX,p.y-sp.footY,`${w.fest}-${w.level}-0`).setOrigin(0).setDepth(c.y-20);img.festKey=`${w.fest}-${w.level}`;images.push(img);}
    else images.push(this.addHome(w.style,w.seed,w.x,w.y,w.rot));
    const chimneys=(this.chimneys||[]).slice(before);
    for(const image of images){this.worldProps.push(image);if(!first&&!w.lot){const y=image.y;image.y=y-18;this.scene.tweens.add({targets:image,y,duration:420,ease:'Bounce.easeOut'});}}
@@ -543,8 +547,23 @@ export class GuildRenderer {
   if(this.zoomTarget){this.zoom+=(this.zoomTarget-this.zoom)*Math.min(1,dt*4);if(Math.abs(this.zoomTarget-this.zoom)<.005){this.zoom=this.zoomTarget;this.zoomTarget=null;}}
   this.applyView();
  }
+ // While a festival runs its building twinkles, bunting and balloons go up, and lanterns rise over the village.
+ updateFestival(dt){
+  const live=this.state.festivals?.live,t=this.realTime||0;
+  for(const e of this.villageProps?.values()||[])for(const img of e.images)if(img.festKey)img.setTexture(`${img.festKey}-${live?Math.floor(t*2)%2:0}`);
+  const key=live?live.kind+live.start:null;
+  if(key!==this.festKey){for(const d of this.festDecor||[])d.image.destroy();this.festDecor=[];this.festKey=key;
+   if(live){const F={tournament:'arena',harvest:'fairground',lantern:'stage'}[live.kind],lot=this.villageLot(F),[w,h]=VILLAGE_FOOTPRINT[F]||[4,3];
+    for(const kind of ['bunting','balloon','lantern','confetti'])for(let f=0;f<2;f++){const k=`fest-${kind}-${f}`;if(!this.scene.textures.exists(k))this.texture(k,makeFestivalDecor(kind,f).canvas);}
+    const spots=[[-.6,h+.4,'bunting'],[w+.2,h+.2,'bunting'],[-.8,-.2,'balloon'],[w+.6,-.4,'balloon'],[w/2,h+1.2,'confetti']];
+    for(const [dx,dy,kind] of spots){const sp=makeFestivalDecor(kind,0),p=gridPoint(lot.x+dx,lot.y+dy);this.festDecor.push({kind,image:this.scene.add.image(p.x-sp.footX,p.y-sp.footY,`fest-${kind}-0`).setOrigin(0).setDepth(p.y+2),x:p.x,y:p.y});}
+    if(live.kind==='lantern')for(let i=0;i<14;i++){const p=gridPoint(lot.x+w/2+(i%5-2)*2.2,lot.y+h/2+Math.floor(i/5)*1.6),sp=makeFestivalDecor('lantern',0);this.festDecor.push({kind:'sky',image:this.scene.add.image(p.x,p.y,'fest-lantern-0').setOrigin(.5,1).setBlendMode(Phaser.BlendModes.ADD),x:p.x,y:p.y,phase:i*1.7,foot:sp.footY});}}}
+  for(const d of this.festDecor||[]){if(d.kind==='sky'){const open=this.state.elapsed>=live.open,k=open?((t*.12+d.phase*.07)%1):0;d.image.setTexture('fest-lantern-'+(Math.floor(t*2+d.phase)%2)).setPosition(Math.round(d.x+Math.sin(t+d.phase)*6),Math.round(d.y-k*260)).setAlpha(open?1-k*.7:0).setDepth(d.y+900);}
+   else d.image.setTexture(`fest-${d.kind}-${Math.floor(t*2+d.x)%2}`);}
+ }
  updateLife(dt,playing){
   this.updateCaravan();
+  this.updateFestival(dt);
   const w=this.state.world;if(!w||!this.scene)return;const t=this.realTime||0;
   this.lifeSprites??=new Map();this.hpBars??=this.scene.add.graphics().setDepth(99990);this.hpBars.clear();
   const seen=new Set(),hunters=new Map(w.hunters.map(h=>[h.id,h]));
@@ -556,10 +575,11 @@ export class GuildRenderer {
    if(!this.scene.textures.exists('msh-'+sp.size[0])){const c=document.createElement('canvas');c.width=Math.round(sp.size[0]*.8);c.height=5;const g=c.getContext('2d');g.fillStyle='rgba(60,50,40,.24)';g.beginPath();g.ellipse(c.width/2,2.5,c.width/2,2.5,0,0,Math.PI*2);g.fill();this.texture('msh-'+sp.size[0],c);s.shadow.setTexture('msh-'+sp.size[0]);}
    s.alpha=m.dead?Math.max(0,s.alpha-dt*2.5):Math.min(1,s.alpha+dt*2);s.flash=Math.max(0,s.flash-dt);
    const p=gridPoint(m.x,m.y),moving=Math.hypot(m.x-s.last.x,m.y-s.last.y)>.002;if(moving&&Math.abs((m.x-s.last.x)-(m.y-s.last.y))>.001)s.flip=(m.x-s.last.x)-(m.y-s.last.y)<0;s.last={x:m.x,y:m.y};
-   const lift=sp.kind==='float'?Math.sin(t*2+hash(m.id)%7)*2.5:sp.kind==='hop'&&moving?Math.abs(Math.sin(t*7))*5:0,frame=Math.floor(t*(moving?6:1.5)+hash(m.id)%5)%2,scale=MONSTER_STATS[m.species]?.boss?1.6:m.raid?1.15:1;
-   s.image.setTexture(this.monTex(m.species,frame,s.flash>0)).setPosition(Math.round(p.x),Math.round(p.y-lift)).setDepth(p.y).setFlipX(!!s.flip).setScale(scale).setAlpha(s.alpha).setVisible(s.alpha>0);
+   s.atk=Math.max(0,(s.atk||0)-dt);const lift=sp.kind==='float'?Math.sin(t*2+hash(m.id)%7)*2.5:sp.kind==='hop'&&moving?Math.abs(Math.sin(t*7))*5:0,frame=s.atk>0?2:Math.floor(t*(moving?6:1.5)+hash(m.id)%5)%2,scale=MONSTER_STATS[m.species]?.boss?(m.species==='emberDragon'?1.25:1.6):m.elite?1.35:m.raid?1.15:1;
+   const under=m.under>0;s.image.setTexture(this.monTex(m.species,frame,s.flash>0)).setPosition(Math.round(p.x),Math.round(p.y-lift+(under?10:0))).setDepth(p.y).setFlipX(!!s.flip).setScale(scale).setAlpha(under?.25:s.alpha).setVisible(s.alpha>0).setTint(m.elite?0xffe0b0:0xffffff);
+   if(m.elite&&!m.dead){s.crown??=this.scene.add.text(0,0,'👑',{fontSize:'12px'}).setOrigin(.5,1);s.crown.setPosition(Math.round(p.x),Math.round(p.y-sp.size[1]*scale-10)).setDepth(p.y+1).setVisible(s.alpha>0);}else s.crown?.setVisible(false);
    s.shadow.setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y-.5).setAlpha(s.alpha).setVisible(s.alpha>0);
-   if(!m.dead)bar(p.x,p.y-sp.size[1]*scale-6,m.hp/m.maxHp,m.raid||MONSTER_STATS[m.species]?.boss?0xd9623f:0xe0a24a);
+   if(!m.dead&&!under)bar(p.x,p.y-sp.size[1]*scale-6,m.hp/m.maxHp,m.raid||m.elite||MONSTER_STATS[m.species]?.boss?0xd9623f:0xe0a24a);
   }
   // Free adventurers: in town, out hunting, or carried home.
   for(const f of w.free){
@@ -578,7 +598,24 @@ export class GuildRenderer {
    const p=gridPoint(pt.x,pt.y),dx=p.x-(s.px??p.x),dy=p.y-(s.py??p.y),moved=Math.hypot(dx,dy)>.05&&playing;s.px=p.x;s.py=p.y;if(moved)s.dir=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
    this.placeBody(s.image,key,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):'idle',s.dir,Math.round(p.y)+.2);
   }
-  for(const [id,s] of this.lifeSprites)if(!seen.has(id)){s.image.destroy();s.shadow?.destroy();this.lifeSprites.delete(id);}
+  // Quest scenes: the escorted wagon, the raided field, the nodes being gathered and the survivors walking home.
+  this.questGfx??=this.scene.add.graphics().setDepth(-9000);this.questGfx.clear();
+  for(const ms of this.state.missions||[]){const rt=ms.rt;if(!rt||ms.status!=='active')continue;
+   if(rt.wagon){const wg=rt.wagon,p=gridPoint(wg.x,wg.y);if(!this.scene.textures.exists('qwagon-0'))for(let f=0;f<2;f++)this.texture('qwagon-'+f,makeBreadWagon(f).canvas);
+    const s=sprite('wagon-'+ms.id,()=>({image:this.scene.add.image(0,0,'qwagon-0').setOrigin(62/124,74/82),last:{x:wg.x,y:wg.y}}));const dx=wg.x-s.last.x,dy=wg.y-s.last.y;if(Math.abs(dx-dy)>.001)s.flip=dx-dy<0;s.last={x:wg.x,y:wg.y};
+    s.image.setTexture('qwagon-'+(wg.moving?Math.floor(t*4)%2:0)).setPosition(Math.round(p.x),Math.round(p.y-(wg.moving?Math.abs(Math.sin(t*9)):0))).setDepth(p.y+40).setFlipX(!!s.flip).setScale(.62);
+    bar(p.x,p.y-52,wg.hp/wg.maxHp,0xe8b04a);if(rt.ambushed&&Math.floor(t*2)%2)this.hpBars.fillStyle(0xd9584a,1).fillTriangle(p.x-5,p.y-64,p.x+5,p.y-64,p.x,p.y-57);}
+   if(rt.field){const f=rt.field,lost=1-rt.crops/100,c=gridPoint(f.x,f.y);
+    // Trampled, eaten patches spread over the field as the crops go.
+    const g=this.questGfx;for(let i=0;i<Math.round(lost*14);i++){const a=i*2.39,d=Math.sqrt((i+1)/14)*f.r,q=gridPoint(f.x+Math.cos(a)*d,f.y+Math.sin(a)*d*.8);g.fillStyle(f.kind==='flock'?0xd9c8a0:0x8a6f4a,.75).fillEllipse(q.x,q.y,26,12);}
+    this.hpBars.fillStyle(0x3b302a,.85).fillRect(Math.round(c.x-30),Math.round(c.y-70),60,7);this.hpBars.fillStyle(rt.crops>50?0x9fd06a:rt.crops>25?0xe8b04a:0xd9584a,1).fillRect(Math.round(c.x-29),Math.round(c.y-69),Math.round(58*rt.crops/100),5);}
+   if(rt.nodes&&rt.stage!=='go')for(const [i,nd] of rt.nodes.entries()){const q=gridPoint(nd.x,nd.y),done=nd.progress>=1,g=this.questGfx;
+    g.fillStyle(done?0x9fd06a:0xfff1c4,done?.5:.35+.25*Math.sin(t*4+i)).fillEllipse(q.x,q.y,20,10);if(!done){g.lineStyle(2,0xf4b860,1).beginPath();g.arc(q.x,q.y-14,6,-Math.PI/2,-Math.PI/2+Math.PI*2*nd.progress);g.strokePath();}}
+   if(rt.npcs)rt.npcs.forEach((n,i)=>{const look=villagerLook({seed:hash(ms.id)+i,client:'ทีมสำรวจ'}),key=this.actorKey(look),s=sprite(`npc-${ms.id}-${i}`,()=>({image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52),dir:'south'}));
+    const p=gridPoint(n.x,n.y),dx=p.x-(s.px??p.x),dy=p.y-(s.py??p.y),moved=Math.hypot(dx,dy)>.05&&playing;s.px=p.x;s.py=p.y;if(moved)s.dir=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
+    this.placeBody(s.image,key,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):'idle',s.dir,Math.round(p.y)+.2);});
+  }
+  for(const [id,s] of this.lifeSprites)if(!seen.has(id)){s.image.destroy();s.shadow?.destroy();s.crown?.destroy();this.lifeSprites.delete(id);}
   this.playFx(dt);
  }
  // Damage numbers, skill flashes and knock-outs.
@@ -598,7 +635,19 @@ export class GuildRenderer {
   for(const e of events){
    const p=gridPoint(e.x,e.y);if(!near(p))continue;
    if(e.type==='hit'){const s=this.lifeSprites?.get(e.id);if(s)s.flash=.12;this.floatText(p.x,p.y-28,String(e.amount),e.crit?'#ffd36a':'#ffffff',e.crit?11:9);const col=SHOT_COLORS[e.kind];if(col){const f=gridPoint(e.fx,e.fy);this.shot(f,p,col,e.kind);}else if(e.kind==='holy')this.ring(p.x,p.y-8,0xfff1c4,10);}
-   else if(e.type==='hurt')this.floatText(p.x,p.y-34,String(e.amount),'#ff8a7a',9);
+   else if(e.type==='hurt'){this.floatText(p.x,p.y-(e.wagon?56:34),String(e.amount),e.wagon?'#ffcf7a':'#ff8a7a',9);const ms=this.lifeSprites?.get(e.by);if(ms)ms.atk=.3;}
+   else if(e.type==='spit'){const f=gridPoint(e.x,e.y),q=gridPoint(e.tx,e.ty);this.shot({x:f.x,y:f.y-6},q,/ember|magma|Dragon|stone/.test(e.species)?0xf08a4b:/mist|wisp|ghost/.test(e.species)?0x9fd6d0:0x9fd06a,'bolt');}
+   else if(e.type==='charge'){this.dustPuff(e.x-.5,e.y-.5,1,1);this.floatText(p.x,p.y-40,'พุ่งชน!','#ffcf7a',9);}
+   else if(e.type==='slam'){this.ring(p.x,p.y,0xb39d6d,30);this.ring(p.x,p.y,0xe8dccb,18);this.floatText(p.x,p.y-30,'ทุบพื้น!','#ffcf7a',9);}
+   else if(e.type==='burrow'){this.dustPuff(e.x-.6,e.y-.6,1.2,1.2);this.floatText(p.x,p.y-30,'มุดดิน!','#e8dccb',9);}
+   else if(e.type==='erupt'){this.ring(p.x,p.y,0xd9b26f,34);this.dustPuff(e.x-.8,e.y-.8,1.6,1.6);this.floatText(p.x,p.y-50,'โผล่จากทราย!','#ffcf7a',10);this.camera?.shake?.(160,.004);}
+   else if(e.type==='breath'){const q=gridPoint(e.tx,e.ty);for(let k=1;k<=5;k++){const x=p.x+(q.x-p.x)*k/5,y=p.y-20+(q.y-p.y+12)*k/5;this.scene.time.delayedCall(k*60,()=>this.ring(x,y,k%2?0xf08a4b:0xffd36a,10+k*5));}this.floatText(p.x,p.y-70,'พ่นไฟ!','#ff9a5a',12);this.camera?.shake?.(200,.005);}
+   else if(e.type==='summon'){this.ring(p.x,p.y,0xb98ad1,36);this.floatText(p.x,p.y-60,'เรียกสมุน!','#d9b8ff',11);}
+   else if(e.type==='munch')this.floatText(p.x,p.y-24,'งั่ม!','#f4b860',8);
+   else if(e.type==='gather'){this.floatText(p.x,p.y-20,e.done?'เสร็จ!':'+','#bff0a0',e.done?10:9);}
+   else if(e.type==='questWave')this.floatText(p.x,p.y-40,e.scenario==='escort'?'ซุ่มโจมตี!':e.scenario==='defend'?'มอนบุกระลอกใหม่!':`ศัตรูระลอก ${e.wave}!`,'#ffd36a',11);
+   else if(e.type==='questBoss'){this.floatText(p.x,p.y-60,'บอสปรากฏตัว!','#ff8a5a',13);this.ring(p.x,p.y,0xd9584a,40);}
+   else if(e.type==='questClear'){this.floatText(p.x,p.y-50,'สำเร็จ!','#9fe08a',13);this.ring(p.x,p.y,0x9fe08a,36);}
    else if(e.type==='heal')this.floatText(p.x,p.y-36,'+'+e.amount,e.potion?'#9fe0ff':'#8fe28a',9);
    else if(e.type==='skill'){this.floatText(p.x,p.y-44,e.name,'#fff1c4',8);if(e.skill==='fireball'){const q=gridPoint(e.tx,e.ty);this.ring(q.x,q.y,0xf08a4b,22);}else this.ring(p.x,p.y,e.skill==='guard'?0x8eb6e0:e.skill==='blessing'?0x9fe08a:0xe8cd8c,e.skill==='blessing'?28:16);}
    else if(e.type==='ko')this.floatText(p.x,p.y-30,'สลบ!','#ffb0a0',10);
