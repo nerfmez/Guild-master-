@@ -322,6 +322,31 @@ export const CLASS_COMBAT = {
   healer: { reach: 3.5, rate: 1.5, dmg: .55, skill: 'blessing', skillName: 'แสงอวยพร', skillCd: 12 },
 };
 /** The guild's share of what its members earn hunting, and the trading-post fee everyone pays when selling loot. */
+/** Every job fights its own way: basic attack (kind, pace, reach, damage) and a signature skill.
+    effect: guard, shieldwall, aegis, cleave, whirlwind, volley, snare, thornward, aimed, deadeye,
+    fireball, frost, meteor, chain, timewarp, blessing, sanctuary, miracle, valor, crescendo. */
+export const JOB_COMBAT = {
+  warrior: { attack: 'slash', rate: 1.1, reach: .9, dmg: 1, skill: 'guard', name: 'กำแพงโล่', cd: 9 },
+  guardian: { attack: 'slash', rate: 1.15, reach: .9, dmg: 1, skill: 'shieldwall', name: 'ป้อมโล่คุ้มทีม', cd: 10 },
+  paladin: { attack: 'holy', rate: 1.1, reach: 1, dmg: 1.1, skill: 'aegis', name: 'โล่ศักดิ์สิทธิ์', cd: 11 },
+  duelist: { attack: 'slash', rate: .85, reach: .9, dmg: 1.05, skill: 'cleave', name: 'ฟันกวาด', cd: 7 },
+  blademaster: { attack: 'slash', rate: .75, reach: 1, dmg: 1.1, skill: 'whirlwind', name: 'พายุดาบ', cd: 8 },
+  archer: { attack: 'arrow', rate: 1.2, reach: 4.5, dmg: .9, skill: 'volley', name: 'ยิงสามดอก', cd: 8 },
+  ranger: { attack: 'arrow', rate: 1.1, reach: 4.8, dmg: .95, skill: 'snare', name: 'ศรตรึง', cd: 8 },
+  warden: { attack: 'arrow', rate: 1, reach: 5, dmg: 1, skill: 'thornward', name: 'ฝนศรหนาม', cd: 9 },
+  sharpshooter: { attack: 'pierce', rate: 1.4, reach: 5.5, dmg: 1.15, skill: 'aimed', name: 'เล็งจุดตาย', cd: 7 },
+  hawkeye: { attack: 'pierce', rate: 1.3, reach: 6, dmg: 1.25, skill: 'deadeye', name: 'ตาเหยี่ยวพิฆาต', cd: 8 },
+  mage: { attack: 'bolt', rate: 1.6, reach: 4, dmg: 1.3, skill: 'fireball', name: 'ลูกไฟ', cd: 10 },
+  sage: { attack: 'frostbolt', rate: 1.5, reach: 4.2, dmg: 1.25, skill: 'frost', name: 'วงน้ำแข็ง', cd: 9 },
+  archsage: { attack: 'frostbolt', rate: 1.4, reach: 4.5, dmg: 1.3, skill: 'timewarp', name: 'บิดกาลเวลา', cd: 12 },
+  elementalist: { attack: 'bolt', rate: 1.5, reach: 4.2, dmg: 1.4, skill: 'meteor', name: 'อุกกาบาต', cd: 11 },
+  stormcaller: { attack: 'spark', rate: 1.3, reach: 4.5, dmg: 1.45, skill: 'chain', name: 'สายฟ้าลูกโซ่', cd: 9 },
+  healer: { attack: 'light', rate: 1.5, reach: 3.5, dmg: .55, skill: 'blessing', name: 'แสงอวยพร', cd: 12 },
+  cleric: { attack: 'light', rate: 1.4, reach: 3.6, dmg: .6, skill: 'sanctuary', name: 'เขตศักดิ์สิทธิ์', cd: 12 },
+  saint: { attack: 'light', rate: 1.3, reach: 3.8, dmg: .7, skill: 'miracle', name: 'ปาฏิหาริย์', cd: 16 },
+  bard: { attack: 'note', rate: 1.2, reach: 3.8, dmg: .8, skill: 'valor', name: 'เพลงกล้าหาญ', cd: 11 },
+  maestro: { attack: 'note', rate: 1.1, reach: 4, dmg: .9, skill: 'crescendo', name: 'บทเพลงสูงสุด', cd: 12 },
+};
 export const HUNT_ECONOMY = { guildCut: 0.2, marketFee: 0.05, matPrice: 0.8 };
 
 // ---- The guild's trade: what hunters bring home, what the guild makes of it and where it sells. ----

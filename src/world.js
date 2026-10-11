@@ -1,9 +1,10 @@
 import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,siteRoads,buildingRect,partitionSize,partitionRect,pointInRect } from './site.js';
-import { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,MONSTER_STATS,JOBS,VILLAGE_BUSINESSES } from './content.js';
+import { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,MONSTER_STATS,JOBS,VILLAGE_BUSINESSES,JOB_COMBAT } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
 import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { drainFx } from './life.js';
 import { pathTier, footprintOf, ROTATABLE, homeOf } from './town.js';
+const SHOT_COLORS={arrow:0xc9a06a,pierce:0xf3e2b0,magic:0xb7a6ff,bolt:0xf08a4b,fire:0xf08a4b,frostbolt:0x9fd3f0,frost:0x9fd3f0,spark:0xc9dcff,light:0xfff1c4,note:0xf2b8d8};
 import { QUESTS } from './content.js';
 import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
@@ -495,7 +496,7 @@ export class GuildRenderer {
  actorKey(look){const key=`actor-${look.id}-${look.class}`;if(!this.scene.textures.exists(key+'-south-idle'))look.class==='villager'?this.bakeVillager(look):this.bakeActor(look);return key;}
  poseFor(h,moved,t,seed){
   if(h.mode==='down'||h.mode==='carried')return'sleep';
-  const cc=CLASS_COMBAT[h.cls];if((h.mode==='hunt'||h.mode==='defend')&&cc&&cc.rate-h.atkCd<.28&&h.atkCd>0)return'train1';
+  const cc=JOB_COMBAT[h.job]||JOB_COMBAT[h.cls];if((h.mode==='hunt'||h.mode==='defend')&&cc&&cc.rate-h.atkCd<.28&&h.atkCd>0)return'train1';
   if(moved)return'walk'+(Math.floor(this.elapsed*8)%4);
   return Math.floor(t*1.5+seed)%2?'breath':'idle';
  }
@@ -585,13 +586,16 @@ export class GuildRenderer {
   Object.assign(o,{live:true,age:0,x,y,drift:(Math.random()-.5)*8});o.text.setText(text).setColor(color).setFontSize(size).setVisible(true).setAlpha(1);
  }
  ring(x,y,color,radius=18){const g=this.scene.add.graphics().setDepth(y+300).setPosition(x,y);g.lineStyle(2,color,.9).strokeEllipse(0,0,radius*2,radius);this.scene.tweens.add({targets:g,scale:1.6,alpha:0,duration:520,onComplete:()=>g.destroy()});}
- shot(from,to,color){const g=this.scene.add.graphics().setDepth(Math.max(from.y,to.y)+250);g.lineStyle(2,color,1).lineBetween(from.x,from.y-14,to.x,to.y-10);this.scene.tweens.add({targets:g,alpha:0,duration:260,onComplete:()=>g.destroy()});}
+ shot(from,to,color,kind){const g=this.scene.add.graphics().setDepth(Math.max(from.y,to.y)+250);g.lineStyle(kind==='pierce'||kind==='spark'?3:2,color,1);
+  // Lightning zigzags, notes and bolts end in a small burst; arrows and shots are straight lines.
+  if(kind==='spark'){const n=5;g.beginPath();g.moveTo(from.x,from.y-14);for(let i=1;i<n;i++){const k=i/n;g.lineTo(from.x+(to.x-from.x)*k+(Math.random()-.5)*8,from.y-14+(to.y-from.y+4)*k+(Math.random()-.5)*8);}g.lineTo(to.x,to.y-10);g.strokePath();}else g.lineBetween(from.x,from.y-14,to.x,to.y-10);
+  if(kind!=='arrow'&&kind!=='pierce'){g.fillStyle(color,.9);g.fillCircle(to.x,to.y-10,kind==='fire'?6:4);}this.scene.tweens.add({targets:g,alpha:0,duration:260,onComplete:()=>g.destroy()});}
  playFx(dt){
   const events=drainFx();if(!this.scene)return;
   const view=this.camera?.worldView,near=p=>!view||(p.x>view.x-80&&p.x<view.right+80&&p.y>view.y-80&&p.y<view.bottom+80);
   for(const e of events){
    const p=gridPoint(e.x,e.y);if(!near(p))continue;
-   if(e.type==='hit'){const s=this.lifeSprites?.get(e.id);if(s)s.flash=.12;this.floatText(p.x,p.y-28,String(e.amount),e.crit?'#ffd36a':'#ffffff',e.crit?11:9);if(e.kind==='arrow'||e.kind==='magic'||e.kind==='light'){const f=gridPoint(e.fx,e.fy);this.shot(f,p,e.kind==='arrow'?0xc9a06a:e.kind==='magic'?0xb7a6ff:0xfff1c4);}}
+   if(e.type==='hit'){const s=this.lifeSprites?.get(e.id);if(s)s.flash=.12;this.floatText(p.x,p.y-28,String(e.amount),e.crit?'#ffd36a':'#ffffff',e.crit?11:9);const col=SHOT_COLORS[e.kind];if(col){const f=gridPoint(e.fx,e.fy);this.shot(f,p,col,e.kind);}else if(e.kind==='holy')this.ring(p.x,p.y-8,0xfff1c4,10);}
    else if(e.type==='hurt')this.floatText(p.x,p.y-34,String(e.amount),'#ff8a7a',9);
    else if(e.type==='heal')this.floatText(p.x,p.y-36,'+'+e.amount,e.potion?'#9fe0ff':'#8fe28a',9);
    else if(e.type==='skill'){this.floatText(p.x,p.y-44,e.name,'#fff1c4',8);if(e.skill==='fireball'){const q=gridPoint(e.tx,e.ty);this.ring(q.x,q.y,0xf08a4b,22);}else this.ring(p.x,p.y,e.skill==='guard'?0x8eb6e0:e.skill==='blessing'?0x9fe08a:0xe8cd8c,e.skill==='blessing'?28:16);}

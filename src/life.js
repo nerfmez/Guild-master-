@@ -2,7 +2,7 @@
    fight monsters in real time, carry fallen friends home, and sell their loot in the village.
    Pure simulation: game.js calls tickLife with a small context of its own helpers. */
 import { siteQuestRoute, SITE_QUEST_SITES } from './site.js';
-import { HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES } from './content.js';
+import { HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES, JOB_COMBAT } from './content.js';
 
 const SUB = 0.25;          // seconds per combat step
 const WALK = 1.7;          // tiles per second
@@ -90,7 +90,7 @@ function makeHunter(state, ctx, who, kind, zoneId, party, start) {
   const zone = HUNT_ZONES[zoneId], stats = kind === 'member' ? ctx.stats(who) : freeStats(who), w = state.world;
   const path = [...zone.via.map(([x, y]) => ({ x, y })), pointIn(w, zone, .6)];
   return { id: who.id, kind, zone: zoneId, party, mode: 'go', x: start.x + (rand(w) - .5) * .4, y: start.y + (rand(w) - .5) * .4, path, hp: stats.health, maxHp: stats.health,
-    power: stats.basePower, cls: rootOf(who.class), atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
+    power: stats.basePower, cls: rootOf(who.class), job: who.class, atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
     bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 7 + Math.floor(rand(w) * 4) };
 }
 export function freeStats(f) {
@@ -169,16 +169,52 @@ function freeXp(ctx, f, amount) {
   f.xp += amount;
   while (f.level < 20 && f.xp >= ctx.xpNeeded(f.level)) { f.xp -= ctx.xpNeeded(f.level); f.level += 1; f.rank = freeLevelRank(f.level); }
 }
+/** How this adventurer fights: their own job's style, or their base class's. */
+const combatOf = h => JOB_COMBAT[h.job] || JOB_COMBAT[h.cls] || JOB_COMBAT.warrior;
+const HEALERS = new Set(['healer', 'cleric', 'saint']);
+function useSkill(state, ctx, h, m, near, party, cc) {
+  const w = state.world, p = h.power * HIT * cc.dmg * (h.buff > 0 ? 1 + h.buffAmt : 1), around = r => near.filter(x => dist(x, m) < r), mine = r => near.filter(x => dist(x, h) < r);
+  const heal = (o, frac) => { const amt = o.maxHp * frac; o.hp = Math.min(o.maxHp, o.hp + amt); emit({ type: 'heal', x: o.x, y: o.y, amount: Math.round(amt) }); };
+  const slow = (x, t) => { x.slow = Math.max(x.slow || 0, t); };
+  switch (cc.skill) {
+    case 'guard': h.guard = 5; for (const x of mine(4)) x.target = h.id; break;
+    case 'shieldwall': h.guard = 6; for (const o of party) if (dist(o, h) < 3) o.guard = Math.max(o.guard, 3); for (const x of mine(4.5)) x.target = h.id; break;
+    case 'aegis': h.guard = 6; for (const o of party) { heal(o, .2); o.guard = Math.max(o.guard, 2.5); } for (const x of mine(5)) x.target = h.id; break;
+    case 'cleave': for (const x of mine(1.8)) hitMonster(state, ctx, h, x, p * 1.4, 'slash'); break;
+    case 'whirlwind': for (const x of mine(2.4)) hitMonster(state, ctx, h, x, p * 1.9 * (rand(w) < .3 ? 1.6 : 1), 'slash'); break;
+    case 'volley': for (const x of mine(cc.reach + .5).slice(0, 3)) hitMonster(state, ctx, h, x, p * 1.2, 'arrow'); break;
+    case 'snare': slow(m, 4); hitMonster(state, ctx, h, m, p * 1.4, 'arrow'); break;
+    case 'thornward': for (const x of mine(cc.reach + .5).slice(0, 4)) { slow(x, 3); hitMonster(state, ctx, h, x, p * 1.25, 'arrow'); } break;
+    case 'aimed': hitMonster(state, ctx, h, m, p * 2.6, 'pierce'); break;
+    case 'deadeye': hitMonster(state, ctx, h, m, p * 3.6 * 1.3, 'pierce'); break;
+    case 'fireball': for (const x of around(1.6)) hitMonster(state, ctx, h, x, p * 1.8, 'fire'); break;
+    case 'frost': for (const x of around(2)) { slow(x, 4); hitMonster(state, ctx, h, x, p * 1.2, 'frost'); } break;
+    case 'timewarp': for (const x of around(2.4)) { slow(x, 5); hitMonster(state, ctx, h, x, p * 1.5, 'frost'); } for (const o of party) if (o !== h) o.skillCd = Math.max(0, o.skillCd - 3); break;
+    case 'meteor': for (const x of around(2.2)) hitMonster(state, ctx, h, x, p * 2.4, 'fire'); break;
+    case 'chain': { let k = 2; for (const x of [m, ...near.filter(x => x !== m).sort((a, b) => dist(a, m) - dist(b, m))].slice(0, 5)) { hitMonster(state, ctx, h, x, p * k, 'spark'); k *= .8; } break; }
+    case 'blessing': for (const o of party) heal(o, .3); break;
+    case 'sanctuary': for (const o of party) { heal(o, .35); o.guard = Math.max(o.guard, 2); } break;
+    case 'miracle': {
+      for (const o of party) heal(o, .5);
+      const fallen = w.hunters.find(o => o.party === h.party && o.mode === 'down' && !o.carriedBy && dist(o, h) < 6);
+      if (fallen) { fallen.hp = fallen.maxHp * .4; fallen.mode = fallen.mission ? 'hunt' : 'return'; if (!fallen.mission) fallen.path = homeRoute(fallen, ctx); w.porters = w.porters.filter(o => o.target !== fallen.id); emit({ type: 'revive', id: fallen.id, x: fallen.x, y: fallen.y }); }
+      break;
+    }
+    case 'valor': for (const o of party) { o.buff = 6; o.buffAmt = .3; } break;
+    case 'crescendo': for (const o of party) { o.buff = 7; o.buffAmt = .4; heal(o, .2); } break;
+  }
+}
 function fight(state, ctx, h, dt) {
-  const w = state.world, cc = CLASS_COMBAT[h.cls] || CLASS_COMBAT.warrior, party = w.hunters.filter(o => o.party === h.party && o.mode !== 'down' && o.mode !== 'carried');
-  h.atkCd -= dt; h.skillCd -= dt; h.guard = Math.max(0, h.guard - dt);
+  const w = state.world, cc = combatOf(h), party = w.hunters.filter(o => o.party === h.party && o.mode !== 'down' && o.mode !== 'carried');
+  h.atkCd -= dt; h.skillCd -= dt; h.guard = Math.max(0, h.guard - dt); h.buff = Math.max(0, (h.buff || 0) - dt);
   const near = w.monsters.filter(m => !m.dead && (h.zone === m.zone || m.raid || m.boss) && dist(h, m) < (m.raid ? 14 : 11));
-  // Healers mend the most hurt friend first.
-  if (h.cls === 'healer') {
+  const support = HEALERS.has(h.job) || HEALERS.has(h.cls) || h.cls === 'healer';
+  // Healers mend the most hurt friend first, and save their big skill for when several are hurt.
+  if (support) {
     const hurt = party.filter(o => o.hp < o.maxHp * .75 && dist(o, h) < cc.reach + 1).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
-    if (h.skillCd <= 0 && party.filter(o => o.hp < o.maxHp * .6).length >= 2) {
-      for (const o of party) { const amt = o.maxHp * .35; o.hp = Math.min(o.maxHp, o.hp + amt); emit({ type: 'heal', x: o.x, y: o.y, amount: Math.round(amt) }); }
-      emit({ type: 'skill', id: h.id, x: h.x, y: h.y, skill: 'blessing', name: cc.skillName }); h.skillCd = cc.skillCd; return;
+    const fallen = cc.skill === 'miracle' && w.hunters.some(o => o.party === h.party && o.mode === 'down' && !o.carriedBy);
+    if (h.skillCd <= 0 && near.length && (party.filter(o => o.hp < o.maxHp * .6).length >= 2 || fallen)) {
+      h.skillCd = cc.cd; emit({ type: 'skill', id: h.id, x: h.x, y: h.y, skill: cc.skill, name: cc.name }); useSkill(state, ctx, h, near[0], near, party, cc); return;
     }
     if (hurt && h.atkCd <= 0) { const amt = h.power * .9; hurt.hp = Math.min(hurt.maxHp, hurt.hp + amt); emit({ type: 'heal', x: hurt.x, y: hurt.y, amount: Math.round(amt) }); h.atkCd = cc.rate; return; }
   }
@@ -190,23 +226,21 @@ function fight(state, ctx, h, dt) {
   }
   if (!m) { if (h.mode === 'defend') return; if (h.mission) { const site = state.missions?.find(x => x.id === h.mission)?.rt?.site; if (site && dist(h, site) > 1.6) moveTo(h, { x: site.x - .6, y: site.y }, WALK, dt); return; } if (!h.wander || dist(h, h.wander) < .2) h.wander = pointIn(w, HUNT_ZONES[h.zone] || { x: h.x, y: h.y, r: 2 }, .7); moveTo(h, h.wander, WALK * .6, dt); return; }
   if (dist(h, m) > cc.reach) { moveTo(h, { x: m.x + (h.x > m.x ? .4 : -.4), y: m.y }, WALK, dt); return; }
-  if (h.skillCd <= 0) {
-    h.skillCd = cc.skillCd;
-    emit({ type: 'skill', id: h.id, x: h.x, y: h.y, tx: m.x, ty: m.y, skill: cc.skill, name: cc.skillName });
-    if (cc.skill === 'guard') { h.guard = 5; for (const x of near.filter(x => dist(x, h) < 4)) x.target = h.id; }
-    else if (cc.skill === 'volley') for (const x of near.filter(x => dist(x, h) < cc.reach + .5).slice(0, 3)) hitMonster(state, ctx, h, x, h.power * HIT * cc.dmg * 1.2, 'arrow');
-    else if (cc.skill === 'fireball') for (const x of near.filter(x => dist(x, m) < 1.6)) hitMonster(state, ctx, h, x, h.power * HIT * cc.dmg * 1.8, 'fire');
-    else if (cc.skill === 'blessing') for (const o of party) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * .25);
+  if (h.skillCd <= 0 && !support) {
+    h.skillCd = cc.cd;
+    emit({ type: 'skill', id: h.id, x: h.x, y: h.y, tx: m.x, ty: m.y, skill: cc.skill, name: cc.name });
+    useSkill(state, ctx, h, m, near, party, cc);
     return;
   }
   if (h.atkCd <= 0) {
     h.atkCd = cc.rate;
-    const crit = rand(w) < .1, dmg = h.power * HIT * cc.dmg * (.85 + rand(w) * .3) * (crit ? 1.6 : 1);
-    hitMonster(state, ctx, h, m, dmg, h.cls === 'archer' ? 'arrow' : h.cls === 'mage' ? 'magic' : h.cls === 'healer' ? 'light' : 'slash');
+    const crit = rand(w) < (cc.attack === 'pierce' ? .2 : .1), dmg = h.power * HIT * cc.dmg * (h.buff > 0 ? 1 + h.buffAmt : 1) * (.85 + rand(w) * .3) * (crit ? 1.6 : 1);
+    hitMonster(state, ctx, h, m, dmg, cc.attack);
   }
 }
 function monsterAct(state, ctx, m, dt) {
   const w = state.world, s = statsOf(m.species);
+  if (m.slow > 0) { m.slow -= dt; dt *= .5; }
   // Quest parties only meet their own quest's foes; wild monsters leave them be.
   const targets = w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
   const hero = state.hero;
