@@ -3,15 +3,19 @@
    dry hills east beyond the river. Paths wind out from the village roads to landmark quest sites. */
 import { gridPoint } from './guild-art.js';
 import { REGIONS, RANKS, BUILDING_FOOTPRINTS } from './content.js';
-import { WORLD_PATHS, SITE_QUEST_SITES, siteSmoothPath, siteQuestRoute } from './site.js';
+import { WORLD_PATHS, SITE_QUEST_SITES, siteSmoothPath, siteQuestRoute, FRONTIER_CAMP, FRONTIER_ZONES } from './site.js';
+import { SPECIES } from './monsters.js';
+import { FRONTIER_BIOMES, CALDERA, frontierWeights } from './frontier-art.js';
 
-export const WORLD = { x0: -62, y0: -68, x1: 84, y1: 58 };
+// The far east (x > 84) is the rank-B frontier: Red Wind Canyon and Sleeping Dragon Peak.
+export const WORLD = { x0: -62, y0: -68, x1: 150, y1: 58 };
 const VILLAGE = { x: 10, y: 8, r: 19 };
 export const BIOMES = {
   meadow: { x: -32, y: 26, r: 28, color: [172, 187, 128] },
   forest: { x: 2, y: -30, r: 26, color: [122, 148, 104] },
   mist: { x: -2, y: -52, r: 18, color: [96, 126, 114] },
   hills: { x: 58, y: 10, r: 24, color: [178, 172, 126] },
+  canyon: FRONTIER_BIOMES.canyon, peak: FRONTIER_BIOMES.peak,
 };
 const BASE = [156, 172, 125];
 // Paths are written as control points in grid units and smoothed with Catmull-Rom.
@@ -25,6 +29,8 @@ export const SIGNPOSTS = [
   { x: -14, y: 19.8, text: 'ทุ่งใบชา', region: 'meadow', flip: true },
   { x: 3.8, y: -16, text: 'ป่าหมอกจันทร์', region: 'mist' },
   { x: 45.5, y: 18.8, text: 'ซากหอระฆัง', region: 'ruins' },
+  { x: 73.6, y: 11.6, text: 'หุบผาลมแดง', region: 'canyon' },
+  { x: 110.6, y: 13.2, text: 'ยอดเขามังกรหลับ', region: 'peak', flip: true },
 ];
 export const VILLAGE_HOMES = [[-9, 20.5, 31, 'smithy'], [-2, 21.5, 44, 'thatch'], [8, 21.5, 52, 'stone'], [14, 22, 63, 'cabin'], [24, 21.5, 75, 'brick'], [-8, -3, 88, 'tall']];
 
@@ -52,8 +58,9 @@ const distTo = (pts, x, y) => { let best = 1e9; for (let i = 1; i < pts.length; 
 export function biomeAt(x, y) {
   const n = noise(x * .09, y * .09) * .5 - .25, out = {};
   const village = clamp01(1 - Math.hypot(x - VILLAGE.x, y - VILLAGE.y) / VILLAGE.r);
-  for (const [id, b] of Object.entries(BIOMES)) out[id] = clamp01((1 - Math.hypot(x - b.x, y - b.y) / b.r) * 1.4 + n) * (1 - village);
+  for (const [id, b] of Object.entries(BIOMES)) if (!b.frontier) out[id] = clamp01((1 - Math.hypot(x - b.x, y - b.y) / b.r) * 1.4 + n) * (1 - village);
   out.mist = Math.min(out.mist, out.forest + .3);
+  const f = frontierWeights(x, y, n); out.canyon = f.canyon; out.peak = f.peak;
   return out;
 }
 export function nearPath(x, y, pad = 1.6) { return Object.values(SMOOTH).some(p => distTo(p, x, y) < pad); }
@@ -75,6 +82,10 @@ const TONES = {
   base: ['#9cac7d', '#a3b283', '#94a576'].map(hex), meadow: ['#a9ba84', '#b2c28b', '#a0b27c'].map(hex),
   forest: ['#8b9d6d', '#93a474', '#829566'].map(hex), mist: ['#768e7e', '#7d9585', '#6e8677'].map(hex),
   hills: ['#b3ae86', '#bab48c', '#aaa57e'].map(hex),
+  // Red Wind Canyon: rust and ochre sandstone; Sleeping Dragon Peak: slate and obsidian with lava in its cracks.
+  canyon: ['#c99467', '#d19e70', '#bd875d'].map(hex), peak: ['#6c6670', '#746e77', '#625c66'].map(hex),
+  sandLight: hex('#e2bf8e'), sandDrift: ['#d9b281', '#e0bb8a'].map(hex), crack: hex('#93583e'), crackLip: hex('#dcae80'), redPebble: hex('#a8673f'),
+  ash: ['#8c8689', '#9a9496'].map(hex), obsidian: hex('#3b3640'), glint: hex('#a9a1bd'), lava: ['#f7c35a', '#ec7a35', '#b3402a'].map(hex), scorch: hex('#4d4650'),
   dirt: ['#ddc9a2', '#d4bf97', '#e4d2ad'].map(hex), dirtEdge: hex('#c4ad86'), pebble: hex('#bfb39b'),
   water: ['#94bcc6', '#9cc4cd'].map(hex), shine: hex('#c8e3e7'), bank: hex('#7c9372'), sand: hex('#cfc19a'),
   wheatSoil: ['#b39d6d', '#a28c5f'].map(hex), vegSoil: ['#8f7656', '#7c6548'].map(hex),
@@ -98,7 +109,7 @@ export function makeGroundPainter(left, top, size, scale = 2) {
   const paths = segmentsNear([...Object.values(SMOOTH), ...VILLAGE_PATHS], gx0, gy0, gx1, gy1, 3), river = segmentsNear([SMOOTH_RIVER], gx0, gy0, gx1, gy1, 4), creek = segmentsNear([SMOOTH_CREEK], gx0, gy0, gx1, gy1, 3);
   const fields = FIELDS.filter(f => f.x < gx1 + 1 && f.x + f.w > gx0 - 1 && f.y < gy1 + 1 && f.y + f.h > gy0 - 1);
   // Smooth fields (distances, biome weights) are sampled every L canvas pixels and interpolated; detail stays per pixel.
-  const L = 4, cols = Math.ceil(n / L) + 2, F = 15, lattice = new Map();
+  const L = 4, cols = Math.ceil(n / L) + 2, F = 18, lattice = new Map();
   function latticeRow(j) {
     let r = lattice.get(j); if (r) return r;
     r = new Float32Array(cols * F);
@@ -108,6 +119,7 @@ export function makeGroundPainter(left, top, size, scale = 2) {
       r[o + 2] = paths.length ? segNear(paths, x, y) : 99; r[o + 9] = paths.length ? nearRem : 0; r[o + 11] = Math.hypot(x - VILLAGE.x, y - VILLAGE.y);
       r[o + 10] = creek.length ? segNear(creek, x, y) : 99; r[o + 12] = creek.length ? nearRun : 0; r[o + 13] = noise(x * .32 + 20, y * .32); r[o + 14] = GROVE(x, y); r[o + 3] = Math.hypot(x - 63, y + 3) - 4.6 - (noise(x * .45, y * .45) - .5) * 2.4;
       r[o + 4] = w.meadow; r[o + 5] = w.forest; r[o + 6] = w.hills; r[o + 7] = w.mist; r[o + 8] = noise(x * .55, y * .55);
+      r[o + 15] = w.canyon; r[o + 16] = w.peak; r[o + 17] = Math.hypot(x - CALDERA.x, (y - CALDERA.y) * 1.15) - (noise(x * .3 + 50, y * .3) - .5) * 5;
     }
     lattice.set(j, r); lattice.delete(j - 2); return r;
   }
@@ -140,17 +152,52 @@ export function makeGroundPainter(left, top, size, scale = 2) {
     const pz = I(3);
     if (pz < 0 || (pz < .5 && t < (.5 - pz) / .5)) { const sx = x / .8, sy = y / .8 + (Math.floor(x / .8) % 2) * .5, edge = (sx - Math.floor(sx) < .12) || (sy - Math.floor(sy) < .14); put(i, h < .03 ? TONES.hills[2] : edge ? TONES.plazaLine : TONES.plaza[hash2(Math.floor(sx), Math.floor(sy)) < .5 ? 0 : 1]); return; }
     // Grass: biome palettes blended by weight, then quantised with an ordered dither so it stays crisp pixel art.
-    const wm = I(4), wf = I(5), wh = I(6), ws = I(7), wb = Math.max(0, 1 - wm - wf - wh - ws), tot = wm + wf + wh + ws + wb;
+    const wm = I(4), wf = I(5), wh = I(6), ws = I(7), wc = I(15), wk = I(16), wb = Math.max(0, 1 - wm - wf - wh - ws - wc - wk), tot = wm + wf + wh + ws + wc + wk + wb;
     let key = 'base', best = .3;
     if (wm > best) { key = 'meadow'; best = wm; } if (wf > best) { key = 'forest'; best = wf; } if (wh > best) { key = 'hills'; best = wh; } if (ws > best * .9) { key = 'mist'; best = ws; }
+    if (wc > best) { key = 'canyon'; best = wc; } if (wk > best) { key = 'peak'; best = wk; }
+    if (wc + wk > .05 && frontierPixel(i, x, y, A, B, t, h, wc, wk, tot, key)) return;
     const clump = I(8) + (hash2(Math.floor(x * 2.4), Math.floor(y * 2.4)) - .5) * .25 - Math.max(0, I(14) - .45) * .5 * Math.min(1, (wf + ws) * 1.6), tone = clump > .66 + t * .08 ? 1 : clump < .3 + t * .08 ? 2 : 0;
-    for (let ch = 0; ch < 3; ch++) { const mix = (TONES.base[tone][ch] * wb + TONES.meadow[tone][ch] * wm + TONES.forest[tone][ch] * wf + TONES.hills[tone][ch] * wh + TONES.mist[tone][ch] * ws) / tot; d[i + ch] = Math.floor(mix / 5 + t) * 5; }
+    for (let ch = 0; ch < 3; ch++) { const mix = (TONES.base[tone][ch] * wb + TONES.meadow[tone][ch] * wm + TONES.forest[tone][ch] * wf + TONES.hills[tone][ch] * wh + TONES.mist[tone][ch] * ws + TONES.canyon[tone][ch] * wc + TONES.peak[tone][ch] * wk) / tot; d[i + ch] = Math.floor(mix / 5 + t) * 5; }
     d[i + 3] = 255;
     if (h < .01) { d[i] -= 14; d[i + 1] -= 14; d[i + 2] -= 14; return; }
     // Biome texture: leaf litter in the woods, bare earth on the hills, clover in the meadow.
     if (key === 'forest' || key === 'mist') { if (h > .975) put(i, TONES.litter[Math.floor(h * 997) % 3]); else if (key === 'mist' && clump < .25 && h > .93) put(i, TONES.moss); }
     else if (key === 'hills') { const bare = I(13); if (bare > .72 && t < (bare - .72) * 14) put(i, TONES.bare[h < .5 ? 0 : 1]); else if (h > .985) put(i, TONES.pebble); }
     else if (key === 'meadow' && clump > .72 && h > .96) put(i, TONES.clover);
+    else if (key === 'canyon') frontierTexture(i, x, y, A, B, t, h, wc, wk);
+    else if (key === 'peak') frontierTexture(i, x, y, A, B, t, h, wc, wk);
+  }
+  /** Frontier ground before the shared grass mix: the caldera's scorched lava field takes over near the summit. Returns true when painted. */
+  function frontierPixel(i, x, y, A, B, t, h, wc, wk) {
+    const cd = I(17);
+    if (wk < .3 || cd > 15) return false;
+    // Lava seams: thin glowing cracks that widen toward the caldera, with a scorched rim around each.
+    const heat = clamp01(1 - cd / 15), seam = Math.abs(noise(x * .62 + 31, y * .62 - 7) - .5), seam2 = Math.abs(noise(x * 1.1 - 13, y * 1.1 + 40) - .5), w = .012 + heat * .03;
+    if (seam < w * .45 || (heat > .5 && seam2 < w * .3)) { put(i, h < .3 ? TONES.lava[0] : TONES.lava[1]); return true; }
+    if (seam < w || (heat > .5 && seam2 < w * .6)) { put(i, t < .5 ? TONES.lava[2] : TONES.lava[1]); return true; }
+    if (seam < w * 1.9 + heat * .02) { put(i, t < .6 ? TONES.obsidian : TONES.scorch); return true; }
+    if (heat > .35 && I(13) < .42 + heat * .1 && t < (heat - .3) * 1.4) { put(i, TONES.scorch); return true; }
+    return false;
+  }
+  /** Frontier ground texture after the blended base: wind streaks, cracks and drifted sand in the canyon; ash and obsidian on the peak. */
+  function frontierTexture(i, x, y, A, B, t, h, wc, wk) {
+    if (wc >= wk) {
+      // Wind streaks run across the screen, the way the canyon wind blows.
+      const streak = noise(A * .09 + 7, B * 1.25), drift = I(13);
+      if (streak > .72 && t < (streak - .72) * 5) { put(i, TONES.sandLight); return; }
+      if (drift > .66 && t < (drift - .66) * 4.5) { put(i, TONES.sandDrift[h < .5 ? 0 : 1]); return; }
+      const crack = Math.abs(noise(x * .8 + 11, y * .8 - 3) - .5);
+      if (drift < .5 && crack < .014) { put(i, TONES.crack); return; }
+      if (drift < .5 && crack < .024 && t < .35) { put(i, TONES.crackLip); return; }
+      if (h > .986) put(i, TONES.redPebble);
+    } else {
+      const ash = noise(x * .17 + 5, y * .17 - 9);
+      if (ash > .6 && t < (ash - .6) * 4) { put(i, TONES.ash[h < .5 ? 0 : 1]); return; }
+      const fault = Math.abs(noise(x * .9 - 21, y * .9 + 4) - .5);
+      if (ash < .45 && fault < .013) { put(i, TONES.obsidian); return; }
+      if (h > .992) put(i, TONES.glint); else if (h > .982) put(i, TONES.obsidian);
+    }
   }
   return { canvas, size: n, scale, left, top, step(budgetRows = 24) { const end = Math.min(n, row + budgetRows); for (; row < end; row++) for (let px = 0; px < n; px++) pixel(px, row); if (row >= n) c.putImageData(img, 0, 0); return row >= n; } };
 }
@@ -228,7 +275,8 @@ export function scatterNature() {
   const clear = (x, y) => Math.hypot(x - VILLAGE.x, y - VILLAGE.y) < 16 || nearPath(x, y, 1.5) || inWater(x, y, .7) || Object.values(QUEST_SITES).some(s => Math.hypot(s.x - x, s.y - y) < 4) || (x > -2 && x < 34 && y > -4 && y < 26) || (x > MEADOW_BOX.x0 && x < MEADOW_BOX.x1 && y > MEADOW_BOX.y0 && y < MEADOW_BOX.y1) || inOrchard(x, y) || zones.some(z => Math.hypot(z.x - x, z.y - y) < z.r);
   for (let y = WORLD.y0 + 1; y < WORLD.y1 - 1; y += 1.45) for (let x = WORLD.x0 + 1; x < WORLD.x1 - 1; x += 1.45) {
     const jx = x + (r() - .5) * 1.2, jy = y + (r() - .5) * 1.2, roll = r(), seed = Math.floor(r() * 8); if (clear(jx, jy)) continue;
-    const b = biomeAt(jx, jy), edge = Math.max(0, (Math.hypot(jx - VILLAGE.x, jy - VILLAGE.y) - 50) / 22), grove = GROVE(jx, jy), canopy = clamp01((grove - .4) / .2);
+    const b = biomeAt(jx, jy), edge = Math.max(0, (Math.hypot(jx - VILLAGE.x, jy - VILLAGE.y) - 50) / 22) * clamp01(1 - (b.canyon + b.peak) * 3), grove = GROVE(jx, jy), canopy = clamp01((grove - .4) / .2);
+    if (b.canyon + b.peak > .3) continue;
     const mist = Math.round(clamp01(b.mist * 1.3) * 3), woods = (b.forest * .8 + b.mist * .85 + edge * .6 * (1 - b.hills)) * canopy * .7 + b.hills * .015 + .008;
     if (roll < woods) {
       if (b.mist > .35) items.push(seed < 5 ? { kind: 'pine', x: jx, y: jy, seed: seed % 6, tone: 1, mist } : seed < 6 ? { kind: 'dead', x: jx, y: jy, seed: seed % 3, mist } : { kind: 'tree', x: jx, y: jy, seed, mist, gold: false });
@@ -282,18 +330,24 @@ const SPAWNS = [
   ['pebbleCrab', 'hills', 5], ['crystalBat', 'hills', 4], ['marbleGolem', 'hills', 4], ['fluffBoar', 'hills', 2],
   ['mistWisp', 'mist', 5], ['lanternGhost', 'mist', 3], ['glowMoth', 'mist', 4], ['bindingRoots', 'mist', 3],
   ['leafSlime', 'base', 3], ['hornHare', 'base', 3], ['fuzzBee', 'base', 2],
+  ['dustLizard', 'canyon', 6], ['cliffHarpy', 'canyon', 4], ['emberImp', 'canyon', 3],
+  ['stoneDrake', 'peak', 4], ['magmaTortoise', 'peak', 4], ['stormRoc', 'peak', 3],
 ];
 const HABITAT = {
   meadow: (b, x, y) => b.meadow > .45, forest: (b, x, y) => b.forest > .45 && b.mist < .3, hills: (b, x, y) => b.hills > .45, mist: (b, x, y) => b.mist > .4,
   base: (b, x, y) => b.meadow < .3 && b.forest < .3 && b.hills < .3 && b.mist < .2 && Math.hypot(x - VILLAGE.x, y - VILLAGE.y) < 42,
   water: (b, x, y) => inWater(x, y, 1.6) && !inWater(x, y, .15),
+  canyon: (b, x, y) => b.canyon > .5, peak: (b, x, y) => b.peak > .5 && Math.hypot(x - CALDERA.x, y - CALDERA.y) > 7,
 };
 /** Monster homes across the world: { id, x, y, r } where r is how far each one wanders. */
 export function monsterSpawns() {
   const r = rng(9091), out = [{ id: 'bellGuardian', x: QUEST_SITES.ruins.x - 1, y: QUEST_SITES.ruins.y + 1, r: 2.5 }, { id: 'heartGuardian', x: QUEST_SITES.heart.x - 1, y: QUEST_SITES.heart.y + 4, r: 2.5 }];
   for (const [id, habitat, count] of SPAWNS) for (let n = 0, tries = 0; n < count && tries < 600; tries++) {
-    const x = WORLD.x0 + 4 + r() * (WORLD.x1 - WORLD.x0 - 8), y = WORLD.y0 + 4 + r() * (WORLD.y1 - WORLD.y0 - 8), b = biomeAt(x, y);
+    // Frontier species are drawn elsewhere; a creature the bestiary does not know yet simply stays home.
+    if (!SPECIES[id]?.size) break;
+    const frontier = habitat === 'canyon' || habitat === 'peak', x0 = frontier ? 80 : WORLD.x0, x = x0 + 4 + r() * (WORLD.x1 - x0 - 8), y = WORLD.y0 + 4 + r() * (WORLD.y1 - WORLD.y0 - 8), b = biomeAt(x, y);
     if (!HABITAT[habitat](b, x, y) || (habitat !== 'water' && inWater(x, y, .6)) || Math.hypot(x - VILLAGE.x, y - VILLAGE.y) < 19 || out.some(o => Math.hypot(o.x - x, o.y - y) < 3)) continue;
+    if (frontier && (Object.values(FRONTIER_ZONES).some(z => Math.hypot(z.x - x, z.y - y) < z.r + 4) || Math.hypot(FRONTIER_CAMP.x - x, FRONTIER_CAMP.y - y) < 7 || Object.values(QUEST_SITES).some(s => Math.hypot(s.x - x, s.y - y) < 4))) continue;
     out.push({ id, x, y, r: habitat === 'water' ? 2 : 3.5 + r() * 2 }); n++;
   }
   return out;

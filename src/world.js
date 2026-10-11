@@ -5,9 +5,10 @@ import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { drainFx } from './life.js';
 import { pathTier, footprintOf, ROTATABLE, homeOf } from './town.js';
 const SHOT_COLORS={arrow:0xc9a06a,pierce:0xf3e2b0,magic:0xb7a6ff,bolt:0xf08a4b,fire:0xf08a4b,frostbolt:0x9fd3f0,frost:0x9fd3f0,spark:0xc9dcff,light:0xfff1c4,note:0xf2b8d8};
-import { QUESTS } from './content.js';
+import { QUESTS,REGIONS } from './content.js';
 import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
+import { decorateFrontier } from './frontier-art.js';
 import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
 import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,makeDojo,makeShop,makeSmithyShop,HOME_STYLES,makeOutdoor,makeStall,makeArena,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
@@ -248,6 +249,7 @@ export class GuildRenderer {
   place('lm-camp',makeLostCamp,S.rescue.x-1.9,S.rescue.y-1.8);
   anim('lm-fire',makeCampfire,3,7,S.rescue.x+1.1,S.rescue.y-.8);
   anim('lm-heart',makeHeartTree,2,.9,S.heart.x+3,S.heart.y-3);
+  decorateFrontier({place,anim,flat,bake,at,scene:this.scene,props:this.worldProps,animated:this.animated});
   for(const sign of SIGNPOSTS)place('sign-'+sign.region,()=>makeSignpost(sign.text,false,sign.flip),sign.x,sign.y);
   // Little lives: sheep in the pasture, ducks on the pond, butterflies over the flowers.
   const puff=dark=>{const c=document.createElement('canvas');c.width=c.height=10;const g=c.getContext('2d');g.fillStyle=dark?'#8d8782':'#f4f0e6';g.fillRect(2,0,6,10);g.fillRect(0,2,10,6);g.fillRect(1,1,8,8);g.fillStyle=dark?'#a9a39d':'#ffffff';g.fillRect(2,2,4,3);return{canvas:c};};bake('puff',()=>puff(false));bake('puff-dark',()=>puff(true));
@@ -291,7 +293,7 @@ export class GuildRenderer {
  monTex(id,frame,flash=false){const key=`mon-${id}-${frame}-${flash?1:0}`;if(!this.scene.textures.exists(key))this.texture(key,makeMonster(id,frame,flash).canvas);return key;}
  refreshWorldSigns(){
   const key=this.state.rank;if(this.signRank===key||!this.scene)return;this.signRank=key;for(const s of this.worldSigns||[])s.destroy();this.worldSigns=[];
-  for(const sign of SIGNPOSTS)if(!regionOpen(this.state,sign.region)){const rank={meadow:'F',ruins:'D',mist:'B'}[sign.region],p=gridPoint(sign.x+1.2,sign.y-1.6);
+  for(const sign of SIGNPOSTS)if(!regionOpen(this.state,sign.region)){const rank=REGIONS.find(r=>r.id===sign.region)?.rank||'B',p=gridPoint(sign.x+1.2,sign.y-1.6);
    if(!this.scene.textures.exists('barrier'))this.texture('barrier',makeBarricade().canvas);const b=makeBarricade();this.worldSigns.push(this.scene.add.image(p.x-b.footX,p.y-b.footY,'barrier').setOrigin(0).setDepth(p.y));
    const lock=makeSignpost(`ต้องเป็นกิลด์ ${rank}`,true,sign.flip),q=gridPoint(sign.x+2.4,sign.y-2.6);this.texture('lock-'+sign.region+rank,lock.canvas);this.worldSigns.push(this.scene.add.image(q.x-lock.footX,q.y-lock.footY,'lock-'+sign.region+rank).setOrigin(0).setDepth(q.y));}
  }

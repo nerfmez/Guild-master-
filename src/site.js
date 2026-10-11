@@ -45,6 +45,10 @@ export const WORLD_PATHS = {
   mistdeep: [[-2, -44], [-7, -47], [-10, -50]],
   east: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [58, 4], [62, -1]],
   hills: [[48, 15], [54, 18], [59, 20]],
+  // The frontier (rank B): leaves the east trail past the bandit camp, crosses the far hills into Red Wind Canyon.
+  frontier: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [62, 10.5], [70, 9.5], [78, 11.5], [86, 15], [94, 17.5], [102, 19], [110, 17], [117, 12.5]],
+  // Up from the canyon floor over the drake slopes and past the wyvern spire to the caldera of Sleeping Dragon Peak.
+  peakpath: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [62, 10.5], [70, 9.5], [78, 11.5], [86, 15], [94, 17.5], [102, 19], [110, 17], [114, 10], [117, 3], [121, -4], [124, -10], [126.5, -15.5]],
 };
 
 /** Where each quest takes place on the world map (grid units). */
@@ -52,12 +56,25 @@ export const SITE_QUEST_SITES = {
   patrol: { x: -18, y: 21.6 }, herbs: { x: -28.6, y: 30.4 }, escort: { x: 46.5, y: 16.2 },
   hollow: { x: 8.5, y: -27.5 }, crystals: { x: 59.5, y: 21.5 }, ruins: { x: 63, y: -3 },
   mistpath: { x: 1, y: -40 }, rescue: { x: -10.5, y: -49 }, heart: { x: 4, y: -59 },
+  farmraid: { x: -24.5, y: 16 }, pasture: { x: -20, y: 26.4 }, bandits: { x: 55, y: 9.5 },
+  canyonroad: { x: 86.6, y: 13.2 }, harpy: { x: 95.4, y: 13.4 }, wyrm: { x: 103, y: 22.6 }, emberdig: { x: 120.2, y: 14.2 },
+  drakes: { x: 119.8, y: 5.2 }, matriarch: { x: 124.6, y: -3.6 }, dragon: { x: 127.6, y: -17.4 },
+};
+/** The guild's outpost at the canyon mouth, beside the frontier trail (grid units). */
+export const FRONTIER_CAMP = { x: 89.6, y: 11 };
+/** Frontier hunting grounds; via follows the trail from the village road, like HUNT_ZONES. */
+export const FRONTIER_ZONES = {
+  canyon: { name: 'หุบผาลมแดง', x: 94, y: 25.5, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [62, 10.5], [70, 9.5], [78, 11.5], [86, 15], [94, 17.5]] },
+  peak: { name: 'ยอดเขามังกรหลับ', x: 112.5, y: -1.5, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [62, 10.5], [70, 9.5], [78, 11.5], [86, 15], [94, 17.5], [102, 19], [110, 17], [114, 10], [117, 3]] },
 };
 // Where each route leaves the village roads, then which path points it follows.
 const ROUTES = {
   patrol: ['west', 3], herbs: ['west', 5, 'lake'], escort: ['east', 2],
   crystals: ['east', 3, 'hills'], ruins: ['east', 6],
   hollow: ['north', 4], mistpath: ['north', 5], rescue: ['north', 6, 'mistdeep'], heart: ['north', 8],
+  farmraid: ['west', 2], pasture: ['west', 3], bandits: ['east', 3],
+  canyonroad: ['frontier', 8], harpy: ['frontier', 9], wyrm: ['frontier', 10], emberdig: ['frontier', 12],
+  drakes: ['peakpath', 13], matriarch: ['peakpath', 14], dragon: ['peakpath', 16],
 };
 /** Smooth a control polyline into dense points. */
 export function siteSmoothPath(points, steps = 6) {

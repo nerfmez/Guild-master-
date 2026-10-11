@@ -317,3 +317,4 @@ export function makeBarricade() {
     A.line(c, 18, 16, 54, 16, '#d9c8a0'); A.poly(c, [[34, 4], [44, 7], [34, 10]], '#c9584a'); A.rect(c, 33, 3, 1, 14, '#5a463f');
   });
 }
+
