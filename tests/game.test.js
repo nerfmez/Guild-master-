@@ -1298,3 +1298,34 @@ test('the intel scout warns of a raid before it comes and the raiders arrive wea
   assert.ok(d.active, 'then it arrives as foretold');
   if (d.active?.id === 'raid') assert.ok(state.world.monsters.filter(m => m.raid).every(m => m.maxHp < 999999));
 });
+
+test('a living town: needs against capacity, satisfaction that moves families in and out, and a party when it grows', async () => {
+  const { townNeeds, townSatisfaction, getVillageInfo } = await import('../src/game.js');
+  const { population, housingCapacity } = await import('../src/town.js');
+  const state = createGame(14);
+  const needs = townNeeds(state);
+  assert.deepEqual(needs.map(n => n.id), ['lodging', 'clinic', 'bar', 'repair', 'food', 'safety']);
+  assert.ok(needs.every(n => Number.isFinite(n.demand) && Number.isFinite(n.cap)));
+  // Starved of food and safety, the town grows unhappy and families leave; rooms stand empty.
+  state.village.houses = 8; state.village.homes = Object.fromEntries([...Array(8).keys()].map(i => ['h' + i, { tier: 2, progress: 0 }]));
+  const full = housingCapacity(state);
+  state.village.satisfaction = 20; state.village.raidScar = 30;
+  assert.ok(townSatisfaction(state).value < 60);
+  tick(state, 120);
+  assert.ok(population(state) < full, 'unhappy families move away');
+  assert.ok(state.today.movedOut > 0);
+  // A happy town fills its homes again.
+  state.village.shop = 3; state.village.market = 2; state.village.raidScar = 0; state.village.satisfaction = 90;
+  for (const m of state.members) { m.energy = 100; m.injury = 0; }
+  tick(state, 200);
+  assert.ok(population(state) > Math.round(full * 0.75));
+  // Growing a level throws a party.
+  state.village.prosperity = 999999; state.village.houses = 10;
+  state.village.homes = Object.fromEntries([...Array(10).keys()].map(i => ['h' + i, { tier: 3, progress: 0 }])); state.village.occupancy = 1;
+  tick(state, 2);
+  assert.ok(getVillageInfo(state).level > 1 && state.village.grown === getVillageInfo(state).level && state.village.celebrateAt > 0);
+  assert.deepEqual(deserializeGame(serializeGame(state)).village.grown, state.village.grown);
+  // The day's summary keeps the town's numbers for trends on screen.
+  tick(state, DAY_LENGTH);
+  assert.ok(Number.isFinite(state.history.at(-1).pop) && Number.isFinite(state.history.at(-1).sat));
+});

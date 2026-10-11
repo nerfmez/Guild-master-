@@ -5,7 +5,7 @@ const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, startExpedition, recallExpedition } from './life.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
-import { tickTown, sanitizePaths, sanitizeHomes, population, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf } from './town.js';
+import { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf } from './town.js';
 import { goalBoard, claimGoal, sanitizeMastery, setGoalJobs } from './goals.js';
 import { createFestivals, startFestival, tickFestivals, sanitizeFestivals, festivalStatus, festivalVisitors } from './festivals.js';
 import { createExams, registerExam, withdrawExam, tickExams, sanitizeExams } from './exams.js';
@@ -107,7 +107,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, frontier: { camp: 0 }, bounty: null, mastery: { claimed: {} }, exams: createExams(), festivals: createFestivals(), eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0, today: newDay(1), history: [],
     policy: { memberHunting: true, autoPetitions: true, registration: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0, bounties: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
+    record: { jobs: 0, bounties: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, occupancy: 1, raidScar: 0, grown: 1, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -370,6 +370,41 @@ export function getAvailableRecruits(state) {
   });
 }
 // ---- Registration: adventurers come to town by themselves, sign the guild's book and take a room in town. ----
+// ---- The town as a city: what people need against what the town can give, and how happy that makes them. ----
+/** Demand against capacity for the things a growing town runs short of; anything over capacity shows red. */
+export function townNeeds(state) {
+  const v = state.village || {}, pop = population(state), ms = state.members, room = getLodging(state);
+  const atHome = ms.filter(m => !isBusy(state, m.id)).length;
+  return [
+    { id: 'lodging', icon: '🛏', name: 'ที่พักนักผจญภัย', demand: ms.length + (state.applicants || []).length, cap: room.lodging, fix: 'ขยายโรงเตี๊ยมหรือสร้างบ้าน' },
+    { id: 'clinic', icon: '🩹', name: 'รักษาบาดแผล', demand: ms.filter(m => m.injury > 20).length, cap: (v.clinic || 0) * 6 + roomLevel(state, 'infirmary') * 2, fix: 'สร้างคลินิกหรือเตียงรักษา' },
+    { id: 'bar', icon: '🍺', name: 'ที่นั่งในบาร์', demand: Math.ceil(ms.length * 0.25), cap: roomLevel(state, 'bar') * 4, fix: 'วางหรืออัปเกรดบาร์' },
+    { id: 'repair', icon: '🔨', name: 'ซ่อมอุปกรณ์', demand: ms.filter(m => Object.entries(m.equipment || {}).some(([slot, id]) => id && (m.wear?.[slot] ?? 100) < 60)).length, cap: (v.smithy || 0) * 8, fix: 'สร้างหรือขยายโรงตีเหล็ก' },
+    { id: 'food', icon: '🍞', name: 'อาหารในเมือง', demand: pop + ms.length, cap: 20 + (v.shop || 0) * 16 + (v.market || 0) * 24 + (v.inn || 0) * 6, fix: 'ร้านค้า ตลาดนัด โรงเตี๊ยม' },
+    { id: 'safety', icon: '🛡', name: 'ความปลอดภัย', demand: Math.ceil(pop / 6), cap: Math.round(atHome * 0.6 + (v.dojo || 0) * 3 + (v.arena || 0) * 2 + staffOn(state, 'scout') * 3), fix: 'ให้นักผจญภัยอยู่เมืองมากขึ้น โรงฝึก หน่วยข่าว' },
+  ].map(n => ({ ...n, over: n.demand > n.cap }));
+}
+/** How happy the townsfolk are, and why: food, safety, homes that have what they need, things to enjoy, the guild's help, raids. */
+export function townSatisfaction(state) {
+  const v = state.village || {}, needs = Object.fromEntries(townNeeds(state).map(n => [n.id, n])), level = getVillageInfo(state).level;
+  const homes = Math.min(v.houses || 0, VILLAGE_LOTS.houses.length), happyHomes = [...Array(homes).keys()].filter(i => !(homeStatus(state, 'h' + i, level).missing || []).length).length;
+  const short = n => n.cap >= n.demand ? 0 : Math.min(1, (n.demand - n.cap) / Math.max(1, n.demand));
+  const parts = [['พื้นฐาน', 50], ['อาหารพอ', needs.food.over ? -Math.round(25 * short(needs.food)) : 8], ['ความปลอดภัย', needs.safety.over ? -Math.round(20 * short(needs.safety)) : 8],
+    ['บ้านมีครบ', homes ? Math.round(happyHomes / homes * 12) : 0], ['ที่เที่ยว', Math.min(15, (v.stage || 0) * 4 + (v.fairground || 0) * 3 + (v.arena || 0) * 2 + (v.monument || 0) * 3 + (state.festivals?.live ? 8 : 0))],
+    ['กิลด์ช่วยงาน', Math.min(10, (state.today?.jobs || 0) * 2)], ['มอนบุกเมือง', -Math.min(20, Math.round(v.raidScar || 0))]].filter(([, n]) => n);
+  return { value: clamp(Math.round(parts.reduce((a, [, n]) => a + n, 0)), 0, 100), parts };
+}
+/** Each second: satisfaction drifts to its target, families move in or out with it, and raid scars fade. */
+function tickCity(state, step) {
+  const v = state.village; if (!v) return;
+  const target = townSatisfaction(state).value;
+  v.satisfaction = clamp((v.satisfaction ?? target) + (target - (v.satisfaction ?? target)) * 0.01 * step, 0, 100);
+  const before = population(state);
+  v.occupancy = clamp((v.occupancy ?? 1) + (v.satisfaction >= 60 ? 0.002 : v.satisfaction < 40 ? -0.002 : 0) * step, 0.6, 1);
+  const after = population(state);
+  if (after !== before && state.today) { if (after > before) state.today.movedIn = (state.today.movedIn || 0) + after - before; else state.today.movedOut = (state.today.movedOut || 0) + before - after; }
+  v.raidScar = Math.max(0, (v.raidScar || 0) - step * 0.02);
+}
 /** Room for adventurers in town: the inn and rooms let in houses, never more than the town draws at its level. */
 export function getLodging(state) {
   const v = state.village || {}, inn = 6 + (v.inn || 0) * 8, rooms = Math.min(v.houses || 0, VILLAGE_LOTS.houses.length) * 2;
@@ -988,7 +1023,8 @@ function updateRank(state) {
 function closeDay(state) {
   const t = state.today || newDay(state.day - 1), eff = t.effN ? Math.round(t.effSum / t.effN * 100) / 100 : getEfficiencyReport(state).avg;
   const sum = book => Object.values(book).reduce((a, b) => a + b, 0);
-  const summary = { day: t.day, income: t.income, expense: t.expense, incomeTotal: sum(t.income), expenseTotal: sum(t.expense), eff, joined: t.joined, left: t.left, jobs: t.jobs, failed: t.failed, members: state.members.length, losses: getEfficiencyReport(state).losses.map(l => ({ id: l.id, gold: l.gold })) };
+  const city = { pop: population(state), sat: Math.round(state.village?.satisfaction ?? 0), movedIn: t.movedIn || 0, movedOut: t.movedOut || 0 };
+  const summary = { ...city, day: t.day, income: t.income, expense: t.expense, incomeTotal: sum(t.income), expenseTotal: sum(t.expense), eff, joined: t.joined, left: t.left, jobs: t.jobs, failed: t.failed, members: state.members.length, losses: getEfficiencyReport(state).losses.map(l => ({ id: l.id, gold: l.gold })) };
   state.history = [...(state.history || []), summary].slice(-7);
   state.today = newDay(state.day);
 }
@@ -1010,7 +1046,10 @@ function dailyUpdate(state) {
   const garden = roomLevel(state, 'garden');
   if (garden) transact(state, { herb: garden * 2 }, 'เก็บสมุนไพรจากสวน', 1);
   const shop = state.village?.shop || 0, market = state.village?.market || 0;
-  if (shop) transact(state, { gold: shop * 20 }, 'ค่าเช่าร้านค้าในหมู่บ้าน', 1);
+  const people = population(state);
+  if (shop) transact(state, { gold: Math.round(shop * (12 + people * 0.25)) }, 'ค่าเช่าร้านค้าในหมู่บ้าน', 1);
+  // Townsfolk drop in at the guild's bar too: a bigger town fills more tables.
+  if (roomLevel(state, 'bar')) transact(state, { gold: Math.round(people * 0.5 * bestRoomLevel(state, 'bar') * (1 + staffOn(state, 'cook') * 0.2)) }, 'บาร์และครัว (ชาวเมือง)', 1);
   if (market) transact(state, { wood: market * 3, stone: market * 2, herb: market * 2 }, 'ของจากตลาดนัด', 1);
   const hall = state.upgrades?.trophyHall || 0, monument = state.village?.monument || 0;
   if (hall) transact(state, { gold: hall * 30 }, 'ค่าเข้าชมหอเกียรติยศ', 1);
@@ -1375,7 +1414,7 @@ function directorContext(state) {
     spawnRaid: (species, count) => { const weak = 1 - staffOn(state, 'scout') * 0.06; for (let i = 0; i < count; i++) { const m = spawnMonster(w, species[i % species.length], 'raid', { x: -15 - (i % 3) * 1.2 - Math.floor(i / 3) * .8, y: 17 + (i % 2) * .9 }, { raid: true }); m.hp = m.maxHp = Math.round(m.maxHp * weak); w.monsters.push(m); } },
     spawnBoss: (species, zone) => { const z = HUNT_ZONES[zone]; w.monsters.push(spawnMonster(w, species, zone, { x: z.x, y: z.y }, { boss: true })); },
     rally: () => rallyDefenders(state, lifeContext(state)), recallHunters: () => recallHunters(state, lifeContext(state)),
-    scout: () => staffOn(state, 'scout'),
+    scout: () => staffOn(state, 'scout'), population: () => population(state), scar: n => { state.village.raidScar = (state.village.raidScar || 0) + n; },
     alert: info => { state.director.alert = { ...info, until: state.elapsed + 45 }; },
     monsterName, memberName: id => MEMBER_BY_ID[id]?.name || id,
     famousCandidate: () => getAvailableRecruits(state).find(m => m.famous && !m.applying && hasRank(state, m.unlockRank))?.id || null,
@@ -1552,6 +1591,9 @@ function tickErrands(state) {
 }
 function tickVillage(state, step) {
   tickTown(state, step, getVillageInfo(state).level, (text, type) => addLog(state, text, type));
+  if (Math.floor(state.elapsed) !== Math.floor(state.elapsed - step)) tickCity(state, Math.max(1, step));
+  const level = getVillageInfo(state).level;
+  if (level > (state.village.grown || 1)) { state.village.grown = level; state.village.celebrateAt = state.elapsed; addLog(state, `🎉 ${getVillageInfo(state).name}! เมืองเติบโตขึ้น ชาวเมืองจัดงานฉลองกันทั้งคืน`, 'rank'); }
   state.idleBank = (state.idleBank || 0) + idleRate(state) * step;
   settleIdle(state);
   const trainingSlots = roomLevel(state, 'training') * 2;
@@ -2229,7 +2271,8 @@ export function deserializeGame(source) {
   validateNumber(village, 'houses', 0, VILLAGE_LOTS.houses.length, true);
   for (const id of VILLAGE_BUSINESSES) { village[id] ??= 0; validateNumber(village, id, 0, VILLAGE_PROJECTS[id].max, true); }
   village.inn = Number.isInteger(village.inn) ? clamp(village.inn, 0, VILLAGE_PROJECTS.inn.max) : 0;
-  state.village = { prosperity: village.prosperity, houses: village.houses, inn: village.inn, ...Object.fromEntries(VILLAGE_BUSINESSES.map(id => [id, village[id]])), trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
+  const unit = (x, lo, hi, d) => finiteNumber(x) ? clamp(x, lo, hi) : d;
+  state.village = { prosperity: village.prosperity, houses: village.houses, inn: village.inn, occupancy: unit(village.occupancy, 0.6, 1, 1), ...(finiteNumber(village.satisfaction) ? { satisfaction: clamp(village.satisfaction, 0, 100) } : {}), raidScar: unit(village.raidScar, 0, 100, 0), grown: Number.isInteger(village.grown) ? clamp(village.grown, 1, 5) : 1, ...(finiteNumber(village.celebrateAt) ? { celebrateAt: village.celebrateAt } : {}), ...Object.fromEntries(VILLAGE_BUSINESSES.map(id => [id, village[id]])), trade: finiteNumber(village.trade) && village.trade >= 0 ? village.trade : 0 };
   const lots = Object.fromEntries(Object.entries(village.lots && typeof village.lots === 'object' ? village.lots : {}).filter(([key, lot]) => (/^h\d{1,2}$/.test(key) || VILLAGE_BUSINESSES.includes(key)) && lot && finiteNumber(lot.x) && finiteNumber(lot.y) && Math.abs(lot.x) <= 90 && Math.abs(lot.y) <= 90).map(([key, lot]) => [key, { x: lot.x, y: lot.y, ...(lot.rot === 1 && ROTATABLE(key) ? { rot: 1 } : {}) }]));
   if (Object.keys(lots).length) state.village.lots = lots;
   state.village.paths = sanitizePaths(village.paths);

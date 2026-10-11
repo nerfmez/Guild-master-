@@ -161,7 +161,7 @@ export function tickDirector(state, ctx) {
 }
 function startMajor(state, ctx, d, ev) {
   if (ev.id === 'raid') {
-    const species = RAID_SPECIES[Math.min(RAID_SPECIES.length - 1, ctx.rankIndex())], count = 5 + ctx.rankIndex() * 2;
+    const species = RAID_SPECIES[Math.min(RAID_SPECIES.length - 1, ctx.rankIndex())], count = 5 + ctx.rankIndex() * 2 + Math.floor((ctx.population?.() || 0) / 25);
     ctx.spawnRaid(species, count);
     d.active = { id: 'raid', until: ctx.elapsed() + 240, total: count, reached: 0 };
     ctx.rally();
@@ -186,7 +186,7 @@ function finishRaid(ctx, d, left) {
 export function raidReached(state, ctx) {
   const a = state.director?.active;
   if (a?.id === 'raid') a.reached += 1;
-  ctx.prosperity(-15); ctx.gold(-20, 'ความเสียหายจากมอนบุก');
+  ctx.prosperity(-15); ctx.gold(-20, 'ความเสียหายจากมอนบุก'); ctx.scar?.(4);
 }
 export function bossDefeated(state, ctx, name) {
   const d = state.director;

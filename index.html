@@ -5,19 +5,20 @@
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
  <meta name="theme-color" content="#939c32">
  <meta name="description" content="Guild Master — บ้านของนักผจญภัยในหมู่บ้านพิกเซล">
- <title>Guild Master · R43</title>
+ <title>Guild Master · R44</title>
  <link rel="icon" type="image/svg+xml" href="./assets/leaf.svg">
  <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
  <div id="app">
   <main class="world-area" aria-label="พื้นที่กิลด์">
-   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์ · R43…</span><button hidden>เปิดฉากอีกครั้ง</button><noscript>ต้องเปิด JavaScript ในเบราว์เซอร์เพื่อเล่นเกม</noscript></div></div>
+   <div id="world-wrap" class="world-wrap"><canvas id="guild-world" aria-label="ฉากกิลด์เปิดหลังคา กดเลือกสมาชิกหรือห้อง ลากเพื่อเลื่อนมุมมอง"></canvas><div id="scene-status" class="scene-status" role="status"><span>กำลังเปิดกิลด์ · R44…</span><button hidden>เปิดฉากอีกครั้ง</button><noscript>ต้องเปิด JavaScript ในเบราว์เซอร์เพื่อเล่นเกม</noscript></div></div>
    <header class="topbar">
-    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong id="brand-name">Guild Master</strong><small id="brand-sub">GUILD MASTER · R43</small></div></div>
+    <div class="brand"><img src="./assets/leaf.svg" alt=""><div><strong id="brand-name">Guild Master</strong><small id="brand-sub">GUILD MASTER · R44</small></div></div>
     <div id="resources" class="resources" aria-label="ทรัพยากรกิลด์"></div>
     <div id="calendar" class="calendar"></div>
    </header>
+   <div id="city-stats" class="city-stats" aria-label="ตัวเลขเมือง"></div>
    <div class="world-actions" aria-label="มุมมองฉาก"><button id="zoom-in" aria-label="ซูมเข้า">+</button><button id="zoom-out" aria-label="ซูมออก">−</button><button id="home-view" aria-label="กลับมุมมองกิลด์">⌂</button><button id="hero-toggle" aria-label="ออกไปข้างนอกเป็นหัวหน้ากิลด์" title="ออกไปข้างนอกเอง">⚔</button></div>
    <div id="hero-hud" class="hero-hud" hidden><div class="hero-status"><b id="hero-name">หัวหน้ากิลด์</b><small id="hero-level">Lv.1</small><div class="hero-bar hp"><i id="hero-hp"></i></div><div class="hero-bar xp"><i id="hero-xp"></i></div><small id="hero-info"></small><button id="hero-exit" type="button">🏠 กลับกิลด์</button></div><div id="hero-stick" class="hero-stick" aria-label="เดิน (WASD)"><i></i></div><div class="hero-buttons"><button id="hero-dash" type="button" aria-label="หลบ (L)">💨<small>หลบ</small></button><button id="hero-skill" type="button" aria-label="ฟันหมุน (K)">🌀<small>ฟันหมุน</small></button><button id="hero-attack" type="button" aria-label="โจมตี (J)">⚔<small>โจมตี</small></button></div><p class="hero-help">WASD / ลูกศร เดิน · J หรือ Space ฟัน · K ฟันหมุน · L หรือ Shift หลบ</p></div>
    <button id="goal-card" class="goal-card" type="button" aria-live="polite"></button>
@@ -40,7 +41,7 @@
   </main>
   <dialog id="management-dialog" class="management-dialog" aria-labelledby="panel-heading">
    <aside class="notebook">
-    <div class="notebook-top"><div><small>GUILD MASTER · R43</small><h1 id="panel-heading">เมนูกิลด์</h1></div><button id="menu-close" class="close-dialog" aria-label="กลับสู่ฉาก">×</button></div>
+    <div class="notebook-top"><div><small>GUILD MASTER · R44</small><h1 id="panel-heading">เมนูกิลด์</h1></div><button id="menu-close" class="close-dialog" aria-label="กลับสู่ฉาก">×</button></div>
     <div class="menu-body">
      <nav class="bottom-nav" aria-label="เมนูกิลด์">
       <button data-tab="home"><span>⌂</span>ภาพรวม</button><button data-tab="quests"><span>▤</span>คำร้อง</button><button data-tab="members"><span>♟</span>นักผจญภัย</button><button data-tab="build"><span>▧</span>ห้องและต่อเติม</button><button data-tab="workshop"><span>⚒</span>คราฟต์</button><button data-tab="village"><span>⌂</span>หมู่บ้าน</button><button data-tab="journal"><span>✦</span>บันทึก</button>
@@ -54,7 +55,7 @@
   <div id="chapter-label" hidden></div><div id="objective" hidden></div><div id="mission-strip" hidden></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <dialog id="settings-dialog"><form method="dialog"><button class="close-dialog" aria-label="ปิด">×</button></form><div id="settings-content"></div></dialog>
-  <div id="title-screen" class="title-screen" hidden><div class="title-card"><img src="./assets/leaf.svg" alt=""><small>PIXEL GUILD STORY</small><h1>Guild Master</h1><p>บ้านเล็ก ๆ ของนักผจญภัย ข้างต้นโอ๊กใหญ่</p><p id="title-loading" class="title-loading" hidden>กำลังเตรียมโลก…</p><div class="title-actions"><button id="title-continue" class="primary" hidden>เล่นต่อ<small id="title-save"></small></button><button id="title-new">เริ่มกิลด์ใหม่<small>เปิดบ้านว่างหลังแรก</small></button></div><span class="title-version">R43</span></div></div>
+  <div id="title-screen" class="title-screen" hidden><div class="title-card"><img src="./assets/leaf.svg" alt=""><small>PIXEL GUILD STORY</small><h1>Guild Master</h1><p>บ้านเล็ก ๆ ของนักผจญภัย ข้างต้นโอ๊กใหญ่</p><p id="title-loading" class="title-loading" hidden>กำลังเตรียมโลก…</p><div class="title-actions"><button id="title-continue" class="primary" hidden>เล่นต่อ<small id="title-save"></small></button><button id="title-new">เริ่มกิลด์ใหม่<small>เปิดบ้านว่างหลังแรก</small></button></div><span class="title-version">R44</span></div></div>
   <dialog id="setup-dialog" class="setup-dialog" aria-labelledby="setup-title"><div id="setup-content"></div></dialog>
   <dialog id="story-dialog" class="story-dialog" aria-labelledby="story-title"><div id="story-content"></div></dialog>
   <dialog id="visitor-dialog" class="visitor-dialog" aria-labelledby="visitor-title"><div id="visitor-content"></div></dialog>

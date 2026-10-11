@@ -16,7 +16,7 @@
   };
  }
  function note(text){notes.push(String(text).slice(0,120));if(notes.length>6)notes.shift();}
- function detail(){return 'R43 · '+(cpu?'cpu-canvas':'gpu-canvas')+' · '+(notes.join(' | ')||'-');}
+ function detail(){return 'R44 · '+(cpu?'cpu-canvas':'gpu-canvas')+' · '+(notes.join(' | ')||'-');}
  function show(text,error,retry){
   var node=document.getElementById('scene-status');
   if(!node)return;
@@ -30,9 +30,9 @@
  }
  function fail(error){
   clearTimeout(timer);note('fail: '+(error&&error.message||error));
-  show('เปิดกิลด์ไม่สำเร็จ · R43',error||'เกมเริ่มทำงานไม่สำเร็จ');
+  show('เปิดกิลด์ไม่สำเร็จ · R44',error||'เกมเริ่มทำงานไม่สำเร็จ');
  }
- window.guildBoot={version:'R43',cpuCanvas:cpu,fail:fail,note:note,show:show,detail:detail,ready:function(){complete=true;clearTimeout(timer);note('ready');var node=document.getElementById('scene-status');if(node)node.hidden=true;}};
+ window.guildBoot={version:'R44',cpuCanvas:cpu,fail:fail,note:note,show:show,detail:detail,ready:function(){complete=true;clearTimeout(timer);note('ready');var node=document.getElementById('scene-status');if(node)node.hidden=true;}};
  window.addEventListener('error',function(event){note('error: '+(event.error&&event.error.message||event.message));if(!complete)fail(event.error||event.message);});
  window.addEventListener('unhandledrejection',function(event){note('rejection: '+(event.reason&&event.reason.message||event.reason));if(!complete)fail(event.reason);});
  timer=setTimeout(function(){fail('การเริ่มฉากใช้เวลานานเกินไป');},45000);

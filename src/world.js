@@ -3,7 +3,7 @@ import { STAFF,FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
 import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { drainFx } from './life.js';
-import { pathTier, footprintOf, ROTATABLE, homeOf } from './town.js';
+import { pathTier, footprintOf, ROTATABLE, homeOf, villageBuildings, doorOf, population } from './town.js';
 const SHOT_COLORS={arrow:0xc9a06a,pierce:0xf3e2b0,magic:0xb7a6ff,bolt:0xf08a4b,fire:0xf08a4b,frostbolt:0x9fd3f0,frost:0x9fd3f0,spark:0xc9dcff,light:0xfff1c4,note:0xf2b8d8};
 import { QUESTS,REGIONS } from './content.js';
 import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
@@ -43,7 +43,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R43',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R44',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -633,6 +633,51 @@ export class GuildRenderer {
   for(const [id,s] of this.lifeSprites)if(!seen.has(id)){s.image.destroy();s.shadow?.destroy();s.crown?.destroy();s.label?.destroy();this.lifeSprites.delete(id);}
   this.playFx(dt);
  }
+ // ---- A town that lives: day and night, lamps and a gate as it grows, townsfolk about their day, a party when it levels up. ----
+ cityCanvas(kind,lit){const c=document.createElement('canvas'),g=c.getContext('2d');g.imageSmoothingEnabled=false;const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
+  if(kind==='lamp'){c.width=12;c.height=36;px(5,8,2,27,'#4f4540');px(3,33,6,3,'#4f4540');px(2,2,8,7,'#4f4540');px(3,3,6,5,lit?'#ffe08a':'#d8cfae');px(4,0,4,2,'#4f4540');}
+  else if(kind==='banner'){c.width=14;c.height=40;px(6,0,2,38,'#6f5240');px(3,36,8,4,'#6f5240');px(8,4,6,14,'#c9584a');px(8,18,3,3,'#c9584a');px(11,18,3,3,'#c9584a');px(9,7,3,3,'#ffe08a');}
+  else if(kind==='gate'){c.width=64;c.height=58;px(4,14,10,44,'#9a8f80');px(50,14,10,44,'#9a8f80');px(2,10,14,6,'#7f7466');px(48,10,14,6,'#7f7466');px(4,4,56,8,'#8a6446');px(6,6,52,4,'#b98a60');px(22,0,20,6,'#8a6446');px(26,1,12,3,'#ffe08a');for(let y=18;y<56;y+=8){px(5,y,8,1,'#7f7466');px(51,y,8,1,'#7f7466');}}
+  else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,214,120,.55)');r.addColorStop(1,'rgba(255,214,120,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
+  return c;}
+ // Morning comes at the start of each day; dusk, night and a short dawn close it.
+ darkness(){const t=(this.state.clock||0)/240;return t<.72?0:t<.8?.5*(t-.72)/.08:t<.95?.5:.5*(1-(t-.95)/.05);}
+ updateCity(dt,playing){
+  if(!this.scene)return;const level=getVillageInfo(this.state).level,dark=this.darkness(),t=this.realTime||0;
+  for(const k of ['lamp0','lamp1','banner','gate','glow'])if(!this.scene.textures.exists('city-'+k))this.texture('city-'+k,this.cityCanvas(k.replace(/[01]$/,''),k==='lamp1'));
+  // Night falls over everything except the lamps and the interface.
+  if(!this.night){this.night=this.scene.add.rectangle(0,0,10,10,0x101a3a).setOrigin(0).setScrollFactor(0).setDepth(99970);}
+  const cam=this.camera;if(cam){const z=cam.zoom||1;this.night.setPosition(-cam.width/z,-cam.height/z).setSize(cam.width*3/z,cam.height*3/z);}this.night.setAlpha(dark*.9).setVisible(dark>0.01);
+  // Street furniture by stage: lamps from the third level, a gate from the fourth, banners at the fifth.
+  const key=level+'';if(this.cityKey!==key){this.cityKey=key;for(const o of this.cityProps||[])o.image.destroy(),o.glow?.destroy();this.cityProps=[];
+   const lamps=[[-7.5,16.3],[-1.5,16.3],[4.5,16.3],[17.5,16.3],[23.5,16.3],[29.5,16.3],[35.5,16.3]];
+   if(level>=3)for(const [x,y] of lamps){const p=gridPoint(x,y);this.cityProps.push({kind:'lamp',image:this.scene.add.image(p.x,p.y,'city-lamp0').setOrigin(.5,1).setDepth(p.y),glow:this.scene.add.image(p.x,p.y-30,'city-glow').setDepth(99975).setBlendMode(Phaser.BlendModes.ADD)});}
+   if(level>=4)for(const [x,y] of [[-13.5,17.2],[41,17.2]]){const p=gridPoint(x,y);this.cityProps.push({kind:'gate',image:this.scene.add.image(p.x,p.y,'city-gate').setOrigin(.5,1).setDepth(p.y+1)});}
+   if(level>=5)for(const [x,y] of lamps.filter((_,i)=>i%2===0)){const p=gridPoint(x+.6,y-.3);this.cityProps.push({kind:'banner',image:this.scene.add.image(p.x,p.y,'city-banner').setOrigin(.5,1).setDepth(p.y)});}}
+  for(const o of this.cityProps||[])if(o.kind==='lamp'){o.image.setTexture(dark>.15?'city-lamp1':'city-lamp0');o.glow.setVisible(dark>.15).setAlpha(Math.min(1,dark*2)*(.85+Math.sin(t*3+o.image.x)*.08));}
+  this.updateFolk(dt,playing,dark);
+  // A town that just grew throws a party: fireworks over the rooftops for a few seconds.
+  const at=this.state.village?.celebrateAt;if(at!==undefined&&at!==this.celebrated){if(this.celebrated!==undefined&&this.state.elapsed-at<30)this.fireworks=8;this.celebrated=at;}
+  if(this.fireworks>0&&playing){this.fireworks-=dt;this.fwClock=(this.fwClock||0)-dt;if(this.fwClock<=0){this.fwClock=.35;const p=gridPoint(4+Math.random()*24,10+Math.random()*10),col=[0xffd36a,0xf08a4b,0x9fd6d0,0xd9b8ff,0x9fe08a][Math.floor(Math.random()*5)];this.ring(p.x,p.y-120,col,22+Math.random()*16);this.ring(p.x,p.y-120,0xfff8e7,10);if(Math.random()<.3)this.floatText(p.x,p.y-90,'🎉','#ffe08a',14);}}
+ }
+ updateFolk(dt,playing,dark){
+  // Townsfolk: about one walker for every few people, between their homes and the shops; home at night, running home in a raid.
+  const pop=population(this.state),want=Math.min(24,Math.floor(pop/2.5)),homes=villageBuildings(this.state).filter(b=>b.kind==='house').map(doorOf),shops=villageBuildings(this.state).filter(b=>b.kind!=='house').map(doorOf);
+  this.folk??=[];if(!homes.length){for(const f of this.folk)f.image.destroy();this.folk=[];return;}
+  while(this.folk.length<want){const i=this.folk.length,look=villagerLook({seed:i*7+3,client:'ชาวเมือง'}),key=this.actorKey(look),home=homes[i%homes.length];this.folk.push({key,home,x:home.x,y:home.y,tx:home.x,ty:home.y,wait:Math.random()*8,dir:'south',image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52).setVisible(false),seed:i});}
+  while(this.folk.length>want)this.folk.pop().image.destroy();
+  const raid=(this.state.world?.monsters||[]).some(m=>m.raid&&!m.dead),night=dark>.3,step=playing?dt*(this.state.settings?.speed||1):0;
+  for(const f of this.folk){
+   if(raid||night){f.tx=f.home.x;f.ty=f.home.y;f.wait=2;}
+   const d=Math.hypot(f.tx-f.x,f.ty-f.y),speed=raid?2.4:.8;
+   if(d>.05){const s2=Math.min(d,step*speed);const dx=(f.tx-f.x)/d,dy=(f.ty-f.y)/d;f.x+=dx*s2;f.y+=dy*s2;const sx=dx-dy,sy=dx+dy;f.dir=Math.abs(sx)>Math.abs(sy)?(sx>0?'east':'west'):(sy>0?'south':'north');f.moving=true;}
+   else{f.moving=false;if((f.wait-=step)<=0&&!raid&&!night){f.wait=4+Math.random()*12;const goal=shops.length&&Math.random()<.65?shops[Math.floor(Math.random()*shops.length)]:homes[Math.floor(Math.random()*homes.length)];f.tx=goal.x+(Math.random()-.5)*1.2;f.ty=goal.y+(Math.random()-.5)*.6;}}
+   const atHome=!f.moving&&Math.hypot(f.x-f.home.x,f.y-f.home.y)<.2&&(raid||night);
+   if(atHome){f.image.setVisible(false);continue;}
+   const p=gridPoint(f.x,f.y);this.placeBody(f.image,f.key,null,p,f.moving?'walk'+(Math.floor(this.elapsed*8+f.seed)%4):'idle',f.dir,Math.round(p.y)+.1);
+   if(!f.moving||!f.image.scene)continue;
+  }
+ }
  // Damage numbers, skill flashes and knock-outs.
  floatText(x,y,text,color,size=9){
   this.fxTexts??=[];let o=this.fxTexts.find(o=>!o.live);
@@ -800,6 +845,7 @@ export class GuildRenderer {
   this.updateWorld(dt,playing);
   this.updateVillagers(dt,playing);
   this.updateLife(dt,playing);
+  this.updateCity(dt,playing);
   this.updateHero(dt);
   // Follow a watched team until the player drags the view or the team is home.
   if(this.follow){

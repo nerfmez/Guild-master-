@@ -1,7 +1,7 @@
 {
-  "file": "play-r7-2e2232d7.html",
-  "sha256": "2e2232d753dda1f3bbd2a0e952bc8f44346543149dc917706a7312b0d355b618",
-  "bytes": 2645756,
+  "file": "play-r7-63f195ab.html",
+  "sha256": "63f195abdba57ce17c6eb5671058d2c8884a1ca9e3eb3df77cfa11db5476139e",
+  "bytes": 2666888,
   "classicInline": true,
   "cases": [
     {
@@ -29,8 +29,8 @@
       "mode": "webgl",
       "renderer": "WebGL",
       "scenePixels": {
-        "grassDetail": 308175,
-        "warm": 309558,
+        "grassDetail": 307997,
+        "warm": 309607,
         "blueRoof": 7411,
         "floor": {
           "warm": 576,
