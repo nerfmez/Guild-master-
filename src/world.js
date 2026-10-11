@@ -43,7 +43,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R41',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R42',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -678,8 +678,8 @@ export class GuildRenderer {
  }
  roomFor(m){if(this.prepping?.has(m.id)){const board=this.state.facilities.find(f=>f.type==='board');if(board)return board;}
   // Adventurers dropping in from town read the board, chat at the counter or eat at the kitchen.
-  if(m.town?.at==='guild'&&m.task==='rest'&&!(m.injury>15)){const types=['board','reception','kitchen','lounge','board'];for(let i=0;i<types.length;i++){const f=this.state.facilities.find(f=>f.type===types[(hash(m.id)+i)%types.length]);if(f)return f;}}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
-  if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','dorm'][hash(m.id)%4];
+  if(m.town?.at==='guild'&&m.task==='rest'&&!(m.injury>15)){const types=['board','reception','kitchen','lounge','board'];for(let i=0;i<types.length;i++){const f=this.state.facilities.find(f=>f.type===types[(hash(m.id)+i)%types.length]);if(f)return f;}}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'kitchen':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
+  if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','board'][hash(m.id)%4];
   // Sleepers and patients are spread over every bed, two to a bed, instead of crowding the first one.
   if(type==='dorm'||type==='infirmary'){const plan=this.bedPlan();const f=plan.get(m.id);if(f)return f;if(type==='dorm'&&this.wantsBed(m))return this.state.facilities.find(f=>f.type==='reception')||this.state.facilities[0];}
   return this.state.facilities.find(f=>f.type===type)||this.state.facilities[0];}
@@ -687,7 +687,7 @@ export class GuildRenderer {
  bedPlan(){
   const key=this.state.elapsed|0;if(this.bedPlanKey===key&&this.bedPlanCache)return this.bedPlanCache;
   const plan=new Map(),away=new Set((this.state.missions||[]).filter(x=>x.status==='active'||x.status==='decision').flatMap(x=>x.memberIds));
-  for(const type of ['infirmary','dorm']){const beds=this.state.facilities.filter(f=>f.type===type);let slot=0;
+  for(const type of ['infirmary']){const beds=this.state.facilities.filter(f=>f.type===type);let slot=0;
    for(const m of [...this.state.members].sort((a,b)=>a.id<b.id?-1:1)){if(plan.has(m.id)||away.has(m.id)||m.errand)continue;const wants=type==='infirmary'?m.injury>0:!m.injury&&m.task==='rest'&&m.energy<95&&!m.waitingReason;if(!wants)continue;
     if(slot>=beds.length*2)break;plan.set(m.id,beds[slot%beds.length]);slot++;}}
   this.bedPlanKey=key;this.bedPlanCache=plan;return plan;}
@@ -748,6 +748,9 @@ export class GuildRenderer {
  emoteTexture(kind){const key='emote-'+kind;if(this.scene.textures.exists(key))return key;const c=document.createElement('canvas');c.width=14;c.height=12;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
   const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
   if(kind==='z'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(4,3,6,1,'#6f6a8f');px(8,4,2,1,'#6f6a8f');px(6,5,2,1,'#6f6a8f');px(4,6,2,1,'#6f6a8f');px(4,7,6,1,'#6f6a8f');}
+  else if(kind==='sad'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#e6ecf2');px(3,3,8,3,'#8f9db0');px(4,2,5,1,'#8f9db0');px(4,7,1,2,'#6fa8d8');px(7,7,1,2,'#6fa8d8');px(9,6,1,2,'#6fa8d8');}
+  else if(kind==='gear'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff1c4');px(3,8,2,1,'#8a6446');px(4,7,2,1,'#8f9a98');px(6,5,2,1,'#8f9a98');px(8,3,2,1,'#8f9a98');px(7,6,1,1,'#d9584a');px(6,4,1,1,'#d9584a');}
+  else if(kind==='bag'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(4,4,6,5,'#c9a06a');px(5,3,4,1,'#8a6446');px(6,6,2,1,'#d9584a');}
   else{px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(6,3,2,6,'#d98978');px(4,5,6,2,'#d98978');}
   this.texture(key,c);return key;}
  pathBetween(sx,sy,tx,ty){return findWalkPath(this.state,gridPosition(sx,sy),gridPosition(tx,ty)).map(p=>gridPoint(p.x,p.y));}
@@ -759,9 +762,13 @@ export class GuildRenderer {
    if(a.away){a.emote?.setVisible(false);const hunter=this.state.world?.hunters?.find(h=>h.id===a.member.id);if(a.member.errand)this.updateErrand(a,playing);else if(hunter)this.updateHunter(a,hunter,playing);else this.updateTraveler(a,playing);continue;}
    // At home in town: their room at the inn (out of sight), the market and the streets, or a visit inside the guild hall.
    const tw=a.member.town;
-   if(tw&&tw.at!=='guild'){a.emote?.setVisible(false);a.bed=null;a.inTown=true;if(tw.at==='lodge'){a.image.setVisible(false);continue;}
+   if(tw&&tw.at!=='guild'){a.bed=null;a.inTown=true;if(tw.at==='lodge'){a.image.setVisible(false);a.emote?.setVisible(false);continue;}
     const p=gridPoint(tw.x,tw.y),dx=p.x-a.x,dy=p.y-a.y,moved=Math.hypot(dx,dy)>.05&&playing;if(moved)a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');a.x=p.x;a.y=p.y;
-    const tt=this.realTime+(hash(a.member.id)%97)/13;this.placeBody(a.image,`actor-${a.member.id}-${a.member.class}`,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):tt%4.3<.15?'blink':Math.floor(tt*1.5)%2?'breath':'idle',a.direction,Math.round(p.y)+.3);continue;}
+    const tt=this.realTime+(hash(a.member.id)%97)/13;this.placeBody(a.image,`actor-${a.member.id}-${a.member.class}`,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):tt%4.3<.15?'blink':Math.floor(tt*1.5)%2?'breath':'idle',a.direction,Math.round(p.y)+.3);
+    // What troubles them shows over their head: a bandage, sleepiness, a rain cloud, a broken blade, an empty bag.
+    const mm=a.member,ek=mm.injury>20?'heal':mm.energy<35?'z':mm.morale<35?'sad':mm.equipment?.weapon&&(mm.wear?.weapon??100)<25?'gear':!(mm.pack?.ration>0)&&!(mm.pack?.potion>0)&&hash(mm.id)%3===0?'bag':null;
+    if(ek){if(!a.emote)a.emote=this.scene.add.image(0,0,this.emoteTexture(ek)).setOrigin(.5,1);if(a.emoteKind!==ek){a.emote.setTexture(this.emoteTexture(ek));a.emoteKind=ek;}a.emote.setVisible(true).setPosition(Math.round(p.x+7),Math.round(p.y-24+Math.sin(tt*2.2)*1.5)).setDepth(Math.round(p.y)+1).setAlpha(.9);}else a.emote?.setVisible(false);
+    continue;}
    if(a.inTown){a.inTown=false;const hall=buildingRect(this.state),inside=gridPoint(hall.x+hall.w/2,hall.y+hall.h-.5);a.x=inside.x;a.y=inside.y;a.path=this.pathBetween(inside.x,inside.y,a.home.x,a.home.y);}
    a.image.setRotation(0);a.clock+=elapsed;
    if(!a.path?.length&&a.clock>6){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}

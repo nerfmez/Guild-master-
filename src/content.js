@@ -59,7 +59,6 @@ export const JOBS = {
 };
 export const FACILITIES = {
   reception: { id: 'reception', name: 'โต๊ะรับคำร้อง', description: 'รับคำร้อง เพิ่มชื่อเสียงจากภารกิจ 5% ต่อระดับ', w: 2, h: 1, cost: { gold: 180, wood: 8, stone: 4 }, unlockRank: 'F', color: '#dec6a1', maxLevel: 3 },
-  dorm: { id: 'dorm', name: 'เตียงงีบ', description: 'นักผจญภัยพักที่โรงเตี๊ยมในเมือง เตียงในกิลด์ไว้ให้คนแวะงีบ ฟื้นแรงเร็วขึ้นต่อระดับ', w: 1, h: 2, cost: { gold: 220, wood: 12, stone: 3 }, unlockRank: 'F', color: '#bbaac9', maxLevel: 3 },
   infirmary: { id: 'infirmary', name: 'เตียงรักษา', description: 'รักษาบาดเจ็บพร้อมกัน 2 คนต่อระดับ คนเจ็บมากได้เตียงก่อน', w: 1, h: 2, cost: { gold: 240, wood: 8, stone: 6, herb: 4 }, unlockRank: 'F', color: '#b9cfbf', maxLevel: 3 },
   kitchen: { id: 'kitchen', name: 'เตาทำอาหาร', description: 'เพิ่มความสดชื่นและเร่งพักฟื้นสมาชิก', w: 1, h: 1, cost: { gold: 200, wood: 10, stone: 4 }, unlockRank: 'F', color: '#e6b799', maxLevel: 3 },
   training: { id: 'training', name: 'หุ่นฝึก', description: 'ฝึกได้พร้อมกัน 2 คนต่อระดับ สมาชิกผลัดกันใช้จุดฝึก', w: 1, h: 1, cost: { gold: 250, wood: 10, stone: 8 }, unlockRank: 'F', color: '#d1bd96', maxLevel: 3 },
@@ -250,6 +249,7 @@ export const HOUSE_UPGRADES = [
   { needs: ['food', 'goods', 'road', 'safety', 'leisure'], level: 3, time: 380 },
 ];
 export const VILLAGE_PROJECTS = {
+  clinic: { name: 'คลินิก', icon: '🩹', max: 3, villageLevel: 1, base: { gold: 260, wood: 14, stone: 10 }, growth: 1.9, prosperity: 140, description: 'หมอรักษาบาดแผลให้นักผจญภัยที่อยู่ในเมือง แผลหายเร็วขึ้นต่อระดับ ไม่ต้องรอเตียงในกิลด์' },
   inn: { name: 'โรงเตี๊ยม', icon: '🛏', max: 4, villageLevel: 1, base: { gold: 180, wood: 16, stone: 6 }, growth: 1.75, prosperity: 120, description: 'ต่อเติมห้องพักให้นักผจญภัยอีก 8 คนต่อระดับ คนมาอยู่เมืองได้มากขึ้น' },
   house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง และมีห้องเช่าให้นักผจญภัย 2 คน' },
   shop: { name: 'ร้านค้า', icon: '🛍', max: 3, villageLevel: 1, base: { gold: 240, wood: 14, stone: 6 }, growth: 1.9, prosperity: 140, description: 'ขายเสบียงและยาให้นักผจญภัยด้วยเงินของพวกเขาเอง (ใช้สมุนไพรจากตลาด) · ขนมช่วยขวัญ · กิลด์ได้ค่าเช่าวันละ 20 G ต่อระดับ' },
@@ -293,11 +293,12 @@ export const VILLAGE_LOTS = {
   fairground: { x: 14, y: 28.6, seed: 197 },
   monument: { x: 15.5, y: 18.6, seed: 211 },
   stage: { x: -17, y: 25, seed: 199 },
+  clinic: { x: 21, y: 13, seed: 223, style: 'clinic' },
 };
 /** Footprints of village buildings on the world grid (width, depth). */
-export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4], auction: [2.6, 2.5], fairground: [5, 4], stage: [3.4, 2.8], monument: [2, 2] };
+export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4], auction: [2.6, 2.5], fairground: [5, 4], stage: [3.4, 2.8], monument: [2, 2], clinic: [2.6, 2.4] };
 /** Every village business the player can build (houses aside). */
-export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan', 'auction', 'fairground', 'stage', 'monument'];
+export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan', 'auction', 'fairground', 'stage', 'monument', 'clinic'];
 
 // ---- Applicants: fame draws newcomers to the door; famous adventurers come only when the guild suits them. ----
 export const TRAIT_NAMES = ['ใจเย็น', 'ช่างสังเกต', 'ใฝ่รู้', 'อ่อนโยน', 'รักอิสระ', 'ขยัน', 'ร่าเริง', 'รอบคอบ', 'กล้าหาญ', 'ช่างพูด', 'อดทน', 'สุขุม'];

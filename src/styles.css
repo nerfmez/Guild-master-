@@ -532,3 +532,20 @@ body.on-title .hero-hud{display:none}
 .rally-card{display:grid;gap:6px;padding:12px;margin:8px 0;border-radius:12px;background:#fbe3dc;border:2px solid #d9584a}.rally-card small{color:#7a3a2a}
 .board-list .board-card{flex-direction:row;align-items:stretch}.board-list .board-card .qart{flex:0 0 92px}.board-list .board-card .qart canvas{width:92px;height:100%;object-fit:cover;aspect-ratio:auto}.board-list .board-card .qbody{flex:1;min-width:0}
 .board-list .board-card .qart .qbadge{font-size:9px}
+/* R42: efficiency, bottlenecks in gold, condition cards */
+.resource.eff{border:0;background:none;cursor:pointer;font:inherit;color:inherit;padding:0 0 0 6px;display:flex;align-items:center;gap:5px}.resource.eff b{white-space:nowrap}.resource.eff.bad b{color:#b0503c}.resource.eff.good b{color:#4f7a3a}.resource.eff i.up{color:#4f7a3a;font-style:normal}.resource.eff i.down{color:#b0503c;font-style:normal}
+.eff-hero{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;padding:12px;margin:8px 0;border-radius:12px;background:#f5ecd7}.eff-hero small{display:block;color:var(--muted);font-size:11.5px;margin-top:3px}
+.eff-big{font-size:34px;font-weight:800;line-height:1;text-align:center;color:#8a6a2a}.eff-big small{font-size:10.5px;font-weight:600;display:block;color:var(--muted)}.eff-big.good{color:#4f7a3a}.eff-big.bad{color:#b0503c}
+.loss-card{display:grid;gap:6px;padding:10px 12px;margin:6px 0;border-radius:11px;background:#fffaee;border:1px solid #e3d3b0;border-left:4px solid #d9584a}.loss-card small{color:var(--muted);font-size:11.5px}
+.loss-head{display:flex;justify-content:space-between;align-items:center}.loss-gold{font-weight:800;color:#b0503c}
+.fix-row{display:grid;gap:5px}.fix-row .fix{display:grid;text-align:left;min-height:0;padding:7px 10px;font-size:12.5px}.fix-row .fix small{font-size:10.5px;opacity:.85}
+.cond-list{display:grid;gap:5px;margin:6px 0}.cond-row{display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;font-size:12px}.cond-row small,.cond-row b{font-size:11px;color:var(--muted)}
+.bar.cond{height:8px}.bar.cond>i{background:#7fae6f}.bar.cond.ok>i{background:#e0b94a}.bar.cond.bad>i{background:#d9584a}
+.comfort-parts{display:flex;flex-wrap:wrap;gap:5px}.comfort-parts span{padding:3px 8px;border-radius:99px;background:#eef3e2;font-size:11.5px}.comfort-parts span.neg{background:#fbe3dc;color:#8a3a2a}
+.day-book{display:grid;grid-template-columns:1fr 1fr;gap:8px}.day-book>div{padding:8px;border-radius:10px;background:#f5ecd7;display:grid;gap:3px}.book-row{display:flex;justify-content:space-between;font-size:11.5px;gap:6px}.book-row b.in{color:#4f7a3a}.book-row b.out{color:#b0503c}
+.eff-trend{display:flex;gap:6px;align-items:flex-end;height:70px;margin:10px 0;padding:6px;border-radius:10px;background:#f5ecd7}.eff-trend span{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;text-align:center}.eff-trend i{display:block;background:#7fae6f;border-radius:4px 4px 0 0;min-height:3px}.eff-trend small{font-size:9.5px;color:var(--muted)}
+.cond-card{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;padding:10px;margin:8px 0;border-radius:12px;background:#f5ecd7}.cond-card .inline-tip{grid-column:1/-1}
+.cond-eff{display:grid;justify-items:center;padding:4px 8px}.cond-eff b{font-size:24px;color:#8a6a2a}.cond-eff.good b{color:#4f7a3a}.cond-eff.bad b{color:#b0503c}.cond-eff small{font-size:10px;color:var(--muted)}
+em.eff-good{color:#4f7a3a;font-style:normal;font-weight:700}em.eff-ok{color:#8a6a2a;font-style:normal;font-weight:700}em.eff-bad{color:#b0503c;font-style:normal;font-weight:700}
+.upgrade-card .gain{display:block;color:#4f7a3a;font-weight:700;font-size:11px;margin:2px 0}
+.topbar .resource.eff{pointer-events:auto}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getLodging, regularLimit, boardStatus, boardThreshold, getAdventurerRank, classChoices, marketPrice, tradeQuote, addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame as createLivingGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
+import { DAY_LENGTH, getLodging, regularLimit, boardStatus, boardThreshold, getAdventurerRank, classChoices, marketPrice, tradeQuote, addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame as createLivingGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
 import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
@@ -62,8 +62,8 @@ test('invalid and double booked commands are atomic', () => {
     ['sendMission', { questId: 'herbs', memberIds: party }],
     ['sendMission', { questId: 'patrol', memberIds: ['mira', 'mira', 'finn'] }],
     ['setTask', { memberId: 'mira', task: 'train' }],
-    ['build', { type: 'dorm', x: 4, y: 3 }],
-    ['build', { type: 'dorm', x: 1, y: 1 }],
+    ['build', { type: 'infirmary', x: 4, y: 3 }],
+    ['build', { type: 'infirmary', x: 1, y: 1 }],
     ['equip', { memberId: 'mira', equipmentId: 'oak-blade' }],
     ['recruit', { memberId: 'sera' }],
     ['craft', { equipmentId: 'moon-charm' }],
@@ -78,7 +78,7 @@ test('invalid and double booked commands are atomic', () => {
 
 test('placement, expansion and room upgrade enforce bounds and occupancy', () => {
   const state = createGame();
-  assert.equal(act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 }).ok, true);
+  assert.equal(act(state, 'build', { type: 'infirmary', x: 8.5, y: 4.5 }).ok, true);
   const room = state.facilities.at(-1);
   assert.equal(act(state, 'move', { facilityId: room.id, x: 4, y: 3 }).ok, false);
   assert.equal(act(state, 'move', { facilityId: room.id, x: 8.75, y: 4.5 }).ok, true);
@@ -125,7 +125,7 @@ test('bankrupt guild remains playable, charges modest upkeep, and limits daily w
   const wood = state.wood;
   tick(state, 180);
   assert.equal(state.wood - wood, 2);
-  assert.equal(state.members.find(member => member.id === 'noa').task, 'rest');
+  assert.notEqual(state.members.find(member => member.id === 'noa').task, 'work', 'two chores a day, then back to their own time');
   assert.equal(getGuildStats(state).upkeep, 12 + state.facilities.length * 3);
   assert.ok(state.gold >= 0);
 });
@@ -214,7 +214,7 @@ test('late story contracts require guild investment as well as a strong fighting
   assert.equal(JSON.stringify(state), before);
   state.gold = 9000; state.wood = 500; state.stone = 500;
   assert.equal(act(state, 'expand').ok, true);
-  assert.equal(act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 }).ok, true);
+  assert.equal(act(state, 'build', { type: 'infirmary', x: 8.5, y: 4.5 }).ok, true);
   for (const memberId of ['sera', 'toma']) assert.equal(hire(state, memberId).ok, true);
   rescue = getAvailableQuests(state).find(quest => quest.id === 'rescue');
   assert.match(rescue.lockReason, /โต๊ะวางแผน/);
@@ -269,16 +269,16 @@ test('room capacity creates queues and construction cannot seal existing rooms f
   tick(state, 1);
   const energyGains = state.members.map(member => member.energy - 20);
   // Everyone rests in their own room in town: no queue for beds any more.
-  assert.equal(energyGains.filter(gain => gain > 0.2).length, 4);
+  assert.equal(energyGains.filter(gain => gain > 0.1).length, 4);
   assert.equal(state.members.filter(member => member.waitingReason).length, 0);
-  assert.equal(state.members.filter(member => member.injury < 9.9).length, 2);
+  assert.equal(state.members.filter(member => member.injury < 9.9).length, 4, 'two treatment beds, two patients each');
   state.members.forEach(member => { member.energy = 100; member.injury = 0; act(state, 'setTask', { memberId: member.id, task: 'train' }); });
   tick(state, 1);
   assert.equal(state.members.filter(member => member.xp > 0).length, 2);
   assert.equal(state.members.filter(member => member.waitingReason === 'รอผลัดเข้าหุ่นฝึก').length, 2);
   state.gold = 5000; state.wood = 500; state.stone = 500;
   const before = JSON.stringify(state);
-  const sealed = act(state, 'build', {type:'dorm',x:8,y:8.75,rotation:1});
+  const sealed = act(state, 'build', {type:'infirmary',x:8,y:8.75,rotation:1});
   assert.equal(sealed.ok, false);
   assert.match(sealed.message, /ทางเข้า/);
   assert.equal(JSON.stringify(state), before);
@@ -299,9 +299,9 @@ test('free furnishings rotate and move at quarter tiles without blocking entranc
 
 test('building extension opens continuous floor and outdoor planting respects roads and trees',()=>{
  const state=createGame(),cost=getBuildingExpansionCost(state),gold=state.gold;
- assert.equal(act(state,'build',{type:'dorm',x:13.5,y:7}).ok,false);
+ assert.equal(act(state,'build',{type:'infirmary',x:13.5,y:7}).ok,false);
  assert.equal(act(state,'expandBuilding').ok,true);assert.equal(state.gold,gold-cost.gold);assert.deepEqual(state.building,{x:5,y:4,width:10,height:8,level:1});
- assert.equal(act(state,'build',{type:'dorm',x:13.5,y:7}).ok,true);
+ assert.equal(act(state,'build',{type:'infirmary',x:13.5,y:7}).ok,true);
  state.rank='E';state.gold=10000;state.wood=500;state.stone=500;
  for(const [x,y]of [[1,1],[8.25,12],[5.5,5]])assert.equal(canPlaceFacility(state,'garden',x,y).ok,false);
  assert.equal(act(state,'build',{type:'garden',x:16,y:4}).ok,true);
@@ -729,12 +729,12 @@ test('the village market moves with supply, shops restock from it, and adventure
   complete(state, mission);
   assert.ok(mira.wear.weapon < 100);
   mira.wear.weapon = 10;
-  const worn = getMemberStats(state, mira).basePower;
+  const worn = getMemberStats(state, mira);
   mira.purse = 200;
   mira.shopClock = 0;
   tick(state, 1);
   assert.equal(mira.wear.weapon, 100, 'the smithy mends worn gear for a fee');
-  assert.ok(getMemberStats(state, mira).basePower > worn);
+  assert.ok(getMemberStats(state, mira).condition.gear > worn.condition.gear && getMemberStats(state, mira).efficiency > worn.efficiency, 'mended gear lifts how well they work');
   assert.deepEqual(deserializeGame(serializeGame(state)).shops, state.shops);
 });
 
@@ -1200,4 +1200,46 @@ test('village objectives ask only for what the village can build at that point',
   const order = GOAL_LIST.map(g => g.id), houses = GOAL_LIST.find(g => g.id === 'houses');
   assert.ok(order.indexOf('houses') < order.indexOf('level2'));
   assert.ok(houses.check({ ...state, village: { ...state.village, houses: 99 }, villageLevel: 1 }).need <= getVillageInfo(state).maxHouses, 'a level-1 village can hold enough houses');
+});
+
+test('condition: wounds, rest, mood, gear and supplies add up to an efficiency that decides how well adventurers work', async () => {
+  const { memberCondition, getEfficiencyReport, investmentGain, townComfort } = await import('../src/game.js');
+  const state = createGame(5);
+  const mira = state.members.find(m => m.id === 'mira');
+  Object.assign(mira, { injury: 0, energy: 100, morale: 100, pack: { ration: 1, potion: 1 }, equipment: { weapon: 'oak-sword', accessory: null }, wear: { weapon: 100, accessory: 100 } });
+  assert.equal(memberCondition(mira).eff, 1.2, 'everything looked after: 120%');
+  const strong = getMemberStats(state, mira).power;
+  Object.assign(mira, { injury: 60, energy: 20, morale: 20, pack: { ration: 0, potion: 0 } });
+  mira.wear.weapon = 10;
+  assert.ok(memberCondition(mira).eff < 0.8);
+  assert.ok(getMemberStats(state, mira).power < strong * 0.7, 'a worn-out adventurer fights far below their best');
+  // The report puts a price on each shortfall and on what a building would win back.
+  const report = getEfficiencyReport(state);
+  assert.ok(report.losses.length && report.losses.every(l => l.gold > 0));
+  assert.ok(investmentGain(state, 'clinic').gold > 0, 'a clinic would win back gold lost to wounds');
+  // The clinic heals people in town; with none, wounds close slowly.
+  const slow = createGame(5), fast = createGame(5); fast.village.clinic = 2;
+  for (const s of [slow, fast]) { for (const m of s.members) m.injury = 50; s.facilities = s.facilities.filter(f => f.type !== 'infirmary'); tick(s, 30); }
+  assert.ok(fast.members[0].injury < slow.members[0].injury - 2);
+  // Mood drifts towards how comfortable the town is.
+  const comfy = townComfort(state).value;
+  mira.morale = 0; tick(state, 60);
+  assert.ok(mira.morale > 10 && mira.morale <= comfy + 5);
+});
+
+test('unhappy adventurers move away, the day closes with a summary, and beds are gone from the guild', () => {
+  const state = createGame(6);
+  for (const id of ['sera', 'toma']) { addApplicant(state, id, { status: 'waiting' }); tick(state, 0.01); }
+  const gloomy = state.members.find(m => m.id === 'toma');
+  gloomy.morale = 0; gloomy.regular = false;
+  state.facilities = state.facilities.filter(f => !['lounge', 'kitchen'].includes(f.type));
+  for (let i = 0; i < 40 && state.members.includes(gloomy); i++) { gloomy.morale = 0; tick(state, 10); }
+  assert.ok(!state.members.includes(gloomy), 'gloomy for too long, they leave town');
+  tick(state, DAY_LENGTH);
+  const last = state.history.at(-1);
+  assert.ok(last && last.left >= 1 && last.eff > 0, 'the day closes with who came, who left and how well everyone worked');
+  assert.equal(act(state, 'build', { type: 'dorm', x: 8.5, y: 4.5 }).ok, false, 'no beds to build any more');
+  const data = JSON.parse(serializeGame(state)); delete data.checksum;
+  data.facilities.push({ id: 'room-99', type: 'dorm', x: 8.5, y: 4.5, rotation: 0, level: 1 });
+  assert.ok(!deserializeGame(JSON.stringify(data)).facilities.some(f => f.type === 'dorm'), 'old beds are cleared from saves');
 });

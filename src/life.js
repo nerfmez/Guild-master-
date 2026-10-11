@@ -100,7 +100,7 @@ function tickResidents(state, ctx, step) {
     if (indoors && t.at !== 'guild' && t.goal !== 'guild') { const d = ctx.door(); Object.assign(t, { at: 'street', goal: 'guild', tx: d.x, ty: d.y }); }
     if (t.at === 'street') {
       const d = Math.hypot(t.tx - t.x, t.ty - t.y);
-      if (d > .05) { const s = Math.min(d, step * STROLL); t.x += (t.tx - t.x) / d * s; t.y += (t.ty - t.y) / d * s; continue; }
+      if (d > .05) { const s = Math.min(d, step * STROLL * (0.55 + 0.45 * clamp(m.energy / 100, 0, 1))); t.x += (t.tx - t.x) / d * s; t.y += (t.ty - t.y) / d * s; continue; }
       if (t.goal === 'guild' && (indoors || inside < GUILD_VISITORS)) { t.at = 'guild'; t.wait = 8 + rand(state.world) * 14; inside += 1; continue; }
       if (t.goal === 'lodge') { t.at = 'lodge'; t.wait = 15 + rand(state.world) * 25; continue; }
       if ((t.wait -= step) > 0) continue;
@@ -136,8 +136,10 @@ function chooseZone(ctx, rank, power) {
 function makeHunter(state, ctx, who, kind, zoneId, party, start) {
   const zone = HUNT_ZONES[zoneId], stats = kind === 'member' ? ctx.stats(who) : freeStats(who), w = state.world;
   const path = [...zone.via.map(([x, y]) => ({ x, y })), pointIn(w, zone, .6)];
-  return { id: who.id, kind, zone: zoneId, party, mode: 'go', x: start.x + (rand(w) - .5) * .4, y: start.y + (rand(w) - .5) * .4, path, hp: stats.health, maxHp: stats.health,
-    power: stats.basePower, cls: rootOf(who.class), job: who.class, atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
+  // Wounds keep their mark out in the field: a hurt adventurer sets out with less to give.
+  const hp = Math.round(stats.health * (1 - (who.injury || 0) / 200));
+  return { id: who.id, kind, zone: zoneId, party, mode: 'go', x: start.x + (rand(w) - .5) * .4, y: start.y + (rand(w) - .5) * .4, path, hp, maxHp: stats.health,
+    power: stats.power ?? stats.basePower, pace: 0.7 + 0.3 * clamp((who.energy ?? 100) / 100, 0, 1), cls: rootOf(who.class), job: who.class, atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
     bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 7 + Math.floor(rand(w) * 4) };
 }
 export function freeStats(f) {
@@ -475,10 +477,10 @@ function stepHunters(state, ctx, dt) {
     if (h.mode === 'go') {
       // Ambushed on the way in: stand and fight.
       const ambush = !h.mission && w.monsters.some(m => !m.dead && m.target === h.id && dist(m, h) < 2.5);
-      if (ambush || walkPath(h, WALK, dt)) { h.mode = 'hunt'; h.path = []; }
+      if (ambush || walkPath(h, WALK * (h.pace || 1), dt)) { h.mode = 'hunt'; h.path = []; }
       continue;
     }
-    if (h.mode === 'return' || h.mode === 'carry') { if (walkPath(h, h.mode === 'carry' ? CARRY : WALK, dt)) arriveHome(state, ctx, h); continue; }
+    if (h.mode === 'return' || h.mode === 'carry') { if (walkPath(h, h.mode === 'carry' ? CARRY : WALK * (h.pace || 1), dt)) arriveHome(state, ctx, h); continue; }
     if (h.mode === 'defend' || h.mode === 'hunt') {
       // A potion when badly hurt; leave when the bag is full, tired, or still hurting with no potion.
       if (h.hp < h.maxHp * .35) {
