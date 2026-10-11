@@ -1,10 +1,17 @@
 /** A plain, reasonable player for balance checks: answers petitions, lets the board run,
  * sends the important steps itself, and invests only what the guild has earned. */
 import { createGame, tick, act, getGuildStats, getMemberStats, getAvailableQuests, previewMission, suggestTeam, getVillageInfo, getProjectStatus, getGuildUpgradeCost, getAvailableRecruits, getUpgradeCost, getRankProgress, classChoices, getAdventurerRank } from '../src/game.js';
-import { RANKS, GUILD_UPGRADES } from '../src/content.js';
+import { RANKS, GUILD_UPGRADES, GOODS, PARTS, HOME_NEEDS } from '../src/content.js';
+import { storeUsed, storeCapacity, caravanLoad } from '../src/trade.js';
+import { homeStatus } from '../src/town.js';
 
 const STEP = 5;
+const lastTry = new WeakMap();
 function placeSomewhere(state, type) {
+  // Scanning the whole floor is slow: after a failed search, wait two minutes before looking again.
+  const tries = lastTry.get(state) || {}; lastTry.set(state, tries);
+  if (state.elapsed - (tries[type] ?? -1e9) < 120) return false;
+  tries[type] = state.elapsed;
   for (let y = 4.5; y < 16; y += 0.25) for (let x = 5.25; x < 18; x += 0.25) if (act(state, 'build', { type, x, y }).ok) return true;
   return false;
 }
@@ -61,6 +68,12 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
     for (const member of state.members) { const choice = classChoices(state, member).find(c => c.ok); if (choice && act(state, 'specialize', { memberId: member.id, classId: choice.id }).ok) say(`class ${member.id} -> ${choice.id}`); }
     if (state.facilities.filter(f => f.level >= 2).length < 2 && RANKS.indexOf(state.rank) >= 3) for (const f of state.facilities.filter(f => ['dorm', 'training', 'reception'].includes(f.type))) if (canPay(state, getUpgradeCost(state, f.id), reserve)) { act(state, 'upgrade', { facilityId: f.id }); break; }
     act(state, 'autoEquip');
+    // The goal card asks for a new kind of work: the player sends a team to something the guild has never done.
+    const progress = getRankProgress(state);
+    if (progress?.merits?.some(x => x.kind === 'quests' && !x.ok) && !state.missions.some(x => x.status === 'active' && !x.auto)) {
+      const fresh = getAvailableQuests(state).find(q => !q.locked && !state.completedQuests[q.id] && !q.story && !q.final);
+      if (fresh) { const team = suggestTeam(state, fresh.id, 'cautious'), pv = previewMission(state, fresh.id, team, 'cautious'); if (pv.ok && pv.readiness >= 1) act(state, 'sendMission', { questId: fresh.id, memberIds: team, policy: 'cautious' }); }
+    }
     // 3. The player's own teams take the important steps.
     for (const p of state.petitions.filter(p => p.important && !p.missionId)) {
       const q = getAvailableQuests(state).find(q => q.id === p.questId);
@@ -75,11 +88,28 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
       if (hasBoard && member.task === 'train') act(state, 'setTask', { memberId: member.id, task: 'rest' });
       else if (!hasBoard && !getMemberStats(state, member).busy && member.task === 'rest' && member.energy > 95 && state.elapsed % 120 < STEP) act(state, 'setTask', { memberId: member.id, task: 'train' });
     }
+    // Trade: parts no workshop wants go to the town's merchants; a caravan leaves when the wagon would be well filled.
+    const t = state.trade, used = storeUsed(t);
+    if (used > storeCapacity(state) * 0.5) for (const id of Object.keys(t.store)) if (!(state.village[GOODS[Object.keys(GOODS).find(g => GOODS[g].kind === PARTS[id].kind)].workshop] > 0)) act(state, 'wholesale', { id, count: 'all' });
+    if (state.village.caravan && !t.caravan && caravanLoad(state).count >= 15) { act(state, 'sendCaravan', { escort: state.gold > 1500 }); m.caravans = (m.caravans || 0) + 1; }
+    for (const [i, x] of t.treasures.entries()) { act(state, t.displayed.length < 3 ? 'displayTreasure' : 'sellTreasure', { index: i }); break; }
     // 4. Spend surplus: village first, then idle upgrades, cheapest first.
-    const options = [...['house', 'shop', 'market', 'smithy'].map(id => ({ kind: 'project', id, status: getProjectStatus(state, id) })).filter(o => o.status.ok).map(o => ({ ...o, cost: o.status.cost })),
+    const options = [...['house', 'shop', 'market', 'smithy', 'tannery', 'apothecary', 'jeweler', 'caravan'].map(id => ({ kind: 'project', id, status: getProjectStatus(state, id) })).filter(o => o.status.ok).map(o => ({ ...o, cost: o.status.cost })),
       ...Object.keys(GUILD_UPGRADES).filter(id => state.upgrades[id] < GUILD_UPGRADES[id].max).map(id => ({ kind: 'upgrade', id, cost: getGuildUpgradeCost(state, id) }))].sort((a, b) => a.cost.gold - b.cost.gold);
-    const option = options[0];
-    if (option && canPay(state, option.cost, 600)) {
+    // Homes tell the player what they lack: build what the first unmet need asks for, and houses when people are short.
+    const vi = getVillageInfo(state), wants = new Set();
+    for (let i = 0; i < state.village.houses; i++) for (const need of homeStatus(state, 'h' + i, vi.level).missing || []) for (const id of HOME_NEEDS[need].from || []) wants.add(id);
+    if (vi.next && vi.population < vi.next.population) wants.add('house');
+    // A wanted building short of wood or stone: buy the materials at the market first.
+    for (const id of wants) {
+      const st = getProjectStatus(state, id);
+      if (st.ok || !st.cost || st.level >= st.max || state.gold < (st.cost.gold || 0) + 500) continue;
+      for (const key of ['wood', 'stone']) if ((st.cost[key] || 0) > state[key]) act(state, 'buyMaterial', { key });
+      break;
+    }
+    const wanted = options.find(o => o.kind === 'project' && wants.has(o.id));
+    const option = wanted && canPay(state, wanted.cost, 300) ? wanted : options[0];
+    if (option && canPay(state, option.cost, option === wanted ? 300 : 600)) {
       if (option.kind === 'project' ? act(state, 'buildProject', { projectId: option.id }).ok : act(state, 'buyUpgrade', { upgradeId: option.id }).ok) { option.kind === 'project' ? m.projects++ : m.upgrades++; say(`buy ${option.id}`); }
     }
   }

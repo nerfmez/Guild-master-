@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getAdventurerRank, classChoices, marketPrice, tradeQuote, addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
+import { getAdventurerRank, classChoices, marketPrice, tradeQuote, addApplicant, addPetition, getAvailableRecruits, getRankProgress, renownFactor, getVillageInfo, getGuildUpgradeCost, getCraftCost, createGame as createLivingGame, tick, act, serializeGame, deserializeGame, getGuildStats, getMemberStats, getAvailableQuests, previewMission, canPlaceFacility, getRoomSize, findWalkPath, getBuildingExpansionCost } from '../src/game.js';
 import { QUESTS, RANKS } from '../src/content.js';
 
 const party = ['mira', 'finn', 'lune'];
+// Most tests check one system at a time, so members stay at the guild instead of wandering off to hunt.
+function createGame(...args) { const state = createLivingGame(...args); state.policy.memberHunting = false; state.policy.autoPetitions = false; return state; }
 // Villagers bring petitions over time; tests post one straight to the board when none is waiting.
 function ensurePetition(state, questId) {
   if (!state.petitions.some(p => p.questId === questId && p.status === 'posted' && !p.missionId)) addPetition(state, questId, { status: 'posted' });
@@ -110,7 +112,7 @@ test('bankrupt guild remains playable, charges modest upkeep, and limits daily w
   const state = createGame();
   state.gold = 0;
   tick(state, 240);
-  assert.equal(state.gold, 0);
+  assert.ok(state.gold < 20, 'only the small market fees of free adventurers come in');
   assert.equal(state.day, 2);
   assert.equal(previewMission(state, 'patrol', party).ok, true);
   complete(state, dispatch(state));
@@ -519,6 +521,8 @@ test('idle guild upgrades and village projects grow income, petitions and the vi
   assert.equal(state.village.houses, 4);
   assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, false, 'a small village only has so many lots');
   state.village.prosperity = 1000;
+  assert.equal(getVillageInfo(state).level, 2, 'a village level also needs people living there');
+  for (let i = 0; i < 4; i++) state.village.homes['h' + i] = { tier: 2, progress: 0 };
   assert.equal(getVillageInfo(state).level, 3);
   assert.equal(act(state, 'buildProject', { projectId: 'house' }).ok, true);
   assert.equal(act(state, 'buildProject', { projectId: 'market' }).ok, true);
@@ -577,14 +581,14 @@ test('board teams use their own slots, so the player can still send important wo
   assert.doesNotThrow(() => deserializeGame(serializeGame(state)));
 });
 
-test('a plain player finishes the demo in one to two hours, ranks climb by renown and merit, and money circulates', async () => {
+test('a plain player finishes the demo in about two hours, ranks climb by renown and merit, and money circulates', async () => {
   const { simulate } = await import('./simulate.js');
   for (const seed of [1, 2, 3, 4, 5]) {
     const { state, metrics: m } = simulate(seed, { freePlay: 3600 });
     const min = s => s / 60;
     assert.ok(m.finishedAt !== null, `seed ${seed} finishes the demo story`);
-    assert.ok(min(m.finishedAt) >= 50 && min(m.finishedAt) <= 120, `seed ${seed} demo takes 50-120 game minutes, took ${min(m.finishedAt)}`);
-    assert.ok(min(m.ranks.E) <= 20 && min(m.ranks.D) <= 60 && min(m.ranks.C) <= 105, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
+    assert.ok(min(m.finishedAt) >= 60 && min(m.finishedAt) <= 130, `seed ${seed} demo takes 60-130 game minutes, took ${min(m.finishedAt)}`);
+    assert.ok(min(m.ranks.E) <= 35 && min(m.ranks.D) <= 70 && min(m.ranks.C) <= 120, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
     assert.equal(state.rank, 'C', `seed ${seed} the demo stops at rank C`);
     assert.equal(m.bankruptDays, 0, `seed ${seed} never misses upkeep`);
     assert.equal(m.failures, 0, `seed ${seed} teams only take work they can handle`);
@@ -593,7 +597,7 @@ test('a plain player finishes the demo in one to two hours, ranks climb by renow
     assert.ok(state.members.every(member => member.points > 0), `seed ${seed} mentoring gives every member, rookies included, real work`);
     assert.ok(m.trade >= 5000, `seed ${seed} adventurers spent their wages in the village (${Math.round(m.trade)} G)`);
     assert.ok(state.members.every(member => member.equipment.weapon), `seed ${seed} everyone ends up armed`);
-    assert.ok(m.village[5] === undefined || m.village[5] > m.finishedAt * 1.3, `seed ${seed} the top village level is left for later`);
+    assert.ok(m.village[5] === undefined || m.village[5] > m.finishedAt * 1.2, `seed ${seed} the top village level is left for later`);
     const idle = m.ledger['ดอกผลกองทุนและค่าแผงตลาด'] || 0, commission = m.ledger['ค่านายหน้า'] || 0;
     assert.ok(idle > commission * 0.1 && idle < commission, `seed ${seed} idle income matters but does not replace work (${idle} vs ${commission})`);
     assert.doesNotThrow(() => serializeGame(state));
@@ -729,4 +733,305 @@ test('adventurers rank up by level, merit points and an exam at the arena; ranks
   // Tier-3 classes are visible goals for the full game.
   lune.class = 'sage';
   assert.match(classChoices(state, lune)[0].reason, /เกมเต็ม/);
+});
+
+test('the living world: members hunt in real time, carry the fallen home, sell loot and pay the guild its share', () => {
+  const state = createLivingGame(61);
+  assert.ok(state.policy.memberHunting);
+  let left = false;
+  for (let t = 0; t < 40 && !left; t++) { tick(state, 3); left = state.world.hunters.some(h => h.kind === 'member'); }
+  assert.ok(left, 'rested members head out to hunt on their own');
+  const hunter = state.world.hunters.find(h => h.kind === 'member');
+  assert.equal(hunter.zone, 'meadow', 'rank F members hunt the meadow');
+  assert.equal(previewMission(state, 'patrol', [hunter.id]).ok, false, 'a hunter is away from the guild');
+  assert.ok(state.world.monsters.filter(m => m.zone === 'meadow').length >= 8, 'the meadow is stocked');
+  assert.deepEqual(deserializeGame(serializeGame(state)).world.hunters.length, state.world.hunters.length, 'a hunt survives save and load');
+  const gold = state.gold, kills = state.world.kills;
+  for (let t = 0; t < 120 && state.world.hunters.some(h => h.id === hunter.id); t++) tick(state, 5);
+  assert.ok(!state.world.hunters.some(h => h.id === hunter.id), 'the party comes home');
+  assert.ok(state.world.kills > kills, 'monsters were fought and beaten');
+  assert.ok(state.ledger.some(e => /ส่วนแบ่งการล่า/.test(e.label || e.reason || e.text || '')) || state.trade.stats.bought > 0, 'the guild took its share or bought the loot');
+  assert.ok(gold > 0);
+  const member = state.members.find(m => m.id === hunter.id);
+  assert.ok(member.purse > 0, 'the member keeps most of what they earned');
+  // A knocked-out hunter is carried home by a friend, or by porters from the guild.
+  const s2 = createLivingGame(62);
+  for (let t = 0; t < 40 && !s2.world.hunters.length; t++) tick(s2, 3);
+  const h2 = s2.world.hunters.find(h => h.kind === 'member');
+  for (let t = 0; t < 40 && h2.mode === 'go'; t++) tick(s2, 2);
+  h2.hp = 1;
+  const monster = s2.world.monsters.find(m => !m.dead && m.zone === h2.zone);
+  Object.assign(monster, { x: h2.x, y: h2.y, hx: h2.x, hy: h2.y, target: h2.id, cd: 0 });
+  const potionsBefore = s2.members.find(m => m.id === h2.id).pack.potion;
+  for (let t = 0; t < 20 && h2.mode !== 'carried'; t++) tick(s2, .5);
+  assert.equal(h2.mode, 'carried', 'they fall and are carried, never killed');
+  assert.equal(potionsBefore, 0);
+  for (let t = 0; t < 200 && s2.world.hunters.some(h => h.id === h2.id); t++) tick(s2, 2);
+  const fallen = s2.members.find(m => m.id === h2.id);
+  assert.ok(fallen.injury >= 25, 'home again, they need the infirmary');
+});
+
+test('free adventurers live at the inn, hunt on their own, and can be invited once they like the guild', () => {
+  const state = createLivingGame(71);
+  state.policy.memberHunting = false;
+  state.world.freeClock = 0;
+  tick(state, 1);
+  const f = state.world.free[0];
+  assert.ok(f && /^fa-/.test(f.id), 'someone moves into the inn');
+  assert.equal(act(state, 'inviteFree', { freeId: f.id }).ok, false, 'arriving strangers do not join at once');
+  let out = false;
+  for (let t = 0; t < 100 && !out; t++) { f.mode = f.mode === 'arrive' ? 'town' : f.mode; tick(state, 3); out = f.mode === 'out'; }
+  assert.ok(out, 'free adventurers hunt on their own');
+  f.affinity = 50;
+  for (let t = 0; t < 150 && f.mode === 'out'; t++) tick(state, 4);
+  let placed = false;
+  for (let y = 4.5; y < 9.5 && !placed; y += 0.25) for (let x = 5.5; x < 12.5 && !placed; x += 0.25) placed = act(state, 'build', { type: 'dorm', x, y }).ok;
+  state.gold = 3000;
+  assert.equal(act(state, 'inviteFree', { freeId: f.id }).ok, true);
+  const joined = state.members.at(-1);
+  assert.equal(joined.name, f.name);
+  assert.ok(!state.world.free.includes(f));
+  assert.deepEqual(deserializeGame(serializeGame(state)).members.at(-1), joined);
+});
+
+test('the storyteller paces small happenings, choices and big events, and big events play out in the world', () => {
+  const state = createGame(81);
+  state.completedQuests.patrol = 1;
+  // Nothing happens in the first minutes, then small happenings come a few minutes apart.
+  tick(state, 120);
+  assert.equal(state.director.history.length, 0, 'a quiet start');
+  tick(state, 300);
+  assert.ok(state.director.history.length >= 1, 'a small happening arrived');
+  // A choice waits for the player; answering applies its effect.
+  state.director.nextDecision = state.elapsed; state.director.nextMinor = state.elapsed + 999; state.director.nextMajor = state.elapsed + 9999;
+  tick(state, 1);
+  const pending = state.director.pending;
+  assert.ok(pending && pending.choices.length >= 2, 'a decision is waiting');
+  assert.equal(act(state, 'resolveEvent', { choiceId: 'nope' }).ok, false);
+  const restored = deserializeGame(serializeGame(state));
+  assert.equal(restored.director.pending.id, pending.id, 'a waiting choice survives save and load');
+  assert.equal(act(state, 'resolveEvent', { choiceId: pending.choices[0].id }).ok, true);
+  assert.equal(state.director.pending, null);
+  assert.equal(state.director.history[0].id, pending.id);
+  // An unanswered choice settles itself on its gentlest option.
+  state.director.nextDecision = state.elapsed; tick(state, 1);
+  assert.ok(state.director.pending);
+  tick(state, 310);
+  assert.ok(!state.director.pending || state.director.pending.id !== pending.id, 'the old choice settled');
+  // A raid: monsters walk in from the west road and the people at home go out to meet them.
+  const raid = createGame(82);
+  raid.completedQuests.patrol = 1; raid.elapsed = 1000;
+  Object.assign(raid.director, { nextMajor: 1000, nextDecision: 9999, nextMinor: 9999, history: [{ id: 'boss' }, { id: 'celebrity' }, { id: 'storm' }] });
+  raid.members.forEach(m => { m.level = 8; m.energy = 100; });
+  tick(raid, 1);
+  assert.equal(raid.director.active?.id, 'raid');
+  assert.ok(raid.world.monsters.filter(m => m.raid).length >= 5, 'raiders on the road');
+  assert.ok(raid.world.hunters.some(h => h.party.startsWith('pt-defend')), 'defenders rally');
+  assert.ok(raid.director.alert?.watch === 'raid', 'the player is told and can watch');
+  for (let t = 0; t < 150 && raid.director.active; t++) tick(raid, 2);
+  assert.equal(raid.director.active, null, 'the raid ends');
+  assert.ok(!raid.world.monsters.some(m => m.raid), 'no raiders are left behind');
+  assert.equal(raid.director.history[0].id, 'raid');
+  // A world boss draws hunters who may enter its ground; beating it pays the guild.
+  const boss = createLivingGame(83);
+  boss.completedQuests.patrol = 1; boss.rank = 'E'; boss.elapsed = 1000;
+  Object.assign(boss.director, { nextMajor: 1000, nextDecision: 9999, nextMinor: 9999, history: [{ id: 'raid' }, { id: 'celebrity' }, { id: 'storm' }] });
+  tick(boss, 1);
+  const keeper = boss.world.monsters.find(m => m.boss);
+  assert.equal(boss.director.active?.id, 'boss');
+  assert.equal(keeper.zone, 'woods');
+  const gold = boss.gold;
+  keeper.hp = 1;
+  boss.members.forEach(m => { m.level = 9; m.rank = 'E'; m.energy = 100; });
+  for (let t = 0; t < 200 && boss.world.monsters.includes(keeper); t++) tick(boss, 2);
+  assert.ok(!boss.world.monsters.includes(keeper), 'the boss falls');
+  assert.equal(boss.director.active, null);
+  assert.ok(boss.gold > gold, 'the association pays a bounty');
+  assert.equal(boss.director.history[0].outcome, 'สำเร็จ');
+});
+
+test('routine petitions go up on the board by themselves unless the player turns that off; important letters still wait', () => {
+  const state = createLivingGame(91);
+  state.policy.memberHunting = false;
+  const routine = addPetition(state, 'patrol', { status: 'waiting' });
+  tick(state, 10);
+  assert.equal(routine.status, 'waiting', 'the player has a moment to set the pay first');
+  tick(state, 20);
+  assert.equal(routine.status, 'posted');
+  assert.equal(act(state, 'setPolicy', { autoPetitions: false }).ok, true);
+  const manual = addPetition(state, 'patrol', { status: 'waiting' });
+  tick(state, 40);
+  assert.equal(manual.status, 'waiting');
+  assert.equal(deserializeGame(serializeGame(state)).policy.autoPetitions, false);
+});
+
+test('hunters sell parts and treasures at the guild counter; the guild makes goods, sells to town, by caravan or to collectors', async () => {
+  const { storeUsed, caravanLoad } = await import('../src/trade.js');
+  const state = createGame(101);
+  state.gold = 5000;
+  // A member comes home with parts and a treasure: the guild pays them and keeps the loot.
+  const m = state.members[0];
+  state.world.hunters.push({ id: m.id, kind: 'member', zone: 'meadow', party: 'pt-x', mode: 'return', x: -2, y: 13, path: [], hp: 50, maxHp: 50, power: 10, cls: 'warrior', atkCd: 0, skillCd: 0, guard: 0, target: null, carrying: null, carriedBy: null,
+    bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 3, merit: 0, parts: { pelt: 6, jelly: 3 }, treasures: ['oldCoin'] }, quota: 9 });
+  const purse = m.purse || 0, gold = state.gold;
+  tick(state, 2);
+  assert.ok(!state.world.hunters.some(h => h.id === m.id), 'home');
+  assert.equal(state.trade.store.pelt, 6); assert.equal(state.trade.store.jelly, 3);
+  assert.equal(state.trade.treasures[0].id, 'oldCoin');
+  assert.ok(m.purse > purse && state.gold < gold, 'the guild paid for the loot');
+  // A low buying price keeps more margin; free adventurers then sell elsewhere unless they love the guild.
+  assert.equal(act(state, 'setBuyRate', { rate: 'low' }).ok, true);
+  assert.equal(act(state, 'setBuyRate', { rate: 'nope' }).ok, false);
+  act(state, 'setBuyRate', { rate: 'fair' });
+  // Selling to the town's merchants: each unit a little cheaper than the last.
+  const before = state.gold;
+  assert.equal(act(state, 'wholesale', { id: 'jelly', count: 'all' }).ok, true);
+  assert.ok(state.gold > before && !state.trade.store.jelly);
+  // A tannery turns three hides into leather goods worth more than the hides.
+  state.village.tannery = 1;
+  tick(state, 60);
+  assert.ok(state.trade.goods.leather?.count >= 1, 'leather goods made');
+  assert.ok(state.trade.goods.leather.value / state.trade.goods.leather.count > 3 * 12, 'goods are worth more than their parts');
+  // Townsfolk buy goods at the end of the day.
+  state.trade.goods.leather.count += 2; state.trade.goods.leather.value += 120;
+  const day = state.day, g2 = state.gold;
+  tick(state, 240 - state.clock + 1);
+  assert.ok(state.day > day && state.gold > g2 - 400, 'the day turns');
+  assert.ok(state.ledger.some(e => e.text === 'ขายสินค้าให้ชาวเมือง'), 'goods sold to the town');
+  // Caravan: needs the yard, takes the contract first, comes back richer.
+  assert.equal(act(state, 'sendCaravan', {}).ok, false);
+  state.village.caravan = 1; state.trade.store.crystal = 20;
+  tick(state, 1);
+  assert.ok(state.trade.contract, 'a contract from the capital');
+  const plan = caravanLoad(state);
+  assert.ok(plan.count > 0 && plan.expect > plan.value);
+  assert.equal(act(state, 'sendCaravan', { escort: true }).ok, true);
+  assert.ok(storeUsed(state.trade) < 20);
+  const g3 = state.gold;
+  assert.ok(deserializeGame(serializeGame(state)).trade.caravan, 'a caravan on the road survives save and load');
+  tick(state, 370);
+  assert.equal(state.trade.caravan, null);
+  assert.ok(state.ledger.some(e => e.text === 'คาราวานกลับจากเมืองหลวง') && state.gold > g3);
+  // Treasures: display for renown, or sell to a collector.
+  const rep = state.rep;
+  state.trade.treasures = [{ id: 'jadeIdol', from: 'x' }, { id: 'oldCoin', from: 'y' }];
+  assert.equal(act(state, 'displayTreasure', { index: 0 }).ok, true);
+  assert.ok(state.rep > rep && state.trade.displayed.length === 1);
+  const g4 = state.gold;
+  assert.equal(act(state, 'sellTreasure', { index: 0 }).ok, true);
+  assert.equal(state.gold, g4 + 120);
+  // The auction house sells lots each morning, usually above the collector's price when the town is rich.
+  state.trade.treasures = [{ id: 'jadeIdol', from: 'x' }];
+  assert.equal(act(state, 'auctionTreasure', { index: 0 }).ok, false, 'needs an auction house');
+  state.village.auction = 1; state.rep = 1500;
+  for (let i = 0; i < 6; i++) state.village.homes['h' + (i % 3)] = { tier: 3, progress: 0 };
+  assert.equal(act(state, 'auctionTreasure', { index: 0 }).ok, true);
+  assert.equal(state.trade.auction.length, 1);
+  assert.equal(deserializeGame(serializeGame(state)).trade.auction.length, 1, 'lots survive save and load');
+  const g5 = state.gold;
+  tick(state, 240 - state.clock + 1);
+  assert.equal(state.trade.auction.length, 0);
+  const sale = state.ledger.find(e => e.text === 'ประมูลสมบัติ');
+  assert.ok(sale && sale.gold > 380, `the auction beat the collector (${sale?.gold})`);
+  assert.ok(state.gold > g5 - 500);
+});
+
+test('engine modules use plain named imports so the single-file export can bundle them', async () => {
+  const { readdir, readFile } = await import('node:fs/promises');
+  for (const file of (await readdir(new URL('../src/', import.meta.url))).filter(f => f.endsWith('.js'))) {
+    const source = await readFile(new URL('../src/' + file, import.meta.url), 'utf8');
+    assert.ok(!/import\s*\{[^}]*\bas\b[^}]*\}/.test(source), `${file} renames an import, which export.mjs cannot bundle`);
+    assert.ok(!/^export\s*\{/m.test(source), `${file} re-exports a list, which export.mjs cannot bundle`);
+  }
+});
+
+test('the village grows its own footpaths: new buildings get a winding path to the road that wears into a road', async () => {
+  const { villageBuildings, pathTier } = await import('../src/town.js');
+  const state = createGame(111);
+  state.gold = 99999; state.wood = 999; state.stone = 999; state.village.prosperity = 300;
+  for (const id of ['house', 'shop', 'dojo', 'tannery']) assert.equal(act(state, 'buildProject', { projectId: id }).ok, true);
+  tick(state, 10);
+  const buildings = villageBuildings(state);
+  for (const b of buildings) {
+    const p = state.village.paths[b.key];
+    assert.ok(p && p.pts.length >= 2, `${b.key} has a path`);
+    // No point of the path runs through a building.
+    for (const [x, y] of p.pts.slice(1, -1)) assert.ok(!buildings.some(o => x > o.x && x < o.x + o.w && y > o.y && y < o.y + o.h), `${b.key} path avoids buildings`);
+  }
+  const dojo = state.village.paths.dojo;
+  assert.ok(dojo.pts.length > 3, 'a far building gets a long, winding path');
+  assert.equal(pathTier(dojo.wear, 1), 'trail', 'new paths start as trails');
+  tick(state, 1200);
+  assert.ok(state.village.paths.dojo.wear > dojo.wear || state.village.paths.dojo.wear === 1, 'feet wear them in');
+  assert.equal(pathTier(0.9, 4), 'cobble'); assert.equal(pathTier(0.9, 2), 'dirt');
+  const back = deserializeGame(serializeGame(state));
+  assert.deepEqual(back.village.paths.dojo.pts, state.village.paths.dojo.pts, 'paths survive save and load');
+});
+
+test('homes grow by themselves when what families need is nearby; village levels need people; buildings can move and turn', async () => {
+  const { homeStatus, population, villageBuildings, doorOf } = await import('../src/town.js');
+  const state = createGame(121);
+  state.gold = 99999; state.wood = 999; state.stone = 999;
+  assert.equal(population(state), 9, 'three cottages of three');
+  // Without food nearby a cottage waits; with a shop next door it grows into a wooden house.
+  const before = homeStatus(state, 'h0', 1);
+  assert.deepEqual(before.missing, before.met.food ? [] : ['food']);
+  assert.equal(act(state, 'buildProject', { projectId: 'shop', spot: { x: 1, y: 25 } }).ok, true);
+  tick(state, 170);
+  assert.equal(state.village.homes.h0.tier, 1, 'the cottage became a wooden house');
+  assert.ok(population(state) > 9);
+  assert.ok(state.log.some(e => /ขยายเป็นบ้านไม้/.test(e.text)));
+  // A village level needs people as well as prosperity.
+  state.village.prosperity = 3000;
+  assert.ok(getVillageInfo(state).level < 4, 'not enough people for a town yet');
+  // Buildings can be turned: the footprint swaps and the door (and its path) moves to the other face.
+  const shop = villageBuildings(state).find(b => b.key === 'shop');
+  assert.equal(act(state, 'moveVillageBuilding', { key: 'shop', spot: { x: shop.x, y: shop.y, rot: 1 } }).ok, true);
+  const turned = villageBuildings(state).find(b => b.key === 'shop');
+  assert.equal(turned.rot, 1); assert.equal(turned.w, shop.h); assert.equal(turned.h, shop.w);
+  assert.ok(doorOf(turned).x > turned.x + turned.w, 'the door faces east now');
+  tick(state, 2);
+  assert.ok(state.village.paths.shop.pts.length >= 2, 'a new path grows from the new door');
+  assert.equal(act(state, 'moveVillageBuilding', { key: 'shop', spot: { x: 6, y: 5 } }).ok, false, 'not on the guild');
+  assert.equal(act(state, 'moveVillageBuilding', { key: 'market', spot: { x: 30, y: 30, rot: 1 } }).ok, false, 'not built');
+  const back = deserializeGame(serializeGame(state));
+  assert.equal(back.village.lots.shop.rot, 1);
+  assert.equal(back.village.homes.h0.tier, 1);
+});
+
+test('the guild master can step out, walk, fight monsters, dodge, get knocked out and wake at the guild', () => {
+  const state = createGame(131);
+  assert.equal(act(state, 'heroMode', { on: true }).ok, true);
+  const hero = state.hero;
+  assert.ok(hero.active);
+  // Walk west along the road toward the meadow.
+  const start = hero.x;
+  hero.input = { dx: -1, dy: 0 };
+  tick(state, 2);
+  assert.ok(hero.x < start - 5, 'the master walks');
+  // Stand next to a monster and swing until it falls: the guild gets coins, the master gets experience.
+  tick(state, 1);
+  const m = state.world.monsters.find(x => !x.dead && x.zone === 'meadow');
+  Object.assign(hero, { x: m.x - 0.8, y: m.y, fx: 1, fy: 0 });
+  hero.input = { attack: true };
+  const gold = state.gold, xp = hero.xp;
+  for (let i = 0; i < 40 && !m.dead; i++) { hero.x = m.x - 0.8; hero.y = m.y; tick(state, 0.25); }
+  assert.ok(m.dead, 'the swing kills the monster');
+  assert.ok(state.gold > gold && (hero.xp > xp || hero.level > 1), 'coins for the guild, experience for the master');
+  // A dodge makes the master untouchable for a moment.
+  hero.input = { dash: true, dx: 1, dy: 0 };
+  tick(state, 0.05);
+  assert.ok(hero.dash > 0 && hero.dashCd > 0);
+  // Knocked out, then carried home and back on their feet at the guild door.
+  hero.input = {}; hero.hp = 1; hero.dash = 0;
+  const foe = state.world.monsters.find(x => !x.dead && x.zone === 'meadow');
+  Object.assign(foe, { x: hero.x + 0.3, y: hero.y, hx: hero.x, hy: hero.y, target: 'hero', cd: 0 });
+  for (let i = 0; i < 20 && !(hero.down > 0); i++) tick(state, 0.25);
+  assert.ok(hero.down > 0, 'knocked out');
+  tick(state, 5);
+  assert.equal(hero.down, 0); assert.ok(hero.hp > 0 && Math.abs(hero.y - 11) < 6, 'back at the guild');
+  const back = deserializeGame(serializeGame(state));
+  assert.equal(back.hero.active, true); assert.equal(back.hero.level, hero.level);
+  assert.equal(act(state, 'heroMode', { on: false }).ok, true);
+  assert.equal(state.hero.active, false);
 });

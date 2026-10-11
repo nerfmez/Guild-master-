@@ -2,7 +2,8 @@
    Biomes are soft fields that blend into each other: meadow west, woods north fading into mist,
    dry hills east beyond the river. Paths wind out from the village roads to landmark quest sites. */
 import { gridPoint } from './guild-art.js';
-import { REGIONS, RANKS } from './content.js';
+import { REGIONS, RANKS, BUILDING_FOOTPRINTS } from './content.js';
+import { WORLD_PATHS } from './site.js';
 
 export const WORLD = { x0: -62, y0: -68, x1: 84, y1: 58 };
 const VILLAGE = { x: 10, y: 8, r: 19 };
@@ -14,14 +15,7 @@ export const BIOMES = {
 };
 const BASE = [156, 172, 125];
 // Paths are written as control points in grid units and smoothed with Catmull-Rom.
-export const PATHS = {
-  west: [[6, 17.5], [-4, 17.5], [-12, 17.5], [-18, 19.5], [-24, 22.5], [-30, 24], [-38, 22], [-46, 25]],
-  lake: [[-30, 24], [-30.6, 27], [-30.2, 30], [-30.4, 31.9]],
-  north: [[2, 8], [2, -2], [2, -12], [1, -20], [5, -28], [2, -36], [-2, -44], [2, -52], [4, -58]],
-  mistdeep: [[-2, -44], [-7, -47], [-10, -50]],
-  east: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [58, 4], [62, -1]],
-  hills: [[48, 15], [54, 18], [59, 20]],
-};
+export const PATHS = WORLD_PATHS;
 export const RIVER = [[47, -70], [45, -42], [40, -20], [42, 0], [41, 17.5], [38, 34], [33, 60]];
 export const LAKE = { x: -37, y: 32, rx: 6.5, ry: 4.5 };
 export const BRIDGE = { x: 39.6, y: 16.6, w: 3.4, h: 1.8 };
@@ -61,6 +55,9 @@ export function smoothPath(points, steps = 6) {
 }
 // Each smoothed point knows how far it is from the end of its line (rem) and from its start (run).
 function measure(pts) { let run = 0; pts.forEach((p, i) => { if (i) run += Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y); p.run = run; }); pts.forEach(p => { p.rem = run - p.run; }); return pts; }
+// Footpaths grown by the village, drawn into the world ground beyond the village canvas (set by the renderer).
+let VILLAGE_PATHS = [];
+export function setVillagePaths(list) { VILLAGE_PATHS = list.filter(p => p.length > 1).map(p => measure(smoothPath([...p].reverse(), 4))); }
 const SMOOTH = Object.fromEntries(Object.entries(PATHS).map(([k, v]) => [k, measure(smoothPath(v))]));
 const SMOOTH_RIVER = smoothPath(RIVER, 8);
 // A creek rises in the misty woods and winds east under the north road into the river.
@@ -125,7 +122,7 @@ export function makeGroundPainter(left, top, size, scale = 2) {
   const c = canvas.getContext('2d'), img = c.createImageData(n, n), d = img.data, o = gridPoint(0, 0);
   const toGrid = (px, py) => { const A = (left + px * scale - o.x) / 24, B = (top + py * scale - o.y) / 12; return [(A + B) / 2, (B - A) / 2]; };
   const corners = [toGrid(0, 0), toGrid(n, 0), toGrid(0, n), toGrid(n, n)], gx0 = Math.min(...corners.map(p => p[0])), gx1 = Math.max(...corners.map(p => p[0])), gy0 = Math.min(...corners.map(p => p[1])), gy1 = Math.max(...corners.map(p => p[1]));
-  const paths = segmentsNear(Object.values(SMOOTH), gx0, gy0, gx1, gy1, 3), river = segmentsNear([SMOOTH_RIVER], gx0, gy0, gx1, gy1, 4), creek = segmentsNear([SMOOTH_CREEK], gx0, gy0, gx1, gy1, 3);
+  const paths = segmentsNear([...Object.values(SMOOTH), ...VILLAGE_PATHS], gx0, gy0, gx1, gy1, 3), river = segmentsNear([SMOOTH_RIVER], gx0, gy0, gx1, gy1, 4), creek = segmentsNear([SMOOTH_CREEK], gx0, gy0, gx1, gy1, 3);
   const fields = FIELDS.filter(f => f.x < gx1 + 1 && f.x + f.w > gx0 - 1 && f.y < gy1 + 1 && f.y + f.h > gy0 - 1);
   // Smooth fields (distances, biome weights) are sampled every L canvas pixels and interpolated; detail stays per pixel.
   const L = 4, cols = Math.ceil(n / L) + 2, F = 15, lattice = new Map();
@@ -332,7 +329,7 @@ export function monsterSpawns() {
 
 // ---- Where the player may put a village building ----
 /** Footprints (grid units) of village buildings, for placement and clearance. */
-export const VILLAGE_FOOTPRINT = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4] };
+export const VILLAGE_FOOTPRINT = BUILDING_FOOTPRINTS;
 /**
  * Why a building cannot stand on this rectangle, or null when it can.
  * blockers: rectangles {x,y,w,h} already taken (guild land, roads, other buildings, trees).

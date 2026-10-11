@@ -1,5 +1,6 @@
 import { buildingRect,siteRoads,siteDecorations,partitionRect,partitionDoor } from './site.js';
-import { FACILITIES,ROOM_TYPES } from './content.js';
+import { FACILITIES,ROOM_TYPES,VILLAGE_LEVELS } from './content.js';
+import { pathTier } from './town.js';
 
 // Original pixel artwork. Every floor and object uses the same 2:1 projection.
 const {rect:R,poly:P,line:L,ellipse:E,rng,createCanvas,shade:ArtShade}=window.ArtCore;
@@ -130,6 +131,21 @@ export function makePartition(room,state){
  }
  return{layers};
 }
+/** Dense points along a Catmull-Rom curve through control points, about every 0.15 tiles. */
+export function curvePoints(pts){const out=[],p=i=>pts[Math.max(0,Math.min(pts.length-1,i))];
+ for(let i=0;i<pts.length-1;i++){const steps=Math.max(2,Math.ceil(Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1])/.15));
+  for(let s=0;s<steps;s++){const t=s/steps,[p0,p1,p2,p3]=[p(i-1),p(i),p(i+1),p(i+2)],f=k=>.5*(2*p1[k]+(-p0[k]+p2[k])*t+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*t*t+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*t*t*t);out.push([f(0),f(1)]);}}
+ out.push(pts[pts.length-1]);return out;}
+/** Footpaths the village grew by itself: a trodden trail, then a dirt road, then cobbles in a town. */
+function paintPaths(c,state,r){const pr=state.village?.prosperity||0,level=VILLAGE_LEVELS.reduce((l,v)=>pr>=v.prosperity?v.level:l,1);
+ const paths=Object.values(state.village?.paths||{}).filter(p=>p.pts?.length>1).map(p=>({tier:pathTier(p.wear,level),pts:curvePoints(p.pts)}));
+ const W={trail:.26,dirt:.38,cobble:.44};
+ for(const pass of [0,1])for(const p of paths){const hw=W[p.tier];for(const[x,y]of p.pts){const[a,b]=q(x,y);
+  if(pass===0){E(c,a,b,hw*26+2,hw*13+1.5,p.tier==='cobble'?'#9fa088':p.tier==='dirt'?'#a8926a':'#93a06f');continue;}
+  if(p.tier==='trail'){if(r()<.3)continue;E(c,a+(r()-.5)*3,b+(r()-.5)*1.5,hw*26*(.6+r()*.5),hw*13*(.6+r()*.5),r()>.5?'#c2ad7f':'#b5a476');continue;}
+  E(c,a,b,hw*26,hw*13,p.tier==='cobble'?(r()>.5?'#d1c8ab':'#c4bea4'):(r()>.5?'#d4bb8c':'#cbb184'));
+  if(p.tier==='cobble'&&r()<.5)R(c,a+(r()-.5)*hw*40,b+(r()-.5)*hw*18,2,1,r()>.5?'#e6ddc2':'#b4b39c');
+  else if(p.tier==='dirt'&&r()<.2)R(c,a+(r()-.5)*hw*40,b+(r()-.5)*hw*18,2,1,'#b8ab8b');}}}
 function contains(rect,x,y){return x>=rect.x&&x<rect.x+rect.w&&y>=rect.y&&y<rect.y+rect.h;}
 export function makeGround(state){
  const canvas=createCanvas(1200,900),c=canvas.getContext('2d'),r=rng(730);
@@ -138,6 +154,7 @@ export function makeGround(state){
  for(let i=0;i<6000;i++){const x=r()*1200,y=r()*900;R(c,x,y,1+r()*3,1,i%5===0?'#c2ca9a':'#8fa477');if(i%31===0){R(c,x,y-2,1,3,'#879b6b');R(c,x+2,y-1,1,2,'#b9c68d');}}
  const roads=siteRoads(state),roadAt=(x,y)=>roads.find(p=>contains(p,x,y));
  c.save();c.translate(ORIGIN_X,ORIGIN_Y);
+ paintPaths(c,state,r);
  for(const road of roads)top(c,road.x,road.y,road.w,road.h,-1,'#aaa78c');
  c.save();c.beginPath();for(const road of roads){for(const[i,[x,y]]of [[road.x,road.y],[road.x+road.w,road.y],[road.x+road.w,road.y+road.h],[road.x,road.y+road.h]].entries()){const[a,b]=q(x,y);if(i)c.lineTo(a,b);else c.moveTo(a,b);}c.closePath();}c.clip();
  // Shared road union: curbs are only drawn on the outer edge, never across a junction.
@@ -193,6 +210,11 @@ export const HOME_STYLES={
  brick:{w:2.6,h:2.2,z:32,ridge:'x',roof:'moss',wall:'brick',shutters:'#6f8fb0',chimney:[2.1,.6],dormer:true},
  tall:{w:2,h:2,z:56,ridge:'y',roof:'plum',wall:'timber',storeys:2,pitch:30,flowers:true,shutters:'#c98a72'},
  dojo:{w:2.8,h:2.4,z:30,ridge:'x',roof:'dusk',wall:'timber',sign:'sword',porch:true,lantern:true,shutters:'#8a6a4a'},
+ tannery:{w:2.6,h:2.3,z:30,ridge:'y',roof:'shingle',wall:'log',sign:'hide',chimney:[.5,.5],woodpile:true,porch:true},
+ apothecary:{w:2.4,h:2.3,z:34,ridge:'x',roof:'plum',wall:'plaster',awning:['#8fb3c9','#f4e5c9'],sign:'potion',chimney:[1.9,.5],flowers:true},
+ jeweler:{w:2.4,h:2.2,z:36,ridge:'y',roof:'slate',wall:'stone',sign:'gem',shutters:'#6f8fb0',lantern:true},
+ caravan:{w:2.8,h:2.4,z:30,ridge:'x',roof:'terra',wall:'timber',sign:'cart',porch:true,woodpile:true,lantern:true},
+ auction:{w:2.6,h:2.5,z:56,ridge:'x',roof:'plum',wall:'stone',storeys:2,sign:'gem',lantern:true,porch:true,shutters:'#c98a72'},
  store:{w:2.6,h:2.3,z:32,ridge:'x',roof:'moss',wall:'timber',awning:['#7fa37a','#f4e5c9'],sign:'bag',chimney:[2.1,.5],flowers:true},
 };
 /** The arena where the guild association holds rank exams: a sand ring with a fence, banners and, as it grows, stands. */
@@ -299,7 +321,7 @@ export function makeHome(name,seed=1){
   if(s.chimney){const [cx,cy]=s.chimney,base=ridge==='y'?z+pitch*(1-Math.abs(cx+.18-w/2)/(w/2+o)):z+pitch*(1-Math.abs(cy+.18-h/2)/(h/2+o));cube(c,cx,cy,.36,.36,base-8,22,'#b8b0a0','#d6cfbe','#948c7d');top(c,cx+.06,cy+.06,.24,.24,base+14.2,'#4f4540');smoke=q(cx+.18,cy+.18,base+16);}
   if(s.forge){cube(c,w+.15,.3,.9,1.5,0,18,'#a59e8b','#8f877a','#857d70');face(c,[[w+.1,.2,24],[w+1.15,.2,16],[w+1.15,1.9,16],[w+.1,1.9,24]],r1,C.ink);quad((u,zz)=>[w+1.05,u,zz],.55,1.25,0,11,'#3f3530');quad((u,zz)=>[w+1.06,u,zz],.7,1.1,1,6,'#e8935a');quad((u,zz)=>[w+1.07,u,zz],.8,1,1,4,'#fff1c4');cube(c,w+1.3,1.55,.35,.22,0,6,'#5f5a5a','#8a8484','#4a4545');cube(c,w+1.22,1.5,.5,.32,6,3,'#5f5a5a','#9a9494','#4a4545');}
   if(s.sign){const at=ridge==='x'?F:S,u=ridge==='x'?w-.12:.12,[sx,sy]=q(...(at===F?F(w+.05,z-6):S(-.05,z-6)));R(c,sx,sy,9,1,C.ink);R(c,sx+2,sy+1,1,3,C.ink);R(c,sx+7,sy+1,1,3,C.ink);R(c,sx,sy+4,10,9,C.edge);R(c,sx+1,sy+5,8,7,'#e8c99a');
-   if(s.sign==='bread'){E(c,sx+5,sy+9,3,2,'#c98a4a');R(c,sx+3,sy+8,1,1,'#f0c890');R(c,sx+6,sy+8,1,1,'#f0c890');}else if(s.sign==='sword'){R(c,sx+5,sy+6,1,6,'#8f9a98');R(c,sx+3,sy+10,5,1,'#8a6446');R(c,sx+5,sy+11,1,2,'#8a6446');}else if(s.sign==='bag'){R(c,sx+3,sy+7,4,5,'#c9a06a');R(c,sx+4,sy+6,2,1,'#8a6446');R(c,sx+3,sy+8,4,1,'#e8c070');}else if(s.sign==='anvil'){R(c,sx+2,sy+7,6,2,'#5f5a5a');R(c,sx+4,sy+9,2,2,'#5f5a5a');R(c,sx+3,sy+11,4,1,'#5f5a5a');}else{R(c,sx+3,sy+7,4,5,'#e8c070');R(c,sx+3,sy+6,4,1,'#fff7ea');R(c,sx+7,sy+8,1,3,'#b8946a');}}
+   if(s.sign==='bread'){E(c,sx+5,sy+9,3,2,'#c98a4a');R(c,sx+3,sy+8,1,1,'#f0c890');R(c,sx+6,sy+8,1,1,'#f0c890');}else if(s.sign==='sword'){R(c,sx+5,sy+6,1,6,'#8f9a98');R(c,sx+3,sy+10,5,1,'#8a6446');R(c,sx+5,sy+11,1,2,'#8a6446');}else if(s.sign==='bag'){R(c,sx+3,sy+7,4,5,'#c9a06a');R(c,sx+4,sy+6,2,1,'#8a6446');R(c,sx+3,sy+8,4,1,'#e8c070');}else if(s.sign==='potion'){R(c,sx+4,sy+6,2,2,'#b8946a');E(c,sx+5,sy+10,3,2,'#7fb0c8');R(c,sx+4,sy+9,2,1,'#c8e4ef');}else if(s.sign==='hide'){R(c,sx+3,sy+7,5,5,'#a87650');R(c,sx+2,sy+7,1,2,'#a87650');R(c,sx+8,sy+7,1,2,'#a87650');R(c,sx+4,sy+8,3,1,'#c99a72');}else if(s.sign==='gem'){R(c,sx+4,sy+7,3,1,'#bfe3f0');R(c,sx+3,sy+8,5,2,'#7fb6d6');R(c,sx+4,sy+10,3,1,'#5a8fb0');R(c,sx+5,sy+11,1,1,'#5a8fb0');}else if(s.sign==='cart'){R(c,sx+2,sy+7,6,3,'#b0855a');E(c,sx+3,sy+11,1,1,'#5a4a3a');E(c,sx+7,sy+11,1,1,'#5a4a3a');}else if(s.sign==='anvil'){R(c,sx+2,sy+7,6,2,'#5f5a5a');R(c,sx+4,sy+9,2,2,'#5f5a5a');R(c,sx+3,sy+11,4,1,'#5f5a5a');}else{R(c,sx+3,sy+7,4,5,'#e8c070');R(c,sx+3,sy+6,4,1,'#fff7ea');R(c,sx+7,sy+8,1,3,'#b8946a');}}
   if(s.lantern){const [lx,ly]=q(...F(.15,z/2-4));R(c,lx-2,ly-6,5,6,'#5a463f');R(c,lx-1,ly-5,3,4,'#f4d48a');R(c,lx,ly-8,1,2,'#5a463f');}
   if(s.woodpile){for(let k=0;k<3;k++)for(let m=0;m<3-k;m++){const [lx,ly]=q(w+.18,.3+m*.28+k*.14,3+k*5);E(c,lx,ly,2.6,2.6,'#8a6446');E(c,lx,ly,1.4,1.4,'#d9b083');}}
  });
