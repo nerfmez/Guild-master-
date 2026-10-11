@@ -97,11 +97,11 @@ export function createGame(seed = 123, options = {}) {
     ],
     missions: [], completedQuests: {}, questRuns: {}, bonds: {}, inventory: {}, log: [], ledger: [],
     goals: { firstMission: false, firstCraft: false, firstUpgrade: false, firstRecruit: false, firstExpansion: false },
-    settings: { speed: 1, sound: true, paused: false },
+    settings: { speed: 1, sound: true, music: true, volume: 0.8, paused: false },
     story: { chapter: 1, finished: false }, frontier: { camp: 0 }, bounty: null, mastery: { claimed: {} }, exams: createExams(), festivals: createFestivals(), eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0,
     policy: { memberHunting: true, autoPetitions: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0, bounties: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
+    record: { jobs: 0, bounties: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -756,7 +756,7 @@ function resolveMission(state, mission, outcome) {
     }
     transact(state, rewards, mission.petition ? `ค่านายหน้า: ${quest.name}` : `รางวัล: ${quest.name}`, 1);
     // Work the adventurers picked up by themselves earns the guild half the renown of work it sends.
-    const rep = Math.max(1, Math.round(quest.reward.rep * multiplier * renownFactor(state, quest) * (mission.auto ? 0.5 : 1) * (1 + roomLevel(state, 'reception') * 0.05)));
+    const rep = Math.max(1, Math.round(quest.reward.rep * multiplier * renownFactor(state, quest) * (mission.auto ? 0.5 : 1) * (1 + roomLevel(state, 'reception') * 0.05) * (1 + (state.upgrades?.trophyHall || 0) * 0.06)));
     state.rep += rep;
     state.completedQuests[quest.id] = (state.completedQuests[quest.id] || 0) + 1;
     if (mission.petition) { state.record ??= { jobs: 0 }; state.record.jobs += 1; }
@@ -858,6 +858,9 @@ function dailyUpdate(state) {
   const shop = state.village?.shop || 0, market = state.village?.market || 0;
   if (shop) transact(state, { gold: shop * 20 }, 'ค่าเช่าร้านค้าในหมู่บ้าน', 1);
   if (market) transact(state, { wood: market * 3, stone: market * 2, herb: market * 2 }, 'ของจากตลาดนัด', 1);
+  const hall = state.upgrades?.trophyHall || 0, monument = state.village?.monument || 0;
+  if (hall) transact(state, { gold: hall * 30 }, 'ค่าเข้าชมหอเกียรติยศ', 1);
+  if (monument) { state.rep += monument * 3; state.members.forEach(member => { member.morale = clamp(member.morale + monument * 2, 0, 100); }); }
   settleIdle(state, true);
   restockShops(state);
   state.daily = { missionCounts: {}, work: {}, lessons: {}, garden: Boolean(garden) };
@@ -1400,7 +1403,7 @@ function restockShops(state) {
   const v = state.village, shops = state.shops, m = state.market;
   const take = (cost, times = 1) => { for (const [k, n] of Object.entries(cost)) if ((m[k] || 0) < n * times) return false; for (const [k, n] of Object.entries(cost)) m[k] -= n * times; return true; };
   if (v.shop) for (const [id, c] of Object.entries(CONSUMABLES)) { const want = (id === 'ration' ? 4 : 3) * v.shop; while ((shops[id] || 0) < want && take({ herb: c.herb })) shops[id] = (shops[id] || 0) + 1; }
-  if (v.smithy) for (const item of EQUIPMENT.filter(e => !e.loot && e.workshopLevel <= v.smithy && hasRank(state, e.unlockRank))) {
+  if (v.smithy) for (const item of EQUIPMENT.filter(e => !e.loot && !e.parts && e.workshopLevel <= v.smithy && hasRank(state, e.unlockRank))) {
     while ((shops.gear[item.id] || 0) < 1 + (v.smithy >= 2 ? 1 : 0) && take({ wood: item.cost.wood || 0, stone: item.cost.stone || 0, herb: item.cost.herb || 0 })) shops.gear[item.id] = (shops.gear[item.id] || 0) + 1;
   }
   for (const k of Object.keys(MATERIALS)) m[k] = Math.max(0, Math.floor(m[k] * 0.9));
@@ -1664,8 +1667,13 @@ function craft(state, payload) {
   if (bestRoomLevel(state, 'workshop') < item.workshopLevel) return failure(`ต้องมีโต๊ะช่างระดับ ${item.workshopLevel}`);
   const cost = getCraftCost(state, item);
   if (!canAfford(state, cost)) return failure('วัตถุดิบไม่เพียงพอ');
+  // Frontier gear also takes monster parts from the guild's store.
+  const store = state.trade?.store || {};
+  const short = Object.entries(item.parts || {}).find(([id, n]) => (store[id] || 0) < n);
+  if (short) return failure(`ต้องมี${PARTS[short[0]].name} ${short[1]} ชิ้นในโกดัง (มี ${store[short[0]] || 0})`);
   if ((state.inventory[item.id] || 0) >= 24) return failure('มีอุปกรณ์ชนิดนี้มากเพียงพอแล้ว');
   transact(state, cost, `สร้าง${item.name}`);
+  for (const [id, n] of Object.entries(item.parts || {})) { store[id] -= n; if (!store[id]) delete store[id]; }
   state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
   state.goals.firstCraft = true;
   addLog(state, `โต๊ะช่างสร้าง${item.name}แล้ว เลือกสมาชิกเพื่อสวมใส่ได้`, 'craft');
@@ -2031,7 +2039,7 @@ export function deserializeGame(source) {
   for (const [key, value] of Object.entries(state.bonds)) if (!/^[\w-]+:[\w-]+$/.test(key) || !key.split(':').every(id => ids.has(id)) || !finiteNumber(value) || value < 0 || value > 100) throw new Error('ความสัมพันธ์สมาชิกไม่ถูกต้อง');
   state.settings = { ...defaults.settings, ...data.settings };
   if (![1, 2, 4].includes(state.settings.speed)) throw new Error('ความเร็วเซฟไม่ถูกต้อง');
-  state.settings.paused = Boolean(state.settings.paused); state.settings.sound = Boolean(state.settings.sound);
+  state.settings.paused = Boolean(state.settings.paused); state.settings.sound = Boolean(state.settings.sound); state.settings.music = state.settings.music !== false; state.settings.volume = finiteNumber(state.settings.volume) ? clamp(state.settings.volume, 0, 1) : 0.8;
   state.goals = { ...defaults.goals, ...data.goals };
   state.story = { ...defaults.story, ...data.story };
   state.frontier = { camp: Number.isInteger(data.frontier?.camp) && data.frontier.camp >= 0 && data.frontier.camp <= 3 ? data.frontier.camp : 0 };

@@ -621,3 +621,26 @@ export function makeFestivalDecor(kind='bunting',frame=0){
   E(c,bx,by,7,8,ArtShade(col,-25));E(c,bx-1,by-1,6,7,col);E(c,bx-3,by-4,2,3,ArtShade(col,55));P(c,[[bx-2,by+9],[bx+2,by+9],[bx,by+7]],ArtShade(col,-25));
  });
 }
+/** The heroes' monument, footprint 2×2: a stepped stone plinth and a bronze adventurer raising a sword.
+    Level 2 adds flower beds and lanterns; level 3 gilds the statue and adds banners. */
+export function makeMonument(level=1){
+ return stamp(110,170,55,110,c=>{
+  top(c,-.15,-.1,2.35,2.3,0,'#5f705040');
+  top(c,0,0,2,2,0,'#cfc6ae',C.edge);
+  if(level>=2)for(const [x,y] of [[.05,.05],[1.55,.05],[.05,1.55],[1.55,1.55]]){top(c,x,y,.4,.4,.5,'#7f9a62');for(let k=0;k<3;k++){const[px,py]=q(x+.1+k*.1,y+.2,2);R(c,px,py,2,2,['#e8a0b0','#f4d48a','#c9a0e0'][k]);}}
+  cube(c,.3,.3,1.4,1.4,0,8,'#a9a594','#cfcab8','#8d897a');
+  cube(c,.45,.45,1.1,1.1,8,14,'#b8b4a2','#dedac8','#99957f');
+  if(level>=3){const[px,py]=q(1.55,1.0,15);R(c,px-3,py-5,8,6,'#e8c070');R(c,px-2,py-4,6,1,'#fff1c4');}
+  // The statue: a striding adventurer, sword raised, cape behind.
+  const metal=level>=3?['#e8c070','#f8e2a0','#b08a3a']:['#7f9a8a','#a9c4b4','#5f786a'];
+  const[x,y]=q(1,1,22);
+  P(c,[[x-7,y-10],[x+6,y-12],[x+8,y-2],[x-9,y]],metal[2]);
+  R(c,x-5,y-2,4,14,metal[0]);R(c,x+1,y-2,4,14,metal[0]);R(c,x-5,y-2,2,14,metal[1]);
+  R(c,x-6,y-18,12,17,metal[0]);R(c,x-6,y-18,4,17,metal[1]);R(c,x-6,y-8,12,2,metal[2]);
+  E(c,x,y-23,5,5,metal[0]);E(c,x-1,y-24,3,3,metal[1]);
+  R(c,x+5,y-26,3,10,metal[0]);R(c,x+6,y-48,2,24,metal[1]);R(c,x+4,y-26,6,2,metal[2]);
+  R(c,x-10,y-14,5,4,metal[0]);
+  if(level>=2)for(const [lx,ly] of [[-.1,1.9],[2,1.9]]){const[px,py]=q(lx,ly,0);R(c,px-1,py-16,2,16,'#5a463f');E(c,px,py-18,3,3,'#f4b860');E(c,px,py-19,1.5,1.5,'#fff1c4');}
+  if(level>=3)for(const [lx,ly] of [[0,.2],[.2,0]]){const[px,py]=q(lx,ly,0);R(c,px,py-40,1,40,'#5a463f');P(c,[[px+1,py-40],[px+12,py-36],[px+1,py-31]],'#b85a4a');}
+ });
+}
