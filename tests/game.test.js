@@ -1038,3 +1038,56 @@ test('the guild master can step out, walk, fight monsters, dodge, get knocked ou
   assert.equal(act(state, 'heroMode', { on: false }).ok, true);
   assert.equal(state.hero.active, false);
 });
+
+test('quests play out in real time: the party walks to the site, fights waves and a boss, and a wiped party is carried home as a failure', () => {
+  const state = createGame(141);
+  state.members.forEach(m => { m.level = 6; m.energy = 100; });
+  const mission = dispatch(state, 'patrol');
+  assert.ok(mission.realtime && mission.rt, 'the expedition starts at once');
+  assert.ok(state.world.hunters.filter(h => h.party === mission.id).length === party.length, 'each member walks out');
+  for (let i = 0; i < 400 && mission.rt.stage === 'go'; i++) tick(state, 0.25);
+  assert.equal(mission.rt.stage, 'fight');
+  assert.ok(state.world.monsters.some(m => m.quest === mission.id), 'the first wave waits at the site');
+  complete(state, mission);
+  assert.equal(mission.status, 'completed');
+  assert.ok(!state.world.monsters.some(m => m.quest === mission.id), 'no quest foes are left behind');
+  // A hopeless fight: everyone falls, porters bring them home and the job goes back on the board.
+  const weak = createGame(142);
+  weak.members.forEach(m => { m.level = 1; m.energy = 100; });
+  const m2 = dispatch(weak, 'patrol', ['lune']);
+  for (let i = 0; i < 400 && m2.rt.stage !== 'fight'; i++) tick(weak, 0.25);
+  for (const foe of weak.world.monsters.filter(x => x.quest === m2.id)) { foe.atk = 500; foe.hp = foe.maxHp = 5000; }
+  complete(weak, m2);
+  assert.equal(m2.status, 'failed');
+  assert.ok(weak.members.find(m => m.id === 'lune').injury >= 25, 'carried home hurt');
+});
+
+test('every job fights its own way: chain lightning jumps, snares slow, a saint lifts a fallen friend', async () => {
+  const { JOB_COMBAT } = await import('../src/content.js');
+  const jobs = Object.keys(JOB_COMBAT);
+  assert.equal(jobs.length, 20, 'all twenty jobs have a combat style');
+  assert.equal(new Set(jobs.map(j => JOB_COMBAT[j].skill)).size, 20, 'and each has its own skill');
+  const run = (job, setup) => {
+    const state = createLivingGame(151);
+    state.policy.memberHunting = false;
+    const m = state.members[0]; m.class = job; m.energy = 100;
+    tick(state, 1);
+    const foes = state.world.monsters.filter(x => !x.dead && x.zone === 'meadow').slice(0, 4);
+    const hunter = { id: m.id, kind: 'member', zone: 'meadow', party: 'pt-t', mode: 'hunt', x: foes[0].x - 1, y: foes[0].y, path: [], hp: 100, maxHp: 100, power: 40, cls: 'mage', job, atkCd: 9, skillCd: 0, guard: 0, target: foes[0].id, carrying: null, carriedBy: null, bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 99 };
+    foes.forEach((f, i) => Object.assign(f, { x: hunter.x + 1 + i * .3, y: hunter.y + (i % 2) * .4, hx: hunter.x + 1, hy: hunter.y, hp: 999, maxHp: 999 }));
+    state.world.hunters.push(hunter);
+    setup?.(state, hunter);
+    tick(state, 0.25);
+    return { state, foes, hunter };
+  };
+  const chain = run('stormcaller');
+  assert.ok(chain.foes.filter(f => f.hp < 999).length >= 3, 'chain lightning hits several foes');
+  const snare = run('ranger');
+  assert.ok(snare.foes[0].slow > 0, 'a snared foe is slowed');
+  const saint = run('saint', (state, h) => {
+    const friend = { ...h, id: state.members[1].id, job: 'warrior', cls: 'warrior', mode: 'down', hp: 0, target: null, skillCd: 9 };
+    state.world.hunters.push(friend); h.hp = 55;
+  });
+  const lifted = saint.state.world.hunters.find(x => x.id === saint.state.members[1].id);
+  assert.ok(lifted && lifted.mode !== 'down' && lifted.hp > 0, 'the miracle lifts the fallen friend');
+});
