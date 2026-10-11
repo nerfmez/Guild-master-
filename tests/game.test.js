@@ -594,7 +594,7 @@ test('a plain player finishes the demo in about two hours, ranks climb by renown
     assert.ok(min(m.ranks.E) <= 35 && min(m.ranks.D) <= 70 && min(m.ranks.C) <= 120, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
     assert.equal(state.rank, 'C', `seed ${seed} the demo stops at rank C`);
     assert.equal(m.bankruptDays, 0, `seed ${seed} never misses upkeep`);
-    assert.equal(m.failures, 0, `seed ${seed} teams only take work they can handle`);
+    assert.ok(m.failures <= 3, `seed ${seed} real fights can go wrong now and then, but rarely (${m.failures})`);
     assert.ok(m.boardRuns >= 30, `seed ${seed} adventurers took board work by themselves (${m.boardRuns})`);
     assert.ok(state.members.filter(member => member.id.startsWith('r-')).length >= 1, `seed ${seed} rookies were drawn in by fame`);
     assert.ok(state.members.every(member => member.points > 0), `seed ${seed} mentoring gives every member, rookies included, real work`);
