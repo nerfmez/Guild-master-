@@ -1,7 +1,8 @@
 /* The living world: adventurers (guild members and free adventurers) walk out to hunting grounds,
    fight monsters in real time, carry fallen friends home, and sell their loot in the village.
    Pure simulation: game.js calls tickLife with a small context of its own helpers. */
-import { HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES } from './content.js';
+import { siteQuestRoute, SITE_QUEST_SITES } from './site.js';
+import { HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES, JOB_COMBAT } from './content.js';
 
 const SUB = 0.25;          // seconds per combat step
 const WALK = 1.7;          // tiles per second
@@ -15,6 +16,9 @@ const TOWN_SPOTS = [[-2.2, 11.6], [-1, 12.4], [-6.5, 15.6], [3.5, 16.2], [8, 16.
 const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const rankIdx = r => ADVENTURER_RANKS.indexOf(r || 'F');
+// Quest foes may be species without hunting stats; they get a plain profile scaled to the quest.
+const DEFAULT_STATS = { hp: 100, atk: 10, rate: 1.6, reach: 1, speed: .7, xp: 20, gold: [5, 10], mat: 'herb' };
+const statsOf = species => MONSTER_STATS[species] || DEFAULT_STATS;
 const rootOf = id => JOBS[id]?.base || JOBS[id]?.parent || id;
 
 // Effects for the renderer only (damage numbers, skills, KOs); never saved.
@@ -40,7 +44,7 @@ function stockZones(state, ctx, step) {
   }
 }
 export function spawnMonster(w, species, zone, p, extra = {}) {
-  const s = MONSTER_STATS[species];
+  const s = statsOf(species);
   return { id: `mon-${w.nextId++}`, species, zone, x: p.x, y: p.y, hx: p.x, hy: p.y, hp: s.hp, maxHp: s.hp, cd: rand(w) * s.rate, target: null, dead: false, respawn: 0, wait: rand(w) * 4, tx: p.x, ty: p.y, ...extra };
 }
 
@@ -86,7 +90,7 @@ function makeHunter(state, ctx, who, kind, zoneId, party, start) {
   const zone = HUNT_ZONES[zoneId], stats = kind === 'member' ? ctx.stats(who) : freeStats(who), w = state.world;
   const path = [...zone.via.map(([x, y]) => ({ x, y })), pointIn(w, zone, .6)];
   return { id: who.id, kind, zone: zoneId, party, mode: 'go', x: start.x + (rand(w) - .5) * .4, y: start.y + (rand(w) - .5) * .4, path, hp: stats.health, maxHp: stats.health,
-    power: stats.basePower, cls: rootOf(who.class), atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
+    power: stats.basePower, cls: rootOf(who.class), job: who.class, atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
     bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 7 + Math.floor(rand(w) * 4) };
 }
 export function freeStats(f) {
@@ -123,9 +127,11 @@ function moveTo(a, p, speed, dt) { const d = dist(a, p); if (d < 1e-3) return tr
 function walkPath(h, speed, dt) { while (h.path.length && moveTo(h, h.path[0], speed, dt)) { h.path.shift(); dt = 0; } return !h.path.length; }
 function homeRoute(h, ctx) {
   if (h.party.startsWith('pt-defend')) return [h.kind === 'member' ? ctx.door() : { ...INN }];
+  if (h.via) return [...h.via].reverse().map(([x, y]) => ({ x, y })).concat([ctx.door()]);
   const zone = HUNT_ZONES[h.zone], back = [...zone.via].reverse().map(([x, y]) => ({ x, y }));
   return [...back, h.kind === 'member' ? ctx.door() : { ...INN }];
 }
+const viaOf = h => h.via || HUNT_ZONES[h.zone]?.via || [];
 function startReturn(state, ctx, partyId) {
   for (const h of state.world.hunters) if (h.party === partyId && ['go', 'hunt'].includes(h.mode)) { h.mode = 'return'; h.target = null; h.path = homeRoute(h, ctx); }
 }
@@ -135,7 +141,8 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(state.world) * 20; state.world.kills++;
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
-  const s = MONSTER_STATS[m.species], party = state.world.hunters.filter(o => o.party === h.party && o.mode === 'hunt' && dist(o, m) < 9);
+  const s = statsOf(m.species), party = state.world.hunters.filter(o => o.party === h.party && o.mode === 'hunt' && dist(o, m) < 9);
+  if (m.quest) { h.bag.kills += 1; const qp = MONSTER_PART[m.species]; if (qp && rand(state.world) < .5) { h.bag.parts ??= {}; h.bag.parts[qp] = (h.bag.parts[qp] || 0) + 1; } return; }
   h.bag.gold += s.gold[0] + Math.floor(rand(state.world) * (s.gold[1] - s.gold[0] + 1));
   if (rand(state.world) < .7) h.bag[s.mat] += 1 + (s.boss ? 4 : 0);
   h.bag.kills += 1;
@@ -162,16 +169,52 @@ function freeXp(ctx, f, amount) {
   f.xp += amount;
   while (f.level < 20 && f.xp >= ctx.xpNeeded(f.level)) { f.xp -= ctx.xpNeeded(f.level); f.level += 1; f.rank = freeLevelRank(f.level); }
 }
+/** How this adventurer fights: their own job's style, or their base class's. */
+const combatOf = h => JOB_COMBAT[h.job] || JOB_COMBAT[h.cls] || JOB_COMBAT.warrior;
+const HEALERS = new Set(['healer', 'cleric', 'saint']);
+function useSkill(state, ctx, h, m, near, party, cc) {
+  const w = state.world, p = h.power * HIT * cc.dmg * (h.buff > 0 ? 1 + h.buffAmt : 1), around = r => near.filter(x => dist(x, m) < r), mine = r => near.filter(x => dist(x, h) < r);
+  const heal = (o, frac) => { const amt = o.maxHp * frac; o.hp = Math.min(o.maxHp, o.hp + amt); emit({ type: 'heal', x: o.x, y: o.y, amount: Math.round(amt) }); };
+  const slow = (x, t) => { x.slow = Math.max(x.slow || 0, t); };
+  switch (cc.skill) {
+    case 'guard': h.guard = 5; for (const x of mine(4)) x.target = h.id; break;
+    case 'shieldwall': h.guard = 6; for (const o of party) if (dist(o, h) < 3) o.guard = Math.max(o.guard, 3); for (const x of mine(4.5)) x.target = h.id; break;
+    case 'aegis': h.guard = 6; for (const o of party) { heal(o, .2); o.guard = Math.max(o.guard, 2.5); } for (const x of mine(5)) x.target = h.id; break;
+    case 'cleave': for (const x of mine(1.8)) hitMonster(state, ctx, h, x, p * 1.4, 'slash'); break;
+    case 'whirlwind': for (const x of mine(2.4)) hitMonster(state, ctx, h, x, p * 1.9 * (rand(w) < .3 ? 1.6 : 1), 'slash'); break;
+    case 'volley': for (const x of mine(cc.reach + .5).slice(0, 3)) hitMonster(state, ctx, h, x, p * 1.2, 'arrow'); break;
+    case 'snare': slow(m, 4); hitMonster(state, ctx, h, m, p * 1.4, 'arrow'); break;
+    case 'thornward': for (const x of mine(cc.reach + .5).slice(0, 4)) { slow(x, 3); hitMonster(state, ctx, h, x, p * 1.25, 'arrow'); } break;
+    case 'aimed': hitMonster(state, ctx, h, m, p * 2.6, 'pierce'); break;
+    case 'deadeye': hitMonster(state, ctx, h, m, p * 3.6 * 1.3, 'pierce'); break;
+    case 'fireball': for (const x of around(1.6)) hitMonster(state, ctx, h, x, p * 1.8, 'fire'); break;
+    case 'frost': for (const x of around(2)) { slow(x, 4); hitMonster(state, ctx, h, x, p * 1.2, 'frost'); } break;
+    case 'timewarp': for (const x of around(2.4)) { slow(x, 5); hitMonster(state, ctx, h, x, p * 1.5, 'frost'); } for (const o of party) if (o !== h) o.skillCd = Math.max(0, o.skillCd - 3); break;
+    case 'meteor': for (const x of around(2.2)) hitMonster(state, ctx, h, x, p * 2.4, 'fire'); break;
+    case 'chain': { let k = 2; for (const x of [m, ...near.filter(x => x !== m).sort((a, b) => dist(a, m) - dist(b, m))].slice(0, 5)) { hitMonster(state, ctx, h, x, p * k, 'spark'); k *= .8; } break; }
+    case 'blessing': for (const o of party) heal(o, .3); break;
+    case 'sanctuary': for (const o of party) { heal(o, .35); o.guard = Math.max(o.guard, 2); } break;
+    case 'miracle': {
+      for (const o of party) heal(o, .5);
+      const fallen = w.hunters.find(o => o.party === h.party && o.mode === 'down' && !o.carriedBy && dist(o, h) < 6);
+      if (fallen) { fallen.hp = fallen.maxHp * .4; fallen.mode = fallen.mission ? 'hunt' : 'return'; if (!fallen.mission) fallen.path = homeRoute(fallen, ctx); w.porters = w.porters.filter(o => o.target !== fallen.id); emit({ type: 'revive', id: fallen.id, x: fallen.x, y: fallen.y }); }
+      break;
+    }
+    case 'valor': for (const o of party) { o.buff = 6; o.buffAmt = .3; } break;
+    case 'crescendo': for (const o of party) { o.buff = 7; o.buffAmt = .4; heal(o, .2); } break;
+  }
+}
 function fight(state, ctx, h, dt) {
-  const w = state.world, cc = CLASS_COMBAT[h.cls] || CLASS_COMBAT.warrior, party = w.hunters.filter(o => o.party === h.party && o.mode !== 'down' && o.mode !== 'carried');
-  h.atkCd -= dt; h.skillCd -= dt; h.guard = Math.max(0, h.guard - dt);
+  const w = state.world, cc = combatOf(h), party = w.hunters.filter(o => o.party === h.party && o.mode !== 'down' && o.mode !== 'carried');
+  h.atkCd -= dt; h.skillCd -= dt; h.guard = Math.max(0, h.guard - dt); h.buff = Math.max(0, (h.buff || 0) - dt);
   const near = w.monsters.filter(m => !m.dead && (h.zone === m.zone || m.raid || m.boss) && dist(h, m) < (m.raid ? 14 : 11));
-  // Healers mend the most hurt friend first.
-  if (h.cls === 'healer') {
+  const support = HEALERS.has(h.job) || HEALERS.has(h.cls) || h.cls === 'healer';
+  // Healers mend the most hurt friend first, and save their big skill for when several are hurt.
+  if (support) {
     const hurt = party.filter(o => o.hp < o.maxHp * .75 && dist(o, h) < cc.reach + 1).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
-    if (h.skillCd <= 0 && party.filter(o => o.hp < o.maxHp * .6).length >= 2) {
-      for (const o of party) { const amt = o.maxHp * .35; o.hp = Math.min(o.maxHp, o.hp + amt); emit({ type: 'heal', x: o.x, y: o.y, amount: Math.round(amt) }); }
-      emit({ type: 'skill', id: h.id, x: h.x, y: h.y, skill: 'blessing', name: cc.skillName }); h.skillCd = cc.skillCd; return;
+    const fallen = cc.skill === 'miracle' && w.hunters.some(o => o.party === h.party && o.mode === 'down' && !o.carriedBy);
+    if (h.skillCd <= 0 && near.length && (party.filter(o => o.hp < o.maxHp * .6).length >= 2 || fallen)) {
+      h.skillCd = cc.cd; emit({ type: 'skill', id: h.id, x: h.x, y: h.y, skill: cc.skill, name: cc.name }); useSkill(state, ctx, h, near[0], near, party, cc); return;
     }
     if (hurt && h.atkCd <= 0) { const amt = h.power * .9; hurt.hp = Math.min(hurt.maxHp, hurt.hp + amt); emit({ type: 'heal', x: hurt.x, y: hurt.y, amount: Math.round(amt) }); h.atkCd = cc.rate; return; }
   }
@@ -181,26 +224,25 @@ function fight(state, ctx, h, dt) {
     m = near.filter(x => taken(x.id) < 2).sort((a, b) => dist(h, a) - dist(h, b))[0];
     h.target = m?.id || null;
   }
-  if (!m) { if (h.mode === 'defend') return; if (!h.wander || dist(h, h.wander) < .2) h.wander = pointIn(w, HUNT_ZONES[h.zone] || { x: h.x, y: h.y, r: 2 }, .7); moveTo(h, h.wander, WALK * .6, dt); return; }
+  if (!m) { if (h.mode === 'defend') return; if (h.mission) { const site = state.missions?.find(x => x.id === h.mission)?.rt?.site; if (site && dist(h, site) > 1.6) moveTo(h, { x: site.x - .6, y: site.y }, WALK, dt); return; } if (!h.wander || dist(h, h.wander) < .2) h.wander = pointIn(w, HUNT_ZONES[h.zone] || { x: h.x, y: h.y, r: 2 }, .7); moveTo(h, h.wander, WALK * .6, dt); return; }
   if (dist(h, m) > cc.reach) { moveTo(h, { x: m.x + (h.x > m.x ? .4 : -.4), y: m.y }, WALK, dt); return; }
-  if (h.skillCd <= 0) {
-    h.skillCd = cc.skillCd;
-    emit({ type: 'skill', id: h.id, x: h.x, y: h.y, tx: m.x, ty: m.y, skill: cc.skill, name: cc.skillName });
-    if (cc.skill === 'guard') { h.guard = 5; for (const x of near.filter(x => dist(x, h) < 4)) x.target = h.id; }
-    else if (cc.skill === 'volley') for (const x of near.filter(x => dist(x, h) < cc.reach + .5).slice(0, 3)) hitMonster(state, ctx, h, x, h.power * HIT * cc.dmg * 1.2, 'arrow');
-    else if (cc.skill === 'fireball') for (const x of near.filter(x => dist(x, m) < 1.6)) hitMonster(state, ctx, h, x, h.power * HIT * cc.dmg * 1.8, 'fire');
-    else if (cc.skill === 'blessing') for (const o of party) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * .25);
+  if (h.skillCd <= 0 && !support) {
+    h.skillCd = cc.cd;
+    emit({ type: 'skill', id: h.id, x: h.x, y: h.y, tx: m.x, ty: m.y, skill: cc.skill, name: cc.name });
+    useSkill(state, ctx, h, m, near, party, cc);
     return;
   }
   if (h.atkCd <= 0) {
     h.atkCd = cc.rate;
-    const crit = rand(w) < .1, dmg = h.power * HIT * cc.dmg * (.85 + rand(w) * .3) * (crit ? 1.6 : 1);
-    hitMonster(state, ctx, h, m, dmg, h.cls === 'archer' ? 'arrow' : h.cls === 'mage' ? 'magic' : h.cls === 'healer' ? 'light' : 'slash');
+    const crit = rand(w) < (cc.attack === 'pierce' ? .2 : .1), dmg = h.power * HIT * cc.dmg * (h.buff > 0 ? 1 + h.buffAmt : 1) * (.85 + rand(w) * .3) * (crit ? 1.6 : 1);
+    hitMonster(state, ctx, h, m, dmg, cc.attack);
   }
 }
 function monsterAct(state, ctx, m, dt) {
-  const w = state.world, s = MONSTER_STATS[m.species];
-  const targets = w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend'].includes(h.mode));
+  const w = state.world, s = statsOf(m.species);
+  if (m.slow > 0) { m.slow -= dt; dt *= .5; }
+  // Quest parties only meet their own quest's foes; wild monsters leave them be.
+  const targets = w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
   const hero = state.hero;
   if (hero?.active && !(hero.down > 0)) targets.push(hero);
   let t = targets.find(h => h.id === m.target);
@@ -221,30 +263,32 @@ function monsterAct(state, ctx, m, dt) {
   m.cd -= dt;
   if (m.cd > 0) return;
   m.cd = s.rate;
-  const dmg = s.atk * (.85 + rand(w) * .3) * (t.guard > 0 ? .6 : 1);
+  const dmg = (m.atk || s.atk) * (.85 + rand(w) * .3) * (t.guard > 0 ? .6 : 1);
   if (t === hero) { heroHurt(state, ctx, m, dmg); return; }
   t.hp -= dmg; emit({ type: 'hurt', id: t.id, by: m.id, x: t.x, y: t.y, amount: Math.round(dmg) });
   if (t.hp <= 0) knockOut(state, ctx, t);
 }
 function knockOut(state, ctx, h) {
   const w = state.world;
-  if (h.carrying) { const c = w.hunters.find(o => o.id === h.carrying); if (c) c.carriedBy = null; h.carrying = null; }
+  // A carrier who falls drops the friend they carried; both wait for help.
+  if (h.carrying) { const c = w.hunters.find(o => o.id === h.carrying); if (c) { c.carriedBy = null; c.mode = 'down'; } h.carrying = null; }
   h.hp = 0; h.mode = 'down'; h.target = null; h.path = [];
   emit({ type: 'ko', id: h.id, x: h.x, y: h.y });
   for (const m of w.monsters) if (m.target === h.id) m.target = null;
   const name = h.kind === 'member' ? state.members.find(m => m.id === h.id)?.name : w.free.find(f => f.id === h.id)?.name;
   if (h.kind === 'member') ctx.log(`${name}สลบที่${HUNT_ZONES[h.zone]?.name || 'นอกเมือง'}!`, 'warning');
-  startReturn(state, ctx, h.party);
+  // Hunting parties go home with their fallen; a quest party fights on until the job is done or everyone is down.
+  if (!h.mission) startReturn(state, ctx, h.party);
 }
 /** A conscious friend picks up the fallen; with nobody left, porters set out from the guild. */
 function arrangeCarry(state, ctx) {
   const w = state.world;
   for (const down of w.hunters.filter(h => h.mode === 'down' && !h.carriedBy)) {
-    const friend = w.hunters.filter(o => o.party === down.party && ['return', 'hunt', 'go', 'defend'].includes(o.mode) && !o.carrying && o.hp > 0).sort((a, b) => dist(a, down) - dist(b, down))[0];
+    const friend = w.hunters.filter(o => o.party === down.party && (down.mission ? ['return'] : ['return', 'hunt', 'go', 'defend']).includes(o.mode) && !o.carrying && o.hp > 0).sort((a, b) => dist(a, down) - dist(b, down))[0];
     if (friend) { friend.carrying = down.id; friend.mode = 'carry'; friend.path = [{ x: down.x, y: down.y }, ...homeRoute(friend, ctx)]; down.carriedBy = friend.id; down.mode = 'carried'; continue; }
     if (down.kind === 'member' && !w.porters.some(p => p.target === down.id)) {
       const door = ctx.door();
-      w.porters.push({ id: `por-${w.nextId++}`, target: down.id, x: door.x, y: door.y, path: [...(down.party.startsWith('pt-defend') ? [] : HUNT_ZONES[down.zone].via.map(([x, y]) => ({ x, y }))), { x: down.x, y: down.y }], mode: 'go' });
+      w.porters.push({ id: `por-${w.nextId++}`, target: down.id, x: door.x, y: door.y, path: [...(down.party.startsWith('pt-defend') ? [] : viaOf(down).map(([x, y]) => ({ x, y }))), { x: down.x, y: down.y }], mode: 'go' });
       ctx.log(`ส่งคนแบกเปลออกไปรับ${state.members.find(m => m.id === down.id)?.name}กลับบ้าน`, 'warning');
     }
     if (down.kind === 'free' && !w.porters.some(p => p.target === down.id)) w.porters.push({ id: `por-${w.nextId++}`, target: down.id, x: INN.x, y: INN.y, path: [...HUNT_ZONES[down.zone].via.map(([x, y]) => ({ x, y })), { x: down.x, y: down.y }], mode: 'go', inn: true });
@@ -255,13 +299,14 @@ function tickPorters(state, ctx, dt) {
   for (const p of [...w.porters]) {
     const down = w.hunters.find(h => h.id === p.target);
     if (!down) { w.porters = w.porters.filter(o => o !== p); continue; }
-    if (p.mode === 'go') { if (walkPath(p, PORTER, dt)) { p.mode = 'back'; p.path = (down.party.startsWith('pt-defend') ? [] : [...HUNT_ZONES[down.zone].via].reverse().map(([x, y]) => ({ x, y }))).concat([p.inn ? { ...INN } : ctx.door()]); down.mode = 'carried'; down.carriedBy = p.id; } }
+    if (p.mode === 'go') { if (walkPath(p, PORTER, dt)) { p.mode = 'back'; p.path = (down.party.startsWith('pt-defend') ? [] : [...viaOf(down)].reverse().map(([x, y]) => ({ x, y }))).concat([p.inn ? { ...INN } : ctx.door()]); down.mode = 'carried'; down.carriedBy = p.id; } }
     else { const done = walkPath(p, CARRY, dt); down.x = p.x; down.y = p.y; if (done) { arriveHome(state, ctx, down); w.porters = w.porters.filter(o => o !== p); } }
   }
 }
 /** Home again: sell the loot (the guild takes its share), the fallen go to bed. */
 function arriveHome(state, ctx, h) {
   const w = state.world, bag = h.bag, mats = ['herb', 'wood', 'stone'];
+  if (h.mission) { const ms = state.missions?.find(x => x.id === h.mission); if (ms?.rt) { ms.rt.back ??= {}; ms.rt.back[h.id] = { hp: Math.max(0, h.hp) / h.maxHp, ko: h.mode === 'carried' || h.hp <= 0 }; } }
   const matValue = mats.reduce((sum, k) => sum + bag[k] * ctx.price(k) * HUNT_ECONOMY.matPrice, 0), income = Math.floor(bag.gold + matValue);
   for (const k of mats) if (bag[k]) ctx.marketAdd(k, bag[k]);
   const who = h.kind === 'member' ? state.members.find(m => m.id === h.id) : w.free.find(f => f.id === h.id);
@@ -278,7 +323,7 @@ function arriveHome(state, ctx, h) {
       if (bag.kills) ctx.renown?.(h.zone, bag.kills);
       who.energy = clamp(who.energy - 8, 0, 100);
       if (h.mode === 'carried' || h.hp <= 0) { who.injury = clamp((who.injury || 0) + 30, 0, 100); who.morale = clamp(who.morale - 6, 0, 100); ctx.log(`${who.name}ถูกหามกลับถึงกิลด์ ต้องพักรักษาตัว`, 'warning'); }
-      else if (bag.kills) ctx.log(`${who.name}กลับจาก${HUNT_ZONES[h.zone].name} ล่าได้ ${bag.kills} ตัว ได้เงิน ${income} G (กิลด์ได้ ${guild} G)${sale.sold ? ` · ขายของให้กิลด์ ${sale.sold} ชิ้น` : ''}`, 'hunt');
+      else if (bag.kills && !h.mission) ctx.log(`${who.name}กลับจาก${HUNT_ZONES[h.zone].name} ล่าได้ ${bag.kills} ตัว ได้เงิน ${income} G (กิลด์ได้ ${guild} G)${sale.sold ? ` · ขายของให้กิลด์ ${sale.sold} ชิ้น` : ''}`, 'hunt');
     } else {
       who.mode = 'town'; who.x = INN.x; who.y = INN.y; who.tx = INN.x; who.ty = INN.y; who.wait = 6;
       who.affinity = clamp((who.affinity || 0) + (bag.kills ? 3 : 0), 0, 100);
@@ -299,7 +344,7 @@ function stepHunters(state, ctx, dt) {
     who.energy = clamp(who.energy - 0.05 * dt, 0, 100);
     if (h.mode === 'go') {
       // Ambushed on the way in: stand and fight.
-      const ambush = w.monsters.some(m => !m.dead && m.target === h.id && dist(m, h) < 2.5);
+      const ambush = !h.mission && w.monsters.some(m => !m.dead && m.target === h.id && dist(m, h) < 2.5);
       if (ambush || walkPath(h, WALK, dt)) { h.mode = 'hunt'; h.path = []; }
       continue;
     }
@@ -309,9 +354,9 @@ function stepHunters(state, ctx, dt) {
       if (h.hp < h.maxHp * .35) {
         if (h.kind === 'member' && who.pack?.potion > 0) { who.pack.potion -= 1; h.hp = Math.min(h.maxHp, h.hp + h.maxHp * .5); emit({ type: 'heal', x: h.x, y: h.y, amount: Math.round(h.maxHp * .5), potion: true }); }
         else if (h.kind === 'free' && who.potions > 0) { who.potions -= 1; h.hp = Math.min(h.maxHp, h.hp + h.maxHp * .5); emit({ type: 'heal', x: h.x, y: h.y, amount: Math.round(h.maxHp * .5), potion: true }); }
-        else if (h.mode === 'hunt') { startReturn(state, ctx, h.party); continue; }
+        else if (h.mode === 'hunt' && !h.mission) { startReturn(state, ctx, h.party); continue; }
       }
-      if (h.mode === 'hunt' && (h.bag.kills >= h.quota || who.energy < 30)) { startReturn(state, ctx, h.party); continue; }
+      if (h.mode === 'hunt' && !h.mission && (h.bag.kills >= h.quota || who.energy < 30)) { startReturn(state, ctx, h.party); continue; }
       fight(state, ctx, h, dt);
       if (h.mode === 'defend' && !w.monsters.some(m => m.raid && !m.dead)) { h.mode = 'return'; h.path = [h.kind === 'member' ? ctx.door() : { ...INN }]; }
     }
@@ -331,8 +376,9 @@ export function tickLife(state, ctx, step) {
     if (w.departClock <= 0) { w.departClock = 3; departures(state, ctx); }
     stepHunters(state, ctx, dt);
     tickHero(state, ctx, dt);
+    tickExpeditions(state, ctx, dt);
     for (const m of w.monsters) if (!m.dead) monsterAct(state, ctx, m, dt);
-    w.monsters = w.monsters.filter(m => !(m.dead && (m.raid || m.boss || m.swarm)));
+    w.monsters = w.monsters.filter(m => !(m.dead && (m.raid || m.boss || m.swarm || m.quest)));
     arrangeCarry(state, ctx);
     tickPorters(state, ctx, dt);
   }
@@ -377,7 +423,7 @@ function heroStrike(state, ctx, m, dmg, kind) {
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(w) * 20; w.kills++; hero.kills++;
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
-  const s = MONSTER_STATS[m.species];
+  const s = statsOf(m.species);
   // What the master takes goes straight to the guild: coins to the coffers, parts to the storehouse.
   const gold = s.gold[0] + Math.floor(rand(w) * (s.gold[1] - s.gold[0] + 1));
   ctx.income(gold, 'หัวหน้ากิลด์ออกล่าเอง');
@@ -445,4 +491,73 @@ export function sanitizeHero(data) {
   h.active = Boolean(data.active) && num(data.x, -60, 80) && num(data.y, -70, 45); if (h.active) { h.x = data.x; h.y = data.y; }
   if (num(data.fx, -1, 1) && num(data.fy, -1, 1)) { h.fx = data.fx; h.fy = data.fy; }
   return h;
+}
+
+// ---- Quests in real time: the party walks to the quest site, fights its waves and the boss there, and walks home. ----
+const REGION_FOES = { meadow: ['leafSlime', 'hornHare', 'thornling', 'fuzzBee'], ruins: ['pebbleCrab', 'crystalBat', 'acornBeetle', 'mossWolf'], mist: ['mistWisp', 'lanternGhost', 'glowMoth'] };
+export const EXPEDITION = { waves: [0.25, 0.3, 0.45], hpPerDifficulty: 5.4, atkPerDifficulty: 0.17, eventWait: 30 };
+/** Send the party out: each member becomes a walker on the world map heading for the quest's site. */
+export function startExpedition(state, ctx, mission, quest) {
+  const w = state.world, door = ctx.door(), route = siteQuestRoute(door, quest), via = route.slice(1, -1).map(p => [p.x, p.y]), site = SITE_QUEST_SITES[quest.id] || route[route.length - 1];
+  mission.rt = { stage: 'go', wave: 0, waves: EXPEDITION.waves.length, site: { x: site.x, y: site.y }, clock: 0, foes: [], back: {} };
+  for (const id of mission.memberIds) {
+    const member = state.members.find(m => m.id === id); if (!member) continue;
+    const st = ctx.stats(member), spot = { x: site.x - 1.2 + rand(w) * 1.2, y: site.y + (rand(w) - .5) * 1.4 };
+    w.hunters = w.hunters.filter(h => h.id !== id);
+    w.hunters.push({ id, kind: 'member', zone: 'q:' + mission.id, party: mission.id, mission: mission.id, via, mode: 'go', x: door.x + (rand(w) - .5) * .4, y: door.y + (rand(w) - .5) * .4,
+      path: [...via.map(([x, y]) => ({ x, y })), spot], hp: st.health, maxHp: st.health, power: st.basePower, cls: rootOf(member.class), job: member.class, atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
+      bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 999 });
+  }
+}
+function spawnWave(state, mission, quest) {
+  const w = state.world, rt = mission.rt, last = rt.wave === rt.waves - 1, pool = REGION_FOES[quest.region] || REGION_FOES.meadow;
+  const share = EXPEDITION.waves[rt.wave], total = quest.difficulty * EXPEDITION.hpPerDifficulty * share, atk = quest.difficulty * EXPEDITION.atkPerDifficulty;
+  const foes = last ? [{ species: QUEST_BOSS[quest.id] || pool[0], hp: total * 0.75, boss: true }, { species: pool[1 % pool.length], hp: total * 0.25 }]
+    : Array.from({ length: rt.wave + 2 }, (_, i) => ({ species: pool[(rt.wave + i) % pool.length], hp: total / (rt.wave + 2) }));
+  rt.foes = [];
+  foes.forEach((f, i) => {
+    const p = { x: rt.site.x + 1.6 + (i % 2) * 0.9, y: rt.site.y - 0.8 + i * 0.9 };
+    const m = spawnMonster(w, f.species, 'q:' + mission.id, p, { quest: mission.id, hp: Math.round(f.hp), maxHp: Math.round(f.hp), atk: Math.round(atk * (f.boss ? 1.6 : 1) * 10) / 10, questBoss: Boolean(f.boss) });
+    w.monsters.push(m); rt.foes.push(m.id);
+  });
+  emit({ type: last ? 'questBoss' : 'questWave', id: mission.id, x: rt.site.x, y: rt.site.y, wave: rt.wave + 1 });
+}
+export const QUEST_BOSS = { patrol: 'leafSlime', herbs: 'thornling', escort: 'mossWolf', hollow: 'hollowKeeper', crystals: 'marbleGolem', ruins: 'bellGuardian', mistpath: 'mistWisp', rescue: 'lanternGhost', heart: 'heartGuardian' };
+function tickExpeditions(state, ctx, dt) {
+  const w = state.world;
+  for (const mission of state.missions || []) {
+    const rt = mission.rt; if (!rt || mission.status !== 'active' || rt.stage === 'done') continue;
+    const quest = ctx.quest(mission.questId), party = w.hunters.filter(h => h.party === mission.id), standing = party.filter(h => !['down', 'carried'].includes(h.mode));
+    rt.clock += dt;
+    const foesLeft = w.monsters.filter(m => m.quest === mission.id && !m.dead);
+    if (rt.stage !== 'return' && !standing.length) {
+      // Everyone is down: the foes wander off and the porters bring the party home.
+      rt.stage = 'return'; rt.won = false; w.monsters = w.monsters.filter(m => m.quest !== mission.id);
+      ctx.log(`ทีม${quest.name}ล้มหมดทั้งทีม! คนแบกเปลออกไปรับกลับบ้าน`, 'warning');
+    } else if (rt.stage === 'go') {
+      if (standing.every(h => h.mode === 'hunt')) { rt.stage = 'fight'; spawnWave(state, mission, quest); }
+    } else if (rt.stage === 'fight' && !foesLeft.length) {
+      rt.wave += 1;
+      if (rt.wave >= rt.waves) { rt.stage = 'return'; rt.won = true; startReturn(state, ctx, mission.id); emit({ type: 'questClear', id: mission.id, x: rt.site.x, y: rt.site.y }); }
+      else if (rt.wave === rt.waves - 1 && ctx.needsEvent(mission) && !mission.eventDone) { mission.eventDone = true; ctx.missionEvent(mission); rt.stage = 'event'; rt.eventAt = rt.clock; }
+      else spawnWave(state, mission, quest);
+    } else if (rt.stage === 'event' && (mission.event?.resolved || rt.clock - rt.eventAt > EXPEDITION.eventWait)) {
+      rt.stage = 'fight'; spawnWave(state, mission, quest);
+    }
+    // Progress for the guild's screens: out, each wave, then home.
+    const waveDone = rt.stage === 'fight' ? 1 - foesLeft.reduce((s, m) => s + m.hp, 0) / Math.max(1, foesLeft.reduce((s, m) => s + m.maxHp, 0)) : 0;
+    const out = rt.stage === 'go' ? standing.reduce((s, h) => s + (h.mode === 'hunt' ? 1 : 1 - h.path.length / Math.max(1, h.via.length + 1)), 0) / Math.max(1, standing.length) : 1;
+    const back = rt.stage === 'return' ? 1 - party.length / Math.max(1, mission.memberIds.length) : 0;
+    mission.progress = mission.duration * Math.min(0.99, rt.stage === 'go' ? 0.2 * out : rt.stage === 'return' ? 0.85 + 0.14 * back : 0.2 + 0.65 * (rt.wave + waveDone) / rt.waves);
+    mission.phase = rt.stage === 'go' ? 'travel' : rt.stage === 'return' ? 'return' : 'battle';
+    mission.combat.partyHp = Math.round(party.reduce((s, h) => s + Math.max(0, h.hp), 0)); mission.combat.partyMaxHp = Math.round(party.reduce((s, h) => s + h.maxHp, 0)) || mission.combat.partyMaxHp;
+    mission.combat.enemyHp = Math.round(foesLeft.reduce((s, m) => s + m.hp, 0)); mission.combat.enemyMaxHp = Math.round(foesLeft.reduce((s, m) => s + m.maxHp, 0)) || 1; mission.combat.wave = rt.wave + 1;
+    if (rt.stage === 'return' && !party.length) { rt.stage = 'done'; ctx.finishMission(mission, rt.won); }
+  }
+}
+/** Call a quest party home early (the player recalled it). */
+export function recallExpedition(state, ctx, mission) {
+  state.world.monsters = state.world.monsters.filter(m => m.quest !== mission.id);
+  startReturn(state, ctx, mission.id);
+  if (mission.rt) { mission.rt.stage = 'return'; mission.rt.won = false; }
 }

@@ -2,7 +2,7 @@ import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,
 import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
-import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero } from './life.js';
+import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, startExpedition, recallExpedition } from './life.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
 import { tickTown, sanitizePaths, sanitizeHomes, population, spotFree, ROTATABLE, homeOf } from './town.js';
@@ -654,9 +654,11 @@ function sendMission(state, payload) {
   mission.petition = { id: petition.id, fee: petition.fee, plan: petition.plan, client: petition.client, important: petition.important };
   mission.prep = payload.auto ? 5 : 0;
   if (payload.auto) mission.auto = true;
+  mission.realtime = true;
   petition.status = 'taken'; petition.missionId = mission.id;
   state.missions.push(mission);
   party.forEach(member => { member.task = 'mission'; });
+  if (!mission.prep) startExpedition(state, lifeContext(state), mission, quest);
   // Members who packed rations take them along: the journey tires them less.
   mission.rations = party.filter(member => member.pack?.ration > 0).map(member => { member.pack.ration -= 1; return member.id; });
   addLog(state, payload.auto ? `${party.map(member => member.name).join(' · ')} หยิบงาน “${quest.name}” จากกระดานแล้ว` : `ส่ง ${party.map(member => member.name).join(' · ')} ไป${quest.name}`, 'mission');
@@ -713,7 +715,7 @@ function updateCombat(mission, quest) {
   }
 }
 
-function resolveMission(state, mission) {
+function resolveMission(state, mission, outcome) {
   const quest = QUEST_BY_ID[mission.questId];
   if (mission.event && !mission.event.resolved) {
     mission.event.resolved = true;
@@ -721,7 +723,7 @@ function resolveMission(state, mission) {
     addLog(state, `ทีมตัดสินใจตามแผนสมดุลเมื่อไม่มีคำแนะนำเพิ่มเติม`, 'event');
   }
   const readiness = mission.readiness + mission.decisionBonus;
-  const won = readiness >= 0.82 && mission.combat.partyHp > 0;
+  const won = outcome ?? (readiness >= 0.82 && mission.combat.partyHp > 0);
   mission.status = won ? 'completed' : 'failed';
   mission.progress = mission.duration;
   mission.finishedAt = state.elapsed;
@@ -774,7 +776,9 @@ function resolveMission(state, mission) {
     member.task = 'rest';
     member.energy = clamp(member.energy - mission.energyCost * (mission.rations?.includes(member.id) ? 0.7 : 1), 0, 100);
     member.morale = clamp(member.morale + (won ? 7 : -9) + (won && mission.petition ? PAYOUT_PLANS[mission.petition.plan]?.morale || 0 : 0), 20, 100);
-    const injury = won ? Math.max(0, Math.round((1.12 - readiness) * 23 + mission.risk * 3)) : 16 + Math.round(mission.risk * 10);
+    // Real-time quests hurt as much as the fight did: knocked-out members were already hurt on the way home.
+    const back = mission.rt?.back?.[member.id];
+    const injury = back ? (back.ko ? 0 : Math.round((1 - back.hp) * 22)) : won ? Math.max(0, Math.round((1.12 - readiness) * 23 + mission.risk * 3)) : 16 + Math.round(mission.risk * 10);
     const healerReduction = mission.roles?.includes('heal') ? 3 : 0;
     let hurt = Math.max(0, injury - (traitOf(member).injuryReduction || 0) - healerReduction);
     if (hurt > 4 && member.pack?.potion > 0) { member.pack.potion -= 1; hurt = Math.round(hurt / 2); }
@@ -1049,10 +1053,13 @@ function lifeContext(state) {
     prosperity: n => { state.village.prosperity += n; }, price: key => marketPrice(state, key), marketAdd: (key, n) => { state.market[key] = (state.market[key] || 0) + n; },
     zoneOpen: zone => hasRank(state, zone.rank), guildRankIndex: () => rankIndex(state.rank), door: () => guildDoor(state),
     bond: (a, b) => state.bonds[bondKey(a, b)] || 0, freeTarget: () => Math.min(14, 2 + getVillageInfo(state).level * 2),
-    freeToHunt: member => state.policy?.memberHunting !== false && !introActive(state) && !isBusy(state, member.id) && member.energy >= 70 && member.injury <= 15 && member.autoWork !== false && member.task !== 'train' && !member.waitingReason,
+    // Guild work comes first: while the board has open jobs, adventurers wait until they are fresher before going hunting.
+    freeToHunt: member => state.policy?.memberHunting !== false && !introActive(state) && !isBusy(state, member.id) && member.energy >= ((state.petitions || []).some(p => p.status === 'posted' && !p.missionId && roomLevel(state, 'board')) ? 78 : 70) && member.injury <= 15 && member.autoWork !== false && member.task !== 'train' && !member.waitingReason,
     // Word of the guild's hunters spreads: fair renown for work at the guild's own level.
     renown: (zone, kills) => { const z = HUNT_ZONES[zone]; if (z) state.rep += Math.round(kills * 0.15 * renownFactor(state, z) * 10) / 10; },
     storePart: (part, n) => { const t = state.trade, room = storeCapacity(state) - storeUsed(t); if (room > 0) t.store[part] = (t.store[part] || 0) + Math.min(n, room); },
+    quest: id => QUEST_BY_ID[id], needsEvent: mission => { const q = QUEST_BY_ID[mission.questId]; return Boolean(q.story || (q.id === 'patrol' && !state.completedQuests.patrol)); },
+    missionEvent: mission => missionEvent(state, mission), finishMission: (mission, won) => { if (mission.status === 'active') resolveMission(state, mission, Boolean(won)); },
     sellLoot: (hunter, who) => sellLoot(state, tradeContext(state), hunter, who),
     bossZone: () => bossAlive(state)?.zone || null,
     freeToDefend: member => !isBusy(state, member.id) && member.injury <= 40 && member.energy >= 20,
@@ -1431,7 +1438,9 @@ export function tick(state, seconds) {
     }
     for (const mission of [...state.missions]) {
       if (mission.status !== 'active') continue;
-      if (mission.prep > 0) { mission.prep = Math.max(0, mission.prep - step); continue; }
+      if (mission.prep > 0) { mission.prep = Math.max(0, mission.prep - step); if (mission.prep > 0 || mission.rt) continue; }
+      // Quests play out in the living world: the party walks out, fights there and walks home.
+      if (mission.realtime) { if (!mission.rt) startExpedition(state, lifeContext(state), mission, QUEST_BY_ID[mission.questId]); continue; }
       mission.progress += step;
       const quest = QUEST_BY_ID[mission.questId];
       const hasDecision = quest.story || (quest.id === 'patrol' && !state.completedQuests.patrol);
@@ -1633,6 +1642,7 @@ function command(state, type, payload = {}) {
     case 'recallMission': {
       const mission = state.missions.find(item => item.id === payload.missionId && item.status === 'active');
       if (!mission) return failure('ไม่พบทีมที่กำลังเดินทาง');
+      if (mission.rt) recallExpedition(state, lifeContext(state), mission);
       mission.status = 'recalled'; mission.finishedAt = state.elapsed;
       mission.result = { success: false, reward: {}, title: 'กลับก่อนอย่างปลอดภัย', message: 'เรียกทีมกลับแล้ว เสบียงที่ใช้ไปไม่คืน' };
       mission.memberIds.forEach(id => { const member = memberById(state, id); member.task = 'rest'; member.energy = Math.max(0, member.energy - Math.round(mission.energyCost * clamp(mission.progress / mission.duration, 0, 1))); });
@@ -1871,6 +1881,8 @@ export function deserializeGame(source) {
   state.director = sanitizeDirector(data.director, state.elapsed);
   state.trade = sanitizeTrade(data.trade);
   state.hero = sanitizeHero(data.hero);
+  // A quest party that lost its walkers sets out again from the door.
+  for (const m of state.missions) if (m.status === 'active' && m.rt && !state.world.hunters.some(h => h.party === m.id)) delete m.rt;
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
   // Older saves count the quests they already cleared as their record of work.
   const jobs = data.record?.jobs ?? Object.values(state.completedQuests).reduce((sum, n) => sum + n, 0);
