@@ -84,7 +84,9 @@ function chooseErrand(state, ctx, m, inside) {
   else if (r < 0.3 && inside < GUILD_VISITORS) t.goal = 'guild';
   else if (r < 0.85) t.goal = 'town';
   else t.goal = 'lodge';
-  const at = t.goal === 'guild' ? ctx.door() : t.goal === 'lodge' ? ctx.lodge(m) : (([x, y]) => ({ x: x + (rand(w) - .5) * 1.4, y: y + (rand(w) - .5) * .8 }))(pick(w, TOWN_SPOTS));
+  const shops = t.goal === 'town' && ctx.shopSpots ? ctx.shopSpots() : [];
+  const spot = shops.length && rand(w) < 0.6 ? (p => [p.x, p.y])(pick(w, shops)) : pick(w, TOWN_SPOTS);
+  const at = t.goal === 'guild' ? ctx.door() : t.goal === 'lodge' ? ctx.lodge(m) : { x: spot[0] + (rand(w) - .5) * 1.4, y: spot[1] + (rand(w) - .5) * .8 };
   t.tx = at.x; t.ty = at.y; t.at = 'street';
 }
 function tickResidents(state, ctx, step) {

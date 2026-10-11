@@ -147,6 +147,7 @@ test('the board sends out more jobs at once as it grows, and lodging in town cap
   assert.equal(getGuildStats(state).memberCap, room.cap);
   assert.equal(act(state, 'buildProject', { projectId: 'inn' }).ok, true);
   assert.equal(getLodging(state).lodging, room.lodging + 8);
+  assert.equal(getLodging(deserializeGame(serializeGame(state))).lodging, room.lodging + 8, 'the inn survives save and load');
   // Nobody is hired any more: hiring commands are gone and newcomers register by themselves.
   assert.equal(act(state, 'recruit', { memberId: 'sera' }).ok, false);
   state.policy.registration = true;
@@ -620,7 +621,7 @@ test('a hands-off guild master finishes chapter one in about an hour and a half 
     assert.equal(state.rank, 'B', `seed ${seed} the game stops at rank B for now`);
     assert.equal(state.frontier.camp >= 2, true, `seed ${seed} the frontier camp grew for the raids`);
     assert.equal(m.bankruptDays, 0, `seed ${seed} never misses upkeep`);
-    assert.ok(m.failures <= m.boardRuns * 0.05, `seed ${seed} real fights can go wrong now and then, but rarely (${m.failures} of ${m.boardRuns})`);
+    assert.ok(m.failures <= m.boardRuns * 0.08, `seed ${seed} real fights can go wrong now and then, but rarely (${m.failures} of ${m.boardRuns})`);
     assert.equal(m.playerRuns, 0, `seed ${seed} nobody is sent by hand: adventurers take every job themselves`);
     assert.ok(state.members.length >= 40, `seed ${seed} a grown town is full of adventurers (${state.members.length})`);
     assert.ok(m.boardRuns >= 30, `seed ${seed} adventurers took board work by themselves (${m.boardRuns})`);

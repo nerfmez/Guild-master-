@@ -521,3 +521,14 @@ body.on-title .hero-hud{display:none}
 .quest-grade.grade-s{background:#f5e1e3;border-color:#d09b9f;color:#923f4a}
 .journey-data .quest-grade{margin:4px 0;font-size:10px;padding:1px 6px}
 .journey-data .quest-grade strong{font-size:12px}
+/* R41: the board explains itself; lodging and the rally call */
+.board-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.board-summary span{display:grid;justify-items:center;padding:6px 4px;border-radius:9px;background:#f5ecd7;font-size:10.5px;color:var(--muted);text-align:center}.board-summary b{font-size:17px;color:var(--ink)}.board-summary .warn b{color:#b0503c}
+.board-card .qtitle{all:unset;cursor:pointer;font-weight:700;font-size:14px;color:var(--ink)}.board-card .qtitle:hover{text-decoration:underline}
+.board-card .board-actions{grid-template-columns:repeat(3,1fr) auto auto}.board-card .board-actions button.active{background:#5b663e;color:#fff8e7;border-color:#5b663e}.board-card .board-actions .boost{background:#fff1c4;border-color:#e0b94a;font-weight:700}
+.pet-status.st-pay,.pet-status.st-hard,.pet-status.st-supplies,.pet-status.st-rank,.pet-status.st-locked,.pet-status.st-slots,.pet-status.st-board{color:#b0503c}.pet-status.st-busy,.pet-status.st-same{color:#8a6a2a}.pet-status.st-taken,.pet-status.st-soon{color:#5b663e}
+.readiness.st-pay,.readiness.st-hard,.readiness.st-supplies,.readiness.st-rank,.readiness.st-locked,.readiness.st-slots{background:#fbe3dc;color:#8a3a2a}
+.lodging-card{display:grid;gap:4px;padding:10px 12px;margin:8px 0;border-radius:12px;background:#f5ecd7;border:1px solid #e5d5b5}.lodging-card small{color:var(--muted);font-size:11.5px}.lodging-card.full{border-color:#e0a07a;background:#fbeadf}.lodging-card button{justify-self:start;min-height:0;padding:5px 10px;font-size:12px}
+.rally-card{display:grid;gap:6px;padding:12px;margin:8px 0;border-radius:12px;background:#fbe3dc;border:2px solid #d9584a}.rally-card small{color:#7a3a2a}
+.board-list .board-card{flex-direction:row;align-items:stretch}.board-list .board-card .qart{flex:0 0 92px}.board-list .board-card .qart canvas{width:92px;height:100%;object-fit:cover;aspect-ratio:auto}.board-list .board-card .qbody{flex:1;min-width:0}
+.board-list .board-card .qart .qbadge{font-size:9px}
