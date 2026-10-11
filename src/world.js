@@ -609,7 +609,7 @@ export class GuildRenderer {
   this.questGfx??=this.scene.add.graphics().setDepth(-9000);this.questGfx.clear();this.cropGfx?.clear();this.flockLeft=1;
   for(const ms of this.state.missions||[]){const rt=ms.rt;if(!rt||ms.status!=='active')continue;
    if(rt.wagon){const wg=rt.wagon,p=gridPoint(wg.x,wg.y);if(!this.scene.textures.exists('qwagon-0'))for(let f=0;f<2;f++)this.texture('qwagon-'+f,makeBreadWagon(f).canvas);
-    const s=sprite('wagon-'+ms.id,()=>({image:this.scene.add.image(0,0,'qwagon-0').setOrigin(62/124,74/82),last:{x:wg.x,y:wg.y}}));const dx=wg.x-s.last.x,dy=wg.y-s.last.y;if(Math.abs(dx-dy)>.001)s.flip=dx-dy<0;s.last={x:wg.x,y:wg.y};
+    const s=sprite('wagon-'+ms.id,()=>({image:this.scene.add.image(0,0,'qwagon-0').setOrigin(62/124,74/82),last:{x:wg.x,y:wg.y}}));const dx=wg.x-s.last.x,dy=wg.y-s.last.y;if(Math.abs(dx-dy)>.001)s.flip=dx-dy>0;s.last={x:wg.x,y:wg.y};
     s.image.setTexture('qwagon-'+(wg.moving?Math.floor(t*4)%2:0)).setPosition(Math.round(p.x),Math.round(p.y-(wg.moving?Math.abs(Math.sin(t*9)):0))).setDepth(p.y+40).setFlipX(!!s.flip).setScale(.62);
     bar(p.x,p.y-52,wg.hp/wg.maxHp,0xe8b04a);if(rt.ambushed&&Math.floor(t*2)%2)this.hpBars.fillStyle(0xd9584a,1).fillTriangle(p.x-5,p.y-64,p.x+5,p.y-64,p.x,p.y-57);}
    if(rt.field){const f=rt.field,lost=1-rt.crops/100,c=gridPoint(f.x,f.y);
