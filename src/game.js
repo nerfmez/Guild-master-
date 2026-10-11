@@ -101,7 +101,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, frontier: { camp: 0 }, bounty: null, mastery: { claimed: {} }, exams: createExams(), festivals: createFestivals(), eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0,
     policy: { memberHunting: true, autoPetitions: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
+    record: { jobs: 0, bounties: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, upgrades: { signboard: 0, contracts: 0, clerk: 0, storehouse: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -272,6 +272,7 @@ function questLockReason(state, quest) {
   }
   if (quest.raid && (state.frontier?.camp || 0) < 2) return 'ภารกิจจู่โจม: ขยายค่ายแนวหน้าเป็นระดับ 2 ก่อน (เมนูกิลด์ → พัฒนากิลด์)';
   if (quest.raid && state.members.length < 8) return 'ภารกิจจู่โจม: ต้องมีสมาชิกอย่างน้อย 8 คน';
+  if (quest.raid && state.members.filter(m => memberRankIndex(m) >= ADVENTURER_RANKS.indexOf('B')).length < 2) return 'ภารกิจจู่โจม: ต้องมีนักผจญภัยแรงค์ B อย่างน้อย 2 คน';
   if (quest.final && state.story.finished) return 'ผ่านบทสรุปแล้ว';
   return '';
 }
@@ -1287,7 +1288,7 @@ export function festivalPrizeItems(state) {
     ...[...new Set(state.trade?.treasures || [])].filter(id => TREASURES[id]).map(id => ({ type: 'treasure', id, name: TREASURES[id].name, value: TREASURES[id].value, count: state.trade.treasures.filter(x => x === id).length }))];
 }
 /** The frontier camp grows with the guild's money once the first camp stands. */
-export const CAMP_COSTS = [null, null, { gold: 900, wood: 60, stone: 50 }, { gold: 1800, wood: 90, stone: 90 }];
+export const CAMP_COSTS = [null, null, { gold: 1400, wood: 30, stone: 30 }, { gold: 2600, wood: 50, stone: 50 }];
 function upgradeCamp(state) {
   const lv = state.frontier?.camp || 0;
   if (!lv) return failure('ต้องผ่านคำร้อง “บุกเบิกทางสู่หุบผาลมแดง” เพื่อตั้งค่ายก่อน');
@@ -1461,7 +1462,15 @@ function buyMaterial(state, payload) {
   const key = payload.key;
   if (!MATERIALS[key]) return failure('ตลาดไม่มีของชนิดนี้');
   const quote = tradeQuote(state, key, false);
-  if (!quote.available) return failure(`ตลาดมี${MATERIALS[key].name}ไม่พอ`);
+  if (!quote.available) {
+    // The village market is empty: a merchant can bring a lot from the capital, at twice the price.
+    if (!payload.import) return failure(`ตลาดมี${MATERIALS[key].name}ไม่พอ · สั่งจากเมืองหลวงได้ในราคาสองเท่า`);
+    const gold = Math.round(MATERIALS[key].price * quote.amount * 2);
+    if (state.gold < gold) return failure('เหรียญไม่เพียงพอ');
+    transact(state, { gold }, `สั่ง${MATERIALS[key].name}จากเมืองหลวง`);
+    transact(state, { [key]: quote.amount }, `สั่ง${MATERIALS[key].name}จากเมืองหลวง`, 1);
+    return success(`สั่ง${MATERIALS[key].name}จากเมืองหลวง +${quote.amount} (${gold} G)`);
+  }
   if (state.gold < quote.gold) return failure('เหรียญไม่เพียงพอ');
   transact(state, { gold: quote.gold }, `ซื้อ${MATERIALS[key].name}จากตลาด`);
   transact(state, { [key]: quote.amount }, `ซื้อ${MATERIALS[key].name}จากตลาด`, 1);

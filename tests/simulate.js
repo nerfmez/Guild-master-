@@ -17,7 +17,7 @@ function placeSomewhere(state, type) {
 }
 const canPay = (state, cost, reserve = 0) => Object.entries(cost || {}).every(([k, v]) => state[k] - (k === 'gold' ? reserve : 0) >= v);
 
-export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", log = false, maxMembers = 8, freePlay = 0 } = {}) {
+export function simulate(seed = 1, { maxSeconds = 7 * 3600, plan = "standard", log = false, maxMembers = 8, freePlay = 0 } = {}) {
   const state = createGame(seed);
   const m = { seed, ranks: {}, village: {}, finishedAt: null, boardRuns: 0, playerRuns: 0, failures: 0, minGold: state.gold, goldSamples: [], petitionsSeen: 0, petitionsLost: 0, upgrades: 0, projects: 0 };
   const seen = new Set();
@@ -42,6 +42,7 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
     if (log && state.elapsed % 300 < STEP) { const p = getRankProgress(state); if (p) say(`toward ${p.rank}: rep ${p.rep}/${p.repNeeded} ${p.merits.filter(x => !x.ok).map(x => x.label + ' ' + x.have + '/' + x.need).join(', ')} members ${state.members.length} gold ${Math.round(state.gold)}`); }
     const rank = state.rank; if (!(rank in m.ranks)) { m.ranks[rank] = Math.round(state.elapsed); say(`rank ${rank}`); }
     const vl = getVillageInfo(state).level; if (!(vl in m.village)) { m.village[vl] = Math.round(state.elapsed); say(`village ${vl}`); }
+    if (state.completedQuests.heart && m.chapterOneAt == null) { m.chapterOneAt = Math.round(state.elapsed); say('chapter one finished (forest heart)'); }
     if (state.story.finished && m.finishedAt === null) { m.finishedAt = Math.round(state.elapsed); say('story finished'); }
     if (m.finishedAt !== null && state.elapsed >= m.finishedAt + freePlay) break;
 
@@ -51,11 +52,13 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
     const stats = getGuildStats(state), reserve = 150;
     if (!state.facilities.some(f => f.type === 'board') && state.gold >= 120 + reserve) placeSomewhere(state, 'board');
     if (RANKS.indexOf(state.rank) >= 1 && !state.facilities.some(f => f.type === 'dispatch') && state.gold > 340 + reserve) placeSomewhere(state, 'dispatch') || act(state, 'expandBuilding');
-    if (stats.memberCount >= stats.memberCap && state.members.length < maxMembers && stats.memberCap < 12 && state.gold > 400 + reserve) placeSomewhere(state, 'dorm') || act(state, 'expandBuilding');
+    const memberGoal = RANKS.indexOf(state.rank) >= 3 ? Math.max(maxMembers, 10) : maxMembers;
+    if (state.frontier?.camp === 1 && state.gold > 2500) { for (let k = 0; k < 12; k++) for (const key of ['wood', 'stone']) if (state[key] < 70) act(state, 'buyMaterial', { key }); if (act(state, 'upgradeCamp').ok) say('camp 2'); }
+    if (stats.memberCount >= stats.memberCap && state.members.length < memberGoal && stats.memberCap < 12 && state.gold > 400 + reserve) placeSomewhere(state, 'dorm') || act(state, 'expandBuilding');
     // Applicants come to the door; hire while there is room, the fee is affordable and the guild needs hands.
     for (const a of state.applicants.filter(a => a.status === 'waiting')) {
-      if (state.members.length < maxMembers && getGuildStats(state).memberCount < getGuildStats(state).memberCap && state.gold > a.fee + reserve) { act(state, 'recruit', { applicantId: a.id }); say(`hire ${a.memberId || a.bio.name} lv${a.level}`); }
-      else if (state.members.length >= maxMembers) act(state, 'declineApplicant', { applicantId: a.id });
+      if (state.members.length < memberGoal && getGuildStats(state).memberCount < getGuildStats(state).memberCap && state.gold > a.fee + reserve) { act(state, 'recruit', { applicantId: a.id }); say(`hire ${a.memberId || a.bio.name} lv${a.level}`); }
+      else if (state.members.length >= memberGoal) act(state, 'declineApplicant', { applicantId: a.id });
     }
     // Surplus materials go to the village market, which keeps the shops stocked.
     for (const key of ['wood', 'stone', 'herb']) if (state[key] > 80 && state.market[key] < 60) act(state, 'sellMaterial', { key });
@@ -63,6 +66,9 @@ export function simulate(seed = 1, { maxSeconds = 4 * 3600, plan = "standard", l
     // The arena lets members rank up; the dojo teaches and holds class trials.
     if (!state.village.arena && getProjectStatus(state, 'arena').ok && state.gold > getProjectStatus(state, 'arena').cost.gold + reserve) { act(state, 'buildProject', { projectId: 'arena' }); say('build arena'); }
     if (RANKS.indexOf(state.rank) >= 1 && !state.village.dojo && getProjectStatus(state, 'dojo').ok && state.gold > getProjectStatus(state, 'dojo').cost.gold + reserve) { act(state, 'buildProject', { projectId: 'dojo' }); say('build dojo'); }
+    // Members held back by a small arena or dojo: grow it (the member screen says what is missing).
+    if (state.members.some(member => getAdventurerRank(state, member).needs?.some(n => /สนามสอบระดับ/.test(n)))) { let st = getProjectStatus(state, 'arena'); if (!st.ok && st.cost && state.gold > st.cost.gold + 800) { for (let k = 0; k < 10; k++) for (const key of ['wood', 'stone']) if (state[key] < (st.cost[key] || 0)) act(state, 'buyMaterial', { key }).ok || act(state, 'buyMaterial', { key, import: true }); st = getProjectStatus(state, 'arena'); } if (st.ok && state.gold > st.cost.gold + reserve) { act(state, 'buildProject', { projectId: 'arena' }); say('arena up'); } }
+    if (RANKS.indexOf(state.rank) >= 3 && state.village.dojo < 3) { const st = getProjectStatus(state, 'dojo'); if (st.ok && state.gold > st.cost.gold + 600) { act(state, 'buildProject', { projectId: 'dojo' }); say('dojo up'); } }
     // Like a player answering the goal card: sponsor exams for members who are ready but short of the fee.
     for (const member of state.members) { const r = getAdventurerRank(state, member); if (r.eligible && r.chance >= 0.4 && !member.errand && member.purse < r.rule.fee && state.gold > r.rule.fee + reserve) act(state, 'rankExam', { memberId: member.id }); }
     for (const member of state.members) { const choice = classChoices(state, member).find(c => c.ok); if (choice && act(state, 'specialize', { memberId: member.id, classId: choice.id }).ok) say(`class ${member.id} -> ${choice.id}`); }

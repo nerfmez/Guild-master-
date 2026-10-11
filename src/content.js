@@ -306,7 +306,7 @@ export const ADVENTURER_RANK_RULES = {
   E: { level: 3, points: 30, exam: 34, fee: 30, arena: 1, power: 1.04 },
   D: { level: 6, points: 90, exam: 56, fee: 80, arena: 1, power: 1.08 },
   C: { level: 9, points: 230, exam: 88, fee: 160, arena: 2, power: 1.13 },
-  B: { level: 13, points: 480, exam: 110, fee: 300, arena: 3, power: 1.19 },
+  B: { level: 13, points: 380, exam: 110, fee: 300, arena: 3, power: 1.19 },
   A: { level: 16, points: 900, exam: 160, fee: 500, arena: 3, power: 1.26, future: true },
   S: { level: 20, points: 1600, exam: 230, fee: 900, arena: 3, power: 1.34, future: true },
 };

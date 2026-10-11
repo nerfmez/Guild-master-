@@ -585,23 +585,26 @@ test('board teams use their own slots, so the player can still send important wo
   assert.doesNotThrow(() => deserializeGame(serializeGame(state)));
 });
 
-test('a plain player finishes the demo in about two hours, ranks climb by renown and merit, and money circulates', async () => {
+test('a plain player finishes chapter one in about 1.5 hours and the frontier chapter at rank B, ranks climb by renown and merit, and money circulates', async () => {
   const { simulate } = await import('./simulate.js');
   for (const seed of [1, 2, 3, 4, 5]) {
-    const { state, metrics: m } = simulate(seed, { freePlay: 3600 });
+    const { state, metrics: m } = simulate(seed);
     const min = s => s / 60;
-    assert.ok(m.finishedAt !== null, `seed ${seed} finishes the demo story`);
-    assert.ok(min(m.finishedAt) >= 60 && min(m.finishedAt) <= 130, `seed ${seed} demo takes 60-130 game minutes, took ${min(m.finishedAt)}`);
-    assert.ok(min(m.ranks.E) <= 35 && min(m.ranks.D) <= 70 && min(m.ranks.C) <= 120, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
-    assert.equal(state.rank, 'C', `seed ${seed} the demo stops at rank C`);
+    assert.ok(m.chapterOneAt != null, `seed ${seed} heals the forest heart`);
+    assert.ok(min(m.chapterOneAt) >= 60 && min(m.chapterOneAt) <= 130, `seed ${seed} chapter one takes 60-130 game minutes, took ${min(m.chapterOneAt)}`);
+    assert.ok(m.finishedAt !== null, `seed ${seed} finishes the frontier story`);
+    assert.ok(min(m.finishedAt) >= 180 && min(m.finishedAt) <= 340, `seed ${seed} the dragon falls after 3-5.5 game hours, took ${min(m.finishedAt)}`);
+    assert.ok(min(m.ranks.E) <= 35 && min(m.ranks.D) <= 70 && min(m.ranks.C) <= 120 && min(m.ranks.B) <= 190, `seed ${seed} ranks E/D/C/B at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)}/${min(m.ranks.B)} minutes`);
+    assert.equal(state.rank, 'B', `seed ${seed} the game stops at rank B for now`);
+    assert.equal(state.frontier.camp >= 2, true, `seed ${seed} the frontier camp grew for the raids`);
     assert.equal(m.bankruptDays, 0, `seed ${seed} never misses upkeep`);
-    assert.ok(m.failures <= 3, `seed ${seed} real fights can go wrong now and then, but rarely (${m.failures})`);
+    assert.ok(m.failures <= 8, `seed ${seed} real fights can go wrong now and then, but rarely (${m.failures})`);
     assert.ok(m.boardRuns >= 30, `seed ${seed} adventurers took board work by themselves (${m.boardRuns})`);
     assert.ok(state.members.filter(member => member.id.startsWith('r-')).length >= 1, `seed ${seed} rookies were drawn in by fame`);
     assert.ok(state.members.every(member => member.points > 0), `seed ${seed} mentoring gives every member, rookies included, real work`);
     assert.ok(m.trade >= 5000, `seed ${seed} adventurers spent their wages in the village (${Math.round(m.trade)} G)`);
     assert.ok(state.members.every(member => member.equipment.weapon), `seed ${seed} everyone ends up armed`);
-    assert.ok(m.village[5] === undefined || m.village[5] > m.finishedAt * 1.2, `seed ${seed} the top village level is left for later`);
+    assert.ok(m.village[5] === undefined || m.village[5] > m.chapterOneAt * 1.2, `seed ${seed} the top village level is left for later`);
     const idle = m.ledger['ดอกผลกองทุนและค่าแผงตลาด'] || 0, commission = m.ledger['ค่านายหน้า'] || 0;
     assert.ok(idle > commission * 0.1 && idle < commission, `seed ${seed} idle income matters but does not replace work (${idle} vs ${commission})`);
     assert.doesNotThrow(() => serializeGame(state));
