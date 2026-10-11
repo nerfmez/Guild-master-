@@ -46,3 +46,38 @@ export const WORLD_PATHS = {
   east: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [58, 4], [62, -1]],
   hills: [[48, 15], [54, 18], [59, 20]],
 };
+
+/** Where each quest takes place on the world map (grid units). */
+export const SITE_QUEST_SITES = {
+  patrol: { x: -18, y: 21.6 }, herbs: { x: -28.6, y: 30.4 }, escort: { x: 46.5, y: 16.2 },
+  hollow: { x: 8.5, y: -27.5 }, crystals: { x: 59.5, y: 21.5 }, ruins: { x: 63, y: -3 },
+  mistpath: { x: 1, y: -40 }, rescue: { x: -10.5, y: -49 }, heart: { x: 4, y: -59 },
+};
+// Where each route leaves the village roads, then which path points it follows.
+const ROUTES = {
+  patrol: ['west', 3], herbs: ['west', 5, 'lake'], escort: ['east', 2],
+  crystals: ['east', 3, 'hills'], ruins: ['east', 6],
+  hollow: ['north', 4], mistpath: ['north', 5], rescue: ['north', 6, 'mistdeep'], heart: ['north', 8],
+};
+/** Smooth a control polyline into dense points. */
+export function siteSmoothPath(points, steps = 6) {
+  const out = [], p = i => points[Math.max(0, Math.min(points.length - 1, i))];
+  for (let i = 0; i < points.length - 1; i++) for (let s = 0; s < steps; s++) {
+    const t = s / steps, [p0, p1, p2, p3] = [p(i - 1), p(i), p(i + 1), p(i + 2)];
+    const f = k => 0.5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t * t + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t * t * t);
+    out.push({ x: f(0), y: f(1) });
+  }
+  const last = points[points.length - 1]; out.push({ x: last[0], y: last[1] }); return out;
+}
+
+/** Route in grid units from the guild door to a quest's site, along the village roads and world trails. */
+export function siteQuestRoute(door, quest) {
+  const site = SITE_QUEST_SITES[quest.id] || { x: 0, y: 20 }, plan = ROUTES[quest.id] || ['west', 2], road = 17.5;
+  const [name, last, branch] = plan, points = WORLD_PATHS[name].slice(0, last + 1);
+  const out = [{ x: door.x, y: door.y }, { x: door.x, y: road }];
+  if (name === 'north') out.push({ x: 2, y: road });
+  out.push(...siteSmoothPath(points, 4));
+  if (branch) out.push(...siteSmoothPath(WORLD_PATHS[branch], 4).slice(1));
+  out.push(site);
+  return out;
+}

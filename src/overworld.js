@@ -3,7 +3,7 @@
    dry hills east beyond the river. Paths wind out from the village roads to landmark quest sites. */
 import { gridPoint } from './guild-art.js';
 import { REGIONS, RANKS, BUILDING_FOOTPRINTS } from './content.js';
-import { WORLD_PATHS } from './site.js';
+import { WORLD_PATHS, SITE_QUEST_SITES, siteSmoothPath, siteQuestRoute } from './site.js';
 
 export const WORLD = { x0: -62, y0: -68, x1: 84, y1: 58 };
 const VILLAGE = { x: 10, y: 8, r: 19 };
@@ -19,17 +19,8 @@ export const PATHS = WORLD_PATHS;
 export const RIVER = [[47, -70], [45, -42], [40, -20], [42, 0], [41, 17.5], [38, 34], [33, 60]];
 export const LAKE = { x: -37, y: 32, rx: 6.5, ry: 4.5 };
 export const BRIDGE = { x: 39.6, y: 16.6, w: 3.4, h: 1.8 };
-export const QUEST_SITES = {
-  patrol: { x: -18, y: 21.6 }, herbs: { x: -28.6, y: 30.4 }, escort: { x: 46.5, y: 16.2 },
-  hollow: { x: 8.5, y: -27.5 }, crystals: { x: 59.5, y: 21.5 }, ruins: { x: 63, y: -3 },
-  mistpath: { x: 1, y: -40 }, rescue: { x: -10.5, y: -49 }, heart: { x: 4, y: -59 },
-};
-// Where each route leaves the village roads, then which path points it follows.
-const ROUTES = {
-  patrol: ['west', 3], herbs: ['west', 5, 'lake'], escort: ['east', 2],
-  crystals: ['east', 3, 'hills'], ruins: ['east', 6],
-  hollow: ['north', 4], mistpath: ['north', 5], rescue: ['north', 6, 'mistdeep'], heart: ['north', 8],
-};
+export const QUEST_SITES = SITE_QUEST_SITES;
+
 export const SIGNPOSTS = [
   { x: -14, y: 19.8, text: 'ทุ่งใบชา', region: 'meadow', flip: true },
   { x: 3.8, y: -16, text: 'ป่าหมอกจันทร์', region: 'mist' },
@@ -43,16 +34,7 @@ function hash2(x, y) { let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 66
 function noise(x, y) { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy); const a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1); return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy; }
 function rng(seed) { let a = seed >>> 0 || 1; return () => { a = (Math.imul(a, 1664525) + 1013904223) >>> 0; return a / 4294967296; }; }
 
-/** Smooth a control polyline into dense points. */
-export function smoothPath(points, steps = 6) {
-  const out = [], p = i => points[Math.max(0, Math.min(points.length - 1, i))];
-  for (let i = 0; i < points.length - 1; i++) for (let s = 0; s < steps; s++) {
-    const t = s / steps, [p0, p1, p2, p3] = [p(i - 1), p(i), p(i + 1), p(i + 2)];
-    const f = k => 0.5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t * t + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t * t * t);
-    out.push({ x: f(0), y: f(1) });
-  }
-  const last = points[points.length - 1]; out.push({ x: last[0], y: last[1] }); return out;
-}
+export const smoothPath = siteSmoothPath;
 // Each smoothed point knows how far it is from the end of its line (rem) and from its start (run).
 function measure(pts) { let run = 0; pts.forEach((p, i) => { if (i) run += Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y); p.run = run; }); pts.forEach(p => { p.rem = run - p.run; }); return pts; }
 // Footpaths grown by the village, drawn into the world ground beyond the village canvas (set by the renderer).
@@ -78,16 +60,7 @@ export function nearPath(x, y, pad = 1.6) { return Object.values(SMOOTH).some(p 
 export function inWater(x, y, pad = 0) { return distTo(SMOOTH_RIVER, x, y) < 2.2 + pad || distTo(SMOOTH_CREEK, x, y) < .9 + pad || ((x - LAKE.x) / (LAKE.rx + pad)) ** 2 + ((y - LAKE.y) / (LAKE.ry + pad)) ** 2 < 1; }
 
 /** Route in grid units from the guild door to a quest's landmark, along the village roads and world paths. */
-export function questRoute(door, quest) {
-  const site = QUEST_SITES[quest.id] || { x: 0, y: 20 }, plan = ROUTES[quest.id] || ['west', 2], road = 17.5;
-  const [name, last, branch] = plan, points = PATHS[name].slice(0, last + 1);
-  const out = [{ x: door.x, y: door.y }, { x: door.x, y: road }];
-  if (name === 'north') out.push({ x: 2, y: road });
-  out.push(...smoothPath(points, 4));
-  if (branch) out.push(...smoothPath(PATHS[branch], 4).slice(1));
-  out.push(site);
-  return out;
-}
+export const questRoute = siteQuestRoute;
 
 // ---- Meadow scene: hand-placed farm, windmill, pond and pasture west of the village. ----
 export const FIELDS = [

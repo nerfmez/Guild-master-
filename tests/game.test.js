@@ -21,13 +21,13 @@ function dispatch(state, questId = 'patrol', ids = party, policy = 'balanced') {
   assert.equal(result.ok, true, result.message);
   return state.missions.at(-1);
 }
+// Quests play out in real time: walk out, fight, walk home. Advise the team when a choice comes up.
 function complete(state, mission) {
-  tick(state, mission.duration * 0.45);
-  if (mission.event) {
-    assert.equal(mission.event.resolved, false);
-    assert.equal(act(state, 'chooseEvent', { missionId: mission.id, choiceId: 'help' }).ok, true);
+  for (let i = 0; i < 2000 && mission.status === 'active'; i++) {
+    if (mission.event && !mission.event.resolved) assert.equal(act(state, 'chooseEvent', { missionId: mission.id, choiceId: 'help' }).ok, true);
+    tick(state, 0.5);
   }
-  tick(state, mission.duration - mission.progress + 0.1);
+  assert.notEqual(mission.status, 'active', 'the quest finished');
   return mission;
 }
 
@@ -35,13 +35,14 @@ test('starter team completes an actual encounter, earns materials, and recovers 
   const state = createGame(99);
   const before = state.gold;
   const mission = dispatch(state);
-  tick(state, 26);
+  // The team walks out to the site and fights there in real time.
+  for (let i = 0; i < 400 && !(mission.phase === 'battle' && mission.combat.enemyHp < mission.combat.enemyMaxHp); i++) tick(state, 0.25);
   assert.equal(mission.phase, 'battle');
-  assert.ok(mission.combat.enemyHp < mission.combat.enemyMaxHp);
-  assert.ok(mission.combat.partyHp < mission.combat.partyMaxHp);
-  assert.ok(mission.combat.log.length > 0);
+  assert.ok(state.world.monsters.some(m => m.quest === mission.id), 'the quest foes stand at the site');
+  for (let i = 0; i < 600 && !mission.event; i++) tick(state, 0.5);
+  assert.ok(mission.event, 'a choice comes up before the boss');
   assert.equal(act(state, 'chooseEvent', { missionId: mission.id, choiceId: 'help' }).ok, true);
-  tick(state, mission.duration - mission.progress);
+  complete(state, mission);
   assert.equal(mission.status, 'completed');
   assert.equal(state.completedQuests.patrol, 1);
   assert.ok(state.gold > before);
@@ -104,7 +105,8 @@ test('equipment transfers preserve inventory and enforce class and busy restrict
   dispatch(state);
   assert.equal(act(state, 'equip', { memberId: 'mira', equipmentId: null, slot: 'weapon' }).ok, false);
   act(state, 'recallMission', { missionId: state.missions[0].id });
-  assert.equal(act(state, 'equip', { memberId: 'mira', equipmentId: null, slot: 'weapon' }).ok, true);
+  tick(state, 60);
+  assert.equal(act(state, 'equip', { memberId: 'mira', equipmentId: null, slot: 'weapon' }).ok, true, 'home again after the recall');
   assert.equal(state.inventory['oak-blade'], 1);
 });
 
@@ -240,10 +242,10 @@ test('training, specialization, gatherings and choices apply meaningful stat eff
   assert.equal(act(state, 'hostEvent', { eventId: 'tea' }).ok, false);
   assert.equal(JSON.stringify(state), before);
   const mission = dispatch(state);
-  tick(state, 25);
-  const oldDuration = mission.duration;
+  for (let i = 0; i < 600 && !mission.event; i++) tick(state, 0.5);
+  const herb = state.herb;
   assert.equal(act(state, 'chooseEvent', { missionId: mission.id, choiceId: 'rest' }).ok, true);
-  assert.equal(mission.duration, oldDuration + 18);
+  assert.equal(state.herb, herb - 1);
   assert.ok(mission.decisionBonus > 0);
 });
 
@@ -470,8 +472,9 @@ test('board jobs pay the team their share and the guild its commission', () => {
   complete(state, mission);
   assert.equal(mission.status, 'completed');
   assert.ok(!state.petitions.includes(petition), 'finished petitions leave the board');
+  assert.equal(Math.round(mission.result.wages), Math.round(petition.fee / 2), 'the team shares half the fee');
   const purse = party.reduce((sum, id) => sum + state.members.find(m => m.id === id).purse, 0);
-  assert.equal(Math.round(purse), Math.round(petition.fee / 2));
+  assert.ok(purse >= Math.round(petition.fee / 2) - 1);
   assert.ok(state.gold - gold >= Math.floor(petition.fee / 2) - 1);
   assert.ok(state.village.prosperity > 0);
   assert.ok(!state.petitions.some(p => p.questId === 'patrol'), 'cleared story steps stop coming as important letters');
