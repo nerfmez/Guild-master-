@@ -12,7 +12,7 @@ import { decorateFrontier } from './frontier-art.js';
 import { makeFrontierCamp } from './landmarks.js';
 import { makeGreatOak,makeCrystalCave,makeBellTower,makeHeartTree,makeMistGate,makeStoneLantern,makeLostCamp,makeCampfire,makeBreadWagon,makeWatchPost,makeTeaBush,makeTeaBasket,makeSignpost,makeBarricade } from './landmarks.js';
 import { makeFieldFence,makeWheat,makeVegPatch,makeScarecrow,makeHayBale,makeWindmill,makeSails,makeReeds,makeLily,makeDock,makeDuck,makeSheep,makeTallGrass,makeDryGrass,makeFlowerPatch,makeMushrooms,makeStump,makeButterfly,makePine,makeWillow,makeFruitTree,makeDeadTree,makeFern,makeFallenLog,makeBerryBush,makeGlowShrooms,makeStandingStone,makeBoulders,makeRuinWall,makePillar,makeBeehive,makeTent,makeChoppingStump,makeDeer,makeGoat,makeFirefly } from './worldart.js';
-import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,makeDojo,makeShop,makeSmithyShop,HOME_STYLES,makeOutdoor,makeStall,makeArena,makeFairground,makeStage,makeFestivalDecor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
+import { makeBuilding,makePartition,makeRoom,makeGround,makeCottage,makeHome,makeDojo,makeShop,makeSmithyShop,HOME_STYLES,makeOutdoor,makeStall,makeArena,makeMonument,makeFairground,makeStage,makeFestivalDecor,gridPoint,gridPosition,gridPolygon,CELL_W,CELL_H,ORIGIN_X,ORIGIN_Y } from './guild-art.js';
 
 const hash=s=>[...String(s)].reduce((a,c)=>(Math.imul(a,31)+c.charCodeAt(0))>>>0,17);
 export class GuildRenderer {
@@ -43,7 +43,7 @@ export class GuildRenderer {
  checkScene(){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R39',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R40',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -276,6 +276,7 @@ export class GuildRenderer {
  }
  updateCritters(dt,t,playing){
   const P=MEADOW_SCENE.pasture;
+  const sheep=(this.grazers||[]).filter(g=>g.tex==='sheep'),keep=Math.ceil(sheep.length*(this.flockLeft??1));sheep.forEach((g,i)=>g.image.setAlpha(i<keep?1:0));
   for(const s of this.grazers||[]){const H=s.home;
    if(playing){s.wait-=dt;if(s.wait<=0&&Math.hypot(s.tx-s.x,s.ty-s.y)<.05){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*H.r;s.tx=H.x+Math.cos(a)*r;s.ty=H.y+Math.sin(a)*r*s.squash;s.wait=3+Math.random()*6;}
     const dx=s.tx-s.x,dy=s.ty-s.y,d=Math.hypot(dx,dy);if(d>.05){s.x+=dx/d*Math.min(d,dt*s.speed);s.y+=dy/d*Math.min(d,dt*s.speed);const sx=(dx-dy);if(Math.abs(sx)>.01)s.flip=sx<0;}}
@@ -413,14 +414,15 @@ export class GuildRenderer {
   // Buildings stand where the player put them (older saves fall back to the original lots); each home looks as grown as its family.
   const homeStyle=(lot,tier)=>tier<3?lot.styles[tier]:lot.styles[2]==='tall'?'stone':'tall';
   VILLAGE_LOTS.houses.forEach((lot,i)=>{if(i<v.houses){const at=this.villageLot('h'+i);want.push({key:'h'+i,style:homeStyle(lot,homeOf(this.state,'h'+i).tier),seed:lot.seed,x:at.x,y:at.y,rot:at.rot||0});}});
-  for(const id of VILLAGE_BUSINESSES){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:id==='fairground'||id==='stage'?{key:id,fest:id,level:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y,rot:at.rot||0});}
+  for(const id of VILLAGE_BUSINESSES){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:id==='fairground'||id==='stage'?{key:id,fest:id,level:v[id],x:at.x,y:at.y}:id==='monument'?{key:id,monument:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y,rot:at.rot||0});}
   const sig=JSON.stringify(want);if(sig===this.villageSig)return;const first=this.villageSig===null;this.villageSig=sig;
   const old=this.villageProps,next=new Map();
-  for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.fest?w.fest+w.level:w.style)+':'+w.x+','+w.y+','+(w.rot||0);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
+  for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.fest?w.fest+w.level:w.monument?'monument'+w.monument:w.style)+':'+w.x+','+w.y+','+(w.rot||0);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
    const images=[],before=(this.chimneys||[]).length;
    if(w.lot){const s=makeSignpost('ที่ดินว่าง');if(!this.scene.textures.exists('lot-sign'))this.texture('lot-sign',s.canvas);const p=gridPoint(w.x,w.y);images.push(this.scene.add.image(p.x-s.footX,p.y-s.footY,'lot-sign').setOrigin(0).setDepth(p.y).setAlpha(.9));}
    else if(w.market){for(let k=0;k<w.market;k++){const key='stall-'+k,sp=makeStall(w.seed+k,k);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const at=[[0,0],[2.1,.3],[.9,2.1]][k],p=gridPoint(w.x+at[0],w.y+at[1]),c=gridPoint(w.x+at[0]+.8,w.y+at[1]+.6);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+4));}}
    else if(w.arena){const key='arena-'+w.arena,sp=makeArena(w.arena);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+2,w.y+1.5);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y-20));}
+   else if(w.monument){const key='monument-'+w.monument,sp=makeMonument(w.monument);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+1,w.y+1);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+6));}
    else if(w.fest){const make=w.fest==='stage'?makeStage:makeFairground,[fw,fh]=w.fest==='stage'?[3.4,2.8]:[5,4];for(let f=0;f<2;f++){const k=`${w.fest}-${w.level}-${f}`;if(!this.scene.textures.exists(k))this.texture(k,make(w.level,f).canvas);}const sp=make(w.level,0),p=gridPoint(w.x,w.y),c=gridPoint(w.x+fw/2,w.y+fh/2),img=this.scene.add.image(p.x-sp.footX,p.y-sp.footY,`${w.fest}-${w.level}-0`).setOrigin(0).setDepth(c.y-20);img.festKey=`${w.fest}-${w.level}`;images.push(img);}
    else images.push(this.addHome(w.style,w.seed,w.x,w.y,w.rot));
    const chimneys=(this.chimneys||[]).slice(before);
@@ -471,6 +473,8 @@ export class GuildRenderer {
   v.image.setTexture(`${v.key}-${facing}-${pose}`).setPosition(Math.round(v.x),Math.round(v.y)).setDepth(Math.round(v.y)+.5);
  }
  clampFocus(){const a=gridPoint(WORLD.x0,WORLD.y1),b=gridPoint(WORLD.x1,WORLD.y0),c=gridPoint(WORLD.x0,WORLD.y0),d=gridPoint(WORLD.x1,WORLD.y1);this.focusX=Math.max(a.x+300,Math.min(b.x-300,this.focusX));this.focusY=Math.max(c.y+200,Math.min(d.y-200,this.focusY));}
+ /** Grid position at the centre of the view, for music that follows the camera. */
+ viewGrid(){return gridPosition(this.focusX||0,this.focusY||0);}
  focusGrid(x,y,zoom){const p=gridPoint(x,y);this.focusX=p.x;this.focusY=p.y;this.userPanned=true;if(zoom)this.zoom=zoom;this.applyView();}
  // Follow camera: glides and zooms to a team or one adventurer and stays with them until the screen is touched.
  focusMission(id){this.startFollow('mission',id);}
@@ -575,8 +579,11 @@ export class GuildRenderer {
    if(!this.scene.textures.exists('msh-'+sp.size[0])){const c=document.createElement('canvas');c.width=Math.round(sp.size[0]*.8);c.height=5;const g=c.getContext('2d');g.fillStyle='rgba(60,50,40,.24)';g.beginPath();g.ellipse(c.width/2,2.5,c.width/2,2.5,0,0,Math.PI*2);g.fill();this.texture('msh-'+sp.size[0],c);s.shadow.setTexture('msh-'+sp.size[0]);}
    s.alpha=m.dead?Math.max(0,s.alpha-dt*2.5):Math.min(1,s.alpha+dt*2);s.flash=Math.max(0,s.flash-dt);
    const p=gridPoint(m.x,m.y),moving=Math.hypot(m.x-s.last.x,m.y-s.last.y)>.002;if(moving&&Math.abs((m.x-s.last.x)-(m.y-s.last.y))>.001)s.flip=(m.x-s.last.x)-(m.y-s.last.y)<0;s.last={x:m.x,y:m.y};
-   s.atk=Math.max(0,(s.atk||0)-dt);const lift=sp.kind==='float'?Math.sin(t*2+hash(m.id)%7)*2.5:sp.kind==='hop'&&moving?Math.abs(Math.sin(t*7))*5:0,frame=s.atk>0?2:Math.floor(t*(moving?6:1.5)+hash(m.id)%5)%2,scale=MONSTER_STATS[m.species]?.boss?(m.species==='emberDragon'?1.25:1.6):m.elite?1.35:m.raid?1.15:1;
+   s.atk=Math.max(0,(s.atk||0)-dt);const lift=m.air>0?28+Math.sin(t*3)*4:sp.kind==='float'?Math.sin(t*2+hash(m.id)%7)*2.5:sp.kind==='hop'&&moving?Math.abs(Math.sin(t*7))*5:0,frame=s.atk>0?2:Math.floor(t*(moving?6:1.5)+hash(m.id)%5)%2,scale=MONSTER_STATS[m.species]?.boss?(m.species==='emberDragon'?1.25:1.6):m.elite?1.35:m.raid?1.15:1;
    const under=m.under>0;s.image.setTexture(this.monTex(m.species,frame,s.flash>0)).setPosition(Math.round(p.x),Math.round(p.y-lift+(under?10:0))).setDepth(p.y).setFlipX(!!s.flip).setScale(scale).setAlpha(under?.25:s.alpha).setVisible(s.alpha>0).setTint(m.elite?0xffe0b0:0xffffff);
+   // Bosses carry a wide health bar with their name and current act.
+   if((m.questBoss||MONSTER_STATS[m.species]?.boss)&&!m.dead){const y=p.y-sp.size[1]*scale-14,w=64,r=Math.max(0,m.hp/m.maxHp);this.hpBars.fillStyle(0x2c241e,.9).fillRect(Math.round(p.x-w/2-1),Math.round(y-1),w+2,7);this.hpBars.fillStyle(m.enraged?0xff5a3a:0xd9623f,1).fillRect(Math.round(p.x-w/2),Math.round(y),Math.round(w*r),5);
+    s.label??=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#ffe9c7',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);s.label.setText(`${SPECIES[m.species]?.name||''}${m.phaseName?' · '+m.phaseName:''}`).setPosition(Math.round(p.x),Math.round(y-2)).setDepth(p.y+2).setVisible(s.alpha>0);}else s.label?.setVisible(false);
    if(m.elite&&!m.dead){s.crown??=this.scene.add.text(0,0,'👑',{fontSize:'12px'}).setOrigin(.5,1);s.crown.setPosition(Math.round(p.x),Math.round(p.y-sp.size[1]*scale-10)).setDepth(p.y+1).setVisible(s.alpha>0);}else s.crown?.setVisible(false);
    s.shadow.setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y-.5).setAlpha(s.alpha).setVisible(s.alpha>0);
    if(!m.dead&&!under)bar(p.x,p.y-sp.size[1]*scale-6,m.hp/m.maxHp,m.raid||m.elite||MONSTER_STATS[m.species]?.boss?0xd9623f:0xe0a24a);
@@ -599,15 +606,18 @@ export class GuildRenderer {
    this.placeBody(s.image,key,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):'idle',s.dir,Math.round(p.y)+.2);
   }
   // Quest scenes: the escorted wagon, the raided field, the nodes being gathered and the survivors walking home.
-  this.questGfx??=this.scene.add.graphics().setDepth(-9000);this.questGfx.clear();
+  this.questGfx??=this.scene.add.graphics().setDepth(-9000);this.questGfx.clear();this.cropGfx?.clear();this.flockLeft=1;
   for(const ms of this.state.missions||[]){const rt=ms.rt;if(!rt||ms.status!=='active')continue;
    if(rt.wagon){const wg=rt.wagon,p=gridPoint(wg.x,wg.y);if(!this.scene.textures.exists('qwagon-0'))for(let f=0;f<2;f++)this.texture('qwagon-'+f,makeBreadWagon(f).canvas);
-    const s=sprite('wagon-'+ms.id,()=>({image:this.scene.add.image(0,0,'qwagon-0').setOrigin(62/124,74/82),last:{x:wg.x,y:wg.y}}));const dx=wg.x-s.last.x,dy=wg.y-s.last.y;if(Math.abs(dx-dy)>.001)s.flip=dx-dy<0;s.last={x:wg.x,y:wg.y};
+    const s=sprite('wagon-'+ms.id,()=>({image:this.scene.add.image(0,0,'qwagon-0').setOrigin(62/124,74/82),last:{x:wg.x,y:wg.y}}));const dx=wg.x-s.last.x,dy=wg.y-s.last.y;if(Math.abs(dx-dy)>.001)s.flip=dx-dy>0;s.last={x:wg.x,y:wg.y};
     s.image.setTexture('qwagon-'+(wg.moving?Math.floor(t*4)%2:0)).setPosition(Math.round(p.x),Math.round(p.y-(wg.moving?Math.abs(Math.sin(t*9)):0))).setDepth(p.y+40).setFlipX(!!s.flip).setScale(.62);
     bar(p.x,p.y-52,wg.hp/wg.maxHp,0xe8b04a);if(rt.ambushed&&Math.floor(t*2)%2)this.hpBars.fillStyle(0xd9584a,1).fillTriangle(p.x-5,p.y-64,p.x+5,p.y-64,p.x,p.y-57);}
    if(rt.field){const f=rt.field,lost=1-rt.crops/100,c=gridPoint(f.x,f.y);
-    // Trampled, eaten patches spread over the field as the crops go.
-    const g=this.questGfx;for(let i=0;i<Math.round(lost*14);i++){const a=i*2.39,d=Math.sqrt((i+1)/14)*f.r,q=gridPoint(f.x+Math.cos(a)*d,f.y+Math.sin(a)*d*.8);g.fillStyle(f.kind==='flock'?0xd9c8a0:0x8a6f4a,.75).fillEllipse(q.x,q.y,26,12);}
+    // Eaten patches open up in the wheat: bare soil and stubble drawn over the crop, more as the field is lost.
+    if(f.kind==='crops'){const F=FIELDS.find(x=>x.kind==='wheat'),g=this.cropGfx??=this.scene.add.graphics();g.setDepth(gridPoint(MEADOW_SCENE.scarecrow.x,MEADOW_SCENE.scarecrow.y).y+3);
+     const cells=[];for(let yy=0;yy<4;yy++)for(let xx=0;xx<6;xx++)cells.push([F.x+.5+xx*(F.w-1)/5,F.y+.5+yy*(F.h-1)/3,(xx*7+yy*13)%24]);cells.sort((a,b)=>a[2]-b[2]);
+     for(const [x,y] of cells.slice(0,Math.round(lost*cells.length))){const q=gridPoint(x,y);g.fillStyle(0x9a7d55,1).fillEllipse(q.x,q.y,30,15);g.fillStyle(0x7f6646,1).fillEllipse(q.x+2,q.y+1,20,9);g.lineStyle(1,0xc9a86a,1);for(let k=-2;k<=2;k++)g.lineBetween(q.x+k*5,q.y-1,q.x+k*5+1,q.y-5);}}
+    else this.flockLeft=rt.crops/100;
     this.hpBars.fillStyle(0x3b302a,.85).fillRect(Math.round(c.x-30),Math.round(c.y-70),60,7);this.hpBars.fillStyle(rt.crops>50?0x9fd06a:rt.crops>25?0xe8b04a:0xd9584a,1).fillRect(Math.round(c.x-29),Math.round(c.y-69),Math.round(58*rt.crops/100),5);}
    if(rt.nodes&&rt.stage!=='go')for(const [i,nd] of rt.nodes.entries()){const q=gridPoint(nd.x,nd.y),done=nd.progress>=1,g=this.questGfx;
     g.fillStyle(done?0x9fd06a:0xfff1c4,done?.5:.35+.25*Math.sin(t*4+i)).fillEllipse(q.x,q.y,20,10);if(!done){g.lineStyle(2,0xf4b860,1).beginPath();g.arc(q.x,q.y-14,6,-Math.PI/2,-Math.PI/2+Math.PI*2*nd.progress);g.strokePath();}}
@@ -615,7 +625,7 @@ export class GuildRenderer {
     const p=gridPoint(n.x,n.y),dx=p.x-(s.px??p.x),dy=p.y-(s.py??p.y),moved=Math.hypot(dx,dy)>.05&&playing;s.px=p.x;s.py=p.y;if(moved)s.dir=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
     this.placeBody(s.image,key,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):'idle',s.dir,Math.round(p.y)+.2);});
   }
-  for(const [id,s] of this.lifeSprites)if(!seen.has(id)){s.image.destroy();s.shadow?.destroy();s.crown?.destroy();this.lifeSprites.delete(id);}
+  for(const [id,s] of this.lifeSprites)if(!seen.has(id)){s.image.destroy();s.shadow?.destroy();s.crown?.destroy();s.label?.destroy();this.lifeSprites.delete(id);}
   this.playFx(dt);
  }
  // Damage numbers, skill flashes and knock-outs.
@@ -633,7 +643,7 @@ export class GuildRenderer {
   const events=drainFx();if(!this.scene)return;
   const view=this.camera?.worldView,near=p=>!view||(p.x>view.x-80&&p.x<view.right+80&&p.y>view.y-80&&p.y<view.bottom+80);
   for(const e of events){
-   const p=gridPoint(e.x,e.y);if(!near(p))continue;
+   const p=gridPoint(e.x,e.y);if(!near(p))continue;this.onFx?.(e);
    if(e.type==='hit'){const s=this.lifeSprites?.get(e.id);if(s)s.flash=.12;this.floatText(p.x,p.y-28,String(e.amount),e.crit?'#ffd36a':'#ffffff',e.crit?11:9);const col=SHOT_COLORS[e.kind];if(col){const f=gridPoint(e.fx,e.fy);this.shot(f,p,col,e.kind);}else if(e.kind==='holy')this.ring(p.x,p.y-8,0xfff1c4,10);}
    else if(e.type==='hurt'){this.floatText(p.x,p.y-(e.wagon?56:34),String(e.amount),e.wagon?'#ffcf7a':'#ff8a7a',9);const ms=this.lifeSprites?.get(e.by);if(ms)ms.atk=.3;}
    else if(e.type==='spit'){const f=gridPoint(e.x,e.y),q=gridPoint(e.tx,e.ty);this.shot({x:f.x,y:f.y-6},q,/ember|magma|Dragon|stone/.test(e.species)?0xf08a4b:/mist|wisp|ghost/.test(e.species)?0x9fd6d0:0x9fd06a,'bolt');}
@@ -643,6 +653,11 @@ export class GuildRenderer {
    else if(e.type==='erupt'){this.ring(p.x,p.y,0xd9b26f,34);this.dustPuff(e.x-.8,e.y-.8,1.6,1.6);this.floatText(p.x,p.y-50,'โผล่จากทราย!','#ffcf7a',10);this.camera?.shake?.(160,.004);}
    else if(e.type==='breath'){const q=gridPoint(e.tx,e.ty);for(let k=1;k<=5;k++){const x=p.x+(q.x-p.x)*k/5,y=p.y-20+(q.y-p.y+12)*k/5;this.scene.time.delayedCall(k*60,()=>this.ring(x,y,k%2?0xf08a4b:0xffd36a,10+k*5));}this.floatText(p.x,p.y-70,'พ่นไฟ!','#ff9a5a',12);this.camera?.shake?.(200,.005);}
    else if(e.type==='summon'){this.ring(p.x,p.y,0xb98ad1,36);this.floatText(p.x,p.y-60,'เรียกสมุน!','#d9b8ff',11);}
+   else if(e.type==='phase'){this.floatText(p.x,p.y-80,'⚠ '+e.name,'#ffb070',13);this.ring(p.x,p.y,0xff7a4a,46);this.camera?.shake?.(260,.006);}
+   else if(e.type==='telegraph'){const r=e.r*CELL_W*1.4,g=this.scene.add.graphics().setDepth(p.y-2).setPosition(p.x,p.y);g.fillStyle(0xd9584a,.22).fillEllipse(0,0,r*2,r);g.lineStyle(2,0xff5a3a,.9).strokeEllipse(0,0,r*2,r);this.scene.tweens.add({targets:g,alpha:{from:.4,to:1},yoyo:true,repeat:2,duration:230,onComplete:()=>g.destroy()});}
+   else if(e.type==='firering'){for(let k=0;k<10;k++){const a=k/10*Math.PI*2,q=gridPoint(e.x+Math.cos(a)*e.r*.8,e.y+Math.sin(a)*e.r*.8);this.ring(q.x,q.y,k%2?0xf08a4b:0xffd36a,14);}this.camera?.shake?.(220,.006);}
+   else if(e.type==='dive'){this.ring(p.x,p.y,0xd9c8a0,40);this.dustPuff(e.x-.9,e.y-.9,1.8,1.8);this.floatText(p.x,p.y-40,'โฉบลงมา!','#ffcf7a',11);}
+   else if(e.type==='miss')this.floatText(p.x,p.y-60,'ฟันไม่ถึง!','#bfe3ff',8);
    else if(e.type==='munch')this.floatText(p.x,p.y-24,'งั่ม!','#f4b860',8);
    else if(e.type==='gather'){this.floatText(p.x,p.y-20,e.done?'เสร็จ!':'+','#bff0a0',e.done?10:9);}
    else if(e.type==='questWave')this.floatText(p.x,p.y-40,e.scenario==='escort'?'ซุ่มโจมตี!':e.scenario==='defend'?'มอนบุกระลอกใหม่!':`ศัตรูระลอก ${e.wave}!`,'#ffd36a',11);

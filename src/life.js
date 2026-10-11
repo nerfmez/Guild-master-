@@ -137,6 +137,7 @@ function startReturn(state, ctx, partyId) {
 }
 function hitMonster(state, ctx, h, m, dmg, kind) {
   if (m.under > 0 || m.dead) return;
+  if (m.air > 0 && ['slash', 'holy'].includes(kind)) { emit({ type: 'miss', id: m.id, x: m.x, y: m.y }); return; }
   if (statsOf(m.species).trait === 'armor') dmg *= .7;
   m.hp -= dmg; m.target ??= h.id; m.calm = 0;
   emit({ type: 'hit', id: m.id, from: h.id, x: m.x, y: m.y, fx: h.x, fy: h.y, amount: Math.round(dmg), kind, crit: dmg > h.power * .6 });
@@ -144,7 +145,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   m.dead = true; m.respawn = 30 + rand(state.world) * 20; state.world.kills++;
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
   const s = statsOf(m.species), party = state.world.hunters.filter(o => o.party === h.party && o.mode === 'hunt' && dist(o, m) < 9);
-  if (m.quest) { h.bag.kills += 1; const qp = MONSTER_PART[m.species]; if (qp && rand(state.world) < .5) { h.bag.parts ??= {}; h.bag.parts[qp] = (h.bag.parts[qp] || 0) + 1; } return; }
+  if (m.quest) { h.bag.kills += 1; const qp = MONSTER_PART[m.species]; if (qp && (m.questBoss || rand(state.world) < .5)) { h.bag.parts ??= {}; h.bag.parts[qp] = (h.bag.parts[qp] || 0) + (m.questBoss ? 4 : 1); } return; }
   h.bag.gold += s.gold[0] + Math.floor(rand(state.world) * (s.gold[1] - s.gold[0] + 1));
   if (rand(state.world) < .7) h.bag[s.mat] += 1 + (s.boss ? 4 : 0);
   h.bag.kills += 1;
@@ -240,6 +241,33 @@ function fight(state, ctx, h, dt) {
     hitMonster(state, ctx, h, m, dmg, cc.attack);
   }
 }
+// ---- Boss phases: at half life every boss gets angry; the frontier's two great foes have whole acts of their own. ----
+export const BOSS_PHASES = {
+  wyvernMatriarch: [{ at: .7, name: 'ทะยานขึ้นฟ้า', act: 'fly' }, { at: .4, name: 'พายุใต้ปีก', act: 'adds' }, { at: .2, name: 'โกรธจัด', act: 'enrage' }],
+  emberDragon: [{ at: .75, name: 'วงแหวนเพลิง', act: 'ring' }, { at: .5, name: 'ปลุกลูกสมุนลาวา', act: 'adds' }, { at: .3, name: 'ตื่นเต็มที่', act: 'enrage' }],
+  sandWyrm: [{ at: .5, name: 'ทรายคลั่ง', act: 'enrage' }],
+};
+function bossPhases(state, ctx, m, s, dt) {
+  const phases = BOSS_PHASES[m.species] || [{ at: .4, name: 'โกรธจัด', act: 'enrage' }], ratio = m.hp / m.maxHp;
+  m.phase ??= 0;
+  while (m.phase < phases.length && ratio <= phases[m.phase].at) {
+    const ph = phases[m.phase++];
+    m.phaseName = ph.name; emit({ type: 'phase', id: m.id, x: m.x, y: m.y, name: ph.name, species: m.species });
+    if (ph.act === 'enrage') { m.enraged = true; m.atk = Math.round((m.atk || s.atk) * 1.25 * 10) / 10; }
+    if (ph.act === 'fly') { m.air = 6; m.target = null; }
+    if (ph.act === 'ring') m.ringCd = 2;
+    if (ph.act === 'adds') for (const [i, sp] of ((s.adds && s.adds.length) ? s.adds : ['magmaTortoise', 'stoneDrake']).entries()) {
+      const a = spawnMonster(state.world, sp, m.zone, { x: m.x + (i ? 1.2 : -1.2), y: m.y + .8 }, { quest: m.quest, hp: Math.round(m.maxHp * .08), maxHp: Math.round(m.maxHp * .08), atk: Math.round((m.atk || s.atk) * .45 * 10) / 10 });
+      state.world.monsters.push(a);
+    }
+  }
+  // The dragon's ring of fire: a warning circle first, then the flames.
+  if (m.ringCd !== undefined) {
+    m.ringCd -= dt;
+    if (m.ringCd <= 0 && !m.warn) { m.warn = 1.4; emit({ type: 'telegraph', id: m.id, x: m.x, y: m.y, r: 2.8, time: 1.4 }); }
+    if (m.warn > 0) { m.warn -= dt; if (m.warn <= 0) { m.warn = 0; m.ringCd = 9; emit({ type: 'firering', id: m.id, x: m.x, y: m.y, r: 2.8 }); for (const h of state.world.hunters) if (h.mission === m.quest && ['hunt', 'go'].includes(h.mode) && dist(h, m) < 2.8) strike(state, ctx, m, h, (m.atk || s.atk) * .9, 'fire'); } }
+  }
+}
 /** Where a quest raider is headed when nobody is in its way: the wagon or a spot in the field. */
 function goalOf(state, m) {
   const rt = missionOf(state, m.quest)?.rt; if (!rt) return null;
@@ -265,6 +293,9 @@ function monsterAct(state, ctx, m, dt) {
       for (const h of v) if (dist(h, m) < 1.6) strike(state, ctx, m, h, (m.atk || s.atk) * 1.2, 'erupt'); }
     return;
   }
+  if (m.questBoss || s.boss) bossPhases(state, ctx, m, s, dt);
+  if (m.air > 0) { m.air -= dt; if (m.air <= 0) { emit({ type: 'dive', id: m.id, x: m.x, y: m.y }); for (const h of state.world.hunters) if (h.mission === m.quest && ['hunt', 'go'].includes(h.mode) && dist(h, m) < 2.4) strike(state, ctx, m, h, (m.atk || s.atk) * 1.6, 'slam'); } }
+  if (m.air > 0) return;
   if (trait === 'regen' && m.calm > 3) m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .015 * dt);
   // Quest parties only meet their own quest's foes; wild monsters leave them be.
   const targets = w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
@@ -313,7 +344,7 @@ function monsterAct(state, ctx, m, dt) {
   if (d > s.reach) { if (s.speed) moveTo(m, t, s.speed * (trait === 'swarm' ? 1.2 : 1), dt); return; }
   m.cd -= dt;
   if (m.cd > 0) return;
-  m.cd = s.rate;
+  m.cd = s.rate * (m.enraged ? .75 : 1);
   m.hits = (m.hits || 0) + 1;
   if (trait === 'ranged') emit({ type: 'spit', id: m.id, x: m.x, y: m.y, tx: t.x, ty: t.y, species: m.species });
   if (trait === 'slam' && m.hits % 3 === 0) { emit({ type: 'slam', id: m.id, x: t.x, y: t.y }); for (const h of targets) if (h !== t && dist(h, t) < 1.7) strike(state, ctx, m, h, atk * .8, 'slam'); }
@@ -561,7 +592,7 @@ export const QUEST_BOSS = { patrol: 'hornHare', herbs: 'thornling', escort: 'flu
   farmraid: 'cropGoblin', pasture: 'mossWolf', bandits: 'roadBandit', canyonroad: 'dustLizard', harpy: 'cliffHarpy', emberdig: 'emberImp', wyrm: 'sandWyrm', drakes: 'magmaTortoise', matriarch: 'wyvernMatriarch', dragon: 'emberDragon' };
 /** Fields the raiders go for: crops in the wheat field, sheep in the pasture. */
 export const DEFEND_FIELDS = { farmraid: { x: -24.5, y: 12.7, r: 2.4, kind: 'crops', name: 'ไร่ข้าวสาลี' }, pasture: { x: -21, y: 29, r: 3, kind: 'flock', name: 'ฝูงแกะ' } };
-export const EXPEDITION = { waves: [0.25, 0.3, 0.45], hpPerDifficulty: 5.4, atkPerDifficulty: 0.17, eventWait: 30, wagonSpeed: .85, gatherTime: 7, defendGap: 22 };
+export const EXPEDITION = { waves: [0.25, 0.3, 0.45], hpPerDifficulty: 5.4, atkPerDifficulty: 0.17, eventWait: 30, bossHp: 1.3, wagonSpeed: .85, gatherTime: 7, defendGap: 22 };
 export const CAMP_AT = FRONTIER_CAMP;
 const scenarioOf = quest => quest?.scenario || 'explore';
 const missionOf = (state, id) => state.missions?.find(x => x.id === id);
@@ -607,7 +638,8 @@ function spawnWave(state, mission, quest) {
   const big = mission.memberIds.length > 3 ? mission.memberIds.length / 3 : 1;
   const share = EXPEDITION.waves[rt.wave], total = quest.difficulty * EXPEDITION.hpPerDifficulty * share, atk = quest.difficulty * EXPEDITION.atkPerDifficulty / Math.sqrt(big);
   const count = Math.round((rt.wave + 2) * Math.min(1.6, big));
-  const foes = last ? [{ species: QUEST_BOSS[quest.id] || pool[0], hp: total * 0.75, boss: true }, ...Array.from({ length: Math.max(1, count - 2) }, (_, i) => ({ species: pool[(i + 1) % pool.length], hp: total * 0.25 / Math.max(1, count - 2) }))]
+  const bossHp = total * 0.75 * EXPEDITION.bossHp * (quest.raid ? 1.4 : 1);
+  const foes = last ? [{ species: QUEST_BOSS[quest.id] || pool[0], hp: bossHp, boss: true }, ...Array.from({ length: Math.max(1, count - 2) }, (_, i) => ({ species: pool[(i + 1) % pool.length], hp: total * 0.25 / Math.max(1, count - 2) }))]
     : Array.from({ length: count }, (_, i) => ({ species: pool[(rt.wave + i) % pool.length], hp: total / count }));
   let at = rt.at, goal = null;
   if (rt.kind === 'escort') { const wg = rt.wagon, ahead = wg.path[0] || wg, dx = ahead.x - wg.x, dy = ahead.y - wg.y, d = Math.hypot(dx, dy) || 1; at = { x: wg.x + dx / d * 3.2, y: wg.y + dy / d * 3.2 }; goal = 'wagon'; }

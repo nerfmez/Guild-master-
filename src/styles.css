@@ -501,3 +501,10 @@ body.on-title .hero-hud{display:none}
 .lesson-dialog{width:min(520px,calc(100vw - 24px));padding:18px 20px;border:2px solid #b8955e;border-radius:16px;background:#fffaf0}
 .lesson-dialog h2{margin:4px 0 6px}.lesson-dialog small{color:#a0703a;font-weight:600}.lesson-dialog ol{margin:8px 0;padding-left:22px;line-height:1.7}
 .lesson-progress{display:grid;gap:4px;margin:8px 0;font-size:13px}.lesson-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+
+/* R40: boss bar */
+.boss-bar{display:grid;gap:4px;margin:8px 0;padding:8px 10px;border:2px solid #8a3a2a;border-radius:10px;background:#2c241e;color:#ffe9c7}
+.boss-bar em{font-style:normal;color:#ffb070}.boss-bar>i{display:block;height:10px;border-radius:6px;background:#4a3a32;overflow:hidden}.boss-bar>i>i{display:block;height:100%;background:linear-gradient(90deg,#d9623f,#f08a4b)}
+.boss-bar.enraged{animation:coach-pulse 1s ease-in-out infinite}.boss-bar.enraged>i>i{background:linear-gradient(90deg,#ff3a2a,#ff8a3a)}.boss-bar small{color:#c9b8a0;font-size:11px}
+
+.volume-row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:13px;color:#5a4a36}.volume-row input{flex:1;max-width:260px;accent-color:#7f9a62}

@@ -1112,3 +1112,53 @@ test('every job fights its own way: chain lightning jumps, snares slow, a saint 
   const lifted = saint.state.world.hunters.find(x => x.id === saint.state.members[1].id);
   assert.ok(lifted && lifted.mode !== 'down' && lifted.hp > 0, 'the miracle lifts the fallen friend');
 });
+
+test('late game: frontier gear needs monster parts, workshops keep forge parts, the trophy hall and monument pay back daily', () => {
+  const state = createGame(91);
+  state.rank = 'B'; state.gold = 20000; state.stone = 200; state.wood = 200; state.herb = 100;
+  const bench = state.facilities.find(f => f.type === 'workshop');
+  if (bench) bench.level = 3; else state.facilities.push({ id: 'ws-test', type: 'workshop', x: 0, y: 0, rotation: 0, level: 3 });
+  assert.match(act(state, 'craft', { equipmentId: 'drake-blade' }).message, /เกล็ดมังกรหิน/, 'parts are checked');
+  state.trade.store = { drakeScale: 3, magma: 1 };
+  assert.equal(act(state, 'craft', { equipmentId: 'drake-blade' }).ok, true);
+  assert.deepEqual(state.trade.store, {}, 'the parts are used up');
+  assert.equal(state.inventory['drake-blade'], 1);
+  // Workshops never turn forge parts into everyday goods.
+  state.village.tannery = 1; state.trade.store = { scale: 6 };
+  tick(state, 30);
+  assert.equal(state.trade.store.scale, 6);
+  // Trophy hall and monument: daily tickets, renown and morale.
+  state.upgrades.trophyHall = 2; state.village.monument = 1;
+  const rep = state.rep, gold = state.gold;
+  tick(state, 240);
+  assert.ok(state.rep >= rep + 3, 'the monument adds renown every day');
+  assert.ok(state.ledger.some(e => e.text === 'ค่าเข้าชมหอเกียรติยศ' && e.gold === 60));
+  assert.ok(Number.isFinite(gold));
+  assert.deepEqual(deserializeGame(serializeGame(state)).upgrades, state.upgrades);
+});
+
+test('bosses fight in acts: the dragon warns before its ring of fire, calls minions and grows angry', async () => {
+  const { spawnMonster, tickLife, createWorld } = await import('../src/life.js');
+  const state = createGame(92);
+  state.world = createWorld(1);
+  const m = spawnMonster(state.world, 'emberDragon', 'q:x', { x: 0, y: 0 }, { quest: 'x', questBoss: true, hp: 1000, maxHp: 1000, atk: 10 });
+  state.world.monsters.push(m);
+  const ctx = { zoneOpen: () => false, freeTarget: () => 0, door: () => ({ x: 5, y: 5 }), log: () => {}, needsEvent: () => false, quest: () => null, freeToHunt: () => false, guildRankIndex: () => 0 };
+  m.hp = 700; tickLife(state, ctx, 0.25);
+  assert.equal(m.phaseName, 'วงแหวนเพลิง');
+  m.hp = 450; tickLife(state, ctx, 0.25);
+  assert.ok(state.world.monsters.filter(x => x.quest === 'x').length >= 3, 'minions join at half life');
+  m.hp = 250; tickLife(state, ctx, 0.25);
+  assert.equal(m.enraged, true);
+  // The ring is announced before it lands.
+  for (let i = 0; i < 20; i++) tickLife(state, ctx, 0.25);
+  assert.ok(m.ringCd > 0 || m.warn > 0);
+});
+
+test('sound settings are saved and cleaned', () => {
+  const state = createGame(93);
+  assert.equal(state.settings.music, true);
+  const data = JSON.parse(serializeGame(state)); delete data.checksum; data.settings.volume = 9; data.settings.music = false;
+  const back = deserializeGame(JSON.stringify(data));
+  assert.equal(back.settings.volume, 1); assert.equal(back.settings.music, false);
+});

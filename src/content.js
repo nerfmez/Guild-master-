@@ -128,6 +128,12 @@ export const EQUIPMENT = [
   { id: 'crystal-wand', name: 'ไม้เท้าผลึก', slot: 'weapon', classes: ['mage'], power: 18, health: 5, cost: { gold: 230, wood: 5, stone: 16 }, unlockRank: 'D', workshopLevel: 2, color: '#afa5cb', description: 'เวทสะท้อนแสงออกจากผลึก' },
   { id: 'bloom-staff', name: 'ไม้เท้าผลิบาน', slot: 'weapon', classes: ['healer'], power: 14, health: 20, cost: { gold: 210, wood: 9, herb: 12 }, unlockRank: 'D', workshopLevel: 2, color: '#a7c3ad', description: 'ดอกไม้ที่ปลายไม้เท้าไม่เคยเหี่ยว' },
   { id: 'moon-charm', name: 'เครื่องรางหมอกจันทร์', slot: 'accessory', classes: [], power: 9, health: 22, cost: { gold: 220, stone: 10, herb: 10 }, unlockRank: 'C', workshopLevel: 3, color: '#bac8d4', description: 'ช่วยให้หาทางกลับได้แม้ในหมอก' },
+  // Frontier gear (rank B): forged from the frontier's monster parts in the guild's store, at a steep price.
+  { id: 'drake-blade', name: 'ดาบเกล็ดมังกรหิน', slot: 'weapon', classes: ['warrior'], power: 30, health: 32, cost: { gold: 1250, stone: 20 }, parts: { drakeScale: 3, magma: 1 }, unlockRank: 'B', workshopLevel: 3, color: '#8a8fa0', description: 'คมดาบเย็นเหมือนหินภูเขาไฟที่เพิ่งดับ' },
+  { id: 'roc-bow', name: 'ธนูขนนกฟ้าคำราม', slot: 'weapon', classes: ['archer'], power: 31, health: 12, cost: { gold: 1250, wood: 20 }, parts: { stormPlume: 3, feather: 2 }, unlockRank: 'B', workshopLevel: 3, color: '#8fb8d8', description: 'ลูกธนูพุ่งพร้อมเสียงฟ้าร้องแผ่ว ๆ' },
+  { id: 'ember-staff', name: 'คทาถ่านไฟนิรันดร์', slot: 'weapon', classes: ['mage'], power: 35, health: 10, cost: { gold: 1350, stone: 10 }, parts: { ember: 3, magma: 1 }, unlockRank: 'B', workshopLevel: 3, color: '#e0784a', description: 'ถ่านที่ปลายคทาไม่เคยมอด' },
+  { id: 'sunscale-staff', name: 'ไม้เท้าเกล็ดอรุณ', slot: 'weapon', classes: ['healer'], power: 26, health: 40, cost: { gold: 1250, herb: 20 }, parts: { scale: 3, feather: 1 }, unlockRank: 'B', workshopLevel: 3, color: '#e8c070', description: 'เกล็ดสะท้อนแสงเช้า อุ่นเหมือนแดดแรก' },
+  { id: 'dragon-amulet', name: 'จี้หัวใจมังกร', slot: 'accessory', classes: [], power: 18, health: 44, cost: { gold: 1700, stone: 10 }, parts: { magma: 2, drakeScale: 2, stormPlume: 2 }, unlockRank: 'B', workshopLevel: 3, color: '#d9584a', description: 'อุ่นตลอดเวลา เต้นช้า ๆ เหมือนหัวใจ' },
   // Treasures: found only in mission chests, never crafted.
   { id: 'sprout-charm', name: 'เครื่องรางใบอ่อนนำโชค', slot: 'accessory', classes: [], power: 4, health: 14, luck: 0.08, loot: true, rarity: 'rare', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#a9c99a', description: 'ใบไม้ที่ไม่เคยร่วง ช่วยให้สังเกตหีบซ่อนได้ง่ายขึ้น' },
   { id: 'starlight-bow', name: 'ธนูแสงดาว', slot: 'weapon', classes: ['archer'], power: 12, health: 4, loot: true, rarity: 'rare', cost: {}, unlockRank: 'F', workshopLevel: 99, color: '#e7d394', description: 'สายธนูเรืองแสงจาง ๆ ยามค่ำ' },
@@ -208,6 +214,7 @@ export const GUILD_UPGRADES = {
   contracts: { name: 'สมุดสัญญา', icon: '✒', max: 10, base: { gold: 200, stone: 2 }, growth: 1.6, description: 'ค่านายหน้ากิลด์เพิ่ม 4% ของค่าจ้างต่อระดับ' },
   clerk: { name: 'เสมียนต้อนรับ', icon: '🛎', max: 5, base: { gold: 260, wood: 6 }, growth: 1.8, description: 'รับคำร้องทั่วไปขึ้นกระดานทันทีที่ชาวบ้านมาถึง และชาวบ้านรอนานขึ้น' },
   storehouse: { name: 'โกดังกิลด์', icon: '📦', max: 8, base: { gold: 160, wood: 12 }, growth: 1.55, description: 'เก็บของที่รับซื้อจากนักผจญภัยได้เพิ่มอีก 40 ชิ้นต่อระดับ' },
+  trophyHall: { name: 'หอเกียรติยศ', icon: '🏆', max: 5, base: { gold: 2400, stone: 30 }, growth: 1.7, description: 'จัดแสดงถ้วยรางวัลและชิ้นส่วนบอส ชื่อเสียงจากงานทุกชิ้น +6% ต่อระดับ และผู้มาชมจ่ายค่าเข้า 30 G ต่อระดับทุกวัน' },
   coffer: { name: 'กองทุนกิลด์', icon: '◈', max: 12, base: { gold: 180 }, growth: 1.6, description: 'ดอกผล 0.25 G ต่อวินาทีต่อระดับ เก็บต่อแม้ปิดเกม (สูงสุด 2 ชั่วโมง)' },
 };
 
@@ -251,6 +258,7 @@ export const VILLAGE_PROJECTS = {
   jeweler: { name: 'ร้านเจียระไน', icon: '💍', max: 3, villageLevel: 2, base: { gold: 380, wood: 10, stone: 18 }, growth: 2, prosperity: 190, description: 'เจียเขา เปลือก ผลึก และแกนหินเป็นเครื่องประดับ · ระดับเพิ่มความเร็ว' },
   caravan: { name: 'ลานคาราวาน', icon: '🐎', max: 3, villageLevel: 2, base: { gold: 450, wood: 26, stone: 10 }, growth: 2, prosperity: 200, description: 'ส่งคาราวานขนของในโกดังไปขายเมืองหลวง ได้ราคาสูงกว่าขายในเมือง และรับใบสั่งซื้อโบนัส · ระดับเพิ่มความจุ' },
   auction: { name: 'โรงประมูล', icon: '🔨', max: 2, villageLevel: 4, base: { gold: 900, wood: 30, stone: 30 }, growth: 2.2, prosperity: 260, description: 'นำสมบัติขึ้นประมูลทุกเช้า ได้ราคาสูงกว่านักสะสมเมื่อมีพ่อค้าในเมืองมากและกิลด์มีชื่อเสียง · ระดับ 2 ดึงผู้ประมูลจากต่างเมือง' },
+  monument: { name: 'อนุสาวรีย์วีรชน', icon: '🗽', max: 3, villageLevel: 4, base: { gold: 3500, stone: 60 }, growth: 2, prosperity: 700, description: 'รูปปั้นของนักผจญภัยที่ปกป้องหมู่บ้าน ชาวบ้านภูมิใจ ชื่อเสียง +3 ต่อวันต่อระดับ และสมาชิกขวัญดีขึ้นทุกเช้า' },
   fairground: { name: 'ลานเทศกาล', icon: '🎪', max: 3, villageLevel: 2, base: { gold: 520, wood: 30, stone: 16 }, growth: 2, prosperity: 220, description: 'ลานกว้างสำหรับจัดเทศกาลเก็บเกี่ยว ระดับสูงขึ้นรับคนได้มากขึ้นและได้ผลมากขึ้น' },
   stage: { name: 'เวทีโคมไฟ', icon: '🏮', max: 3, villageLevel: 3, base: { gold: 640, wood: 34, stone: 20 }, growth: 2.1, prosperity: 240, description: 'เวทีดนตรีกลางหมู่บ้าน ใช้จัดเทศกาลโคมลอย ดึงนักผจญภัยจากต่างเมืองมาเยือน' },
   smithy: { name: 'โรงตีเหล็ก', icon: '⚒', max: 3, villageLevel: 1, base: { gold: 320, wood: 12, stone: 18 }, growth: 2, prosperity: 180, description: 'ขายและซ่อมอาวุธให้นักผจญภัย อาวุธขั้นสูงขึ้นตามระดับ (ใช้ไม้และหินจากตลาด) · ลดเงินคราฟต์ของกิลด์ 10% ต่อระดับ' },
@@ -280,12 +288,13 @@ export const VILLAGE_LOTS = {
   caravan: { x: 38.5, y: 19.5, seed: 179, style: 'caravan' },
   auction: { x: 27, y: 8, seed: 191, style: 'auction' },
   fairground: { x: 14, y: 28.6, seed: 197 },
+  monument: { x: 15.5, y: 18.6, seed: 211 },
   stage: { x: -17, y: 25, seed: 199 },
 };
 /** Footprints of village buildings on the world grid (width, depth). */
-export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4], auction: [2.6, 2.5], fairground: [5, 4], stage: [3.4, 2.8] };
+export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4], auction: [2.6, 2.5], fairground: [5, 4], stage: [3.4, 2.8], monument: [2, 2] };
 /** Every village business the player can build (houses aside). */
-export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan', 'auction', 'fairground', 'stage'];
+export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan', 'auction', 'fairground', 'stage', 'monument'];
 
 // ---- Applicants: fame draws newcomers to the door; famous adventurers come only when the guild suits them. ----
 export const TRAIT_NAMES = ['ใจเย็น', 'ช่างสังเกต', 'ใฝ่รู้', 'อ่อนโยน', 'รักอิสระ', 'ขยัน', 'ร่าเริง', 'รอบคอบ', 'กล้าหาญ', 'ช่างพูด', 'อดทน', 'สุขุม'];
@@ -422,12 +431,12 @@ export const PARTS = {
   silk: { name: 'ไหมแสงจันทร์', icon: '🧵', kind: 'hide', value: 18 },
   claw: { name: 'กรงเล็บตุ่น', icon: '🦴', kind: 'gem', value: 6 },
   mask: { name: 'หน้ากากใบไม้', icon: '🍃', kind: 'hide', value: 14 },
-  scale: { name: 'เกล็ดกิ้งก่าแดง', icon: '🔶', kind: 'hide', value: 26 },
-  feather: { name: 'ขนฮาร์ปี้', icon: '🪶', kind: 'hide', value: 28 },
-  ember: { name: 'ถ่านไฟนิรันดร์', icon: '🔥', kind: 'essence', value: 30 },
-  drakeScale: { name: 'เกล็ดมังกรหิน', icon: '🛡', kind: 'gem', value: 40 },
-  magma: { name: 'แกนแมกมา', icon: '🌋', kind: 'essence', value: 44 },
-  stormPlume: { name: 'ขนนกฟ้าคำราม', icon: '⚡', kind: 'hide', value: 42 },
+  scale: { name: 'เกล็ดกิ้งก่าแดง', icon: '🔶', kind: 'hide', value: 26, forge: true },
+  feather: { name: 'ขนฮาร์ปี้', icon: '🪶', kind: 'hide', value: 28, forge: true },
+  ember: { name: 'ถ่านไฟนิรันดร์', icon: '🔥', kind: 'essence', value: 30, forge: true },
+  drakeScale: { name: 'เกล็ดมังกรหิน', icon: '🛡', kind: 'gem', value: 40, forge: true },
+  magma: { name: 'แกนแมกมา', icon: '🌋', kind: 'essence', value: 44, forge: true },
+  stormPlume: { name: 'ขนนกฟ้าคำราม', icon: '⚡', kind: 'hide', value: 42, forge: true },
 };
 export const MONSTER_PART = { leafSlime: 'jelly', hornHare: 'horn', fuzzBee: 'honey', thornling: 'fiber', mushHopper: 'spore', acornBeetle: 'shell', mossWolf: 'pelt', pebbleCrab: 'carapace', crystalBat: 'crystal', marbleGolem: 'core', mistWisp: 'mistDust', lanternGhost: 'wick', glowMoth: 'silk', hollowKeeper: 'core', bellGuardian: 'crystal', heartGuardian: 'silk', waterSlime: 'jelly', pondFrog: 'jelly', fluffBoar: 'pelt', bindingRoots: 'fiber', fieldMole: 'claw', cropGoblin: 'claw', roadBandit: 'mask', dustLizard: 'scale', cliffHarpy: 'feather', emberImp: 'ember', stoneDrake: 'drakeScale', magmaTortoise: 'magma', stormRoc: 'stormPlume', sandWyrm: 'scale', wyvernMatriarch: 'stormPlume', emberDragon: 'magma' };
 /** One-step workshops: three parts of a kind become one good worth more than the parts. */

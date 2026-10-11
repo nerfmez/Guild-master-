@@ -54,7 +54,7 @@ export function tickTrade(state, ctx, step) {
     const job = t.work[good.workshop] ??= { busy: false, progress: 0, value: 0 };
     if (!job.busy) {
       if (t.halt[good.workshop]) continue;
-      const stock = Object.entries(t.store).filter(([id, n]) => PARTS[id]?.kind === good.kind && n > 0).sort((a, b) => b[1] - a[1]);
+      const stock = Object.entries(t.store).filter(([id, n]) => PARTS[id]?.kind === good.kind && !PARTS[id].forge && n > 0).sort((a, b) => b[1] - a[1]);
       if (stock.reduce((s, [, n]) => s + n, 0) < R.recipe) continue;
       let need = R.recipe, value = 0;
       for (const [id] of stock) while (need > 0 && t.store[id] > 0) { t.store[id] -= 1; if (!t.store[id]) delete t.store[id]; value += PARTS[id].value; need -= 1; }
@@ -69,7 +69,8 @@ export function tickTrade(state, ctx, step) {
   }
   if (t.autoWholesale && storeUsed(t) >= storeCapacity(state) * 0.9) {
     while (storeUsed(t) > storeCapacity(state) * 0.75) {
-      const [id] = Object.entries(t.store).sort((a, b) => b[1] - a[1])[0] || [];
+      // Forge parts are kept for frontier gear; everything else goes first, the most plentiful kind first.
+      const [id] = Object.entries(t.store).sort((a, b) => Number(Boolean(PARTS[a[0]]?.forge)) - Number(Boolean(PARTS[b[0]]?.forge)) || b[1] - a[1])[0] || [];
       if (!id) break;
       wholesale(state, ctx, { id, count: Math.min(5, t.store[id]) }, true);
     }
