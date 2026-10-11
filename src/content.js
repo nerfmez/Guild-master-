@@ -1,13 +1,13 @@
 /** All authored game content. Times are prototype seconds, not real-world hours. */
 export const RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
 /** A rank needs renown (rep) and a record of work (merits); then the association sends a promotion exam.
- * The demo covers F-C; B and above open with the full game's new regions. */
+ * F-B are playable; rank B opens the eastern frontier. A and S wait for later chapters. */
 export const RANK_REQUIREMENTS = {
   F: { rep: 0, quest: null, merits: [] },
   E: { rep: 40, quest: 'escort', merits: [{ kind: 'jobs', n: 4 }, { kind: 'members', n: 4 }] },
   D: { rep: 160, quest: 'hollow', merits: [{ kind: 'jobs', n: 12 }, { kind: 'board', n: 1 }, { kind: 'village', n: 2 }, { kind: 'ranked', n: 2, rank: 'E' }] },
   C: { rep: 420, quest: 'ruins', merits: [{ kind: 'jobs', n: 24 }, { kind: 'quests', n: 5 }, { kind: 'members', n: 6 }, { kind: 'geared', n: 4 }, { kind: 'ranked', n: 4, rank: 'D' }, { kind: 'classed', n: 2 }] },
-  B: { rep: 800, quest: null, future: true, merits: [] },
+  B: { rep: 760, quest: 'heart', merits: [{ kind: 'jobs', n: 40 }, { kind: 'quests', n: 8 }, { kind: 'members', n: 8 }, { kind: 'village', n: 4 }, { kind: 'ranked', n: 4, rank: 'C' }, { kind: 'classed', n: 4 }] },
   A: { rep: 1600, quest: null, future: true, merits: [] },
   S: { rep: 3000, quest: null, future: true, merits: [] },
 };
@@ -22,13 +22,16 @@ export const MERIT_LABELS = {
 export const RANK_UNLOCKS = {
   E: ['คำร้องคุ้มกันรถขนขนมปัง', 'โต๊ะวางแผน: ส่งได้ 2 ทีม', 'แปลงสมุนไพร และชุดโต๊ะน้ำชา', 'ผู้สมัครคนใหม่ที่เก่งขึ้น', 'ซื้อที่ดินเพิ่มได้'],
   D: ['ซากหอระฆัง: คำร้องระดับ D', 'ชั้นตำรา', 'อาวุธขั้น 2 ในโรงตีเหล็ก'],
-  C: ['ป่าหมอกจันทร์: บทสุดท้ายของเดโม่', 'เครื่องรางหมอกจันทร์', 'นักผจญภัยมีชื่อเสียงอาจมาสมัคร'],
-  B: ['แผนที่ใหม่ในเกมเต็ม'],
+  C: ['ป่าหมอกจันทร์: บทที่หนึ่งจบที่หัวใจป่า', 'เครื่องรางหมอกจันทร์', 'นักผจญภัยมีชื่อเสียงอาจมาสมัคร'],
+  B: ['ชายแดนตะวันออก: หุบผาลมแดงและยอดเขามังกรหลับ', 'ค่ายแนวหน้า: ฐานพักของทีมที่ชายแดน', 'ภารกิจจู่โจม: ส่งได้ถึง 6 คน', 'ใบประกาศจับมอนหัวหน้า', 'อาชีพขั้นที่ 3 และนักผจญภัยแรงค์ B'],
+  A: ['บทต่อไปของเกม'],
 };
 export const REGIONS = [
   { id: 'meadow', name: 'ทุ่งใบชา', rank: 'F', color: '#a9c6a0', description: 'เส้นทางรอบหมู่บ้านและป่าอ่อนโยน' },
-  { id: 'ruins', name: 'ซากหอระฆัง', rank: 'D', color: '#b7aed0', description: 'ค้นหาสาเหตุที่เสียงระฆังดังจากเมืองร้าง' },
+  { id: 'ruins', scenario: 'explore', name: 'ซากหอระฆัง', rank: 'D', color: '#b7aed0', description: 'ค้นหาสาเหตุที่เสียงระฆังดังจากเมืองร้าง' },
   { id: 'mist', name: 'ป่าหมอกจันทร์', rank: 'C', color: '#90babe', description: 'ตามหาทีมสำรวจที่หายไปและรักษาหัวใจของป่า' },
+  { id: 'canyon', name: 'หุบผาลมแดง', rank: 'B', color: '#d39a74', description: 'ดินแดนชายแดนตะวันออก ลมร้อนพัดผ่านหน้าผาสีสนิม' },
+  { id: 'peak', name: 'ยอดเขามังกรหลับ', rank: 'B', color: '#8d7f9c', description: 'ภูเขาไฟที่ราชันมังกรเพลิงหลับใหลอยู่ใต้ปล่อง' },
 ];
 export const JOBS = {
   warrior: { id: 'warrior', name: 'นักรบ', role: 'tank', color: '#d89c8c', power: 14, health: 95, stat: 'ป้องกัน', icon: '🛡', next: ['guardian', 'duelist'] },
@@ -45,14 +48,14 @@ export const JOBS = {
   bard: { id: 'bard', name: 'นักขับขาน', role: 'support', color: '#d5b39e', power: 20, health: 75, parent: 'healer', icon: '♪', tier: 2, next: ['maestro'] },
 
   // Third-tier classes open at adventurer rank B in the full game; the demo shows them as goals.
-  paladin: { id: 'paladin', name: 'อัศวินศักดิ์สิทธิ์', role: 'tank', color: '#d8b07e', power: 24, health: 170, parent: 'guardian', base: 'warrior', icon: '🛡', tier: 3, future: true, next: [] },
-  blademaster: { id: 'blademaster', name: 'จ้าวดาบ', role: 'damage', color: '#d98a86', power: 32, health: 120, parent: 'duelist', base: 'warrior', icon: '⚔', tier: 3, future: true, next: [] },
-  warden: { id: 'warden', name: 'ผู้พิทักษ์พงไพร', role: 'scout', color: '#6f9a80', power: 25, health: 110, parent: 'ranger', base: 'archer', icon: '🏹', tier: 3, future: true, next: [] },
-  hawkeye: { id: 'hawkeye', name: 'ตาเหยี่ยว', role: 'damage', color: '#93ad8e', power: 31, health: 85, parent: 'sharpshooter', base: 'archer', icon: '➶', tier: 3, future: true, next: [] },
-  archsage: { id: 'archsage', name: 'มหาปราชญ์', role: 'magic', color: '#a194c0', power: 27, health: 110, parent: 'sage', base: 'mage', icon: '✦', tier: 3, future: true, next: [] },
-  stormcaller: { id: 'stormcaller', name: 'ผู้เรียกพายุ', role: 'magic', color: '#9fa6d8', power: 33, health: 80, parent: 'elementalist', base: 'mage', icon: '✧', tier: 3, future: true, next: [] },
-  saint: { id: 'saint', name: 'นักบุญ', role: 'heal', color: '#e2cd8f', power: 21, health: 125, parent: 'cleric', base: 'healer', icon: '✚', tier: 3, future: true, next: [] },
-  maestro: { id: 'maestro', name: 'คีตกวี', role: 'support', color: '#d9a98e', power: 28, health: 100, parent: 'bard', base: 'healer', icon: '♪', tier: 3, future: true, next: [] },
+  paladin: { id: 'paladin', name: 'อัศวินศักดิ์สิทธิ์', role: 'tank', color: '#d8b07e', power: 24, health: 170, parent: 'guardian', base: 'warrior', icon: '🛡', tier: 3, next: [] },
+  blademaster: { id: 'blademaster', name: 'จ้าวดาบ', role: 'damage', color: '#d98a86', power: 32, health: 120, parent: 'duelist', base: 'warrior', icon: '⚔', tier: 3, next: [] },
+  warden: { id: 'warden', name: 'ผู้พิทักษ์พงไพร', role: 'scout', color: '#6f9a80', power: 25, health: 110, parent: 'ranger', base: 'archer', icon: '🏹', tier: 3, next: [] },
+  hawkeye: { id: 'hawkeye', name: 'ตาเหยี่ยว', role: 'damage', color: '#93ad8e', power: 31, health: 85, parent: 'sharpshooter', base: 'archer', icon: '➶', tier: 3, next: [] },
+  archsage: { id: 'archsage', name: 'มหาปราชญ์', role: 'magic', color: '#a194c0', power: 27, health: 110, parent: 'sage', base: 'mage', icon: '✦', tier: 3, next: [] },
+  stormcaller: { id: 'stormcaller', name: 'ผู้เรียกพายุ', role: 'magic', color: '#9fa6d8', power: 33, health: 80, parent: 'elementalist', base: 'mage', icon: '✧', tier: 3, next: [] },
+  saint: { id: 'saint', name: 'นักบุญ', role: 'heal', color: '#e2cd8f', power: 21, health: 125, parent: 'cleric', base: 'healer', icon: '✚', tier: 3, next: [] },
+  maestro: { id: 'maestro', name: 'คีตกวี', role: 'support', color: '#d9a98e', power: 28, health: 100, parent: 'bard', base: 'healer', icon: '♪', tier: 3, next: [] },
 };
 export const FACILITIES = {
   reception: { id: 'reception', name: 'โต๊ะรับคำร้อง', description: 'รับคำร้อง เพิ่มชื่อเสียงจากภารกิจ 5% ต่อระดับ', w: 2, h: 1, cost: { gold: 180, wood: 8, stone: 4 }, unlockRank: 'F', color: '#dec6a1', maxLevel: 3 },
@@ -94,15 +97,25 @@ export const MEMBERS = [
   { id: 'yuki', name: 'ยูกิ', class: 'mage', trait: 'สุขุม', description: 'นักวิจัยที่ตามหาความทรงจำในป่าหมอก', hair: '#b2a8cf', unlockRank: 'C', cost: 680, famous: { rep: 420, level: 7, needs: 'facility', value: 'library', hint: 'อยากได้กิลด์ที่มีชั้นตำราให้ค้นคว้า' } },
 ];
 export const QUESTS = [
-  { id: 'patrol', name: 'ลาดตระเวนทางหมู่บ้าน', title: 'ก้าวแรกของกิลด์', region: 'meadow', description: 'ตรวจเส้นทางและพาชาวบ้านกลับบ้านอย่างปลอดภัย', duration: 48, rank: 'F', difficulty: 30, tags: ['scout'], reward: { gold: 110, wood: 6, stone: 2, herb: 1, rep: 14, xp: 24 }, cost: {}, energy: 16, enemy: 'สไลม์ใบไม้' },
-  { id: 'herbs', name: 'เก็บใบชาแสงดาว', title: 'ชาอุ่นก่อนออกเดินทาง', region: 'meadow', description: 'เก็บสมุนไพรที่หุบเขา ระวังพุ่มหนาม', duration: 58, rank: 'F', difficulty: 34, tags: ['heal', 'scout'], reward: { gold: 90, wood: 3, stone: 1, herb: 7, rep: 12, xp: 28 }, cost: {}, energy: 17, enemy: 'พุ่มหนามจิ๋ว' },
-  { id: 'escort', name: 'คุ้มกันรถขนขนมปัง', title: 'กลิ่นขนมปังบนทางไกล', region: 'meadow', description: 'ปกป้องรถส่งเสบียงจากหมูป่าที่หิวโหย', duration: 76, rank: 'E', difficulty: 46, tags: ['tank'], reward: { gold: 185, wood: 8, stone: 5, herb: 2, rep: 25, xp: 44 }, cost: { gold: 18 }, energy: 20, enemy: 'หมูป่าขนฟู' },
-  { id: 'hollow', name: 'สำรวจโพรงใต้ต้นโอ๊ก', title: 'ระฆังที่ไม่มีใครตี', region: 'ruins', description: 'ตามเสียงระฆังใต้ดินเพื่อหาเบาะแสเมืองร้าง', duration: 98, rank: 'D', difficulty: 65, tags: ['scout', 'magic'], reward: { gold: 260, wood: 10, stone: 10, herb: 3, rep: 38, xp: 64 }, cost: { gold: 25, herb: 1 }, energy: 22, enemy: 'ผู้เฝ้าโพรง', requires: 'escort', story: true },
-  { id: 'crystals', name: 'เก็บผลึกในทางเก่า', title: 'แสงใต้ซากหิน', region: 'ruins', description: 'ผลึกช่วยทำอุปกรณ์ใหม่ แต่อาจปลุกผู้เฝ้าซาก', duration: 90, rank: 'D', difficulty: 61, tags: ['magic'], reward: { gold: 235, wood: 4, stone: 14, herb: 2, rep: 31, xp: 58 }, cost: { gold: 22 }, energy: 21, enemy: 'โกเลมหินอ่อน' },
+  { id: 'patrol', scenario: 'patrol', name: 'ลาดตระเวนทางหมู่บ้าน', title: 'ก้าวแรกของกิลด์', region: 'meadow', description: 'ตรวจเส้นทางและพาชาวบ้านกลับบ้านอย่างปลอดภัย', duration: 48, rank: 'F', difficulty: 30, tags: ['scout'], reward: { gold: 110, wood: 6, stone: 2, herb: 1, rep: 14, xp: 24 }, cost: {}, energy: 16, enemy: 'สไลม์ใบไม้' },
+  { id: 'herbs', scenario: 'gather', name: 'เก็บใบชาแสงดาว', title: 'ชาอุ่นก่อนออกเดินทาง', region: 'meadow', description: 'เก็บสมุนไพรที่หุบเขา ระวังพุ่มหนาม', duration: 58, rank: 'F', difficulty: 34, tags: ['heal', 'scout'], reward: { gold: 90, wood: 3, stone: 1, herb: 7, rep: 12, xp: 28 }, cost: {}, energy: 17, enemy: 'พุ่มหนามจิ๋ว' },
+  { id: 'escort', scenario: 'escort', name: 'คุ้มกันรถขนขนมปัง', title: 'กลิ่นขนมปังบนทางไกล', region: 'meadow', description: 'ปกป้องรถส่งเสบียงจากหมูป่าที่หิวโหย', duration: 76, rank: 'E', difficulty: 46, tags: ['tank'], reward: { gold: 185, wood: 8, stone: 5, herb: 2, rep: 25, xp: 44 }, cost: { gold: 18 }, energy: 20, enemy: 'หมูป่าขนฟู' },
+  { id: 'hollow', scenario: 'explore', name: 'สำรวจโพรงใต้ต้นโอ๊ก', title: 'ระฆังที่ไม่มีใครตี', region: 'ruins', description: 'ตามเสียงระฆังใต้ดินเพื่อหาเบาะแสเมืองร้าง', duration: 98, rank: 'D', difficulty: 65, tags: ['scout', 'magic'], reward: { gold: 260, wood: 10, stone: 10, herb: 3, rep: 38, xp: 64 }, cost: { gold: 25, herb: 1 }, energy: 22, enemy: 'ผู้เฝ้าโพรง', requires: 'escort', story: true },
+  { id: 'crystals', scenario: 'gather', name: 'เก็บผลึกในทางเก่า', title: 'แสงใต้ซากหิน', region: 'ruins', description: 'ผลึกช่วยทำอุปกรณ์ใหม่ แต่อาจปลุกผู้เฝ้าซาก', duration: 90, rank: 'D', difficulty: 61, tags: ['magic'], reward: { gold: 235, wood: 4, stone: 14, herb: 2, rep: 31, xp: 58 }, cost: { gold: 22 }, energy: 21, enemy: 'โกเลมหินอ่อน' },
   { id: 'ruins', name: 'ปลดผนึกหอระฆัง', title: 'คำสัญญาของผู้ดูแล', region: 'ruins', description: 'ซ่อมผนึกเพื่อให้ชาวเมืองกลับไปยังบ้านเก่า', duration: 124, rank: 'C', difficulty: 87, tags: ['tank', 'magic'], reward: { gold: 365, wood: 12, stone: 12, herb: 6, rep: 58, xp: 88 }, cost: { gold: 35, herb: 2 }, energy: 24, enemy: 'ผู้พิทักษ์ระฆัง', requires: 'hollow', story: true },
-  { id: 'mistpath', name: 'เปิดเส้นทางป่าหมอก', title: 'รอยเท้าในหมอก', region: 'mist', description: 'ค้นเส้นทางที่ทีมสำรวจใช้ ก่อนหมอกปิดทับอีกครั้ง', duration: 118, rank: 'C', difficulty: 96, tags: ['scout', 'heal'], reward: { gold: 390, wood: 15, stone: 8, herb: 9, rep: 62, xp: 98 }, cost: { gold: 40, herb: 2 }, energy: 25, enemy: 'ภูตหมอก' },
-  { id: 'rescue', name: 'ช่วยทีมสำรวจที่หายไป', title: 'ทุกคนต้องกลับบ้าน', region: 'mist', description: 'ตามสัญญาณไฟจากกลางป่าและพาคนเจ็บออกมา', duration: 146, rank: 'C', difficulty: 110, tags: ['heal', 'tank'], reward: { gold: 480, wood: 16, stone: 12, herb: 10, rep: 82, xp: 120 }, cost: { gold: 45, herb: 3 }, energy: 28, enemy: 'รากไม้พันธนาการ', requires: 'mistpath', story: true },
-  { id: 'heart', name: 'รักษาหัวใจป่า', title: 'บ้านใต้ร่มใบไม้', region: 'mist', description: 'ทีมสำรวจชี้ทางแล้ว ถึงเวลาคืนแสงให้ต้นไม้กลางป่า', duration: 180, rank: 'C', difficulty: 136, tags: ['tank', 'magic', 'heal'], reward: { gold: 900, wood: 25, stone: 20, herb: 20, rep: 120, xp: 180 }, cost: { gold: 60, herb: 4 }, energy: 30, enemy: 'ผู้พิทักษ์หัวใจป่า', requires: 'rescue', story: true, final: true },
+  { id: 'mistpath', scenario: 'patrol', name: 'เปิดเส้นทางป่าหมอก', title: 'รอยเท้าในหมอก', region: 'mist', description: 'ค้นเส้นทางที่ทีมสำรวจใช้ ก่อนหมอกปิดทับอีกครั้ง', duration: 118, rank: 'C', difficulty: 96, tags: ['scout', 'heal'], reward: { gold: 390, wood: 15, stone: 8, herb: 9, rep: 62, xp: 98 }, cost: { gold: 40, herb: 2 }, energy: 25, enemy: 'ภูตหมอก' },
+  { id: 'rescue', scenario: 'rescue', name: 'ช่วยทีมสำรวจที่หายไป', title: 'ทุกคนต้องกลับบ้าน', region: 'mist', description: 'ตามสัญญาณไฟจากกลางป่าและพาคนเจ็บออกมา', duration: 146, rank: 'C', difficulty: 110, tags: ['heal', 'tank'], reward: { gold: 480, wood: 16, stone: 12, herb: 10, rep: 82, xp: 120 }, cost: { gold: 45, herb: 3 }, energy: 28, enemy: 'รากไม้พันธนาการ', requires: 'mistpath', story: true },
+  { id: 'heart', scenario: 'explore', name: 'รักษาหัวใจป่า', title: 'บ้านใต้ร่มใบไม้', region: 'mist', description: 'ทีมสำรวจชี้ทางแล้ว ถึงเวลาคืนแสงให้ต้นไม้กลางป่า', duration: 180, rank: 'C', difficulty: 136, tags: ['tank', 'magic', 'heal'], reward: { gold: 900, wood: 25, stone: 20, herb: 20, rep: 120, xp: 180 }, cost: { gold: 60, herb: 4 }, energy: 30, enemy: 'ผู้พิทักษ์หัวใจป่า', requires: 'rescue', story: true },
+  { id: 'farmraid', scenario: 'defend', name: 'ไล่มอนบุกไร่ข้าวสาลี', title: 'ข้าวทั้งปีอยู่ในแปลงนี้', region: 'meadow', description: 'ตุ่นกับก็อบลินบุกไร่หลังกังหันลม ต้องไล่ก่อนรวงข้าวจะหมดแปลง', duration: 50, rank: 'F', difficulty: 28, tags: ['tank'], reward: { gold: 95, wood: 2, stone: 1, herb: 3, rep: 12, xp: 22 }, cost: {}, energy: 15, enemy: 'ตุ่นขุดไร่' },
+  { id: 'pasture', scenario: 'defend', name: 'ปกป้องคอกแกะจากหมาป่า', title: 'เสียงหอนท้ายทุ่ง', region: 'meadow', description: 'หมาป่ามอสลงมาล่าแกะริมทุ่ง ทีมต้องยืนขวางไว้จนกว่าฝูงจะถอย', duration: 70, rank: 'E', difficulty: 44, tags: ['tank', 'scout'], reward: { gold: 170, wood: 4, stone: 3, herb: 4, rep: 22, xp: 40 }, cost: { gold: 12 }, energy: 19, enemy: 'หมาป่ามอส' },
+  { id: 'bandits', scenario: 'escort', name: 'คุ้มกันกองคาราวานพ่อค้า', title: 'ล้อเกวียนกับหน้ากากใบไม้', region: 'ruins', description: 'พาเกวียนพ่อค้าข้ามสะพานไปเนินผลึก โจรป่าหน้ากากใบไม้ดักรออยู่ข้างทาง', duration: 92, rank: 'D', difficulty: 62, tags: ['tank', 'scout'], reward: { gold: 255, wood: 6, stone: 8, herb: 2, rep: 30, xp: 60 }, cost: { gold: 20 }, energy: 21, enemy: 'โจรป่าหน้ากากใบไม้' },
+  { id: 'canyonroad', scenario: 'escort', name: 'บุกเบิกทางสู่หุบผาลมแดง', title: 'ค่ายแรกที่ชายแดน', region: 'canyon', description: 'คุ้มกันเกวียนช่างไม้ไปตั้งค่ายแนวหน้าที่ปากหุบผา ค่ายนี้จะเป็นบ้านหลังที่สองของกิลด์', duration: 130, rank: 'B', difficulty: 128, tags: ['tank', 'scout'], reward: { gold: 620, wood: 20, stone: 16, herb: 8, rep: 90, xp: 130 }, cost: { gold: 60, wood: 20 }, energy: 26, enemy: 'กิ้งก่าฝุ่นแดง', requires: 'heart', story: true },
+  { id: 'harpy', scenario: 'explore', name: 'ไล่ฝูงฮาร์ปี้หน้าผา', title: 'เสียงกรีดร้องเหนือหุบ', region: 'canyon', description: 'ฮาร์ปี้โฉบขโมยเสบียงค่าย ต้องขับไล่ออกจากหน้าผาเหนือทาง', duration: 120, rank: 'B', difficulty: 132, tags: ['scout', 'magic'], reward: { gold: 560, wood: 6, stone: 10, herb: 6, rep: 70, xp: 128 }, cost: { gold: 45, herb: 2 }, energy: 26, enemy: 'ฮาร์ปี้หน้าผา', requires: 'canyonroad' },
+  { id: 'emberdig', scenario: 'gather', name: 'ขุดแร่ถ่านไฟในเหมืองเก่า', title: 'ถ่านที่ไม่เคยมอด', region: 'canyon', description: 'แร่ถ่านไฟทำอาวุธขั้นสูงได้ แต่ภูตถ่านไฟไม่ยอมให้ใครแตะ', duration: 124, rank: 'B', difficulty: 136, tags: ['tank', 'heal'], reward: { gold: 520, wood: 4, stone: 26, herb: 4, rep: 66, xp: 126 }, cost: { gold: 45 }, energy: 26, enemy: 'ภูตถ่านไฟ', requires: 'canyonroad' },
+  { id: 'wyrm', scenario: 'explore', name: 'ปราบหนอนทรายยักษ์', title: 'ทรายที่หายใจได้', region: 'canyon', description: 'ทางเกวียนยุบหายเป็นหลุมทุกคืน มีบางอย่างใหญ่มากอยู่ใต้ทราย', duration: 150, rank: 'B', difficulty: 150, tags: ['tank', 'magic', 'heal'], reward: { gold: 820, wood: 10, stone: 20, herb: 10, rep: 110, xp: 165 }, cost: { gold: 70, herb: 3 }, energy: 28, enemy: 'หนอนทรายยักษ์', requires: 'canyonroad', story: true },
+  { id: 'drakes', scenario: 'patrol', name: 'สำรวจรังมังกรหินน้อย', title: 'ไข่ที่อุ่นเกินไป', region: 'peak', description: 'ลาดตระเวนไหล่เขาไฟ นับรังมังกรหินน้อยและหาเส้นทางขึ้นยอด', duration: 140, rank: 'B', difficulty: 156, tags: ['scout', 'tank'], reward: { gold: 700, wood: 8, stone: 22, herb: 8, rep: 92, xp: 160 }, cost: { gold: 60, herb: 2 }, energy: 28, enemy: 'มังกรหินน้อย', requires: 'wyrm' },
+  { id: 'matriarch', scenario: 'explore', raid: true, name: 'ยอดแหลมของแม่พญาไวเวิร์น', title: 'สองทีม หนึ่งท้องฟ้า', region: 'peak', description: 'ภารกิจจู่โจม ส่งได้ถึง 6 คน แม่พญาไวเวิร์นเฝ้าทางขึ้นปล่องภูเขาไฟ', duration: 170, rank: 'B', difficulty: 230, tags: ['tank', 'magic', 'heal', 'scout'], reward: { gold: 1200, wood: 16, stone: 30, herb: 14, rep: 150, xp: 210 }, cost: { gold: 100, herb: 4 }, energy: 30, enemy: 'แม่พญาไวเวิร์น', requires: 'drakes', story: true },
+  { id: 'dragon', scenario: 'explore', raid: true, name: 'ราชันมังกรเพลิง', title: 'ปลุกหรือกล่อมให้หลับ', region: 'peak', description: 'ภารกิจจู่โจมบทสุดท้าย ส่งได้ถึง 6 คน ราชันมังกรเพลิงกำลังตื่นจากการหลับใหลร้อยปี', duration: 200, rank: 'B', difficulty: 300, tags: ['tank', 'magic', 'heal', 'scout'], reward: { gold: 2400, wood: 30, stone: 40, herb: 30, rep: 260, xp: 320 }, cost: { gold: 150, herb: 6 }, energy: 32, enemy: 'ราชันมังกรเพลิง', requires: 'matriarch', story: true, final: true },
 ];
 export const EQUIPMENT = [
   { id: 'oak-blade', name: 'ดาบไม้โอ๊ก', slot: 'weapon', classes: ['warrior'], power: 7, health: 8, cost: { gold: 85, wood: 6, stone: 2 }, unlockRank: 'F', workshopLevel: 1, color: '#c9a579', description: 'ดาบเริ่มต้นที่จับถนัดมือ' },
@@ -177,6 +190,16 @@ export const PETITION_LINES = {
   mistpath: 'หมอกปิดทางเดินป่าอีกแล้ว คนหาของป่าเข้าไม่ได้',
   rescue: 'ทีมสำรวจยังไม่กลับมา ได้โปรดช่วยตามหา',
   heart: 'ป่าเงียบผิดปกติ ต้นไม้ใหญ่ดูอ่อนแรง',
+  farmraid: 'มีตัวอะไรขุดรูทั่วไร่ข้าว ขโมยผักไปเป็นกระสอบ ช่วยไล่ทีเถอะ',
+  pasture: 'ได้ยินเสียงหมาป่าหอนใกล้คอกแกะทุกคืน แกะหายไปแล้วสองตัว',
+  bandits: 'กองคาราวานของข้าจะข้ามสะพานไปตะวันออก ขอคนคุ้มกันหน่อย',
+  canyonroad: 'สมาคมกิลด์อยากได้ค่ายที่ปากหุบผาลมแดง ใครจะคุ้มกันช่างไม้ไปได้',
+  harpy: 'ฮาร์ปี้ขโมยเสบียงค่ายแนวหน้าไปอีกแล้ว',
+  emberdig: 'ช่างตีเหล็กต้องการแร่ถ่านไฟจากเหมืองเก่าในหุบ',
+  wyrm: 'ทางเกวียนยุบเป็นหลุมทราย มีคนเห็นหนวดยักษ์โผล่ขึ้นมา',
+  drakes: 'มังกรหินน้อยลงมาถึงค่ายแล้ว ต้องรู้ว่ารังมันอยู่ไหน',
+  matriarch: 'แม่พญาไวเวิร์นบินวนเหนือปล่องภูเขาไฟ ไม่มีใครผ่านไปได้',
+  dragon: 'พื้นดินสั่นทุกคืน ราชันมังกรเพลิงกำลังจะตื่น',
 };
 
 // ---- Idle guild upgrades: levels with growing cost, each a small permanent boost. ----
@@ -228,6 +251,8 @@ export const VILLAGE_PROJECTS = {
   jeweler: { name: 'ร้านเจียระไน', icon: '💍', max: 3, villageLevel: 2, base: { gold: 380, wood: 10, stone: 18 }, growth: 2, prosperity: 190, description: 'เจียเขา เปลือก ผลึก และแกนหินเป็นเครื่องประดับ · ระดับเพิ่มความเร็ว' },
   caravan: { name: 'ลานคาราวาน', icon: '🐎', max: 3, villageLevel: 2, base: { gold: 450, wood: 26, stone: 10 }, growth: 2, prosperity: 200, description: 'ส่งคาราวานขนของในโกดังไปขายเมืองหลวง ได้ราคาสูงกว่าขายในเมือง และรับใบสั่งซื้อโบนัส · ระดับเพิ่มความจุ' },
   auction: { name: 'โรงประมูล', icon: '🔨', max: 2, villageLevel: 4, base: { gold: 900, wood: 30, stone: 30 }, growth: 2.2, prosperity: 260, description: 'นำสมบัติขึ้นประมูลทุกเช้า ได้ราคาสูงกว่านักสะสมเมื่อมีพ่อค้าในเมืองมากและกิลด์มีชื่อเสียง · ระดับ 2 ดึงผู้ประมูลจากต่างเมือง' },
+  fairground: { name: 'ลานเทศกาล', icon: '🎪', max: 3, villageLevel: 2, base: { gold: 520, wood: 30, stone: 16 }, growth: 2, prosperity: 220, description: 'ลานกว้างสำหรับจัดเทศกาลเก็บเกี่ยว ระดับสูงขึ้นรับคนได้มากขึ้นและได้ผลมากขึ้น' },
+  stage: { name: 'เวทีโคมไฟ', icon: '🏮', max: 3, villageLevel: 3, base: { gold: 640, wood: 34, stone: 20 }, growth: 2.1, prosperity: 240, description: 'เวทีดนตรีกลางหมู่บ้าน ใช้จัดเทศกาลโคมลอย ดึงนักผจญภัยจากต่างเมืองมาเยือน' },
   smithy: { name: 'โรงตีเหล็ก', icon: '⚒', max: 3, villageLevel: 1, base: { gold: 320, wood: 12, stone: 18 }, growth: 2, prosperity: 180, description: 'ขายและซ่อมอาวุธให้นักผจญภัย อาวุธขั้นสูงขึ้นตามระดับ (ใช้ไม้และหินจากตลาด) · ลดเงินคราฟต์ของกิลด์ 10% ต่อระดับ' },
 };
 /** Where homes and businesses stand on the world map (grid units, top-left of the footprint). */
@@ -254,11 +279,13 @@ export const VILLAGE_LOTS = {
   jeweler: { x: 30, y: 12.6, seed: 173, style: 'jeweler' },
   caravan: { x: 38.5, y: 19.5, seed: 179, style: 'caravan' },
   auction: { x: 27, y: 8, seed: 191, style: 'auction' },
+  fairground: { x: 14, y: 28.6, seed: 197 },
+  stage: { x: -17, y: 25, seed: 199 },
 };
 /** Footprints of village buildings on the world grid (width, depth). */
-export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4], auction: [2.6, 2.5] };
+export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4], auction: [2.6, 2.5], fairground: [5, 4], stage: [3.4, 2.8] };
 /** Every village business the player can build (houses aside). */
-export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan', 'auction'];
+export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan', 'auction', 'fairground', 'stage'];
 
 // ---- Applicants: fame draws newcomers to the door; famous adventurers come only when the guild suits them. ----
 export const TRAIT_NAMES = ['ใจเย็น', 'ช่างสังเกต', 'ใฝ่รู้', 'อ่อนโยน', 'รักอิสระ', 'ขยัน', 'ร่าเริง', 'รอบคอบ', 'กล้าหาญ', 'ช่างพูด', 'อดทน', 'สุขุม'];
@@ -279,7 +306,7 @@ export const ADVENTURER_RANK_RULES = {
   E: { level: 3, points: 30, exam: 34, fee: 30, arena: 1, power: 1.04 },
   D: { level: 6, points: 90, exam: 56, fee: 80, arena: 1, power: 1.08 },
   C: { level: 9, points: 230, exam: 88, fee: 160, arena: 2, power: 1.13 },
-  B: { level: 13, points: 480, exam: 110, fee: 300, arena: 3, power: 1.19, future: true },
+  B: { level: 13, points: 380, exam: 110, fee: 300, arena: 3, power: 1.19 },
   A: { level: 16, points: 900, exam: 160, fee: 500, arena: 3, power: 1.26, future: true },
   S: { level: 20, points: 1600, exam: 230, fee: 900, arena: 3, power: 1.34, future: true },
 };
@@ -294,25 +321,53 @@ export const HUNT_ZONES = {
   woods: { name: 'ป่าต้นโอ๊ก', rank: 'E', x: 2, y: -25, r: 6, via: [[2, 8], [2, -2], [2, -12], [1, -20]], species: ['mushHopper', 'acornBeetle', 'mossWolf'], count: 7 },
   hills: { name: 'เนินผลึก', rank: 'D', x: 55, y: 15, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15]], species: ['pebbleCrab', 'crystalBat', 'marbleGolem'], count: 7 },
   mist: { name: 'ป่าหมอกจันทร์', rank: 'C', x: 0, y: -44, r: 6, via: [[2, 8], [2, -2], [2, -12], [1, -20], [5, -28], [2, -36]], species: ['mistWisp', 'lanternGhost', 'glowMoth'], count: 7 },
+  canyon: { name: 'หุบผาลมแดง', rank: 'B', x: 94, y: 25.5, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [62, 10.5], [70, 9.5], [78, 11.5], [86, 15], [94, 17.5]], species: ['dustLizard', 'cliffHarpy', 'emberImp'], count: 7 },
+  peak: { name: 'ยอดเขามังกรหลับ', rank: 'B', x: 112.5, y: -1.5, r: 6, via: [[20, 17.5], [34, 17.5], [42, 17.5], [48, 15], [54, 10], [62, 10.5], [70, 9.5], [78, 11.5], [86, 15], [94, 17.5], [102, 19], [110, 17], [114, 10], [117, 3]], species: ['stoneDrake', 'magmaTortoise', 'stormRoc'], count: 6 },
 };
-/** Monster combat stats: hit points, damage per hit, seconds between hits, reach, walking speed (tiles/s), XP and coin drop. */
+/** Monster combat stats: hit points, damage per hit, seconds between hits, reach, walking speed (tiles/s), XP and coin drop.
+    trait gives each creature its own way to fight:
+    charge (dashes in from range), ranged (spits from afar), armor (shrugs off a share of each hit), slam (every third hit
+    splashes everyone close), summon (calls helpers at 2/3 and 1/3 life), burrow (dives and resurfaces beside someone),
+    breath (a fire cone every few seconds), thief (goes for the crops or the wagon first), swarm (fast but fragile),
+    regen (heals while nobody hits it), dive (swoops on the weakest member). */
 export const MONSTER_STATS = {
-  leafSlime: { hp: 40, atk: 4, rate: 1.5, reach: .8, speed: .7, xp: 6, gold: [2, 5], mat: 'herb' },
-  hornHare: { hp: 50, atk: 6, rate: 1.3, reach: .8, speed: 1.1, xp: 8, gold: [3, 6], mat: 'wood' },
-  fuzzBee: { hp: 44, atk: 5, rate: 1.2, reach: .9, speed: 1, xp: 7, gold: [3, 6], mat: 'herb' },
-  thornling: { hp: 70, atk: 7, rate: 1.6, reach: 1.1, speed: 0, xp: 9, gold: [4, 7], mat: 'wood' },
-  mushHopper: { hp: 75, atk: 8, rate: 1.4, reach: .8, speed: .8, xp: 12, gold: [5, 9], mat: 'herb' },
-  acornBeetle: { hp: 115, atk: 9, rate: 1.6, reach: .8, speed: .6, xp: 14, gold: [6, 10], mat: 'wood' },
-  mossWolf: { hp: 120, atk: 13, rate: 1.2, reach: .9, speed: 1.3, xp: 17, gold: [7, 12], mat: 'herb' },
-  pebbleCrab: { hp: 160, atk: 14, rate: 1.5, reach: .8, speed: .6, xp: 22, gold: [9, 15], mat: 'stone' },
-  crystalBat: { hp: 140, atk: 16, rate: 1.2, reach: .9, speed: 1.2, xp: 24, gold: [10, 16], mat: 'stone' },
-  marbleGolem: { hp: 300, atk: 22, rate: 2, reach: 1, speed: .45, xp: 36, gold: [14, 22], mat: 'stone' },
-  mistWisp: { hp: 220, atk: 22, rate: 1.3, reach: 1, speed: 1, xp: 34, gold: [14, 22], mat: 'herb' },
-  lanternGhost: { hp: 240, atk: 26, rate: 1.5, reach: 1.2, speed: .9, xp: 38, gold: [16, 24], mat: 'herb' },
-  glowMoth: { hp: 200, atk: 20, rate: 1.1, reach: .9, speed: 1.1, xp: 32, gold: [13, 20], mat: 'herb' },
-  hollowKeeper: { hp: 900, atk: 26, rate: 1.8, reach: 1.2, speed: .6, xp: 160, gold: [80, 120], mat: 'wood', boss: true },
-  bellGuardian: { hp: 1800, atk: 40, rate: 2, reach: 1.4, speed: .5, xp: 320, gold: [160, 220], mat: 'stone', boss: true },
-  heartGuardian: { hp: 3000, atk: 55, rate: 2, reach: 1.5, speed: .5, xp: 520, gold: [260, 340], mat: 'herb', boss: true },
+  leafSlime: { hp: 40, atk: 4, rate: 1.5, reach: .8, speed: .7, xp: 6, gold: [2, 5], mat: 'herb', trait: 'regen' },
+  waterSlime: { hp: 46, atk: 4, rate: 1.4, reach: .8, speed: .7, xp: 6, gold: [2, 5], mat: 'herb', trait: 'regen' },
+  hornHare: { hp: 50, atk: 6, rate: 1.3, reach: .8, speed: 1.1, xp: 8, gold: [3, 6], mat: 'wood', trait: 'charge' },
+  fuzzBee: { hp: 44, atk: 5, rate: 1.2, reach: .9, speed: 1, xp: 7, gold: [3, 6], mat: 'herb', trait: 'swarm' },
+  thornling: { hp: 70, atk: 7, rate: 1.6, reach: 2.6, speed: 0, xp: 9, gold: [4, 7], mat: 'wood', trait: 'ranged' },
+  fieldMole: { hp: 55, atk: 5, rate: 1.4, reach: .8, speed: .8, xp: 7, gold: [3, 6], mat: 'herb', trait: 'thief' },
+  cropGoblin: { hp: 62, atk: 6, rate: 1.3, reach: .9, speed: 1, xp: 8, gold: [4, 8], mat: 'herb', trait: 'thief' },
+  fluffBoar: { hp: 95, atk: 9, rate: 1.6, reach: .9, speed: .9, xp: 12, gold: [5, 9], mat: 'wood', trait: 'charge' },
+  pondFrog: { hp: 70, atk: 7, rate: 1.4, reach: 2.4, speed: .8, xp: 9, gold: [4, 7], mat: 'herb', trait: 'ranged' },
+  mushHopper: { hp: 75, atk: 8, rate: 1.4, reach: .8, speed: .8, xp: 12, gold: [5, 9], mat: 'herb', trait: 'swarm' },
+  acornBeetle: { hp: 115, atk: 9, rate: 1.6, reach: .8, speed: .6, xp: 14, gold: [6, 10], mat: 'wood', trait: 'armor' },
+  mossWolf: { hp: 120, atk: 13, rate: 1.2, reach: .9, speed: 1.3, xp: 17, gold: [7, 12], mat: 'herb', trait: 'dive' },
+  roadBandit: { hp: 130, atk: 12, rate: 1.3, reach: .9, speed: 1.1, xp: 18, gold: [10, 16], mat: 'wood', trait: 'thief' },
+  pebbleCrab: { hp: 160, atk: 14, rate: 1.5, reach: .8, speed: .6, xp: 22, gold: [9, 15], mat: 'stone', trait: 'armor' },
+  crystalBat: { hp: 140, atk: 16, rate: 1.2, reach: .9, speed: 1.2, xp: 24, gold: [10, 16], mat: 'stone', trait: 'dive' },
+  marbleGolem: { hp: 300, atk: 22, rate: 2, reach: 1, speed: .45, xp: 36, gold: [14, 22], mat: 'stone', trait: 'slam' },
+  mistWisp: { hp: 220, atk: 22, rate: 1.3, reach: 3, speed: 1, xp: 34, gold: [14, 22], mat: 'herb', trait: 'ranged' },
+  lanternGhost: { hp: 240, atk: 26, rate: 1.5, reach: 1.2, speed: .9, xp: 38, gold: [16, 24], mat: 'herb', trait: 'dive' },
+  glowMoth: { hp: 200, atk: 20, rate: 1.1, reach: .9, speed: 1.1, xp: 32, gold: [13, 20], mat: 'herb', trait: 'swarm' },
+  bindingRoots: { hp: 420, atk: 24, rate: 1.7, reach: 2.8, speed: 0, xp: 60, gold: [20, 30], mat: 'wood', trait: 'ranged' },
+  dustLizard: { hp: 330, atk: 30, rate: 1.2, reach: .9, speed: 1.2, xp: 46, gold: [18, 28], mat: 'stone', trait: 'charge' },
+  cliffHarpy: { hp: 290, atk: 34, rate: 1.3, reach: 1, speed: 1.3, xp: 48, gold: [20, 30], mat: 'herb', trait: 'dive' },
+  emberImp: { hp: 260, atk: 30, rate: 1.4, reach: 3.2, speed: 1, xp: 46, gold: [18, 28], mat: 'stone', trait: 'ranged' },
+  stoneDrake: { hp: 480, atk: 40, rate: 1.6, reach: 1.1, speed: .8, xp: 64, gold: [26, 38], mat: 'stone', trait: 'armor' },
+  magmaTortoise: { hp: 640, atk: 44, rate: 2.1, reach: 1.2, speed: .4, xp: 72, gold: [28, 42], mat: 'stone', trait: 'slam' },
+  stormRoc: { hp: 420, atk: 46, rate: 1.4, reach: 1.1, speed: 1.4, xp: 68, gold: [26, 40], mat: 'herb', trait: 'dive' },
+  hollowKeeper: { hp: 900, atk: 26, rate: 1.8, reach: 1.2, speed: .6, xp: 160, gold: [80, 120], mat: 'wood', boss: true, trait: 'summon', adds: ['mushHopper', 'acornBeetle'] },
+  bellGuardian: { hp: 1800, atk: 40, rate: 2, reach: 1.4, speed: .5, xp: 320, gold: [160, 220], mat: 'stone', boss: true, trait: 'slam' },
+  heartGuardian: { hp: 3000, atk: 55, rate: 2, reach: 1.5, speed: .5, xp: 520, gold: [260, 340], mat: 'herb', boss: true, trait: 'summon', adds: ['bindingRoots', 'glowMoth'] },
+  sandWyrm: { hp: 3600, atk: 62, rate: 2, reach: 1.6, speed: .6, xp: 600, gold: [300, 400], mat: 'stone', boss: true, trait: 'burrow' },
+  wyvernMatriarch: { hp: 5200, atk: 72, rate: 1.8, reach: 1.6, speed: .9, xp: 820, gold: [420, 560], mat: 'herb', boss: true, trait: 'summon', adds: ['stormRoc', 'stoneDrake'] },
+  emberDragon: { hp: 8000, atk: 88, rate: 2.2, reach: 2, speed: .5, xp: 1400, gold: [800, 1100], mat: 'stone', boss: true, trait: 'breath' },
+};
+/** What each trait is called on screen. */
+export const MONSTER_TRAITS = {
+  charge: 'พุ่งชน', ranged: 'โจมตีระยะไกล', armor: 'เกราะหนา', slam: 'ทุบพื้นกระจาย', summon: 'เรียกสมุน', burrow: 'มุดดิน',
+  breath: 'พ่นไฟ', thief: 'ขโมยของ', swarm: 'มาเป็นฝูง', regen: 'ฟื้นตัวเอง', dive: 'โฉบคนอ่อนแอ',
 };
 /** How each class line fights: reach in tiles, seconds between attacks, damage multiplier, and a signature skill. */
 export const CLASS_COMBAT = {
@@ -365,8 +420,16 @@ export const PARTS = {
   mistDust: { name: 'ผงหมอก', icon: '✨', kind: 'essence', value: 18 },
   wick: { name: 'ไส้ตะเกียงวิญญาณ', icon: '🕯', kind: 'essence', value: 20 },
   silk: { name: 'ไหมแสงจันทร์', icon: '🧵', kind: 'hide', value: 18 },
+  claw: { name: 'กรงเล็บตุ่น', icon: '🦴', kind: 'gem', value: 6 },
+  mask: { name: 'หน้ากากใบไม้', icon: '🍃', kind: 'hide', value: 14 },
+  scale: { name: 'เกล็ดกิ้งก่าแดง', icon: '🔶', kind: 'hide', value: 26 },
+  feather: { name: 'ขนฮาร์ปี้', icon: '🪶', kind: 'hide', value: 28 },
+  ember: { name: 'ถ่านไฟนิรันดร์', icon: '🔥', kind: 'essence', value: 30 },
+  drakeScale: { name: 'เกล็ดมังกรหิน', icon: '🛡', kind: 'gem', value: 40 },
+  magma: { name: 'แกนแมกมา', icon: '🌋', kind: 'essence', value: 44 },
+  stormPlume: { name: 'ขนนกฟ้าคำราม', icon: '⚡', kind: 'hide', value: 42 },
 };
-export const MONSTER_PART = { leafSlime: 'jelly', hornHare: 'horn', fuzzBee: 'honey', thornling: 'fiber', mushHopper: 'spore', acornBeetle: 'shell', mossWolf: 'pelt', pebbleCrab: 'carapace', crystalBat: 'crystal', marbleGolem: 'core', mistWisp: 'mistDust', lanternGhost: 'wick', glowMoth: 'silk', hollowKeeper: 'core', bellGuardian: 'crystal', heartGuardian: 'silk' };
+export const MONSTER_PART = { leafSlime: 'jelly', hornHare: 'horn', fuzzBee: 'honey', thornling: 'fiber', mushHopper: 'spore', acornBeetle: 'shell', mossWolf: 'pelt', pebbleCrab: 'carapace', crystalBat: 'crystal', marbleGolem: 'core', mistWisp: 'mistDust', lanternGhost: 'wick', glowMoth: 'silk', hollowKeeper: 'core', bellGuardian: 'crystal', heartGuardian: 'silk', waterSlime: 'jelly', pondFrog: 'jelly', fluffBoar: 'pelt', bindingRoots: 'fiber', fieldMole: 'claw', cropGoblin: 'claw', roadBandit: 'mask', dustLizard: 'scale', cliffHarpy: 'feather', emberImp: 'ember', stoneDrake: 'drakeScale', magmaTortoise: 'magma', stormRoc: 'stormPlume', sandWyrm: 'scale', wyvernMatriarch: 'stormPlume', emberDragon: 'magma' };
 /** One-step workshops: three parts of a kind become one good worth more than the parts. */
 export const GOODS = {
   leather: { name: 'เครื่องหนัง', icon: '👜', kind: 'hide', workshop: 'tannery' },
@@ -379,6 +442,8 @@ export const TREASURES = {
   silverBangle: { name: 'กำไลเงินเก่า', icon: '📿', value: 200, rep: 5, rank: 'E' },
   jadeIdol: { name: 'รูปปั้นหยก', icon: '🗿', value: 380, rep: 8, rank: 'D' },
   starMap: { name: 'แผนที่ดวงดาว', icon: '🗺', value: 520, rep: 10, rank: 'C' },
+  dragonEgg: { name: 'ไข่มังกรฟอสซิล', icon: '🥚', value: 900, rep: 18, rank: 'B' },
+  emberCrown: { name: 'มงกุฎเพลิงราชันมังกร', icon: '🔱', value: 2400, rep: 40, boss: true, quest: 'dragon' },
   rustCrown: { name: 'มงกุฎสนิมเขียว', icon: '👑', value: 650, rep: 14, boss: true },
 };
 export const BUY_RATES = {
@@ -394,4 +459,18 @@ export const TRADE_RULES = {
   townDemand: 3, townDemandPerLevel: 2,
   caravanTime: 360, caravanCapacity: 30, caravanPerLevel: 15, caravanMarkup: 1.35, contractBonus: 0.5, caravanRisk: 0.18, caravanLoss: 0.35, escortCost: 60,
   displaySlots: 6, displayTip: 0.02, auctionLots: 4,
+};
+
+// ---- Festivals: the guild master throws them, sets the prizes, and the whole village comes out. ----
+/** building: the village building a festival needs. Prizes are set by the guild master: gold and one item. */
+export const FESTIVALS = {
+  tournament: { name: 'งานประลองยุทธ', icon: '⚔', building: 'arena', level: 1, prep: 30, length: 72, cooldown: 480, minGold: 100, maxGold: 5000,
+    description: 'การแข่งขันแพ้คัดออก 8 คน สมาชิกกิลด์ นักผจญภัยอิสระ และคนดังต่างเมืองลงชิงรางวัล ยิ่งรางวัลสูง คนเก่งยิ่งมาแข่ง',
+    effect: 'ชื่อเสียง · ผู้ชมจ่ายค่าเข้า · คนดังที่มาแข่งอาจขอเข้ากิลด์' },
+  harvest: { name: 'เทศกาลเก็บเกี่ยว', icon: '🌾', building: 'fairground', level: 1, prep: 25, length: 60, cooldown: 480, minGold: 80, maxGold: 3000,
+    description: 'ชาวบ้านตั้งแผงขายของ ประกวดผลผลิต งบที่กิลด์ลงทุนกลายเป็นความรุ่งเรืองของหมู่บ้าน รางวัลมอบให้ไร่ที่ชนะการประกวด',
+    effect: 'ความรุ่งเรืองหมู่บ้าน · ร้านค้าขายดี · ครอบครัวใหม่สนใจย้ายมา' },
+  lantern: { name: 'เทศกาลโคมลอย', icon: '🏮', building: 'stage', level: 1, prep: 25, length: 60, cooldown: 600, minGold: 120, maxGold: 4000,
+    description: 'ดนตรีบนเวที และปล่อยโคมลอยพร้อมกันตอนจบ สมาชิกได้พักใจ ผูกพันกันมากขึ้น และนักผจญภัยจากต่างเมืองแวะมา',
+    effect: 'ขวัญและความสัมพันธ์สมาชิก · นักผจญภัยอิสระมาเพิ่ม · ผู้สมัคร' },
 };

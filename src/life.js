@@ -1,7 +1,7 @@
 /* The living world: adventurers (guild members and free adventurers) walk out to hunting grounds,
    fight monsters in real time, carry fallen friends home, and sell their loot in the village.
    Pure simulation: game.js calls tickLife with a small context of its own helpers. */
-import { siteQuestRoute, SITE_QUEST_SITES } from './site.js';
+import { siteQuestRoute, SITE_QUEST_SITES, FRONTIER_CAMP } from './site.js';
 import { HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES, JOB_COMBAT } from './content.js';
 
 const SUB = 0.25;          // seconds per combat step
@@ -38,7 +38,7 @@ function stockZones(state, ctx, step) {
   const w = state.world;
   for (const [zoneId, zone] of Object.entries(HUNT_ZONES)) {
     if (!ctx.zoneOpen(zone)) continue;
-    const living = w.monsters.filter(m => m.zone === zoneId && !m.raid && !m.boss);
+    const living = w.monsters.filter(m => m.zone === zoneId && !m.raid && !m.boss && !m.elite);
     for (const m of living) if (m.dead) { m.respawn -= step; if (m.respawn <= 0) { const p = pointIn(w, zone); Object.assign(m, { dead: false, hp: m.maxHp, x: p.x, y: p.y, hx: p.x, hy: p.y, target: null }); } }
     for (let i = living.length; i < zone.count; i++) w.monsters.push(spawnMonster(w, pick(w, zone.species), zoneId, pointIn(w, zone)));
   }
@@ -49,7 +49,7 @@ export function spawnMonster(w, species, zone, p, extra = {}) {
 }
 
 // ---- Free adventurers: they live at the inn, hunt on their own and spend in the village. ----
-export function freeLevelRank(level) { return level >= 9 ? 'C' : level >= 6 ? 'D' : level >= 3 ? 'E' : 'F'; }
+export function freeLevelRank(level) { return level >= 13 ? 'B' : level >= 9 ? 'C' : level >= 6 ? 'D' : level >= 3 ? 'E' : 'F'; }
 function newFree(state, ctx) {
   const w = state.world, used = new Set([...state.members.map(m => m.name), ...w.free.map(f => f.name)]);
   const names = ROOKIE_NAMES.filter(n => !used.has(n));
@@ -94,7 +94,7 @@ function makeHunter(state, ctx, who, kind, zoneId, party, start) {
     bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 7 + Math.floor(rand(w) * 4) };
 }
 export function freeStats(f) {
-  const job = JOBS[f.class], power = (job.power + (f.level - 1) * 2.7 + 4) * ({ F: 1, E: 1.04, D: 1.08, C: 1.13 }[f.rank] || 1);
+  const job = JOBS[f.class], power = (job.power + (f.level - 1) * 2.7 + 4) * ({ F: 1, E: 1.04, D: 1.08, C: 1.13, B: 1.19 }[f.rank] || 1);
   return { basePower: Math.round(power), health: Math.round(job.health + (f.level - 1) * 8), role: job.role };
 }
 function departures(state, ctx) {
@@ -136,7 +136,9 @@ function startReturn(state, ctx, partyId) {
   for (const h of state.world.hunters) if (h.party === partyId && ['go', 'hunt'].includes(h.mode)) { h.mode = 'return'; h.target = null; h.path = homeRoute(h, ctx); }
 }
 function hitMonster(state, ctx, h, m, dmg, kind) {
-  m.hp -= dmg; m.target ??= h.id;
+  if (m.under > 0 || m.dead) return;
+  if (statsOf(m.species).trait === 'armor') dmg *= .7;
+  m.hp -= dmg; m.target ??= h.id; m.calm = 0;
   emit({ type: 'hit', id: m.id, from: h.id, x: m.x, y: m.y, fx: h.x, fy: h.y, amount: Math.round(dmg), kind, crit: dmg > h.power * .6 });
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(state.world) * 20; state.world.kills++;
@@ -150,7 +152,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   const part = MONSTER_PART[m.species];
   if (part && rand(state.world) < TRADE_RULES.partChance) { h.bag.parts ??= {}; h.bag.parts[part] = (h.bag.parts[part] || 0) + (s.boss ? 5 : 1); }
   const zoneRank = rankIdx(HUNT_ZONES[m.zone]?.rank || 'F');
-  if (s.boss || rand(state.world) < TRADE_RULES.treasureChance * (1 + zoneRank * 0.5)) {
+  if (s.boss || m.elite || rand(state.world) < TRADE_RULES.treasureChance * (1 + zoneRank * 0.5)) {
     const pool = Object.entries(TREASURES).filter(([, t]) => !t.boss && rankIdx(t.rank) <= zoneRank).map(([id]) => id);
     h.bag.treasures ??= [];
     if (s.boss) h.bag.treasures.push('rustCrown');
@@ -163,7 +165,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
     if (o.kind === 'member') { ctx.addXp(who, share); const gap = rankIdx(HUNT_ZONES[o.zone]?.rank || 'F') - rankIdx(who.rank); o.bag.merit += gap >= 1 ? 2 : gap === 0 ? 1 : .3; }
     else freeXp(ctx, who, share);
   }
-  if (m.raid || m.boss) ctx.onSpecialKill?.(m, h);
+  if (m.raid || m.boss || m.elite) ctx.onSpecialKill?.(m, h);
 }
 function freeXp(ctx, f, amount) {
   f.xp += amount;
@@ -224,7 +226,7 @@ function fight(state, ctx, h, dt) {
     m = near.filter(x => taken(x.id) < 2).sort((a, b) => dist(h, a) - dist(h, b))[0];
     h.target = m?.id || null;
   }
-  if (!m) { if (h.mode === 'defend') return; if (h.mission) { const site = state.missions?.find(x => x.id === h.mission)?.rt?.site; if (site && dist(h, site) > 1.6) moveTo(h, { x: site.x - .6, y: site.y }, WALK, dt); return; } if (!h.wander || dist(h, h.wander) < .2) h.wander = pointIn(w, HUNT_ZONES[h.zone] || { x: h.x, y: h.y, r: 2 }, .7); moveTo(h, h.wander, WALK * .6, dt); return; }
+  if (!m) { if (h.mode === 'defend') return; if (h.mission) { missionIdle(state, h, dt); return; } if (!h.wander || dist(h, h.wander) < .2) h.wander = pointIn(w, HUNT_ZONES[h.zone] || { x: h.x, y: h.y, r: 2 }, .7); moveTo(h, h.wander, WALK * .6, dt); return; }
   if (dist(h, m) > cc.reach) { moveTo(h, { x: m.x + (h.x > m.x ? .4 : -.4), y: m.y }, WALK, dt); return; }
   if (h.skillCd <= 0 && !support) {
     h.skillCd = cc.cd;
@@ -238,35 +240,84 @@ function fight(state, ctx, h, dt) {
     hitMonster(state, ctx, h, m, dmg, cc.attack);
   }
 }
+/** Where a quest raider is headed when nobody is in its way: the wagon or a spot in the field. */
+function goalOf(state, m) {
+  const rt = missionOf(state, m.quest)?.rt; if (!rt) return null;
+  if (m.goal === 'wagon' && rt.wagon && rt.stage === 'escort') return { x: rt.wagon.x, y: rt.wagon.y, wagon: rt.wagon };
+  if (m.goal === 'field' && rt.field) { m.spot ??= { x: rt.field.x + (rand(state.world) - .5) * rt.field.r * 1.4, y: rt.field.y + (rand(state.world) - .5) * rt.field.r }; return m.spot; }
+  return null;
+}
+function strike(state, ctx, m, t, dmg, kind) {
+  const hero = state.hero;
+  dmg *= (.85 + rand(state.world) * .3) * (t.guard > 0 ? .6 : 1);
+  if (t === hero) { heroHurt(state, ctx, m, dmg); return; }
+  t.hp -= dmg; emit({ type: 'hurt', id: t.id, by: m.id, x: t.x, y: t.y, amount: Math.round(dmg), kind });
+  if (t.hp <= 0) knockOut(state, ctx, t);
+}
 function monsterAct(state, ctx, m, dt) {
-  const w = state.world, s = statsOf(m.species);
+  const w = state.world, s = statsOf(m.species), trait = s.trait;
   if (m.slow > 0) { m.slow -= dt; dt *= .5; }
+  m.calm = (m.calm || 0) + dt; m.dashCd = (m.dashCd || 4) - dt; m.skillCd = (m.skillCd ?? 5) - dt;
+  // Burrowers vanish under the sand, then burst up beside someone.
+  if (m.under > 0) {
+    m.under -= dt;
+    if (m.under <= 0) { const v = w.hunters.filter(h => h.mission === m.quest && ['hunt', 'go'].includes(h.mode)); const t = v[Math.floor(rand(w) * v.length)]; if (t) { m.x = t.x + .6; m.y = t.y; } emit({ type: 'erupt', id: m.id, x: m.x, y: m.y });
+      for (const h of v) if (dist(h, m) < 1.6) strike(state, ctx, m, h, (m.atk || s.atk) * 1.2, 'erupt'); }
+    return;
+  }
+  if (trait === 'regen' && m.calm > 3) m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .015 * dt);
   // Quest parties only meet their own quest's foes; wild monsters leave them be.
   const targets = w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
   const hero = state.hero;
   if (hero?.active && !(hero.down > 0)) targets.push(hero);
+  const goal = m.quest ? goalOf(state, m) : null;
   let t = targets.find(h => h.id === m.target);
-  if (!t || dist(t, m) > LEASH || (!m.raid && Math.hypot(m.x - m.hx, m.y - m.hy) > LEASH)) {
+  if (!t || dist(t, m) > LEASH || (!m.raid && !m.quest && Math.hypot(m.x - m.hx, m.y - m.hy) > LEASH)) {
     const guards = targets.filter(h => h.guard > 0 && dist(h, m) < 4);
     // Monsters gang up on one adventurer only so far; the rest keep their distance.
     const crowd = id => w.monsters.filter(o => o !== m && !o.dead && o.target === id).length;
-    t = guards[0] || targets.filter(h => dist(h, m) < AGGRO && (m.boss || m.raid || crowd(h.id) < CROWD)).sort((a, b) => dist(a, m) - dist(b, m))[0] || null;
+    const aggro = goal && trait === 'thief' ? 1.4 : AGGRO;
+    const pool = targets.filter(h => dist(h, m) < (trait === 'dive' ? 5 : aggro) && (m.boss || m.raid || m.quest || crowd(h.id) < CROWD));
+    t = guards[0] || (trait === 'dive' ? pool.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0] : pool.sort((a, b) => dist(a, m) - dist(b, m))[0]) || null;
     m.target = t?.id || null;
   }
+  m.fighting = Boolean(t);
   if (!t) {
+    if (goal) {
+      // Raiders go for the wagon or the crops, and set about them when they get there.
+      const reach = goal.wagon ? 1.1 : .2;
+      if (dist(m, goal) > reach) { moveTo(m, goal, Math.max(.6, s.speed || .6), dt); return; }
+      m.cd -= dt; if (m.cd > 0) return; m.cd = s.rate;
+      if (goal.wagon) { goal.wagon.hp -= (m.atk || s.atk) * (.85 + rand(w) * .3); emit({ type: 'hurt', id: 'wagon', by: m.id, x: goal.wagon.x, y: goal.wagon.y, amount: Math.round(m.atk || s.atk), wagon: true }); }
+      else emit({ type: 'munch', id: m.id, x: m.x, y: m.y });
+      return;
+    }
     if (m.raid) { moveTo(m, ctx.door(), s.speed || .6, dt); if (dist(m, ctx.door()) < 1.2) ctx.onRaidReach?.(m); return; }
     if (!s.speed) return;
     if ((m.wait -= dt) <= 0 && Math.hypot(m.tx - m.x, m.ty - m.y) < .1) { const a = rand(w) * Math.PI * 2, d = rand(w) * 2.5; m.tx = m.hx + Math.cos(a) * d; m.ty = m.hy + Math.sin(a) * d * .8; m.wait = 2 + rand(w) * 5; }
     moveTo(m, { x: m.tx, y: m.ty }, s.speed * .5, dt); m.hp = Math.min(m.maxHp, m.hp + m.maxHp * (m.boss ? .002 : .02) * dt); return;
   }
-  if (dist(t, m) > s.reach) { if (s.speed) moveTo(m, t, s.speed, dt); return; }
+  const atk = m.atk || s.atk, d = dist(t, m);
+  // Signature moves first: a charge from range, a burrow, a fire breath.
+  if (trait === 'charge' && m.dashCd <= 0 && d > 1.4 && d < 4.5) { m.dashCd = 6; emit({ type: 'charge', id: m.id, x: m.x, y: m.y, tx: t.x, ty: t.y }); m.x = t.x + (m.x > t.x ? .7 : -.7); m.y = t.y; strike(state, ctx, m, t, atk * 1.5, 'charge'); m.cd = s.rate; return; }
+  if (trait === 'burrow' && m.skillCd <= 0) { m.skillCd = 9; m.under = 1.8; m.target = null; emit({ type: 'burrow', id: m.id, x: m.x, y: m.y }); return; }
+  if (trait === 'breath' && m.skillCd <= 0 && d < 4) {
+    m.skillCd = 8; emit({ type: 'breath', id: m.id, x: m.x, y: m.y, tx: t.x, ty: t.y });
+    for (const h of targets) if (dist(h, t) < 2.4) strike(state, ctx, m, h, atk * 1.1, 'fire');
+    return;
+  }
+  if (trait === 'summon' && m.questBoss && (m.summoned || 0) < 2 && m.hp < m.maxHp * (m.summoned ? .34 : .67)) {
+    m.summoned = (m.summoned || 0) + 1; emit({ type: 'summon', id: m.id, x: m.x, y: m.y });
+    for (const [i, sp] of (s.adds || ['leafSlime']).entries()) { const a = spawnMonster(w, sp, m.zone, { x: m.x + (i ? .9 : -.9), y: m.y + .7 }, { quest: m.quest, hp: Math.round(m.maxHp * .07), maxHp: Math.round(m.maxHp * .07), atk: Math.round(atk * .45 * 10) / 10 }); w.monsters.push(a); }
+  }
+  if (d > s.reach) { if (s.speed) moveTo(m, t, s.speed * (trait === 'swarm' ? 1.2 : 1), dt); return; }
   m.cd -= dt;
   if (m.cd > 0) return;
   m.cd = s.rate;
-  const dmg = (m.atk || s.atk) * (.85 + rand(w) * .3) * (t.guard > 0 ? .6 : 1);
-  if (t === hero) { heroHurt(state, ctx, m, dmg); return; }
-  t.hp -= dmg; emit({ type: 'hurt', id: t.id, by: m.id, x: t.x, y: t.y, amount: Math.round(dmg) });
-  if (t.hp <= 0) knockOut(state, ctx, t);
+  m.hits = (m.hits || 0) + 1;
+  if (trait === 'ranged') emit({ type: 'spit', id: m.id, x: m.x, y: m.y, tx: t.x, ty: t.y, species: m.species });
+  if (trait === 'slam' && m.hits % 3 === 0) { emit({ type: 'slam', id: m.id, x: t.x, y: t.y }); for (const h of targets) if (h !== t && dist(h, t) < 1.7) strike(state, ctx, m, h, atk * .8, 'slam'); }
+  strike(state, ctx, m, t, atk, trait === 'ranged' ? 'spit' : 'bite');
 }
 function knockOut(state, ctx, h) {
   const w = state.world;
@@ -378,7 +429,7 @@ export function tickLife(state, ctx, step) {
     tickHero(state, ctx, dt);
     tickExpeditions(state, ctx, dt);
     for (const m of w.monsters) if (!m.dead) monsterAct(state, ctx, m, dt);
-    w.monsters = w.monsters.filter(m => !(m.dead && (m.raid || m.boss || m.swarm || m.quest)));
+    w.monsters = w.monsters.filter(m => !(m.dead && (m.raid || m.boss || m.swarm || m.quest || m.elite)));
     arrangeCarry(state, ctx);
     tickPorters(state, ctx, dt);
   }
@@ -493,66 +544,178 @@ export function sanitizeHero(data) {
   return h;
 }
 
-// ---- Quests in real time: the party walks to the quest site, fights its waves and the boss there, and walks home. ----
-const REGION_FOES = { meadow: ['leafSlime', 'hornHare', 'thornling', 'fuzzBee'], ruins: ['pebbleCrab', 'crystalBat', 'acornBeetle', 'mossWolf'], mist: ['mistWisp', 'lanternGhost', 'glowMoth'] };
-export const EXPEDITION = { waves: [0.25, 0.3, 0.45], hpPerDifficulty: 5.4, atkPerDifficulty: 0.17, eventWait: 30 };
+// ---- Quests in real time: every job plays out on the map the way the villager described it. ----
+// explore: walk to the site, beat its waves and the boss.   patrol: fight through checkpoints along the trail.
+// escort: the wagon really rolls, and stops when ambushed.  defend: raiders are already eating the field when the party arrives.
+// gather: members harvest nodes while waves interrupt.      rescue: clear the camp, then walk the survivors home.
+const REGION_FOES = { meadow: ['leafSlime', 'hornHare', 'thornling', 'fuzzBee'], ruins: ['pebbleCrab', 'crystalBat', 'acornBeetle', 'mossWolf'], mist: ['mistWisp', 'lanternGhost', 'glowMoth'],
+  canyon: ['dustLizard', 'cliffHarpy', 'emberImp'], peak: ['stoneDrake', 'stormRoc', 'magmaTortoise'] };
+export const QUEST_FOES = {
+  patrol: ['leafSlime', 'hornHare'], herbs: ['thornling', 'fuzzBee'], escort: ['fluffBoar', 'hornHare'], farmraid: ['fieldMole', 'cropGoblin'], pasture: ['mossWolf'],
+  bandits: ['roadBandit', 'mossWolf'], crystals: ['pebbleCrab', 'crystalBat'], hollow: ['mushHopper', 'acornBeetle'], ruins: ['pebbleCrab', 'crystalBat', 'marbleGolem'],
+  mistpath: ['mistWisp', 'glowMoth'], rescue: ['bindingRoots', 'lanternGhost'], heart: ['glowMoth', 'lanternGhost', 'mistWisp'],
+  canyonroad: ['dustLizard', 'cliffHarpy'], harpy: ['cliffHarpy'], emberdig: ['emberImp', 'dustLizard'], wyrm: ['dustLizard', 'emberImp'],
+  drakes: ['stoneDrake', 'magmaTortoise'], matriarch: ['stormRoc', 'stoneDrake'], dragon: ['magmaTortoise', 'stoneDrake', 'stormRoc'],
+};
+export const QUEST_BOSS = { patrol: 'hornHare', herbs: 'thornling', escort: 'fluffBoar', hollow: 'hollowKeeper', crystals: 'marbleGolem', ruins: 'bellGuardian', mistpath: 'mistWisp', rescue: 'bindingRoots', heart: 'heartGuardian',
+  farmraid: 'cropGoblin', pasture: 'mossWolf', bandits: 'roadBandit', canyonroad: 'dustLizard', harpy: 'cliffHarpy', emberdig: 'emberImp', wyrm: 'sandWyrm', drakes: 'magmaTortoise', matriarch: 'wyvernMatriarch', dragon: 'emberDragon' };
+/** Fields the raiders go for: crops in the wheat field, sheep in the pasture. */
+export const DEFEND_FIELDS = { farmraid: { x: -24.5, y: 12.7, r: 2.4, kind: 'crops', name: 'ไร่ข้าวสาลี' }, pasture: { x: -21, y: 29, r: 3, kind: 'flock', name: 'ฝูงแกะ' } };
+export const EXPEDITION = { waves: [0.25, 0.3, 0.45], hpPerDifficulty: 5.4, atkPerDifficulty: 0.17, eventWait: 30, wagonSpeed: .85, gatherTime: 7, defendGap: 22 };
+export const CAMP_AT = FRONTIER_CAMP;
+const scenarioOf = quest => quest?.scenario || 'explore';
+const missionOf = (state, id) => state.missions?.find(x => x.id === id);
 /** Send the party out: each member becomes a walker on the world map heading for the quest's site. */
 export function startExpedition(state, ctx, mission, quest) {
   const w = state.world, door = ctx.door(), route = siteQuestRoute(door, quest), via = route.slice(1, -1).map(p => [p.x, p.y]), site = SITE_QUEST_SITES[quest.id] || route[route.length - 1];
-  mission.rt = { stage: 'go', wave: 0, waves: EXPEDITION.waves.length, site: { x: site.x, y: site.y }, clock: 0, foes: [], back: {} };
+  const kind = scenarioOf(quest);
+  const rt = mission.rt = { kind, stage: 'go', wave: 0, waves: EXPEDITION.waves.length, site: { x: site.x, y: site.y }, at: { x: site.x, y: site.y }, clock: 0, foes: [], back: {} };
+  if (kind === 'patrol') {
+    // Two checkpoints on the way out, then the site itself.
+    const pick = f => route[Math.max(1, Math.min(route.length - 2, Math.round((route.length - 1) * f)))];
+    rt.points = [pick(.45), pick(.75), site].map(p => ({ x: p.x, y: p.y })); rt.leg = 0; rt.at = { ...rt.points[0] };
+  }
+  if (kind === 'escort') {
+    const hp = Math.round(120 + quest.difficulty * 3);
+    rt.wagon = { x: door.x, y: door.y + .6, hp, maxHp: hp, path: route.slice(1).map(p => ({ x: p.x, y: p.y })), total: 0, done: 0, moving: false };
+    for (let i = 1; i < route.length; i++) rt.wagon.total += dist(route[i - 1], route[i]);
+    // Ambushes wait until the wagon has left the village behind, then spread over the rest of the road.
+    const out = Math.min(.5, 20 / Math.max(1, rt.wagon.total));
+    rt.ambush = [.25, .6, .92].map(f => out + (1 - out) * f); rt.stage = 'escort';
+  }
+  if (kind === 'defend') {
+    const field = DEFEND_FIELDS[quest.id] || { x: site.x, y: site.y - 2.5, r: 2.4, kind: 'crops', name: 'ไร่' };
+    rt.field = { ...field }; rt.crops = 100; rt.at = { x: field.x, y: field.y }; rt.nextWave = EXPEDITION.defendGap;
+    spawnWave(state, mission, quest);
+  }
+  if (kind === 'gather') {
+    rt.nodes = Array.from({ length: 4 }, (_, i) => { const a = i / 4 * Math.PI * 2 + .4; return { x: site.x + Math.cos(a) * 1.8, y: site.y + Math.sin(a) * 1.3, progress: 0 }; });
+  }
   for (const id of mission.memberIds) {
     const member = state.members.find(m => m.id === id); if (!member) continue;
-    const st = ctx.stats(member), spot = { x: site.x - 1.2 + rand(w) * 1.2, y: site.y + (rand(w) - .5) * 1.4 };
+    const st = ctx.stats(member), first = rt.points?.[0] || site, spot = { x: first.x - 1.2 + rand(w) * 1.2, y: first.y + (rand(w) - .5) * 1.4 };
+    const legVia = kind === 'patrol' ? route.slice(1, route.indexOf(route.find(p => p.x === first.x && p.y === first.y)) + 0).map(p => ({ x: p.x, y: p.y })) : via.map(([x, y]) => ({ x, y }));
     w.hunters = w.hunters.filter(h => h.id !== id);
-    w.hunters.push({ id, kind: 'member', zone: 'q:' + mission.id, party: mission.id, mission: mission.id, via, mode: 'go', x: door.x + (rand(w) - .5) * .4, y: door.y + (rand(w) - .5) * .4,
-      path: [...via.map(([x, y]) => ({ x, y })), spot], hp: st.health, maxHp: st.health, power: st.basePower, cls: rootOf(member.class), job: member.class, atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
+    w.hunters.push({ id, kind: 'member', zone: 'q:' + mission.id, party: mission.id, mission: mission.id, via, mode: kind === 'escort' ? 'hunt' : 'go', x: door.x + (rand(w) - .5) * .4, y: door.y + (rand(w) - .5) * .4,
+      path: kind === 'escort' ? [] : [...legVia, spot], hp: st.health, maxHp: st.health, power: st.basePower, cls: rootOf(member.class), job: member.class, atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
       bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 999 });
   }
 }
+/** A wave of the quest's foes around `at` (the site, a checkpoint, the wagon or the field). */
 function spawnWave(state, mission, quest) {
-  const w = state.world, rt = mission.rt, last = rt.wave === rt.waves - 1, pool = REGION_FOES[quest.region] || REGION_FOES.meadow;
-  const share = EXPEDITION.waves[rt.wave], total = quest.difficulty * EXPEDITION.hpPerDifficulty * share, atk = quest.difficulty * EXPEDITION.atkPerDifficulty;
-  const foes = last ? [{ species: QUEST_BOSS[quest.id] || pool[0], hp: total * 0.75, boss: true }, { species: pool[1 % pool.length], hp: total * 0.25 }]
-    : Array.from({ length: rt.wave + 2 }, (_, i) => ({ species: pool[(rt.wave + i) % pool.length], hp: total / (rt.wave + 2) }));
+  const w = state.world, rt = mission.rt, last = rt.wave === rt.waves - 1, pool = QUEST_FOES[quest.id] || REGION_FOES[quest.region] || REGION_FOES.meadow;
+  const big = mission.memberIds.length > 3 ? mission.memberIds.length / 3 : 1;
+  const share = EXPEDITION.waves[rt.wave], total = quest.difficulty * EXPEDITION.hpPerDifficulty * share, atk = quest.difficulty * EXPEDITION.atkPerDifficulty / Math.sqrt(big);
+  const count = Math.round((rt.wave + 2) * Math.min(1.6, big));
+  const foes = last ? [{ species: QUEST_BOSS[quest.id] || pool[0], hp: total * 0.75, boss: true }, ...Array.from({ length: Math.max(1, count - 2) }, (_, i) => ({ species: pool[(i + 1) % pool.length], hp: total * 0.25 / Math.max(1, count - 2) }))]
+    : Array.from({ length: count }, (_, i) => ({ species: pool[(rt.wave + i) % pool.length], hp: total / count }));
+  let at = rt.at, goal = null;
+  if (rt.kind === 'escort') { const wg = rt.wagon, ahead = wg.path[0] || wg, dx = ahead.x - wg.x, dy = ahead.y - wg.y, d = Math.hypot(dx, dy) || 1; at = { x: wg.x + dx / d * 3.2, y: wg.y + dy / d * 3.2 }; goal = 'wagon'; }
+  if (rt.kind === 'defend') { const f = rt.field; at = { x: f.x - f.r - 1.6, y: f.y - f.r * .6 }; goal = 'field'; }
   rt.foes = [];
   foes.forEach((f, i) => {
-    const p = { x: rt.site.x + 1.6 + (i % 2) * 0.9, y: rt.site.y - 0.8 + i * 0.9 };
-    const m = spawnMonster(w, f.species, 'q:' + mission.id, p, { quest: mission.id, hp: Math.round(f.hp), maxHp: Math.round(f.hp), atk: Math.round(atk * (f.boss ? 1.6 : 1) * 10) / 10, questBoss: Boolean(f.boss) });
+    const a = i / foes.length * Math.PI * 1.4 - .7, p = { x: at.x + 1.6 * Math.cos(a) + (rt.kind === 'explore' || rt.kind === 'patrol' ? 1.2 : 0), y: at.y + 1.1 * Math.sin(a) };
+    const m = spawnMonster(w, f.species, 'q:' + mission.id, p, { quest: mission.id, hp: Math.round(f.hp), maxHp: Math.round(f.hp), atk: Math.round(atk * (f.boss ? 1.6 : 1) * 10) / 10, questBoss: Boolean(f.boss), goal });
     w.monsters.push(m); rt.foes.push(m.id);
   });
-  emit({ type: last ? 'questBoss' : 'questWave', id: mission.id, x: rt.site.x, y: rt.site.y, wave: rt.wave + 1 });
+  emit({ type: last ? 'questBoss' : 'questWave', id: mission.id, x: at.x, y: at.y, wave: rt.wave + 1, scenario: rt.kind });
 }
-export const QUEST_BOSS = { patrol: 'leafSlime', herbs: 'thornling', escort: 'mossWolf', hollow: 'hollowKeeper', crystals: 'marbleGolem', ruins: 'bellGuardian', mistpath: 'mistWisp', rescue: 'lanternGhost', heart: 'heartGuardian' };
+/** What a quest member does when nothing is attacking: follow the wagon, guard the field, gather, or hold the site. */
+function missionIdle(state, h, dt) {
+  const ms = missionOf(state, h.mission), rt = ms?.rt; if (!rt) return;
+  const slot = (parseInt(String(h.id).replace(/\D/g, ''), 10) || 0) % 4, off = [[-.9, -.5], [.9, -.5], [-.9, .6], [.9, .6]][slot];
+  if (rt.kind === 'escort' && rt.wagon) { const p = { x: rt.wagon.x + off[0], y: rt.wagon.y + off[1] }; if (dist(h, p) > .25) moveTo(h, p, WALK * 1.1, dt); return; }
+  if (rt.kind === 'gather' && rt.stage === 'gather') {
+    const node = rt.nodes.filter(n => n.progress < 1).sort((a, b) => dist(a, h) - dist(b, h))[0];
+    if (node) { if (dist(h, node) > .55) moveTo(h, node, WALK, dt); else { node.progress = Math.min(1, node.progress + dt / EXPEDITION.gatherTime); h.gatherCd = (h.gatherCd || 0) - dt; if (h.gatherCd <= 0) { h.gatherCd = 1.1; emit({ type: 'gather', id: h.id, x: node.x, y: node.y, done: node.progress >= 1 }); } } return; }
+  }
+  if (rt.kind === 'defend' && rt.field) { const p = { x: rt.field.x + off[0] * 1.6, y: rt.field.y + off[1] * 1.6 }; if (dist(h, p) > .3) moveTo(h, p, WALK, dt); return; }
+  const site = rt.at || rt.site; if (site && dist(h, site) > 1.6) moveTo(h, { x: site.x - .6, y: site.y }, WALK, dt);
+}
+/** Send the standing members on to the next checkpoint of a patrol. */
+function nextLeg(state, mission) {
+  const rt = mission.rt, w = state.world, to = rt.points[rt.leg];
+  rt.at = { ...to };
+  for (const h of w.hunters.filter(o => o.party === mission.id && o.mode === 'hunt')) { h.mode = 'go'; h.target = null; h.path = [{ x: to.x - 1 + rand(w), y: to.y + (rand(w) - .5) * 1.2 }]; }
+}
 function tickExpeditions(state, ctx, dt) {
   const w = state.world;
   for (const mission of state.missions || []) {
     const rt = mission.rt; if (!rt || mission.status !== 'active' || rt.stage === 'done') continue;
+    rt.kind ??= 'explore';
     const quest = ctx.quest(mission.questId), party = w.hunters.filter(h => h.party === mission.id), standing = party.filter(h => !['down', 'carried'].includes(h.mode));
     rt.clock += dt;
     const foesLeft = w.monsters.filter(m => m.quest === mission.id && !m.dead);
+    const fail = text => { rt.stage = 'return'; rt.won = false; w.monsters = w.monsters.filter(m => m.quest !== mission.id); startReturn(state, ctx, mission.id); if (text) ctx.log(text, 'warning'); };
+    const clearWave = () => {
+      rt.wave += 1;
+      if (rt.wave >= rt.waves) { rt.stage = 'return'; rt.won = true; startReturn(state, ctx, mission.id); emit({ type: 'questClear', id: mission.id, x: rt.at.x, y: rt.at.y });
+        if (rt.kind === 'rescue') rt.npcs = [0, 1].map(i => ({ x: rt.site.x + .6 * i, y: rt.site.y + .4, follow: standing[i % Math.max(1, standing.length)]?.id || null })); return true; }
+      return false;
+    };
     if (rt.stage !== 'return' && !standing.length) {
       // Everyone is down: the foes wander off and the porters bring the party home.
       rt.stage = 'return'; rt.won = false; w.monsters = w.monsters.filter(m => m.quest !== mission.id);
       ctx.log(`ทีม${quest.name}ล้มหมดทั้งทีม! คนแบกเปลออกไปรับกลับบ้าน`, 'warning');
+    } else if (rt.kind === 'escort') {
+      const wg = rt.wagon;
+      if (rt.stage === 'escort') {
+        if (wg.hp <= 0) fail(`เกวียนของ${quest.name}พังกลางทาง! ทีมต้องถอยกลับ`);
+        else {
+          const progress = wg.done / Math.max(1, wg.total), arrived = !wg.path.length;
+          if (!foesLeft.length) {
+            if (rt.ambushed) { rt.ambushed = false; rt.wave += 1; }
+            else if (rt.wave < rt.waves && (progress >= rt.ambush[rt.wave] || arrived)) { rt.ambushed = true; spawnWave(state, mission, quest); }
+            else if (arrived) { rt.stage = 'return'; rt.won = true; rt.at = { x: wg.x, y: wg.y }; emit({ type: 'questClear', id: mission.id, x: wg.x, y: wg.y }); startReturn(state, ctx, mission.id); }
+          }
+          wg.moving = !rt.ambushed && !arrived && rt.stage === 'escort' && standing.every(h => dist(h, wg) < 4.2);
+          if (wg.moving) { const before = { x: wg.x, y: wg.y }; walkPath(wg, EXPEDITION.wagonSpeed, dt); wg.done += dist(before, wg); }
+        }
+      }
+    } else if (rt.kind === 'defend' && rt.stage !== 'return') {
+      // Raiders standing in the field eat it; the party must chase them out before nothing is left.
+      const eating = foesLeft.filter(m => dist(m, rt.field) < rt.field.r + .4 && !m.fighting);
+      rt.crops = Math.max(0, rt.crops - eating.length * dt * (rt.field.kind === 'flock' ? .55 : .7));
+      if (rt.stage === 'go' && standing.some(h => h.mode === 'hunt')) rt.stage = 'fight';
+      rt.nextWave -= dt;
+      if (rt.crops <= 0) fail(`${rt.field.name}ถูกกินจนหมด! ทีม${quest.name}ไม่ทัน`);
+      else if (!foesLeft.length) { if (rt.wave === rt.waves - 1) clearWave(); else { rt.wave += 1; rt.nextWave = EXPEDITION.defendGap; spawnWave(state, mission, quest); } }
+      else if (rt.nextWave <= 0 && rt.wave < rt.waves - 1) { rt.wave += 1; rt.nextWave = EXPEDITION.defendGap; spawnWave(state, mission, quest); }
     } else if (rt.stage === 'go') {
-      if (standing.every(h => h.mode === 'hunt')) { rt.stage = 'fight'; spawnWave(state, mission, quest); }
+      if (standing.every(h => h.mode === 'hunt')) {
+        if (rt.kind === 'gather') { rt.stage = 'gather'; spawnWave(state, mission, quest); }
+        else { rt.stage = 'fight'; spawnWave(state, mission, quest); }
+      }
+    } else if (rt.stage === 'gather') {
+      const done = rt.nodes.reduce((sum, n) => sum + n.progress, 0) / rt.nodes.length;
+      if (!foesLeft.length) { if (rt.wave === rt.waves - 1) clearWave(); else if (done >= (rt.wave + 1) / (rt.waves - 1) - 1e-6) { rt.wave += 1; spawnWave(state, mission, quest); } }
     } else if (rt.stage === 'fight' && !foesLeft.length) {
-      rt.wave += 1;
-      if (rt.wave >= rt.waves) { rt.stage = 'return'; rt.won = true; startReturn(state, ctx, mission.id); emit({ type: 'questClear', id: mission.id, x: rt.site.x, y: rt.site.y }); }
-      else if (rt.wave === rt.waves - 1 && ctx.needsEvent(mission) && !mission.eventDone) { mission.eventDone = true; ctx.missionEvent(mission); rt.stage = 'event'; rt.eventAt = rt.clock; }
-      else spawnWave(state, mission, quest);
+      if (rt.kind === 'patrol' && rt.leg < rt.points.length - 1) {
+        rt.wave += 1; rt.leg += 1;
+        if (rt.leg === rt.points.length - 1 && ctx.needsEvent(mission) && !mission.eventDone) { mission.eventDone = true; ctx.missionEvent(mission); rt.stage = 'event'; rt.eventAt = rt.clock; rt.afterEvent = 'leg'; }
+        else { rt.stage = 'go'; nextLeg(state, mission); }
+      }
+      else if (rt.wave + 1 >= rt.waves) clearWave();
+      else if (rt.wave + 1 === rt.waves - 1 && ctx.needsEvent(mission) && !mission.eventDone) { rt.wave += 1; mission.eventDone = true; ctx.missionEvent(mission); rt.stage = 'event'; rt.eventAt = rt.clock; }
+      else { rt.wave += 1; spawnWave(state, mission, quest); }
     } else if (rt.stage === 'event' && (mission.event?.resolved || rt.clock - rt.eventAt > EXPEDITION.eventWait)) {
-      rt.stage = 'fight'; spawnWave(state, mission, quest);
+      if (rt.afterEvent === 'leg') { rt.afterEvent = null; rt.stage = 'go'; nextLeg(state, mission); }
+      else { rt.stage = 'fight'; spawnWave(state, mission, quest); }
     }
+    // The frontier camp patches up any quest party passing by.
+    if (ctx.campLevel?.() > 0) for (const h of standing) if (dist(h, CAMP_AT) < 3.2 && h.hp < h.maxHp) { h.hp = Math.min(h.maxHp, h.hp + h.maxHp * .04 * ctx.campLevel() * dt); }
+    // Rescued explorers walk home beside the friend who found them.
+    if (rt.npcs) for (const n of rt.npcs) { const f = w.hunters.find(o => o.id === n.follow) || party[0]; if (f) moveTo(n, { x: f.x - .5, y: f.y + .4 }, WALK * 1.05, dt); }
     // Progress for the guild's screens: out, each wave, then home.
-    const waveDone = rt.stage === 'fight' ? 1 - foesLeft.reduce((s, m) => s + m.hp, 0) / Math.max(1, foesLeft.reduce((s, m) => s + m.maxHp, 0)) : 0;
+    const waveDone = foesLeft.length ? 1 - foesLeft.reduce((s, m) => s + m.hp, 0) / Math.max(1, foesLeft.reduce((s, m) => s + m.maxHp, 0)) : 0;
     const out = rt.stage === 'go' ? standing.reduce((s, h) => s + (h.mode === 'hunt' ? 1 : 1 - h.path.length / Math.max(1, h.via.length + 1)), 0) / Math.max(1, standing.length) : 1;
     const back = rt.stage === 'return' ? 1 - party.length / Math.max(1, mission.memberIds.length) : 0;
-    mission.progress = mission.duration * Math.min(0.99, rt.stage === 'go' ? 0.2 * out : rt.stage === 'return' ? 0.85 + 0.14 * back : 0.2 + 0.65 * (rt.wave + waveDone) / rt.waves);
-    mission.phase = rt.stage === 'go' ? 'travel' : rt.stage === 'return' ? 'return' : 'battle';
+    const work = rt.kind === 'escort' ? rt.wagon.done / Math.max(1, rt.wagon.total) : rt.kind === 'gather' ? (rt.nodes.reduce((s, n) => s + n.progress, 0) / rt.nodes.length) * .7 + (rt.wave / rt.waves) * .3 : (rt.wave + waveDone) / rt.waves;
+    mission.progress = mission.duration * Math.min(0.99, rt.stage === 'return' ? 0.85 + 0.14 * back : rt.kind === 'escort' ? 0.05 + 0.8 * work : rt.stage === 'go' && rt.kind !== 'patrol' ? 0.2 * out : 0.2 + 0.65 * work);
+    mission.phase = rt.stage === 'return' ? 'return' : (rt.stage === 'go' && !foesLeft.length) || (rt.kind === 'escort' && rt.wagon.moving) ? 'travel' : 'battle';
     mission.combat.partyHp = Math.round(party.reduce((s, h) => s + Math.max(0, h.hp), 0)); mission.combat.partyMaxHp = Math.round(party.reduce((s, h) => s + h.maxHp, 0)) || mission.combat.partyMaxHp;
-    mission.combat.enemyHp = Math.round(foesLeft.reduce((s, m) => s + m.hp, 0)); mission.combat.enemyMaxHp = Math.round(foesLeft.reduce((s, m) => s + m.maxHp, 0)) || 1; mission.combat.wave = rt.wave + 1;
-    if (rt.stage === 'return' && !party.length) { rt.stage = 'done'; ctx.finishMission(mission, rt.won); }
+    mission.combat.enemyHp = Math.round(foesLeft.reduce((s, m) => s + m.hp, 0)); mission.combat.enemyMaxHp = Math.round(foesLeft.reduce((s, m) => s + m.maxHp, 0)) || 1; mission.combat.wave = Math.min(rt.waves, rt.wave + 1);
+    if (rt.stage === 'return' && !party.length) { rt.stage = 'done'; rt.npcs = null; ctx.finishMission(mission, rt.won); }
   }
 }
 /** Call a quest party home early (the player recalled it). */

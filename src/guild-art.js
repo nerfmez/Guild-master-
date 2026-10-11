@@ -415,3 +415,209 @@ export function makeOutdoor(type){
   else plant(c,true);
  });
 }
+// ---- Festival grounds: shared little painters for lights, flags, tents and booths. ----
+const FEST=['#d9584a','#e8b04a','#6f9ad1','#7fae5a','#b98ad1','#f08a6a'];
+/** A drooping wire from a to b ([x,y,z] each) with bulbs; frame 0/1 swaps which bulbs shine brightest. */
+function festBulbs(c,a,b,frame=0,sag=7,seed=0,step=.3){
+ const n=Math.max(2,Math.round(Math.hypot(b[0]-a[0],b[1]-a[1])/step)),pt=t=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t-sag*4*t*(1-t)];
+ for(let k=0;k<n;k++)stroke(c,pt(k/n),pt((k+1)/n),'#5a463f');
+ for(let k=1;k<n;k++){const[x,y]=q(...pt(k/n)),col=FEST[(k+seed)%FEST.length],on=(k+frame+seed)%2===0;
+  if(on)E(c,x,y+2.5,4,3,col+'38');R(c,x,y,1,1,'#5a463f');R(c,x-1,y+1,3,3,on?ArtShade(col,40):ArtShade(col,-10));if(on)R(c,x,y+1,1,1,'#fff6dc');}
+}
+/** A drooping cord of little triangle flags from a to b. */
+function festFlags(c,a,b,sag=6,seed=0,step=.22){
+ const n=Math.max(2,Math.round(Math.hypot(b[0]-a[0],b[1]-a[1])/step)),pt=t=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t-sag*4*t*(1-t)];
+ for(let k=0;k<n;k++){const p0=q(...pt(k/n)),p1=q(...pt((k+1)/n)),col=FEST[(k+seed)%FEST.length];
+  P(c,[[p0[0],p0[1]],[p1[0],p1[1]],[(p0[0]+p1[0])/2,(p0[1]+p1[1])/2+6]],col);L(c,p0[0],p0[1],(p0[0]+p1[0])/2,(p0[1]+p1[1])/2+5,ArtShade(col,30));L(c,...p0,...p1,'#6b4f3a');}
+}
+function festPole(c,x,y,z=36,cap='#e8b04a'){const[px,py]=q(x,y,0);E(c,px+1,py,3,1.5,'#5f705050');R(c,px-1,py-z,3,z,'#7b5a42');R(c,px-1,py-z,1,z,'#a8805c');R(c,px-2,py-z-3,5,3,cap);R(c,px-1,py-z-3,2,1,'#fff1c4');}
+/** Little pointed tent: striped canvas walls and a pyramid roof with a pennant. */
+function festTent(c,x,y,s,a,b,wallZ=12,peak=24,flag='#e8b04a'){
+ top(c,x-.1,y-.05,s+.3,s+.25,0,'#5f705040');
+ const F=(u,z)=>[x+u,y+s,z],S=(u,z)=>[x+s,y+u,z],n=4;
+ face(c,[F(0,0),F(s,0),F(s,wallZ),F(0,wallZ)],b,C.ink);face(c,[S(0,0),S(s,0),S(s,wallZ),S(0,wallZ)],ArtShade(b,-30),C.ink);
+ for(let k=0;k<n;k+=2){face(c,[F(k*s/n,0),F((k+1)*s/n,0),F((k+1)*s/n,wallZ),F(k*s/n,wallZ)],a);face(c,[S(k*s/n,0),S((k+1)*s/n,0),S((k+1)*s/n,wallZ),S(k*s/n,wallZ)],ArtShade(a,-30));}
+ // Door flap pulled open on the front.
+ face(c,[F(s*.38,0),F(s*.62,0),F(s*.5,wallZ-1)],'#5a463f');stroke(c,F(s*.38,0),F(s*.5,wallZ-1),C.cream);
+ const apex=[x+s/2,y+s/2,wallZ+peak],o=.07;
+ for(let k=0;k<n;k++){const u0=-o+k*(s+2*o)/n,u1=u0+(s+2*o)/n;
+  face(c,[[x+u0,y+s+o,wallZ],[x+u1,y+s+o,wallZ],apex],k%2?b:a);face(c,[[x+s+o,y+u0,wallZ],[x+s+o,y+u1,wallZ],apex],ArtShade(k%2?b:a,-30));}
+ stroke(c,[x-o,y+s+o,wallZ],apex,C.ink);stroke(c,[x+s+o,y+s+o,wallZ],apex,C.ink);stroke(c,[x+s+o,y-o,wallZ],apex,C.ink);
+ stroke(c,[x-o,y+s+o,wallZ],[x+s+o,y+s+o,wallZ],C.ink);stroke(c,[x+s+o,y-o,wallZ],[x+s+o,y+s+o,wallZ],C.ink);
+ for(let k=0;k<6;k++){const f=(k+.5)/6,[px,py]=q(x-o+(s+2*o)*f,y+s+o,wallZ),[rx,ry]=q(x+s+o,y-o+(s+2*o)*f,wallZ);E(c,px,py+1,2,1.5,k%2?a:b);E(c,rx,ry+1,2,1.5,ArtShade(k%2?a:b,-30));}
+ const[tx,ty]=q(...apex);R(c,tx,ty-9,1,9,'#5a463f');P(c,[[tx+1,ty-9],[tx+8,ty-7],[tx+1,ty-5]],flag);R(c,tx-1,ty-10,3,2,'#e8b04a');
+}
+/** A small festival booth: counter, two posts and a striped canopy, wares on top. */
+function festBooth(c,x,y,w,a,b,seed=0){
+ top(c,x-.1,y-.05,w+.3,.95,0,'#5f705040');
+ for(const u of [x,x+w-.08])cube(c,u,y,.08,.08,0,32,'#8f6a4c','#b98a60','#6f5240');
+ cube(c,x,y+.35,w,.45,0,12,'#b98a60','#e5bc87','#85634c');face(c,[[x,y+.8,3],[x+w,y+.8,3],[x+w,y+.8,10],[x,y+.8,10]],a);stroke(c,[x,y+.8,10],[x+w,y+.8,10],C.ink);
+ const r=rng(seed+7);for(let k=0;k<Math.floor(w*4);k++){const[px,py]=q(x+.15+k*.25,y+.55+(k%2)*.1,13),col=FEST[Math.floor(r()*FEST.length)];
+  if(seed%3===0){E(c,px,py-3,3,3,col);R(c,px,py-6,1,3,'#f4e5c9');R(c,px-1,py-4,1,1,'#fff6dc');}else if(seed%3===1){R(c,px-1,py-6,3,6,col);R(c,px-1,py-6,3,1,ArtShade(col,40));}else{E(c,px,py-2,3,2,'#e8cd8c');R(c,px-1,py-3,2,1,'#fff6dc');}}
+ const n=Math.max(3,Math.round(w/.26)),sw=(w+.2)/n;
+ for(let k=0;k<n;k++){const u0=x-.1+k*sw;face(c,[[u0,y-.12,34],[u0+sw,y-.12,34],[u0+sw,y+.55,28],[u0,y+.55,28]],k%2?b:a);const[px,py]=q(u0+sw/2,y+.55,28);E(c,px,py+1,3,2,k%2?b:a);}
+ stroke(c,[x-.1,y+.55,28],[x+w+.1,y+.55,28],C.ink);
+}
+function festBench(c,x,y,w=.8,along='x'){
+ const bw=along==='x'?w:.24,bh=along==='x'?.24:w;
+ for(const[u,v]of along==='x'?[[x+.04,y+.04],[x+w-.12,y+.04]]:[[x+.04,y+.04],[x+.04,y+w-.12]])cube(c,u,v,.08,.16,0,5,'#7b5a42','#a8805c','#5f4434');
+ cube(c,x,y,bw,bh,5,2,'#a8805c','#d9b083','#7b5a42');
+}
+function festLantern(c,x,y,frame=0,h=26){
+ const[px,py]=q(x,y,0);E(c,px+1,py,3,1.5,'#5f705050');R(c,px-1,py-h,2,h,'#5a463f');R(c,px-3,py-h-1,7,2,'#5a463f');
+ const lit=frame?'#ffe2a0':'#f8d27e';E(c,px+1,py-h-6,8,7,frame?'#f4b8603a':'#f4b8602e');R(c,px-2,py-h-9,6,8,'#c9584a');R(c,px-1,py-h-8,4,6,lit);R(c,px-2,py-h-10,6,1,'#5a463f');R(c,px-2,py-h-1,6,1,'#5a463f');R(c,px,py-h-7,1,3,'#fff6dc');
+}
+/** Hanging paper lantern centred at screen point (x,y). */
+function paperLantern(c,x,y,col='#d9584a',frame=0,size=1){
+ const rx=Math.round(4*size),ry=Math.round(5*size);E(c,x,y,rx+4,ry+3,col+(frame?'30':'22'));R(c,x,y-ry-3,1,3,'#5a463f');R(c,x-rx+1,y-ry-1,rx*2-1,2,'#5a463f');
+ E(c,x,y,rx,ry,col);E(c,x-1,y-1,rx-2,ry-2,ArtShade(col,frame?55:40));R(c,x-rx+1,y-1,rx*2-1,1,ArtShade(col,-25));R(c,x-1,y-ry+2,1,2,'#fff6dc');
+ R(c,x-rx+1,y+ry-1,rx*2-1,2,'#5a463f');R(c,x,y+ry+1,1,3,'#e8b04a');
+}
+/** Festival fairground ("ลานเทศกาล"), footprint 5×4. level 1-3; frame 0/1 twinkles the string lights (and turns the wheel a notch). */
+export function makeFairground(level=1,frame=0){
+ const w=5,h=4;
+ return stamp(270,200,124,76,c=>{
+  // Packed-earth plaza with a trodden lighter centre.
+  top(c,-.2,-.15,w+.45,h+.4,0,'#5f705040');
+  top(c,0,0,w,h,0,'#bfa57c',C.edge);top(c,.2,.2,w-.4,h-.4,.4,'#d5bf95','#c3a97f');
+  const r=rng(511);for(let k=0;k<70;k++){const[px,py]=q(.3+r()*(w-.6),.3+r()*(h-.6),.5);R(c,px,py,2,1,r()>.5?'#c6ad84':'#e2d0a8');}
+  for(let k=0;k<12;k++){const[px,py]=q(r()*w,k%2?h-.05:r()*.1,0);R(c,px,py-2,1,2,'#879b6b');R(c,px+2,py-1,1,2,'#b9c68d');}
+  // Back row of tents and booths.
+  festTent(c,.25,.25,1.05,'#d9584a','#f4e5c9',12,24,'#6f9ad1');
+  festBooth(c,1.75,.2,1.45,'#6f9ad1','#f4e5c9',1);
+  if(level<3)festTent(c,3.6,.3,1.05,'#7fae5a','#f4e5c9',12,22,'#d9584a');
+  else{
+   // Wooden wheel at the back-right corner, gondolas turning slowly.
+   const cx=4.1,y0=.75,cz=40,R0=1,Rz=27,rim=t=>[cx+Math.cos(t)*R0*.62,y0,cz+Math.sin(t)*Rz],spin=frame*Math.PI/8;
+   top(c,cx-.75,y0-.3,1.5,.7,0,'#5f705040');
+   for(const dy of [-.18])for(const dx of [-.55,.55])stroke(c,[cx+dx,y0+dy,0],[cx,y0+dy,cz],'#6b4f3a',2);
+   for(let k=0;k<24;k++)stroke(c,rim(k/24*Math.PI*2),rim((k+1)/24*Math.PI*2),'#8a6446',2);
+   for(let k=0;k<8;k++)stroke(c,[cx,y0,cz],rim(k/8*Math.PI*2+spin),'#a8805c');
+   for(let k=0;k<24;k++)stroke(c,rim(k/24*Math.PI*2),rim((k+1)/24*Math.PI*2),'#d9b083');
+   for(let k=0;k<8;k++){const[gx,gy]=q(...rim(k/8*Math.PI*2+spin)),col=FEST[k%FEST.length];R(c,gx,gy,1,2,'#5a463f');R(c,gx-3,gy+2,7,5,col);R(c,gx-3,gy+2,7,1,ArtShade(col,40));R(c,gx-2,gy+4,5,1,'#5a463f');}
+   {const[hx,hy]=q(cx,y0,cz);E(c,hx,hy,3,3,'#e8b04a');R(c,hx,hy-1,1,1,'#fff1c4');}
+   for(const dx of [-.55,.55])stroke(c,[cx+dx,y0+.18,0],[cx,y0+.18,cz],'#8a6446',2);
+   cube(c,cx-.3,y0+.35,.6,.35,0,5,'#a88d6c','#c9b08e','#8f7b61');
+  }
+  // Light poles and wires along the back edges.
+  const ph=36,corners=[[0,0],[w,0],[0,h],[w,h]];
+  for(const[x,y]of [[0,0],[w,0],[0,h]])festPole(c,x,y,ph);
+  festBulbs(c,[0,0,ph],[w,0,ph],frame,8,0);festBulbs(c,[0,0,ph],[0,h,ph],frame,8,2);
+  // Side stalls along the left once the fair grows.
+  if(level>=3){festTent(c,.2,2.15,.9,'#b98ad1','#f4e5c9',10,20,'#e8b04a');festBooth(c,3.55,2.15,1.25,'#d9584a','#f4e5c9',2);}
+  else if(level>=2)festBooth(c,.2,2.2,1.2,'#7fae5a','#f4e5c9',0);
+  // Centrepiece: maypole with ribbons from level 2.
+  const mx=2.45,my=2.05;
+  if(level>=2){
+   top(c,mx-.7,my-.7,1.4,1.4,.5,'#c9b088');const mz=58;
+   for(let k=0;k<10;k++){const t=k/10*Math.PI*2,gx=mx+Math.cos(t)*.62,gy=my+Math.sin(t)*.62;if(Math.sin(t)<-.2)stroke(c,[mx,my,mz-4],[gx,gy,1],FEST[k%FEST.length]);}
+   const[px,py]=q(mx,my,0);R(c,px-1,py-mz,3,mz,'#c49a6c');R(c,px-1,py-mz,1,mz,'#e8c99a');for(let z=8;z<mz-6;z+=7)R(c,px-1,py-z,3,2,FEST[(z/7|0)%FEST.length]);
+   for(let k=0;k<10;k++){const t=k/10*Math.PI*2,gx=mx+Math.cos(t)*.62,gy=my+Math.sin(t)*.62;if(Math.sin(t)>=-.2){stroke(c,[mx,my,mz-4],[gx,gy,1],FEST[k%FEST.length]);const[ex,ey]=q(gx,gy,0);R(c,ex-1,ey-1,2,2,ArtShade(FEST[k%FEST.length],-20));}}
+   E(c,px,py-mz+1,5,2,'#7fae5a');for(let k=0;k<5;k++)R(c,px-4+k*2,py-mz-(k%2),2,2,['#f2b8c8','#fff1c4','#f4d070','#f2b8c8','#d8c4ef'][k]);R(c,px-1,py-mz-5,3,3,'#e8b04a');
+  }else{
+   // A simple fire bowl in the middle at the first level.
+   const[px,py]=q(mx,my,0);E(c,px,py,8,4,'#8a8f88');E(c,px,py-1,6,3,'#5a463f');E(c,px,py-4,4,4,frame?'#f4b860':'#e8935a');E(c,px,py-6,2,3,'#fff1c4');E(c,px,py-4,10,7,'#f4b86026');
+  }
+  // Benches and lantern posts around the plaza.
+  festBench(c,1.05,3.25,.85);festBench(c,3.15,3.3,.85);festBench(c,4.5,1.3,.8,'y');
+  festLantern(c,.35,3.6,frame);festLantern(c,4.6,3.55,frame);if(level>=2){festLantern(c,4.6,.4+(level>=3?1.25:0),frame);festLantern(c,.3,1.75,frame);}
+  // Front wires with bunting and bulbs, then the front pole.
+  festPole(c,w,h,ph);
+  festFlags(c,[0,h,ph-2],[w,h,ph-2],7,1);festBulbs(c,[w,0,ph],[w,h,ph],frame,8,4);
+  festBulbs(c,[0,0,ph+1],[w,h,ph+1],frame,14,3,.34);
+  if(level>=2)festFlags(c,[0,h,ph-3],[w,0,ph-3],12,3,.26);
+  // Big decorated gate arch on the front edge at level 3.
+  if(level>=3){
+   const g0=1.7,g1=3.3,gy=h+.05,gz=46;
+   for(const x of [g0,g1-.2]){cube(c,x,gy-.1,.2,.2,0,gz,'#b85a4a','#d9806e','#8a3f34');for(let z=6;z<gz;z+=10)stroke(c,[x,gy+.1,z],[x+.2,gy+.1,z+2],'#e8b04a');}
+   for(let k=0;k<16;k++){const t0=k/16,t1=(k+1)/16,z=t=>gz+2+12*Math.sin(Math.PI*t);stroke(c,[g0+(g1-g0)*t0,gy,z(t0)],[g0+(g1-g0)*t1,gy,z(t1)],'#8a3f34',4);stroke(c,[g0+(g1-g0)*t0,gy,z(t0)+1],[g0+(g1-g0)*t1,gy,z(t1)+1],'#e8b04a',2);}
+   face(c,[[g0+.25,gy+.01,gz-8],[g1-.25,gy+.01,gz-8],[g1-.25,gy+.01,gz+6],[g0+.25,gy+.01,gz+6]],'#f4e5c9',C.ink);face(c,[[g0+.3,gy+.02,gz-6],[g1-.3,gy+.02,gz-6],[g1-.3,gy+.02,gz+4],[g0+.3,gy+.02,gz+4]],'#d9584a');
+   for(let k=0;k<5;k++){const[sx,sy]=q(g0+.45+k*.18,gy+.03,gz-3+(k%2));R(c,sx,sy-3,2,4,'#fff1c4');}
+   for(let k=0;k<9;k++){const t=(k+.5)/9,[bx,by]=q(g0+(g1-g0)*t,gy,gz+2+12*Math.sin(Math.PI*t)),on=(k+frame)%2===0;R(c,bx-1,by-3,3,3,on?'#fff1c4':'#e8935a');if(on)E(c,bx,by-2,4,3,'#f4b86040');}
+   for(const x of [g0+.1,g1-.1]){const[fx,fy]=q(x,gy,gz);R(c,fx,fy-12,1,12,'#5a463f');P(c,[[fx+1,fy-12],[fx+9,fy-10],[fx+1,fy-7]],x<2.5?'#6f9ad1':'#7fae5a');}
+   for(const x of [g0-.1,g1+.1]){const[px,py]=q(x,gy+.25,0);E(c,px,py-1,5,2.5,'#6b4f3a');E(c,px,py-5,4,4,'#7fae5a');R(c,px-2,py-8,2,2,'#f2b8c8');R(c,px+1,py-6,2,2,'#f4d070');}
+  }
+ });
+}
+/** Lantern music stage ("เวทีโคมไฟ"), footprint 3.4×2.8. level 1-3; frame 0/1 flickers the lanterns. */
+export function makeStage(level=1,frame=0){
+ const w=3.4,h=2.8,sx=.2,sy=.2,sw=3,sd=1.45,sz=11;
+ return stamp(190,180,84,96,c=>{
+  top(c,-.15,-.1,w+.35,h+.3,0,'#5f705040');
+  top(c,0,0,w,h,0,'#c6b18a',C.edge);top(c,.15,sd+.35,w-.3,h-sd-.5,.3,'#d5bf95','#c3a97f');
+  // Back curtain wall standing on the stage.
+  const back=(u,z)=>[sx+u,sy+.05,z];
+  cube(c,sx,sy,sw,sd,0,sz,'#8a6446','#d4af7e','#6b4f3a');
+  for(let yy=sy+.25;yy<sy+sd;yy+=.25)stroke(c,[sx+.02,yy,sz+.1],[sx+sw-.02,yy,sz+.1],'#b68e64');
+  for(let z=3;z<sz;z+=4)stroke(c,[sx,sy+sd,z],[sx+sw,sy+sd,z],'#7b5a42');
+  face(c,[back(0,sz),back(sw,sz),back(sw,sz+40),back(0,sz+40)],'#8a3f34',C.ink);
+  for(let u=.15;u<sw;u+=.3){stroke(c,back(u,sz+1),back(u,sz+39),'#a8503f');stroke(c,back(u+.08,sz+1),back(u+.08,sz+39),'#6f3029');}
+  // Gold sun emblem on the backdrop.
+  {const[ex,ey]=q(...back(sw/2,sz+24));E(c,ex,ey,8,8,'#e8b04a');E(c,ex,ey,6,6,'#8a3f34');E(c,ex,ey,4,4,'#f4d070');for(let k=0;k<8;k++){const t=k/8*Math.PI*2;R(c,ex+Math.cos(t)*10,ey+Math.sin(t)*10,2,2,'#e8b04a');}}
+  // Instruments: two drums, a xylophone and a gong.
+  const drum=(x,y,s=1)=>{const[px,py]=q(x,y,sz);E(c,px,py-1,6*s,3*s,'#5a463f');R(c,px-6*s,py-11*s,12*s,10*s,'#b85a4a');R(c,px-6*s,py-11*s,3*s,10*s,'#d9806e');for(let k=0;k<4;k++)R(c,px-5*s+k*3*s,py-11*s,1,10*s,'#e8b04a');E(c,px,py-11*s,6*s,3*s,'#efe2c0');E(c,px,py-11*s,4*s,2*s,'#f8eedb');};
+  drum(sx+.5,sy+.6);drum(sx+.95,sy+.95,.75);
+  cube(c,sx+1.6,sy+.55,.8,.3,sz,5,'#8a6446','#b08a68','#6b4f3a');for(let k=0;k<7;k++){const[px,py]=q(sx+1.65+k*.1,sy+.6,sz+5.2);R(c,px-1,py-1,2,3,['#e8b04a','#d9b083'][k%2]);}
+  {const[gx,gy]=q(sx+2.65,sy+.35,sz);R(c,gx-9,gy-28,2,28,'#6b4f3a');R(c,gx+8,gy-28,2,28,'#6b4f3a');R(c,gx-9,gy-28,19,2,'#6b4f3a');R(c,gx,gy-26,1,4,'#5a463f');E(c,gx,gy-16,6,6,'#c9a050');E(c,gx,gy-16,4,4,'#e8c878');E(c,gx,gy-16,1.5,1.5,'#a67c3a');}
+  // Side curtains tied back at the front of the stage.
+  const fy=sy+sd;
+  for(const[u0,u1]of[[0,.35],[sw-.35,sw]])face(c,[[sx+u0,fy,sz],[sx+u1,fy,sz],[sx+u1,fy,sz+40],[sx+u0,fy,sz+40]],'#b85a4a',C.ink);
+  for(const u of [.1,.22,sw-.25,sw-.12])stroke(c,[sx+u,fy+.01,sz+1],[sx+u,fy+.01,sz+39],'#8a3f34');
+  for(const u of [.18,sw-.18]){const[tx,ty]=q(sx+u,fy+.02,sz+16);R(c,tx-3,ty,7,2,'#e8b04a');}
+  // Front steps up to the stage.
+  cube(c,sx+1.1,fy,.8,.25,0,7,'#a88d6c','#d4af7e','#8f7b61');cube(c,sx+1.1,fy+.25,.8,.2,0,3.5,'#a88d6c','#d4af7e','#8f7b61');
+  // Posts and a valance carrying paper lanterns.
+  const pz=level>=2?54:50,posts=[[sx,sy],[sx+sw-.12,sy],[sx,fy-.12],[sx+sw-.12,fy-.12]];
+  for(const[x,y]of posts)cube(c,x,y,.12,.12,sz,pz-sz,'#8a3f34','#b85a4a','#6f3029');
+  face(c,[[sx,fy,pz-6],[sx+sw,fy,pz-6],[sx+sw,fy,pz],[sx,fy,pz]],'#e8b04a',C.ink);
+  for(let k=0;k<8;k++){const u=(k+.5)/8*sw,[vx,vy]=q(sx+u,fy,pz-6);P(c,[[vx-5,vy],[vx+5,vy+0],[vx,vy+4]],k%2?'#b85a4a':'#8a3f34');}
+  const lcol=['#d9584a','#e8b04a','#d9584a','#f08a6a'];
+  for(let k=0;k<4;k++){const[lx,ly]=q(sx+.45+k*.7,fy,pz-6);R(c,lx,ly+3,1,4+(k%2)*3,'#5a463f');paperLantern(c,lx,ly+13+(k%2)*3,lcol[k],(k+frame)%2,.9);}
+  // Roof canopy: a Thai-style gable with upturned eaves from level 2.
+  if(level>=2){
+   const rz=pz,ro=.3,peak=rz+18,x0=sx-ro,x1=sx+sw+ro,y0=sy-ro,y1=fy+ro,ym=(sy+fy)/2;
+   face(c,[[x0,y0,rz],[x1,y0,rz],[x1,ym,peak],[x0,ym,peak]],'#7b4a3c',C.ink);
+   face(c,[[x0,ym,peak],[x1,ym,peak],[x1,y1,rz],[x0,y1,rz]],'#b85a4a',C.ink);
+   for(let x=x0+.2;x<x1;x+=.25)stroke(c,[x,ym,peak],[x,y1-.03,rz+1],'#9a473a');
+   stroke(c,[x0,y1,rz],[x1,y1,rz],'#e8b04a',2);
+   face(c,[[x1+.01,y0+.05,rz],[x1+.01,ym,peak-2],[x1+.01,y1-.05,rz]],'#e8b04a',C.ink);face(c,[[x1+.02,y0+.2,rz+1],[x1+.02,ym,peak-5],[x1+.02,y1-.2,rz+1]],'#8a3f34');
+   stroke(c,[x0,ym,peak],[x1,ym,peak],C.ink,3);stroke(c,[x0,ym,peak+1],[x1,ym,peak+1],'#e8b04a');
+   for(const[x,y,z]of[[x0,y1,rz],[x1,y1,rz],[x1,y0,rz]]){const[px,py]=q(x,y,z);P(c,[[px-3,py+1],[px+3,py+1],[px+(x<1?-5:5),py-6]],'#e8b04a');}
+   for(const x of [x0,x1]){const[px,py]=q(x,ym,peak);P(c,[[px-2,py],[px+2,py],[px+(x<1?-4:4),py-8]],'#e8b04a');}
+  }
+  // Big lantern strings and banners at level 3.
+  if(level>=3){
+   for(const[x,y,col]of[[.05,h-.05,'#6f9ad1'],[w-.05,h-.05,'#7fae5a']]){const[px,py]=q(x,y,0);R(c,px-1,py-50,2,50,'#6b4f3a');R(c,px-2,py-53,4,3,'#e8b04a');R(c,px+1,py-48,8,22,col);R(c,px+1,py-48,8,2,ArtShade(col,40));R(c,px+3,py-42,4,4,'#f4e5c9');P(c,[[px+1,py-26],[px+9,py-26],[px+5,py-21]],col);}
+   for(const[a,b]of[[[sx,fy,pz],[.05,h-.05,50]],[[sx+sw,fy,pz],[w-.05,h-.05,50]]]){
+    const n=4,pt=t=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t-12*4*t*(1-t)];
+    for(let k=0;k<12;k++)stroke(c,pt(k/12),pt((k+1)/12),'#5a463f');
+    for(let k=1;k<n;k++){const[lx,ly]=q(...pt(k/n));R(c,lx,ly,1,3,'#5a463f');paperLantern(c,lx,ly+9,lcol[(k+1)%4],(k+frame)%2,1.1);}
+   }
+  }
+  // Audience benches in front.
+  for(const[y,dx]of[[sd+.65,0],[sd+1.05,.15]])for(const x of [.35+dx,1.95+dx])festBench(c,x,y,1.05);
+  festLantern(c,.15,h-.2,frame,22);if(level<3)festLantern(c,w-.15,h-.2,frame,22);
+ });
+}
+/** Small festival props. kind: 'bunting' (flag cord between two poles 2 tiles apart along x), 'lantern' (floating sky lantern),
+ * 'confetti', 'balloon'. frame 0/1 animates. Foot (footX,footY) is the ground point the prop stands on (for 'lantern' and
+ * 'confetti' it is the point directly beneath them). */
+export function makeFestivalDecor(kind='bunting',frame=0){
+ if(kind==='bunting')return stamp(80,64,14,52,c=>{festPole(c,0,0,34,'#e8b04a');festPole(c,2,0,34,'#e8b04a');festFlags(c,[0,0,32],[2,0,32],7+frame,frame);});
+ if(kind==='lantern')return stamp(28,64,14,60,c=>{
+  // Khom loi: a glowing paper lantern drifting high above its foot point, a soft shadow under it.
+  E(c,0,0,4,1.5,'#5f705030');const y=-34-frame;
+  E(c,0,y,11,12,frame?'#f4b86030':'#f4b86024');E(c,0,y,7,8,'#f4b86030');
+  P(c,[[-5,y-9],[5,y-9],[6,y+5],[-6,y+5]],'#f4d48a');P(c,[[-4,y-8],[1,y-8],[1,y+4],[-5,y+4]],'#fff1c4');R(c,-6,y+5,13,1,'#c9584a');R(c,-5,y-10,11,1,'#e8b04a');
+  R(c,-1,y+6,3,2,frame?'#fff6dc':'#f4b860');R(c,0,y+5,1,1,'#ffffff');
+ });
+ if(kind==='confetti')return stamp(48,44,24,40,c=>{const r=rng(91+frame*17);
+  for(let k=0;k<18;k++){const x=(r()-.5)*40,y=-4-r()*32,col=FEST[k%FEST.length];if((k+frame)%3===0)R(c,x,y,1,2,col);else R(c,x,y,2,1,col);}
+  for(let k=0;k<6;k++){const[px,py]=q((r()-.5)*.8,(r()-.5)*.8,0);R(c,px,py,1,1,FEST[(k+2)%FEST.length]);}});
+ // balloon
+ return stamp(28,60,14,56,c=>{const sway=frame?1:-1,col='#d9584a',bx=sway,by=-38;
+  E(c,0,0,3,1.5,'#5f705040');R(c,-1,-3,3,3,'#8a6446');
+  for(let k=0;k<12;k++){const t=k/12;R(c,Math.round(bx*t*t+Math.sin(t*6)*.6),Math.round(-3+(by+8)*t),1,3,'#e6dfcc');}
+  E(c,bx,by,7,8,ArtShade(col,-25));E(c,bx-1,by-1,6,7,col);E(c,bx-3,by-4,2,3,ArtShade(col,55));P(c,[[bx-2,by+9],[bx+2,by+9],[bx,by+7]],ArtShade(col,-25));
+ });
+}

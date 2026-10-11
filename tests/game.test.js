@@ -160,7 +160,7 @@ test('save roundtrip keeps deterministic mission events and imported corruption 
     data => { data.members.push(data.members[0]); },
     data => { data.inventory.cheat = 12; },
     data => { data.facilities[1].x = data.facilities[0].x; },
-    data => { data.story.finished = true; },
+    data => { data.story.chapter = 99; },
     data => { data.members[0].equipment.weapon = 'moon-wand'; },
     data => { data.grid.width = 999; },
     data => { data.version = 999; },
@@ -475,7 +475,8 @@ test('board jobs pay the team their share and the guild its commission', () => {
   assert.equal(Math.round(mission.result.wages), Math.round(petition.fee / 2), 'the team shares half the fee');
   const purse = party.reduce((sum, id) => sum + state.members.find(m => m.id === id).purse, 0);
   assert.ok(purse >= Math.round(petition.fee / 2) - 1);
-  assert.ok(state.gold - gold >= Math.floor(petition.fee / 2) - 1);
+  const bought = state.ledger.filter(e => e.text === 'รับซื้อของจากนักผจญภัย').reduce((sum, e) => sum + e.gold, 0);
+  assert.ok(state.gold - gold - bought >= Math.floor(petition.fee / 2) - 1, 'the guild keeps its commission (minus loot it bought at the counter)');
   assert.ok(state.village.prosperity > 0);
   assert.ok(!state.petitions.some(p => p.questId === 'patrol'), 'cleared story steps stop coming as important letters');
 });
@@ -584,23 +585,26 @@ test('board teams use their own slots, so the player can still send important wo
   assert.doesNotThrow(() => deserializeGame(serializeGame(state)));
 });
 
-test('a plain player finishes the demo in about two hours, ranks climb by renown and merit, and money circulates', async () => {
+test('a plain player finishes chapter one in about 1.5 hours and the frontier chapter at rank B, ranks climb by renown and merit, and money circulates', async () => {
   const { simulate } = await import('./simulate.js');
   for (const seed of [1, 2, 3, 4, 5]) {
-    const { state, metrics: m } = simulate(seed, { freePlay: 3600 });
+    const { state, metrics: m } = simulate(seed);
     const min = s => s / 60;
-    assert.ok(m.finishedAt !== null, `seed ${seed} finishes the demo story`);
-    assert.ok(min(m.finishedAt) >= 60 && min(m.finishedAt) <= 130, `seed ${seed} demo takes 60-130 game minutes, took ${min(m.finishedAt)}`);
-    assert.ok(min(m.ranks.E) <= 35 && min(m.ranks.D) <= 70 && min(m.ranks.C) <= 120, `seed ${seed} ranks E/D/C at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)} minutes`);
-    assert.equal(state.rank, 'C', `seed ${seed} the demo stops at rank C`);
+    assert.ok(m.chapterOneAt != null, `seed ${seed} heals the forest heart`);
+    assert.ok(min(m.chapterOneAt) >= 60 && min(m.chapterOneAt) <= 130, `seed ${seed} chapter one takes 60-130 game minutes, took ${min(m.chapterOneAt)}`);
+    assert.ok(m.finishedAt !== null, `seed ${seed} finishes the frontier story`);
+    assert.ok(min(m.finishedAt) >= 180 && min(m.finishedAt) <= 340, `seed ${seed} the dragon falls after 3-5.5 game hours, took ${min(m.finishedAt)}`);
+    assert.ok(min(m.ranks.E) <= 35 && min(m.ranks.D) <= 70 && min(m.ranks.C) <= 120 && min(m.ranks.B) <= 190, `seed ${seed} ranks E/D/C/B at ${min(m.ranks.E)}/${min(m.ranks.D)}/${min(m.ranks.C)}/${min(m.ranks.B)} minutes`);
+    assert.equal(state.rank, 'B', `seed ${seed} the game stops at rank B for now`);
+    assert.equal(state.frontier.camp >= 2, true, `seed ${seed} the frontier camp grew for the raids`);
     assert.equal(m.bankruptDays, 0, `seed ${seed} never misses upkeep`);
-    assert.ok(m.failures <= 3, `seed ${seed} real fights can go wrong now and then, but rarely (${m.failures})`);
+    assert.ok(m.failures <= 8, `seed ${seed} real fights can go wrong now and then, but rarely (${m.failures})`);
     assert.ok(m.boardRuns >= 30, `seed ${seed} adventurers took board work by themselves (${m.boardRuns})`);
     assert.ok(state.members.filter(member => member.id.startsWith('r-')).length >= 1, `seed ${seed} rookies were drawn in by fame`);
     assert.ok(state.members.every(member => member.points > 0), `seed ${seed} mentoring gives every member, rookies included, real work`);
     assert.ok(m.trade >= 5000, `seed ${seed} adventurers spent their wages in the village (${Math.round(m.trade)} G)`);
     assert.ok(state.members.every(member => member.equipment.weapon), `seed ${seed} everyone ends up armed`);
-    assert.ok(m.village[5] === undefined || m.village[5] > m.finishedAt * 1.2, `seed ${seed} the top village level is left for later`);
+    assert.ok(m.village[5] === undefined || m.village[5] > m.chapterOneAt * 1.2, `seed ${seed} the top village level is left for later`);
     const idle = m.ledger['ดอกผลกองทุนและค่าแผงตลาด'] || 0, commission = m.ledger['ค่านายหน้า'] || 0;
     assert.ok(idle > commission * 0.1 && idle < commission, `seed ${seed} idle income matters but does not replace work (${idle} vs ${commission})`);
     assert.doesNotThrow(() => serializeGame(state));
@@ -628,7 +632,12 @@ test('promotion needs renown and a record of work, then the exam letter arrives'
   // Easy work far below the guild's rank earns little renown.
   state.rank = 'C';
   assert.equal(renownFactor(state, QUESTS.find(q => q.id === 'patrol')), 0.1);
-  assert.equal(getRankProgress(state).future, true, 'B opens with the full game');
+  const b = getRankProgress(state);
+  assert.equal(b.rank, 'B');
+  assert.equal(b.future, false, 'B is playable: the forest heart is its exam');
+  assert.equal(b.exam, 'heart');
+  state.rank = 'B';
+  assert.equal(getRankProgress(state).future, true, 'A waits for the next chapter');
 });
 
 test('fame draws applicants to the door; rookies are generated and famous adventurers wait for the right guild', () => {
@@ -711,14 +720,26 @@ test('adventurers rank up by level, merit points and an exam at the arena; ranks
   assert.equal(act(state, 'buildProject', { projectId: 'arena' }).ok, true);
   const info = getAdventurerRank(state, mira);
   assert.equal(info.eligible, true);
-  assert.equal(act(state, 'rankExam', { memberId: 'mira' }).ok, true);
-  assert.equal(mira.errand.kind, 'exam');
+  assert.equal(act(state, 'rankExam', { memberId: 'mira' }).ok, true, 'members sign up for the next round');
   assert.equal(mira.purse, 70, 'the member pays the exam fee from their own wages');
+  assert.equal(act(state, 'rankExam', { memberId: 'mira' }).ok, false, 'one seat per round');
+  assert.ok(state.exams.queue.some(q => q.id === 'mira'));
+  assert.deepEqual(deserializeGame(serializeGame(state)).exams, state.exams);
+  // The round starts on the arena's schedule and everyone sits it together.
+  state.exams.next = state.elapsed + 1;
+  tick(state, 2);
+  assert.equal(mira.errand?.kind, 'exam');
+  assert.ok(state.exams.session.examinees.some(e => e.id === 'mira'));
   assert.equal(previewMission(state, 'patrol', ['mira']).ok, false, 'away at the arena');
-  assert.deepEqual(deserializeGame(serializeGame(state)).members.find(m => m.id === 'mira').errand, mira.errand);
-  tick(state, 26);
+  assert.deepEqual(deserializeGame(serializeGame(state)).exams, state.exams);
+  const examinee = state.exams.session.examinees.find(e => e.id === 'mira');
+  assert.equal(examinee.scores.length, 3, 'three trials');
+  tick(state, 61);
   assert.equal(mira.errand, null);
-  assert.ok(mira.rank === 'E' || mira.examReadyAt > state.elapsed, 'passed, or waits a day to retry');
+  assert.equal(state.exams.session, null);
+  assert.ok(state.exams.last.results.some(r => r.id === 'mira'), 'results are read out');
+  assert.equal(mira.rank === 'E', examinee.pass, 'the scores and the result agree');
+  assert.ok(mira.rank === 'E' || mira.examReadyAt > state.elapsed, 'passed, or retries next round');
   // Merit points: work above one's rank counts more.
   const before = mira.points;
   mira.rank = 'F';
@@ -733,9 +754,9 @@ test('adventurers rank up by level, merit points and an exam at the arena; ranks
   assert.equal(act(state, 'takeLesson', { memberId: 'lune' }).ok, false);
   tick(state, 31);
   assert.ok(lune.xp + lune.level * 1000 > xp);
-  // Tier-3 classes are visible goals for the full game.
+  // Tier-3 classes open at adventurer rank B.
   lune.class = 'sage';
-  assert.match(classChoices(state, lune)[0].reason, /เกมเต็ม/);
+  assert.match(classChoices(state, lune)[0].reason, /แรงค์ B/);
 });
 
 test('the living world: members hunt in real time, carry the fallen home, sell loot and pay the guild its share', () => {
