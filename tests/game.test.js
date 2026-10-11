@@ -1162,3 +1162,11 @@ test('sound settings are saved and cleaned', () => {
   const back = deserializeGame(JSON.stringify(data));
   assert.equal(back.settings.volume, 1); assert.equal(back.settings.music, false);
 });
+
+test('village objectives ask only for what the village can build at that point', async () => {
+  const { GOAL_LIST } = await import('../src/goals.js');
+  const state = createGame(94);
+  const order = GOAL_LIST.map(g => g.id), houses = GOAL_LIST.find(g => g.id === 'houses');
+  assert.ok(order.indexOf('houses') < order.indexOf('level2'));
+  assert.ok(houses.check({ ...state, village: { ...state.village, houses: 99 }, villageLevel: 1 }).need <= getVillageInfo(state).maxHouses, 'a level-1 village can hold enough houses');
+});
