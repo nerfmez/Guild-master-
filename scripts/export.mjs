@@ -1,5 +1,5 @@
 import {readFile,writeFile} from 'node:fs/promises';
-const modules={'site.js':'Site','content.js':'Content','town.js':'Town','life.js':'Life','events.js':'Storyteller','exams.js':'Exams','goals.js':'Goals','progress.js':'Progress','festivals.js':'Festivals','audio.js':'Audio','trade.js':'Trade','monsters.js':'Bestiary','game.js':'Engine','render.js':'Artwork','dungeon.js':'Dungeon','showcase.js':'Showcase','guild-art.js':'GuildArtwork','worldart.js':'WorldArt','landmarks.js':'Landmarks','frontier-art.js':'FrontierArt','overworld.js':'Overworld','world.js':'World'};
+const modules={'illustrated-art.js':'IllustratedArt','site.js':'Site','content.js':'Content','town.js':'Town','life.js':'Life','events.js':'Storyteller','exams.js':'Exams','goals.js':'Goals','progress.js':'Progress','festivals.js':'Festivals','audio.js':'Audio','trade.js':'Trade','monsters.js':'Bestiary','game.js':'Engine','render.js':'Artwork','dungeon.js':'Dungeon','showcase.js':'Showcase','guild-art.js':'GuildArtwork','worldart.js':'WorldArt','landmarks.js':'Landmarks','frontier-art.js':'FrontierArt','overworld.js':'Overworld','world.js':'World'};
 function replaceImports(source){return source.replace(/import\s*\{([^}]+)\}\s*from\s*['"]\.\/([^'"]+)['"];?/g,(_,names,file)=>`const {${names}}=${modules[file]};`);}
 const phaser=(await readFile('node_modules/phaser/dist/phaser.min.js','utf8'));
 // Classic inline scripts also run from Android download providers. Startup does
@@ -7,7 +7,8 @@ const phaser=(await readFile('node_modules/phaser/dist/phaser.min.js','utf8'));
 let script='';
 for(const file of ['core','terrain','buildings','nature','props'])script+=await readFile(`src/art/${file}.js`,'utf8');
 for(const [file,name] of Object.entries(modules)){
- const source=await readFile(`src/${file}`,'utf8');
+ let source=await readFile(`src/${file}`,'utf8');
+ if(file==='illustrated-art.js'){for(const asset of [...source.matchAll(/\.\/assets\/illustrated\/([a-z-]+\.png)/g)]){const uri='data:image/png;base64,'+(await readFile(`assets/illustrated/${asset[1]}`)).toString('base64');source=source.replaceAll(asset[0],uri);}}
  const names=[...source.matchAll(/^export\s+(?:const|function|class)\s+(\w+)/gm)].map(m=>m[1]);
  script+=`const ${name}=(()=>{\n${replaceImports(source).replace(/^export\s+/gm,'')}\nreturn {${names.join(',')}};\n})();\n`;
 }
