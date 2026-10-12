@@ -1,15 +1,15 @@
 {
-  "file": "play-r7-230f4f6a.html",
-  "sha256": "230f4f6a0a034b639a0698e5f63bdb8e1800537beedee007f0f7701d4c0ce1fe",
-  "bytes": 3887038,
+  "file": "play-r7-f675c755.html",
+  "sha256": "f675c755a3b6f7f282e7717a02cd8d39f87b1fbdf1e9ed836b740b1951762a6c",
+  "bytes": 3960584,
   "classicInline": true,
   "cases": [
     {
       "mode": "restricted-canvas",
       "renderer": "Canvas",
       "scenePixels": {
-        "grassDetail": 899434,
-        "warm": 332057,
+        "grassDetail": 899346,
+        "warm": 332060,
         "blueRoof": 7539,
         "floor": {
           "warm": 576,
@@ -29,8 +29,8 @@
       "mode": "webgl",
       "renderer": "WebGL",
       "scenePixels": {
-        "grassDetail": 899824,
-        "warm": 330752,
+        "grassDetail": 899875,
+        "warm": 330800,
         "blueRoof": 7426,
         "floor": {
           "warm": 576,

@@ -28,6 +28,8 @@ const rootOf = id => JOBS[id]?.base || JOBS[id]?.parent || id;
 let fx = [];
 const emit = e => { fx.push(e); if (fx.length > 300) fx.splice(0, fx.length - 300); };
 export function drainFx() { const out = fx; fx = []; return out; }
+/** Shows in the village (festivals, exams) send their effects through the same channel. */
+export function emitFx(e) { emit(e); }
 
 export function createWorld(seed = 1) {
   return { rng: ((seed >>> 0) ^ 0x2545f491) >>> 0 || 9, nextId: 1, monsters: [], hunters: [], porters: [], free: [], freeClock: 30, departClock: 3, kills: 0 };

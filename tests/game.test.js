@@ -1608,3 +1608,76 @@ test('first call: a master who already fights outside is not called', () => {
   assert.equal(state.heroCall?.step, 'done');
   assert.ok(!state.world.monsters.some(m => m.call));
 });
+
+test('festivals play out live in the village: the tournament is fought bout by bout, the fair is judged entry by entry, the lanterns go up at the end', async () => {
+  const { festivalView } = await import('../src/festivals.js');
+  const make = () => { const s = createLivingGame(304); Object.assign(s.village, { arena: 1, fairground: 1, stage: 1, houses: 6 }); s.gold = 5000; s.heroCall = { step: 'done', skipped: true }; return s; };
+  // The tournament: nobody has won anything before the first bout is fought.
+  let state = make();
+  assert.ok(act(state, 'startFestival', { kind: 'tournament', gold: 900 }).ok);
+  let live = state.festivals.live;
+  assert.equal(live.matches.length, 4); assert.ok(live.matches.every(m => m.winner === null), 'no result is decided in advance');
+  assert.equal(live.actors.length, 8, 'eight fighters walk to the arena');
+  const entrants = [...live.members];
+  let sawFight = false;
+  for (let t = 0; t < 400 && state.festivals.live; t++) { tick(state, 1); const v = festivalView(state); if (v?.bout && v.bout.a.hp < 100) sawFight = true; if (t === 70) assert.deepEqual(deserializeGame(serializeGame(state)).festivals.live, state.festivals.live, 'a festival in progress survives a save'); }
+  assert.ok(sawFight, 'blows land in the ring');
+  const done = state.festivals.history[0];
+  assert.equal(done.kind, 'tournament'); assert.ok(done.champion?.name);
+  assert.equal(live.matches.length, 7); assert.ok(live.matches.every(m => m.winner === m.a || m.winner === m.b), 'every bout has a winner from its own pair');
+  assert.equal(live.fighters[live.matches[6].winner].name, done.champion.name, 'the champion is whoever won the final');
+  for (const id of entrants) { const m = state.members.find(x => x.id === id); assert.equal(m.errand, null); }
+  // The harvest fair: every farm is tasted, and the best one wins.
+  state = make();
+  assert.ok(act(state, 'startFestival', { kind: 'harvest', gold: 300 }).ok); live = state.festivals.live;
+  for (let t = 0; t < 100 && state.festivals.live; t++) tick(state, 1);
+  assert.ok(live.farms.every(f => Number.isFinite(f.score)), 'the judge reached every entry');
+  assert.equal(state.festivals.history[0].champion.name, live.farms.reduce((b, f) => f.score > b.score ? f : b).name);
+  // Lantern night: members at home come to listen, and the crowd lets its lanterns go at the end.
+  state = make();
+  assert.ok(act(state, 'startFestival', { kind: 'lantern', gold: 300 }).ok); live = state.festivals.live;
+  const audience = [...live.audience];
+  assert.ok(audience.length >= 1 && audience.every(id => state.members.find(m => m.id === id).errand?.kind === 'festival'), 'members walk over to the stage');
+  for (let t = 0; t < 120 && state.festivals.live; t++) tick(state, 1);
+  assert.ok(live.show.released > 10, 'lanterns rise');
+  assert.ok(audience.every(id => state.members.find(m => m.id === id).errand === null), 'and everyone goes home afterwards');
+});
+
+test('the arena hosts one thing at a time, and a festival saved by an older version is refunded', () => {
+  const state = createLivingGame(304);
+  Object.assign(state.village, { arena: 1 }); state.gold = 5000; state.heroCall = { step: 'done', skipped: true };
+  const mira = state.members[0]; Object.assign(mira, { level: 9, points: 200, purse: 500, rank: 'F' });
+  state.exams.queue = [{ id: mira.id, rank: 'E' }]; state.exams.next = state.elapsed;
+  tick(state, 1);
+  assert.ok(state.exams.session);
+  assert.equal(act(state, 'startFestival', { kind: 'tournament', gold: 300 }).ok, false, 'no tournament during an exam round');
+  for (let t = 0; t < 80 && state.exams.session; t++) tick(state, 1);
+  assert.ok(act(state, 'startFestival', { kind: 'tournament', gold: 300 }).ok);
+  state.exams.queue = [{ id: state.members[1].id, rank: 'E' }]; state.exams.next = state.elapsed;
+  tick(state, 2);
+  assert.equal(state.exams.session, null, 'the exam round waits for the tournament');
+  // An older save's festival (decided in advance) comes back as a refund.
+  const data = JSON.parse(serializeGame(state)); delete data.checksum;
+  data.festivals.live = { kind: 'harvest', gold: 400, start: data.elapsed, open: data.elapsed + 5, end: data.elapsed + 60, length: 60, members: [], visitors: 20 };
+  const before = data.gold, back = deserializeGame(JSON.stringify(data));
+  assert.equal(back.festivals.live, null); assert.equal(back.gold, before + 400);
+});
+
+test('rank exams are sat live: rocks split, the golem swings, examiners duel, and the average decides', () => {
+  const state = createLivingGame(77);
+  state.village.arena = 1; state.heroCall = { step: 'done', skipped: true };
+  const ms = state.members.slice(0, 3);
+  for (const m of ms) Object.assign(m, { level: 9, points: 200, purse: 500, rank: 'F' });
+  state.exams.queue = ms.map(m => ({ id: m.id, rank: 'E' })); state.exams.next = state.elapsed;
+  tick(state, 1);
+  const s = state.exams.session; assert.ok(s);
+  assert.ok(s.examinees.every(e => e.pass === null && e.scores.every(v => v === 0)), 'nothing is decided before the trials');
+  for (let t = 0; t < 20; t++) tick(state, 1);
+  assert.ok(s.examinees.some(e => e.rock.hp < 100), 'the rocks take blows');
+  for (let t = 0; t < 20; t++) tick(state, 1);
+  assert.ok(s.examinees.every(e => e.scores[0] > 0), 'the first trial is scored as it ends');
+  for (let t = 0; t < 40 && state.exams.session; t++) tick(state, 1);
+  assert.equal(state.exams.session, null);
+  for (const e of s.examinees) { assert.equal(e.pass, e.total >= 60); assert.ok(e.scores.every(v => v > 0)); }
+  for (const m of ms) { const e = s.examinees.find(x => x.id === m.id); assert.equal(m.rank === 'E', e.pass); assert.ok(m.town && m.town.x > 30, 'they walk home from the arena'); }
+});
