@@ -52,7 +52,7 @@ const DECISIONS = [
   { id: 'bridge', icon: '🌉', weight: 2, title: 'สะพานไม้ชำรุด', text: () => 'ผู้ใหญ่บ้านขอให้กิลด์ช่วยซ่อมสะพานข้ามลำธาร ไม่งั้นรถเสบียงผ่านไม่ได้',
     choices: [
       { id: 'fund', label: 'ออกค่าซ่อม', desc: 'เงิน −100 · ไม้ −10 · หมู่บ้านรุ่งเรือง +60 · ชื่อเสียง +6', when: ctx => ctx.has('wood', 10), apply: ctx => { ctx.gold(-100, 'ซ่อมสะพานหมู่บ้าน'); ctx.res('wood', -10); ctx.prosperity(60); ctx.rep(6); return 'ชาวบ้านช่วยกันตอกตะปูจนสะพานแข็งแรงกว่าเดิม'; } },
-      { id: 'members', label: 'ส่งสมาชิกไปช่วยแรง', desc: 'สมาชิกที่บ้านแรง −25 · หมู่บ้านรุ่งเรือง +30', apply: ctx => { for (const m of ctx.homeMembers()) ctx.energy(m.id, -25); ctx.prosperity(30); return 'ทุกคนเหนื่อย แต่ได้ข้าวกล่องจากชาวบ้านกลับมา'; } },
+      { id: 'members', label: 'ขอแรงนักผจญภัย', desc: 'นักผจญภัยที่อยู่ในเมืองแรง −25 · หมู่บ้านรุ่งเรือง +30', apply: ctx => { for (const m of ctx.homeMembers()) ctx.energy(m.id, -25); ctx.prosperity(30); return 'ทุกคนเหนื่อย แต่ได้ข้าวกล่องจากชาวบ้านกลับมา'; } },
       { id: 'no', label: 'ไม่ช่วย', desc: 'หมู่บ้านรุ่งเรือง −15', apply: ctx => { ctx.prosperity(-15); return 'รถเสบียงต้องอ้อมไกล ของในตลาดมาช้าลง'; } },
     ] },
   { id: 'apprentice', icon: '📖', weight: 2, title: 'เด็กหนุ่มขอเป็นศิษย์', when: ctx => ctx.homeMembers().some(m => m.level >= 3), text: d => `เด็กหนุ่มจากหมู่บ้านอยากเรียนวิชาจาก${d.name}`,

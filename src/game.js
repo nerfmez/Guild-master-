@@ -8,7 +8,7 @@ import { SPECIES } from './monsters.js';
 import { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf } from './town.js';
 import { goalBoard, claimGoal, sanitizeMastery, setGoalJobs } from './goals.js';
 import { createProgress, sanitizeProgress, addChest, rollChest, recordKill, recordTreasure, offerPolicies, choosePolicy, hasPolicy, newDailyGoals, dailyView, POLICIES, CHESTS, CHEST_RARITIES, TREASURE_SETS, CODEX_FAMILIES } from './progress.js';
-import { createFestivals, startFestival, tickFestivals, sanitizeFestivals, festivalStatus, festivalVisitors } from './festivals.js';
+import { createFestivals, startFestival, tickFestivals, sanitizeFestivals, festivalStatus, festivalVisitors, festivalEntrants } from './festivals.js';
 import { createExams, registerExam, withdrawExam, tickExams, sanitizeExams } from './exams.js';
 import { createTrade, sellLoot, tickTrade, dailyTrade, wholesale, sendCaravan, treasureAction, sanitizeTrade, storeUsed, storeCapacity } from './trade.js';
 export const SAVE_VERSION = 6;
@@ -120,7 +120,7 @@ export function createGame(seed = 123, options = {}) {
     syncImportant(state);
     return state;
   }
-  addLog(state, 'บ้านเก่าข้างต้นไม้เปิดเป็นกิลด์แล้ว ส่งสมาชิกไปลาดตระเวนทางหมู่บ้านเพื่อเริ่มต้น', 'story');
+  addLog(state, 'บ้านเก่าข้างต้นไม้เปิดเป็นกิลด์แล้ว ติดคำร้องลาดตระเวนบนกระดาน นักผจญภัยจะมารับงานเอง', 'story');
   syncImportant(state);
   return state;
 }
@@ -1810,6 +1810,8 @@ function checkDailyGoals(state) {
     addLog(state, '🌟 ทำเป้าหมายวันนี้ครบทุกข้อ! ได้หีบเงินเป็นรางวัลพิเศษ', 'reward');
   }
 }
+/** The adventurers who would sign up for a tournament with this purse. */
+export function getFestivalEntrants(state, gold) { return festivalEntrants(state, festivalContext(state), gold); }
 export function getDailyGoals(state) { return state.progress?.daily?.day === state.day ? dailyView(state.progress, progressCounters(state)) : []; }
 /** Open a chest: roll the rarity, pay out, and send any treasure to the guild's strongroom. */
 function openChest(state, payload) {

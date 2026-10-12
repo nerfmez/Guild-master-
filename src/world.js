@@ -27,23 +27,24 @@ export class GuildRenderer {
   if(location.protocol!=='content:'){try{context=canvas.getContext('webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true})||canvas.getContext('experimental-webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true});if(context?.isContextLost())context=null;}catch{}}
   this.start(context?Phaser.WEBGL:Phaser.CANVAS,context);
   // Mobile browsers may wipe canvases of a backgrounded tab; baked textures are then blank.
-  this.repairs=[];const check=()=>{if(!document.hidden)this.checkScene();};
-  setInterval(check,3000);document.addEventListener('visibilitychange',()=>setTimeout(check,400));window.addEventListener('pageshow',()=>setTimeout(check,400));
+  this.repairs=[];const check=deep=>{if(!document.hidden)this.checkScene(deep);};
+  // The cheap test runs every few seconds; reading the drawn frame back stalls the GPU, so that only runs when the page comes back to the front.
+  setInterval(()=>check(false),3000);document.addEventListener('visibilitychange',()=>setTimeout(()=>check(true),400));window.addEventListener('pageshow',()=>setTimeout(()=>check(true),400));
  }
- sceneBlank(){
+ sceneBlank(deep=true){
   // A wiped texture canvas reads as fully transparent, although it was painted opaque.
   if(this.grassCanvas){try{if(this.grassCanvas.getContext('2d').getImageData(0,0,1,1).data[3]===0)return true;}catch{}}
   // At the default view the hall is centred; a scene of only the clear colour drew nothing.
-  if(this.userPanned||this.zoom!==1||!this.canvas.width||!this.canvas.height)return false;
+  if(!deep||this.userPanned||this.zoom!==1||!this.canvas.width||!this.canvas.height)return false;
   try{const probe=this.probe||(this.probe=document.createElement('canvas'));probe.width=40;probe.height=24;const c=probe.getContext('2d',{willReadFrequently:true});c.imageSmoothingEnabled=false;
    const w=this.canvas.width,h=this.canvas.height;c.drawImage(this.canvas,w*.3,h*.3,w*.4,h*.4,0,0,40,24);
    const a=c.getImageData(0,0,40,24).data;let other=0;for(let i=0;i<a.length;i+=4)if(Math.abs(a[i]-156)+Math.abs(a[i+1]-172)+Math.abs(a[i+2]-125)>12)other++;
    return other<10;}catch{return false;}
  }
- checkScene(){
-  if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
+ checkScene(deep=true){
+  if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank(deep))return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R45',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R46',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -79,14 +80,13 @@ export class GuildRenderer {
   this.width=this.game.scale.width;this.height=this.game.scale.height;
   const base=makeGround(this.state),grass=document.createElement('canvas');grass.width=128;grass.height=128;
   this.grassCanvas=grass;const gc=grass.getContext('2d');gc.fillStyle='#9cac7d';gc.fillRect(0,0,128,128);let grassSeed=3187;const randomGrass=()=>{grassSeed=(Math.imul(grassSeed,1664525)+1013904223)>>>0;return grassSeed/4294967296;};for(let i=0;i<280;i++){gc.fillStyle=['#97a776','#a8b586','#8fa477','#b9c68d'][i%4];gc.fillRect(Math.floor(randomGrass()*128),Math.floor(randomGrass()*128),1+Math.floor(randomGrass()*5),1);}this.texture('meadow',grass);
-  // A flat backdrop under the painted ground; a tiled sprite this size cost about a second to build on tablets.
-  this.scene.add.rectangle(-1700,-1200,5400,3000,0x9cac7d).setOrigin(0).setDepth(-10000);
+  // No backdrop object under the painted ground: the camera clears to the same grass colour, which saves a full-screen fill each frame.
   this.groundImage=this.scene.add.image(0,0,this.texture('ground',base.canvas)).setOrigin(0).setDepth(-9999);
   this.decorate();this.ghost=this.scene.add.graphics().setDepth(9999);this.bindInput();
   this.game.scale.on('resize',size=>{this.width=size.width;this.height=size.height;this.applyView();});
   this.center();this.rebuild();this.syncActors();this.canvas.dataset.renderer='Phaser '+(this.renderType===Phaser.WEBGL?'WebGL':'Canvas');
   clearTimeout(this.bootTimer);window.guildBoot?.ready();const status=document.getElementById('scene-status');if(status)status.hidden=true;
-  this.readyAt=Date.now();if(this.renderType===Phaser.CANVAS){this.canvas.addEventListener('contextlost',()=>window.guildBoot?.note('context lost'),{once:true});}if(this.renderType===Phaser.CANVAS)this.canvas.addEventListener('contextrestored',()=>this.recoverCanvas(undefined,true),{once:true});
+  this.readyAt=Date.now();for(const ms of [2000,6000])setTimeout(()=>{if(!document.hidden)this.checkScene(true);},ms);if(this.renderType===Phaser.CANVAS){this.canvas.addEventListener('contextlost',()=>window.guildBoot?.note('context lost'),{once:true});}if(this.renderType===Phaser.CANVAS)this.canvas.addEventListener('contextrestored',()=>this.recoverCanvas(undefined,true),{once:true});
   if(this.renderType===Phaser.WEBGL)this.canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();queueMicrotask(()=>this.recoverCanvas());},{once:true});
   this.refreshPlacement();this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
  }
@@ -325,6 +325,11 @@ export class GuildRenderer {
   for(const fog of this.fogs||[])fog.image.setPosition(fog.x+Math.sin(t*.12+fog.phase)*40,fog.y+Math.cos(t*.09+fog.phase)*10).setAlpha(.4+Math.sin(t*.3+fog.phase)*.15);
   for(const a of this.animated||[])if(a.image.visible)a.image.setTexture(`${a.key}-${Math.floor(t*a.fps+a.phase)%a.frames}`);
   // Only draw world props near the view.
+  // Phaser submits every visible object, on screen or not: leave out whatever lies well outside the view.
+  // The camera filter hides an object from this camera without touching its own visibility, which the game logic owns.
+  {const cam=this.camera,v=cam?.worldView;if(v){const moved=Math.abs(v.x-(this.cullAt?.x??1e9))+Math.abs(v.y-(this.cullAt?.y??1e9))+Math.abs(v.width-(this.cullAt?.w??0))*2;this.viewClock=(this.viewClock||0)-dt;
+   if(this.viewClock<=0||moved>90){this.viewClock=.2;this.cullAt={x:v.x,y:v.y,w:v.width};const m=160,x0=v.x-m,x1=v.right+m,y0=v.y-m,y1=v.bottom+m,id=cam.id;
+    for(const o of this.scene.children.list){if(o.type==='Graphics'||o.type==='Container'||o.scrollFactorX!==1||o.noCull)continue;const w=o.displayWidth||0,h=o.displayHeight||0,l=o.x-(o.originX||0)*w,t=o.y-(o.originY||0)*h;o.cameraFilter=l>x1||l+w<x0||t>y1||t+h<y0?id:0;}}}}
   this.cullClock=(this.cullClock||0)-dt;if(this.cullClock<=0&&this.camera){this.cullClock=.25;const v=this.camera.worldView,m=220;for(const c of this.groundChunks||[])c.image?.setVisible(c.left<v.right+m&&c.left+c.size>v.x-m&&c.top<v.bottom+m&&c.top+c.size>v.y-m);for(const img of this.worldProps||[])img.setVisible(img.x+img.width>v.x-m&&img.x<v.right+m&&img.y+img.height>v.y-m&&img.y<v.bottom+m);for(const f of this.foes){const p=gridPoint(f.x,f.y),on=p.x>v.x-m&&p.x<v.right+m&&p.y>v.y-m&&p.y<v.bottom+m+60;f.image.setVisible(on);f.shadow.setVisible(on);}}
   // Mission foes, strike effects and the floating quest tag for each travelling team.
   const live=new Set();
@@ -405,8 +410,10 @@ export class GuildRenderer {
   const sig=JSON.stringify(Object.entries(paths).map(([k,p])=>[k,p.pts.length,p.pts[0],pathTier(p.wear,v.level)]));if(sig===this.pathSig)return;const first=this.pathSig===undefined;this.pathSig=sig;
   setVillagePaths(Object.values(paths).map(p=>p.pts));
   if(this.groundImage&&this.scene.textures.exists('ground')){const terrain=makeGround(this.state);this.groundImage.setTexture(this.texture('ground',terrain.canvas));}
-  if(first||!this.groundChunks)return;
-  const boxes=Object.values(paths).filter(p=>p.pts.length>1).map(p=>{const g=p.pts.map(([x,y])=>gridPoint(x,y));return{x0:Math.min(...g.map(q=>q.x))-60,x1:Math.max(...g.map(q=>q.x))+60,y0:Math.min(...g.map(q=>q.y))-40,y1:Math.max(...g.map(q=>q.y))+40};});
+  if(first||!this.groundChunks){this.pathParts=Object.fromEntries(Object.entries(paths).map(([k,p])=>[k,JSON.stringify([p.pts,pathTier(p.wear,v.level)])]));return;}
+  // Only the chunks a changed path crosses are repainted.
+  const prev=this.pathParts||{},now=this.pathParts=Object.fromEntries(Object.entries(paths).map(([k,p])=>[k,JSON.stringify([p.pts,pathTier(p.wear,v.level)])]));
+  const boxes=Object.entries(paths).filter(([k,p])=>p.pts.length>1&&prev[k]!==now[k]).map(([,p])=>{const g=p.pts.map(([x,y])=>gridPoint(x,y));return{x0:Math.min(...g.map(q=>q.x))-60,x1:Math.max(...g.map(q=>q.x))+60,y0:Math.min(...g.map(q=>q.y))-40,y1:Math.max(...g.map(q=>q.y))+40};});
   for(const c of this.groundChunks)if(boxes.some(b=>b.x1>c.left&&b.x0<c.left+c.size&&b.y1>c.top&&b.y0<c.top+c.size)){if(this.groundJob===c){this.groundJob=null;c.painter=null;}c.stale=true;}}
  syncVillage(){
   this.syncPaths();

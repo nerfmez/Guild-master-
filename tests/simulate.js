@@ -19,6 +19,7 @@ const canPay = (state, cost, reserve = 0) => Object.entries(cost || {}).every(([
 
 export function simulate(seed = 1, { maxSeconds = 7 * 3600, plan = "standard", log = false, maxMembers = 8, freePlay = 0, onStep = null } = {}) {
   const state = createGame(seed);
+  state.payoutPlan = plan;
   const m = { seed, ranks: {}, village: {}, finishedAt: null, boardRuns: 0, playerRuns: 0, failures: 0, minGold: state.gold, goldSamples: [], petitionsSeen: 0, petitionsLost: 0, upgrades: 0, projects: 0 };
   const seen = new Set();
   let lastMissions = new Set();

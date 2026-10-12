@@ -1414,3 +1414,28 @@ test('guild policies change the numbers they promise; coming back after a while 
   assert.ok(nearGoals(state).length <= 3);
   assert.equal(deserializeGame(serializeGame(state)).progress.policies.join(), 'thrift,welcome');
 });
+
+test('the pay plan is a real choice, and every plan still gets the guild through the whole story', async () => {
+  const { simulate } = await import('./simulate.js');
+  for (const plan of ['generous', 'thrifty']) for (const seed of [1, 2]) {
+    const { state, metrics: m } = simulate(seed, { plan });
+    const min = s => s / 60;
+    assert.ok(m.finishedAt !== null && min(m.finishedAt) >= 150 && min(m.finishedAt) <= 340, `${plan} seed ${seed} finishes the frontier story in time (${min(m.finishedAt)})`);
+    assert.equal(m.bankruptDays, 0, `${plan} seed ${seed} never misses upkeep`);
+    assert.ok(m.failures <= m.boardRuns * 0.14, `${plan} seed ${seed} fails rarely (${m.failures}/${m.boardRuns})`);
+    assert.equal(state.rank, 'B');
+  }
+});
+
+test('tournament: adventurers sign up by themselves, the strongest first, more of them for a bigger purse', async () => {
+  const { getFestivalEntrants } = await import('../src/game.js');
+  const state = createGame(304);
+  state.village.arena = 1;
+  const few = getFestivalEntrants(state, 100), many = getFestivalEntrants(state, 900);
+  assert.equal(few.length, 1); assert.ok(many.length > few.length && many.length <= 4);
+  const r = act(state, 'startFestival', { kind: 'tournament', gold: 900, memberIds: [] });
+  assert.ok(r.ok, r.message);
+  assert.deepEqual(state.festivals.live.members, many, 'the guild master does not pick the fighters');
+  const fighter = id => state.festivals.live.fighters.find(f => f.id === id).power;
+  assert.ok(many.every((id, i) => i === 0 || fighter(id) <= fighter(many[i - 1])), 'the strongest sign up first');
+});

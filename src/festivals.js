@@ -58,6 +58,11 @@ function seedBracket(state, ctx, live, memberIds) {
   live.fighters = fighters; live.matches = matches; live.champion = round[0];
 }
 
+/** Who signs up for the tournament: adventurers enter by themselves, the strongest first; a bigger purse tempts more of them. */
+export function festivalEntrants(state, ctx, gold) {
+  const want = gold >= 700 ? 4 : gold >= 300 ? 3 : gold >= 150 ? 2 : 1;
+  return state.members.filter(m => ctx.canEnter(m.id) && (m.morale ?? 50) >= 35).sort((a, b) => ctx.power(b) - ctx.power(a)).slice(0, want).map(m => m.id);
+}
 /** Open a festival: the guild pays the purse now (it is held until the prize-giving). */
 export function startFestival(state, ctx, payload) {
   const kind = payload.kind, f = FESTIVALS[kind], st = festivalStatus(state, ctx, kind);
@@ -67,7 +72,7 @@ export function startFestival(state, ctx, payload) {
   if (state.gold < gold) return { ok: false, message: 'เงินกิลด์ไม่พอสำหรับเงินรางวัล' };
   const item = payload.item ? ctx.takeItem(payload.item) : null;
   if (payload.item && !item) return { ok: false, message: 'ไม่มีของรางวัลชิ้นนั้นในคลังแล้ว' };
-  const members = kind === 'tournament' ? [...new Set(payload.memberIds || [])].filter(id => ctx.canEnter(id)).slice(0, 4) : [];
+  const members = kind === 'tournament' ? festivalEntrants(state, ctx, gold) : [];
   ctx.pay(gold, `เงินรางวัล${f.name}`);
   const now = state.elapsed;
   const live = { kind, gold, item, start: now, open: now + f.prep, end: now + f.prep + f.length, length: f.length, visitors: festivalVisitors(state, ctx, kind, gold, item?.value || 0), members };
