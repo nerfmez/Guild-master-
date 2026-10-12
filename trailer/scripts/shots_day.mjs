@@ -1,0 +1,15 @@
+import {open,shoot,ease,lerp} from './lib.mjs';
+const only=process.argv[2]?process.argv[2].split(','):null;const want=n=>!only||only.includes(n);
+const {b,p}=await open('assets/save-day.json');
+const warm=async ms=>p.evaluate(ms=>{window.__vt.manual();window.__vt.step(ms,Math.ceil(ms/50));},ms);
+const L=(a,b2,t)=>({x:lerp(a[0],b2[0],t),y:lerp(a[1],b2[1],t),z:lerp(a[2],b2[2],t)});
+await warm(3000);
+if(want('reveal'))await shoot(p,'reveal',{frames:195,cam:t=>L([40,-8,.3],[11,15,.62],ease(t))});
+if(want('town'))await shoot(p,'town',{frames:195,cam:t=>L([-8,22.5,1.15],[18,23.5,1.15],t)});
+if(want('guild1'))await shoot(p,'guild1',{frames:135,cam:t=>L([11,13,1.05],[12,10,1.35],ease(t))});
+if(want('guild2'))await shoot(p,'guild2',{frames:135,cam:t=>L([8.5,7.5,2],[15.5,7,2],t)});
+await warm(4000);
+if(want('hunt1'))await shoot(p,'hunt1',{frames:84,cam:t=>L([-33,20.5,1.7],[-31,21,1.8],t)});
+if(want('hunt2'))await shoot(p,'hunt2',{frames:84,cam:t=>L([1,-45,1.7],[-1,-43.5,1.8],t)});
+if(want('hunt3'))await shoot(p,'hunt3',{frames:120,cam:t=>L([94,25,1.7],[70,8,.32],ease(t))});
+await b.close();

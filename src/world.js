@@ -700,8 +700,8 @@ const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])
   for(const [id,s] of this.showSprites)if(!seen.has(id)){s.image.destroy();s.label?.destroy();s.prop?.destroy();this.showSprites.delete(id);}
   this.updateCrowd(dt,playing);
   // Lanterns let go by the crowd drift up into the night.
-  for(const l of this.skyLanterns||[]){l.age+=dt;l.image.setPosition(Math.round(l.x+Math.sin(t+l.phase)*6),Math.round(l.y-l.age*28)).setAlpha(Math.max(0,1-l.age/11)).setTexture('fest-lantern-'+(Math.floor(t*2+l.phase)%2));}
-  if(this.skyLanterns?.length){this.skyLanterns=this.skyLanterns.filter(l=>{if(l.age<11)return true;l.image.destroy();return false;});}
+  for(const l of this.skyLanterns||[]){l.age+=dt;const x=Math.round(l.x+Math.sin(t+l.phase)*6),y=Math.round(l.y-l.age*28),a=Math.max(0,1-l.age/11);l.image.setPosition(x,y).setAlpha(a).setTexture('fest-lantern-'+(Math.floor(t*2+l.phase)%2));l.glow?.setPosition(x,y-8).setAlpha(a*(.75+.25*Math.sin(t*5+l.phase)));}
+  if(this.skyLanterns?.length){this.skyLanterns=this.skyLanterns.filter(l=>{if(l.age<11)return true;l.image.destroy();l.glow?.destroy();return false;});}
  }
  /** Spectators: around the ring at the arena, among the stalls at the fair, in front of the stage on lantern night. */
  updateCrowd(dt,playing){
@@ -932,7 +932,9 @@ const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])
    else if(e.type==='rockBreak'){this.dustPuff(e.x-.4,e.y-.4,.8,.8);this.ring(p.x,p.y,0xb8b2a6,22);this.floatText(p.x,p.y-30,'แตก!','#ffe08a',11);this.showCheer=1.2;}
    else if(e.type==='inspect')this.floatText(p.x,p.y-40,'🔍 ชิม…','#fff5d9',9);
    else if(e.type==='score'){this.floatText(p.x,p.y-46,e.text,e.good?'#ffe08a':'#ffffff',e.good?13:11);if(e.good)this.showCheer=1.5;}
-   else if(e.type==='lanternUp'){if(!this.scene.textures.exists('fest-lantern-0'))for(let f=0;f<2;f++)this.texture(`fest-lantern-${f}`,makeFestivalDecor('lantern',f).canvas);this.skyLanterns??=[];if(this.skyLanterns.length<70)this.skyLanterns.push({x:p.x,y:p.y-20,age:0,phase:Math.random()*6,image:this.scene.add.image(p.x,p.y-20,'fest-lantern-0').setOrigin(.5,1).setBlendMode(this.darkness()>.25?Phaser.BlendModes.ADD:Phaser.BlendModes.NORMAL).setDepth(99900)});}
+   else if(e.type==='lanternUp'){if(!this.scene.textures.exists('fest-lantern-0'))for(let f=0;f<2;f++)this.texture(`fest-lantern-${f}`,makeFestivalDecor('lantern',f).canvas);this.skyLanterns??=[];if(this.skyLanterns.length<70){if(!this.scene.textures.exists('sky-lantern-glow')){const c=document.createElement('canvas');c.width=c.height=48;const g=c.getContext('2d'),r=g.createRadialGradient(24,24,0,24,24,24);r.addColorStop(0,'rgba(255,170,70,.75)');r.addColorStop(.35,'rgba(255,130,40,.3)');r.addColorStop(1,'rgba(255,110,30,0)');g.fillStyle=r;g.fillRect(0,0,48,48);this.texture('sky-lantern-glow',c);}
+     // Above the night overlay so they keep their own colour and glow against the dark sky.
+     this.skyLanterns.push({x:p.x,y:p.y-20,age:0,phase:Math.random()*6,glow:this.scene.add.image(p.x,p.y-30,'sky-lantern-glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(99976),image:this.scene.add.image(p.x,p.y-20,'fest-lantern-0').setOrigin(.5,1).setDepth(99980)});}}
    else if(e.type==='examResults'){for(const r of e.results||[]){if(!Number.isFinite(r.x))continue;const q=gridPoint(r.x,r.y);this.floatText(q.x,q.y-44,r.pass?`ผ่าน ✓ ${r.total}`:`ไม่ผ่าน ${r.total}`,r.pass?'#9fe08a':'#ffb0a0',11);}this.showCheer=2;}
    else if(e.type==='miss')this.floatText(p.x,p.y-60,'ฟันไม่ถึง!','#bfe3ff',8);
    else if(e.type==='munch')this.floatText(p.x,p.y-24,'งั่ม!','#f4b860',8);
