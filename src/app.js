@@ -19,7 +19,8 @@ import {SPECIES} from './monsters.js';
 import {initFullscreen} from './fullscreen.js';
 import {initMobileUI} from './mobile-ui.js';
 import {festivalView,isGameNight} from './festivals.js';
-import {unlockAudio,setAudio,setMusicArea,fxSound,sfx,MUSIC_AREAS,musicArea} from './audio.js';
+import {unlockAudio,setAudio,setMusicArea,setNightAmbience,fxSound,sfx,MUSIC_AREAS,musicArea} from './audio.js';
+import {nightAmount} from './night-lighting.js';
 import {EXAM_STAGES} from './exams.js';
 const $=id=>document.getElementById(id);
 let mobileHUD;
@@ -48,7 +49,9 @@ function syncMusic(dt){musicClock-=dt;if(musicClock>0)return;musicClock=1.5;
  if(show&&ui.show==='festival'&&live)id=live.kind==='lantern'?'night':'festival';
  else{const g=renderer?.viewGrid?.()||{x:10,y:10},boss=(state.world?.monsters||[]).some(m=>!m.dead&&(m.questBoss||MONSTER_STATS[m.species]?.boss)&&Math.hypot(m.x-g.x,m.y-g.y)<14);
   id=boss?'boss':live&&Math.hypot(g.x-14,g.y-20)<20&&state.elapsed>=live.open?(live.kind==='lantern'?'night':'festival'):g.x>108&&g.y<10?'peak':g.x>78?'canyon':g.y<-30?'mist':(g.x<-12||g.y>30||g.y<-8||g.x>40)?'meadow':'village';}
- setMusicArea(id);}
+ setMusicArea(id);
+ // Crickets and owls come out with the dark; the festival and boss themes keep the stage to themselves.
+ setNightAmbience(id==='boss'||id==='festival'?0:nightAmount(state.clock||0),id);}
 let audioContext;
 function playChime(){if(!ui.sound)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();audioContext.resume();const now=audioContext.currentTime;for(const [i,f] of [523.25,659.25,783.99].entries()){const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sine';osc.frequency.value=f;gain.gain.setValueAtTime(0,now+i*.065);gain.gain.linearRampToValueAtTime(.035,now+i*.065+.012);gain.gain.exponentialRampToValueAtTime(.001,now+i*.065+.23);osc.connect(gain);gain.connect(audioContext.destination);osc.start(now+i*.065);osc.stop(now+i*.065+.24);}}catch{}}
 function toast(text,error=false,onClick=null){mobileHUD?.record(text,error,onClick);if(mobileHUD?.compact()&&!error)return;const node=document.createElement('div');node.className='toast'+(error?' error':' success')+(onClick?' clickable':'');node.textContent=text;if(onClick){node.setAttribute('role','button');node.onclick=()=>{node.remove();onClick();};}$('toasts').appendChild(node);setTimeout(()=>node.remove(),5500);while($('toasts').children.length>3)$('toasts').firstChild.remove();}

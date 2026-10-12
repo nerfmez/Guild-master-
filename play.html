@@ -5283,7 +5283,56 @@ function fxSound(e) {
   }
 }
 
-return {unlockAudio,setAudio,audioOptions,setMusicArea,musicArea,MUSIC_AREAS,sfx,fxSound};
+// ---- Night ambience: crickets, a soft breeze, an owl now and then; frogs by water, deeper wind in the mist. ----
+let ambBus = null, ambLevel = 0, ambPlace = 'village', ambTimer = null, breeze = null;
+const ambNext = { crickets: [0, 0, 0], owl: 0, frog: 0, chime: 0 };
+function ambGain() { return (opts.sfx ? 1 : 0) * ambLevel; }
+function startBreeze() {
+  const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+  s.buffer = noiseBuf; s.loop = true; f.type = 'lowpass'; f.frequency.value = 380; g.gain.value = 0;
+  lfo.frequency.value = .07; lg.gain.value = 120; lfo.connect(lg); lg.connect(f.frequency);
+  s.connect(f); f.connect(g); g.connect(ambBus); s.start(); lfo.start();
+  breeze = { g, f };
+}
+function chirp(t, pitch, pulses, gain) {
+  for (let k = 0; k < pulses; k++) tone(ambBus, pitch, t + k * .07, .028, { type: 'sine', gain, attack: .004, release: .02 });
+}
+function ambTick() {
+  if (!ctx || ctx.state !== 'running') return;
+  const level = ambGain(), now = ctx.currentTime;
+  if (!breeze) startBreeze();
+  const mist = ambPlace === 'mist' || ambPlace === 'peak';
+  breeze.g.gain.setTargetAtTime(level * (mist ? .1 : .045), now, .8);
+  breeze.f.frequency.setTargetAtTime(mist ? 260 : 380, now, 1);
+  if (level < .02) return;
+  // Three crickets, each with its own pitch and rhythm.
+  ambNext.crickets.forEach((at, i) => {
+    if (now < at) return;
+    if (!mist || i === 0) chirp(now + .05, [4300, 4700, 3900][i], 3 + (i % 2), .022 * level);
+    ambNext.crickets[i] = now + .55 + i * .23 + Math.random() * .9;
+  });
+  if (now >= ambNext.owl) {
+    if (ambNext.owl) { const t = now + .1, f = mist ? 300 : 360; tone(ambBus, f, t, .22, { type: 'sine', gain: .07 * level, attack: .06, release: .18, slide: .9, filter: 900 }); tone(ambBus, f * .94, t + .45, .35, { type: 'sine', gain: .06 * level, attack: .08, release: .25, slide: .88, filter: 900 }); }
+    ambNext.owl = now + 14 + Math.random() * 18;
+  }
+  if (ambPlace === 'meadow' && now >= ambNext.frog) {
+    if (ambNext.frog) for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k++) tone(ambBus, 150 + Math.random() * 30, now + .1 + k * .16, .08, { type: 'sawtooth', gain: .035 * level, attack: .01, release: .05, filter: 600, slide: .8 });
+    ambNext.frog = now + 2.5 + Math.random() * 4;
+  }
+  if (mist && now >= ambNext.chime) {
+    if (ambNext.chime) { const root = 72 + [0, 3, 7, 10][Math.floor(Math.random() * 4)]; tone(ambBus, midi(root), now + .1, .6, { type: 'sine', gain: .03 * level, attack: .005, release: 1.2 }); }
+    ambNext.chime = now + 6 + Math.random() * 8;
+  }
+}
+/** Night ambience follows the night (0 day … 1 deep night) and the area the camera is looking at. */
+function setNightAmbience(level, place = 'village') {
+  if (!ensure()) return;
+  if (!ambBus) { ambBus = ctx.createGain(); ambBus.gain.value = .9; ambBus.connect(master); }
+  ambLevel = Math.max(0, Math.min(1, level)); ambPlace = place;
+  if (!ambTimer) ambTimer = setInterval(ambTick, 150);
+}
+
+return {unlockAudio,setAudio,audioOptions,setMusicArea,musicArea,MUSIC_AREAS,sfx,fxSound,setNightAmbience};
 })();
 const Trade=(()=>{
 /* The guild's trade: adventurers sell monster parts and treasures at the guild counter, the guild stores them,
@@ -13914,7 +13963,8 @@ const {SPECIES}=Bestiary;
 const {initFullscreen}=Fullscreen;
 const {initMobileUI}=MobileUI;
 const {festivalView,isGameNight}=Festivals;
-const {unlockAudio,setAudio,setMusicArea,fxSound,sfx,MUSIC_AREAS,musicArea}=Audio;
+const {unlockAudio,setAudio,setMusicArea,setNightAmbience,fxSound,sfx,MUSIC_AREAS,musicArea}=Audio;
+const {nightAmount}=NightLighting;
 const {EXAM_STAGES}=Exams;
 const $=id=>document.getElementById(id);
 let mobileHUD;
@@ -13943,7 +13993,9 @@ function syncMusic(dt){musicClock-=dt;if(musicClock>0)return;musicClock=1.5;
  if(show&&ui.show==='festival'&&live)id=live.kind==='lantern'?'night':'festival';
  else{const g=renderer?.viewGrid?.()||{x:10,y:10},boss=(state.world?.monsters||[]).some(m=>!m.dead&&(m.questBoss||MONSTER_STATS[m.species]?.boss)&&Math.hypot(m.x-g.x,m.y-g.y)<14);
   id=boss?'boss':live&&Math.hypot(g.x-14,g.y-20)<20&&state.elapsed>=live.open?(live.kind==='lantern'?'night':'festival'):g.x>108&&g.y<10?'peak':g.x>78?'canyon':g.y<-30?'mist':(g.x<-12||g.y>30||g.y<-8||g.x>40)?'meadow':'village';}
- setMusicArea(id);}
+ setMusicArea(id);
+ // Crickets and owls come out with the dark; the festival and boss themes keep the stage to themselves.
+ setNightAmbience(id==='boss'||id==='festival'?0:nightAmount(state.clock||0),id);}
 let audioContext;
 function playChime(){if(!ui.sound)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();audioContext.resume();const now=audioContext.currentTime;for(const [i,f] of [523.25,659.25,783.99].entries()){const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sine';osc.frequency.value=f;gain.gain.setValueAtTime(0,now+i*.065);gain.gain.linearRampToValueAtTime(.035,now+i*.065+.012);gain.gain.exponentialRampToValueAtTime(.001,now+i*.065+.23);osc.connect(gain);gain.connect(audioContext.destination);osc.start(now+i*.065);osc.stop(now+i*.065+.24);}}catch{}}
 function toast(text,error=false,onClick=null){mobileHUD?.record(text,error,onClick);if(mobileHUD?.compact()&&!error)return;const node=document.createElement('div');node.className='toast'+(error?' error':' success')+(onClick?' clickable':'');node.textContent=text;if(onClick){node.setAttribute('role','button');node.onclick=()=>{node.remove();onClick();};}$('toasts').appendChild(node);setTimeout(()=>node.remove(),5500);while($('toasts').children.length>3)$('toasts').firstChild.remove();}

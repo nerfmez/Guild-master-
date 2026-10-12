@@ -170,3 +170,52 @@ export function fxSound(e) {
     default: return undefined;
   }
 }
+
+// ---- Night ambience: crickets, a soft breeze, an owl now and then; frogs by water, deeper wind in the mist. ----
+let ambBus = null, ambLevel = 0, ambPlace = 'village', ambTimer = null, breeze = null;
+const ambNext = { crickets: [0, 0, 0], owl: 0, frog: 0, chime: 0 };
+function ambGain() { return (opts.sfx ? 1 : 0) * ambLevel; }
+function startBreeze() {
+  const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+  s.buffer = noiseBuf; s.loop = true; f.type = 'lowpass'; f.frequency.value = 380; g.gain.value = 0;
+  lfo.frequency.value = .07; lg.gain.value = 120; lfo.connect(lg); lg.connect(f.frequency);
+  s.connect(f); f.connect(g); g.connect(ambBus); s.start(); lfo.start();
+  breeze = { g, f };
+}
+function chirp(t, pitch, pulses, gain) {
+  for (let k = 0; k < pulses; k++) tone(ambBus, pitch, t + k * .07, .028, { type: 'sine', gain, attack: .004, release: .02 });
+}
+function ambTick() {
+  if (!ctx || ctx.state !== 'running') return;
+  const level = ambGain(), now = ctx.currentTime;
+  if (!breeze) startBreeze();
+  const mist = ambPlace === 'mist' || ambPlace === 'peak';
+  breeze.g.gain.setTargetAtTime(level * (mist ? .1 : .045), now, .8);
+  breeze.f.frequency.setTargetAtTime(mist ? 260 : 380, now, 1);
+  if (level < .02) return;
+  // Three crickets, each with its own pitch and rhythm.
+  ambNext.crickets.forEach((at, i) => {
+    if (now < at) return;
+    if (!mist || i === 0) chirp(now + .05, [4300, 4700, 3900][i], 3 + (i % 2), .022 * level);
+    ambNext.crickets[i] = now + .55 + i * .23 + Math.random() * .9;
+  });
+  if (now >= ambNext.owl) {
+    if (ambNext.owl) { const t = now + .1, f = mist ? 300 : 360; tone(ambBus, f, t, .22, { type: 'sine', gain: .07 * level, attack: .06, release: .18, slide: .9, filter: 900 }); tone(ambBus, f * .94, t + .45, .35, { type: 'sine', gain: .06 * level, attack: .08, release: .25, slide: .88, filter: 900 }); }
+    ambNext.owl = now + 14 + Math.random() * 18;
+  }
+  if (ambPlace === 'meadow' && now >= ambNext.frog) {
+    if (ambNext.frog) for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k++) tone(ambBus, 150 + Math.random() * 30, now + .1 + k * .16, .08, { type: 'sawtooth', gain: .035 * level, attack: .01, release: .05, filter: 600, slide: .8 });
+    ambNext.frog = now + 2.5 + Math.random() * 4;
+  }
+  if (mist && now >= ambNext.chime) {
+    if (ambNext.chime) { const root = 72 + [0, 3, 7, 10][Math.floor(Math.random() * 4)]; tone(ambBus, midi(root), now + .1, .6, { type: 'sine', gain: .03 * level, attack: .005, release: 1.2 }); }
+    ambNext.chime = now + 6 + Math.random() * 8;
+  }
+}
+/** Night ambience follows the night (0 day … 1 deep night) and the area the camera is looking at. */
+export function setNightAmbience(level, place = 'village') {
+  if (!ensure()) return;
+  if (!ambBus) { ambBus = ctx.createGain(); ambBus.gain.value = .9; ambBus.connect(master); }
+  ambLevel = Math.max(0, Math.min(1, level)); ambPlace = place;
+  if (!ambTimer) ambTimer = setInterval(ambTick, 150);
+}
