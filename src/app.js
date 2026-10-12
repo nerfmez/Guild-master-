@@ -534,9 +534,9 @@ $('guild-world').addEventListener('pointerup',e=>{if(document.body.classList.con
  stick.addEventListener('pointermove',e=>{if(heroStick.id===e.pointerId)move(e);});
  for(const ev of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(ev,stop);
  // Capture the initiating pointer on the world, so camera gestures and hero attacks remain independent.
- world.addEventListener('pointerdown',e=>{if(!allowed(e)||heroStick.id!==null)return;startStick(e,true);world.setPointerCapture(e.pointerId);},true);
- world.addEventListener('pointermove',e=>{if(heroStick.id===e.pointerId)move(e);},true);
- for(const ev of ['pointerup','pointercancel','lostpointercapture'])world.addEventListener(ev,stop,true);
+ world.addEventListener('pointerdown',e=>{if(!allowed(e)||heroStick.id!==null)return;startStick(e,true);world.setPointerCapture(e.pointerId);e.stopPropagation();},true);
+ world.addEventListener('pointermove',e=>{if(heroStick.id===e.pointerId){e.preventDefault();e.stopPropagation();move(e);}},true);
+ for(const ev of ['pointerup','pointercancel','lostpointercapture'])world.addEventListener(ev,e=>{if(heroStick.id===e.pointerId){e.stopPropagation();stop(e);}},true);
  window.addEventListener('blur',()=>{if(heroStick.id!==null){stop({pointerId:heroStick.id});}});
 }
 window.addEventListener('keydown',e=>{if(document.body.classList.contains('scene-only')||!heroOn()||e.target.matches?.('input,select,textarea')||document.querySelector('dialog[open]'))return;const k=e.code;
