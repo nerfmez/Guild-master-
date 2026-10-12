@@ -8836,18 +8836,20 @@ function makeRoom(f){
   else if(f.type==='dining'){
    // A real table on four turned legs with a cloth runner, plates, bread and a jug; four wooden chairs with backs.
    // Painted back to front: the chairs behind the table first, then the table, then the chairs in front.
-   const T={x:.42,y:.42,w:.91,h:.91,z:12};
-   const tableArt=()=>{top(c,T.x+.06,T.y+.06,T.w,T.h,0,'#8b80634a');
-    for(const [x,y] of [[T.x+.04,T.y+.04],[T.x+T.w-.1,T.y+.04],[T.x+.04,T.y+T.h-.1],[T.x+T.w-.1,T.y+T.h-.1]])cube(c,x,y,.06,.06,0,T.z,'#8f6a4c','#c9a074','#6b4a32');
-    cube(c,T.x,T.y,T.w,T.h,T.z,2,'#a87a52','#e2bb86','#80583c');top(c,T.x+.18,T.y-.01,T.w-.36,T.h+.02,T.z+2.1,'#f4ecd8');top(c,T.x+.18,T.y-.01,T.w-.36,.06,T.z+2.15,'#d9584a');top(c,T.x+.18,T.y+T.h-.05,T.w-.36,.06,T.z+2.15,'#d9584a');
-    for(const [x,y] of [[.875,T.y+.14],[.875,T.y+T.h-.14],[T.x+.14,.875],[T.x+T.w-.14,.875]]){const[px,py]=q(x,y,T.z+2.3);E(c,px,py,4,2,'#fff7ea');E(c,px,py,2,1,'#e8d2b0');}
-    {const[bx,by]=q(.875,.875,T.z+3);E(c,bx,by-1,5,3,'#b8864a');R(c,bx-3,by-4,2,2,'#e8b46a');R(c,bx+1,by-4,2,2,'#e8b46a');}
-    {const[jx,jy]=q(1.06,.7,T.z+3);R(c,jx-2,jy-6,4,6,'#8fb3c9');R(c,jx-2,jy-7,4,1,'#c8e4ef');R(c,jx+2,jy-5,1,3,'#8fb3c9');}};
+   // A round table on a single turned pedestal: a ring of wood, a round cloth, four plates, bread and a jug.
+   const tableArt=()=>{const cx=.875,cy=.875,r=.48,z=12,ring=(rad,zz)=>Array.from({length:24},(_,k)=>{const a=k/24*Math.PI*2;return q(cx+Math.cos(a)*rad,cy+Math.sin(a)*rad,zz);});
+    P(c,ring(r*.75,0),'#8b80634a');
+    cube(c,cx-.05,cy-.05,.1,.1,1,z-1,'#b08458','#e2bb86','#8a6442');P(c,ring(.2,0),'#a87a52');P(c,ring(.16,1),'#c99a68');
+    const top0=ring(r,z),top1=ring(r,z+2);P(c,[...top0.slice(0,13),...top1.slice(0,13).reverse()],'#b88a5e');P(c,top1,'#e8c896');for(let k=0;k<24;k++)L(c,...top1[k],...top1[(k+1)%24],'#a87a52');
+    P(c,ring(r*.5,z+2.1),'#f6efdf');
+    for(const a of [0,Math.PI/2,Math.PI,Math.PI*1.5]){const[px,py]=q(cx+Math.cos(a)*r*.52,cy+Math.sin(a)*r*.52,z+2.3);E(c,px,py,4,2,'#fff7ea');E(c,px,py,2,1,'#e8d2b0');}
+    {const[bx,by]=q(cx,cy,z+3);E(c,bx,by-1,5,3,'#b8864a');R(c,bx-3,by-4,2,2,'#e8b46a');R(c,bx+1,by-4,2,2,'#e8b46a');}
+    {const[jx,jy]=q(cx+.16,cy-.16,z+3);R(c,jx-2,jy-6,4,6,'#8fb3c9');R(c,jx-2,jy-7,4,1,'#c8e4ef');R(c,jx+2,jy-5,1,3,'#8fb3c9');}};
    const chair=(cx,cy,back)=>{const s2=.15,legs=[[cx-s2,cy-s2],[cx+s2-.04,cy-s2],[cx-s2,cy+s2-.04],[cx+s2-.04,cy+s2-.04]];
     const backArt=()=>{const posts=back==='n'?[[cx-s2,cy-s2],[cx+s2-.04,cy-s2]]:back==='s'?[[cx-s2,cy+s2-.04],[cx+s2-.04,cy+s2-.04]]:back==='w'?[[cx-s2,cy-s2],[cx-s2,cy+s2-.04]]:[[cx+s2-.04,cy-s2],[cx+s2-.04,cy+s2-.04]];
-     for(const [x,y] of posts)cube(c,x,y,.04,.04,8,8,'#9a6e4c','#d2a676','#7a5238');
-     const rail=back==='n'||back==='s'?[cx-s2,posts[0][1],s2*2,.04]:[posts[0][0],cy-s2,.04,s2*2];cube(c,rail[0],rail[1],rail[2],rail[3],13.5,2.5,'#a87a52','#e2bb86','#80583c');};
-    const seatArt=()=>{for(const [x,y] of legs)cube(c,x,y,.04,.04,0,7,'#9a6e4c','#d2a676','#7a5238');cube(c,cx-s2,cy-s2,s2*2,s2*2,7,1.5,'#9a6e4c','#d7ad7c','#7a5238');top(c,cx-s2+.04,cy-s2+.04,s2*2-.08,s2*2-.08,8.6,'#c9584a');};
+     for(const [x,y] of posts)cube(c,x,y,.04,.04,7,5,'#c49a6c','#ecd0a2','#a37c55');
+     const rail=back==='n'||back==='s'?[cx-s2,posts[0][1],s2*2,.04]:[posts[0][0],cy-s2,.04,s2*2];cube(c,rail[0],rail[1],rail[2],rail[3],10.5,2,'#c9a074','#f0d6a8','#a8805a');};
+    const seatArt=()=>{for(const [x,y] of legs)cube(c,x,y,.04,.04,0,5.5,'#c49a6c','#ecd0a2','#a37c55');cube(c,cx-s2,cy-s2,s2*2,s2*2,5.5,1.5,'#c9a074','#f0d6a8','#a8805a');top(c,cx-s2+.04,cy-s2+.04,s2*2-.08,s2*2-.08,7.1,'#e07a68');};
     if(back==='n'||back==='w'){backArt();seatArt();}else{seatArt();backArt();}};
    chair(.875,.13,'n');chair(.13,.875,'w');tableArt();chair(1.62,.875,'e');chair(.875,1.62,'s');}
   else if(f.type==='appraisal'){
