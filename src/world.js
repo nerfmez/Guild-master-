@@ -693,7 +693,7 @@ export class GuildRenderer {
   else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,214,120,.55)');r.addColorStop(1,'rgba(255,214,120,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
   return c;}
  // Morning comes at the start of each day; dusk, night and a short dawn close it.
- darkness(){const t=(this.state.clock||0)/240;return t<.72?0:t<.8?.5*(t-.72)/.08:t<.95?.5:.5*(1-(t-.95)/.05);}
+ darkness(){const t=(this.state.clock||0)/240;return t<.2?.5:t<.25?.5*(.25-t)/.05:t<.72?0:t<.8?.5*(t-.72)/.08:.5;}
 /** A soft colour grade over the whole view: warm sunlight from above, a gentle vignette, gold at dusk, blue at night. */
  atmosphereColors(t){
   const K=[[0,[255,205,150,.2],[150,130,150,.04],.18],[.1,[255,238,196,.12],[150,140,130,.02],.15],[.56,[255,236,190,.1],[150,140,130,.02],.15],[.68,[255,160,80,.3],[205,112,132,.16],.24],
