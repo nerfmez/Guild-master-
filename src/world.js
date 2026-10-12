@@ -567,6 +567,15 @@ export class GuildRenderer {
    // While the master is out, ready spots glint so they are easy to spot.
    o.img.setAlpha(1);if(near&&ready&&!o.img.cameraFilter){const k=.85+Math.sin(t*4+o.n.x)*.15;o.img.setTint(Phaser.Display.Color.GetColor(255,Math.round(240*k+15),Math.round(200*k+55)));}else o.img.clearTint();}
  }
+ // Let scenery keep moving while hiding gameplay overlays and disabling selection.
+ setSceneOnly(on){
+  this.sceneOnly=on;this.stopFollow();this.hpBars?.setVisible(!on);this.heroMarks?.setVisible(!on);
+  if(on){
+   this.heroGoalMarker?.setVisible(false);
+   for(const s of this.lifeSprites?.values()||[]){s.label?.setVisible(false);s.crown?.setVisible(false);}
+   for(const o of this.fxTexts||[])o.text.setVisible(false);
+  }
+ }
  /** The monster under a tap, for locking on. */
  pickMonster(clientX,clientY){if(!this.camera)return null;const w=this.worldPoint(this.screenPoint({clientX,clientY}));let best=null,bd=40;for(const m of this.state.world?.monsters||[]){if(m.dead)continue;const q=gridPoint(m.x,m.y),d=Math.hypot(q.x-w.x,q.y-12-w.y);if(d<bd){bd=d;best=m.id;}}return best;}
  updateHero(dt){
@@ -585,12 +594,13 @@ export class GuildRenderer {
   // Health and a little name tag above the master's head.
   const ratio=h.hp/Math.max(1,h.maxHp);this.hpBars.fillStyle(0x3b302a,.85).fillRect(Math.round(at.x-11),Math.round(at.y-40),22,4);this.hpBars.fillStyle(ratio<.35?0xe0a050:0x7fd18b,1).fillRect(Math.round(at.x-10),Math.round(at.y-39),Math.round(20*ratio),2);
   // Marks for the master: the locked foe, traps, a lead ring around nearby friends, and who can be helped up.
-  const g=this.heroMarks??=this.scene.add.graphics().setDepth(4);g.clear();
+  const g=this.heroMarks??=this.scene.add.graphics().setDepth(4);g.clear();g.setVisible(!this.sceneOnly);
   const lock=h.lock&&(this.state.world?.monsters||[]).find(o=>o.id===h.lock&&!o.dead);if(lock){const q=gridPoint(lock.x,lock.y);g.lineStyle(2,0xffd36a,.95).strokeEllipse(q.x,q.y,34,17);g.lineStyle(1,0xff8a5a,.8).strokeEllipse(q.x,q.y,40,20);}
   for(const t of h.traps||[]){const q=gridPoint(t.x,t.y);g.fillStyle(0x6b4a32,.9).fillEllipse(q.x,q.y,16,8);g.lineStyle(1,0xd9c39a,1).strokeEllipse(q.x,q.y,16,8);}
   g.lineStyle(1,0xffe9a8,.25).strokeEllipse(at.x,at.y,8*CELL_W,4*CELL_W);
   for(const hn of this.state.world?.hunters||[]){if(hn.mode!=='down'||hn.carriedBy==='hero')continue;const q=gridPoint(hn.x,hn.y);if(Math.hypot(hn.x-h.x,hn.y-h.y)<8){const pulse=.5+Math.sin((this.realTime||0)*6)*.3;g.lineStyle(2,0xff6a5a,pulse).strokeEllipse(q.x,q.y,30,15);}}
   for(const c of h.contracts||[]){if(c.done||!c.monsterId||c.day!==this.state.day)continue;const mm=(this.state.world?.monsters||[]).find(o=>o.id===c.monsterId&&!o.dead);if(!mm)continue;const q=gridPoint(mm.x,mm.y);g.fillStyle(0xffd36a,1).fillTriangle(q.x-5,q.y-52,q.x+5,q.y-52,q.x,q.y-44);}
+  if(this.sceneOnly)return;
   // The camera stays with the master.
   if(!this.heroCam){this.heroCam=true;this.stopFollow?.();this.zoomTarget=Math.max(.3,Math.min(2.4,2.1/(this.baseZoom||1)));}
   const k=1-Math.pow(.004,Math.min(dt,.1));this.focusX+=(at.x-this.focusX)*k;this.focusY+=(at.y-10-this.focusY)*k;this.userPanned=true;
@@ -598,7 +608,7 @@ export class GuildRenderer {
   this.applyView();
  }
  updateHeroGoal(){
-  const h=this.state.hero,c=h?.encounters?.challenge,on=h?.active&&c?.kind==='reach';
+  const h=this.state.hero,c=h?.encounters?.challenge,on=!this.sceneOnly&&h?.active&&c?.kind==='reach';
   if(!on){this.heroGoalMarker?.setVisible(false);return;}
   if(!this.heroGoalMarker?.scene){
    const g=this.scene.add.graphics();g.lineStyle(2,0xd5ad68,.9).strokeEllipse(0,0,28,14);g.fillStyle(0xffe7a2,.35).fillEllipse(0,0,22,10);g.lineStyle(2,0xffedb9,1);g.beginPath();g.moveTo(0,-23);g.lineTo(6,-15);g.lineTo(0,-7);g.lineTo(-6,-15);g.closePath();g.strokePath();
@@ -625,7 +635,7 @@ export class GuildRenderer {
   this.updateCaravan();
   this.updateFestival(dt);
   const w=this.state.world;if(!w||!this.scene)return;const t=this.realTime||0;
-  this.lifeSprites??=new Map();this.hpBars??=this.scene.add.graphics().setDepth(99990);this.hpBars.clear();
+  this.lifeSprites??=new Map();this.hpBars??=this.scene.add.graphics().setDepth(99990);this.hpBars.clear();this.hpBars.setVisible(!this.sceneOnly);
   const seen=new Set(),hunters=new Map(w.hunters.map(h=>[h.id,h]));
   const bar=(x,y,ratio,color)=>{if(ratio>=1)return;this.hpBars.fillStyle(0x3b302a,.8).fillRect(Math.round(x-8),Math.round(y),16,3);this.hpBars.fillStyle(color,1).fillRect(Math.round(x-7),Math.round(y)+1,Math.max(1,Math.round(14*Math.max(0,ratio))),1);};
   const sprite=(id,make)=>{let s=this.lifeSprites.get(id);if(!s){s=make();this.lifeSprites.set(id,s);}seen.add(id);return s;};
@@ -639,8 +649,8 @@ export class GuildRenderer {
    const under=m.under>0;s.image.setTexture(this.monTex(m.species,frame,s.flash>0)).setPosition(Math.round(p.x),Math.round(p.y-lift+(under?10:0))).setDepth(p.y).setFlipX(!!s.flip).setScale(scale).setAlpha(under?.25:s.alpha).setVisible(s.alpha>0).setTint(m.elite?0xffe0b0:0xffffff);
    // Bosses carry a wide health bar with their name and current act.
    if((m.questBoss||MONSTER_STATS[m.species]?.boss)&&!m.dead){const y=p.y-sp.size[1]*scale-14,w=64,r=Math.max(0,m.hp/m.maxHp);this.hpBars.fillStyle(0x2c241e,.9).fillRect(Math.round(p.x-w/2-1),Math.round(y-1),w+2,7);this.hpBars.fillStyle(m.enraged?0xff5a3a:0xd9623f,1).fillRect(Math.round(p.x-w/2),Math.round(y),Math.round(w*r),5);
-    s.label??=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#ffe9c7',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);s.label.setText(`${SPECIES[m.species]?.name||''}${m.phaseName?' · '+m.phaseName:''}`).setPosition(Math.round(p.x),Math.round(y-2)).setDepth(p.y+2).setVisible(s.alpha>0);}else s.label?.setVisible(false);
-   if(m.elite&&!m.dead){s.crown??=this.scene.add.text(0,0,'👑',{fontSize:'12px'}).setOrigin(.5,1);s.crown.setPosition(Math.round(p.x),Math.round(p.y-sp.size[1]*scale-10)).setDepth(p.y+1).setVisible(s.alpha>0);}else s.crown?.setVisible(false);
+    s.label??=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#ffe9c7',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);s.label.setText(`${SPECIES[m.species]?.name||''}${m.phaseName?' · '+m.phaseName:''}`).setPosition(Math.round(p.x),Math.round(y-2)).setDepth(p.y+2).setVisible(!this.sceneOnly&&s.alpha>0);}else s.label?.setVisible(false);
+   if(m.elite&&!m.dead){s.crown??=this.scene.add.text(0,0,'👑',{fontSize:'12px'}).setOrigin(.5,1);s.crown.setPosition(Math.round(p.x),Math.round(p.y-sp.size[1]*scale-10)).setDepth(p.y+1).setVisible(!this.sceneOnly&&s.alpha>0);}else s.crown?.setVisible(false);
    s.shadow.setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y-.5).setAlpha(s.alpha).setVisible(s.alpha>0);
    if(!m.dead&&!under)bar(p.x,p.y-sp.size[1]*scale-6,m.hp/m.maxHp,m.raid||m.elite||MONSTER_STATS[m.species]?.boss?0xd9623f:0xe0a24a);
   }
@@ -693,7 +703,7 @@ export class GuildRenderer {
   else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,214,120,.55)');r.addColorStop(1,'rgba(255,214,120,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
   return c;}
  // Morning comes at the start of each day; dusk, night and a short dawn close it.
- darkness(){const t=(this.state.clock||0)/240;return t<.72?0:t<.8?.5*(t-.72)/.08:t<.95?.5:.5*(1-(t-.95)/.05);}
+ darkness(){const t=(this.state.clock||0)/240;return t<.2?.5:t<.25?.5*(.25-t)/.05:t<.72?0:t<.8?.5*(t-.72)/.08:.5;}
 /** A soft colour grade over the whole view: warm sunlight from above, a gentle vignette, gold at dusk, blue at night. */
  atmosphereColors(t){
   const K=[[0,[255,205,150,.2],[150,130,150,.04],.18],[.1,[255,238,196,.12],[150,140,130,.02],.15],[.56,[255,236,190,.1],[150,140,130,.02],.15],[.68,[255,160,80,.3],[205,112,132,.16],.24],
@@ -778,7 +788,7 @@ export class GuildRenderer {
   }
  }
  // Damage numbers, skill flashes and knock-outs.
- floatText(x,y,text,color,size=9){
+ floatText(x,y,text,color,size=9){if(this.sceneOnly)return;
   this.fxTexts??=[];let o=this.fxTexts.find(o=>!o.live);
   if(!o){if(this.fxTexts.length>=48)return;o={text:this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#fff',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2)};this.fxTexts.push(o);}
   Object.assign(o,{live:true,age:0,x,y,drift:(Math.random()-.5)*8});o.text.setText(text).setColor(color).setFontSize(size).setVisible(true).setAlpha(1);
@@ -834,7 +844,7 @@ export class GuildRenderer {
    else if(e.type==='revive')this.floatText(p.x,p.y-40,'ฟื้นแล้ว','#9fe08a',9);
    else if(e.type==='sell')this.floatText(p.x,p.y-40,`ขายของ ${e.amount} ชิ้น`,'#ffe08a',9);
   }
-  for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
+  for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setVisible(!this.sceneOnly).setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
  }
  // A point given in a piece of furniture's own frame (before it is turned), as a grid point in the hall.
  localPoint(f,lx,ly){const d=FACILITIES[f.type],r=f.rotation||0,[x,y]=r===1?[d.h-ly,lx]:r===2?[d.w-lx,d.h-ly]:r===3?[ly,d.w-lx]:[lx,ly];return{x:f.x+x,y:f.y+y};}
@@ -1088,7 +1098,7 @@ export class GuildRenderer {
   bind('pointerdown',e=>{this.stopFollow();const p=this.screenPoint(e);this.canvas.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,p);
    if(this.pointers.size===1){const drag=this.drag={id:e.pointerId,start:p,last:p,moved:false},w=this.worldPoint(p);
     if(this.pending&&this.hitPending(w))this.grabPending(drag,w);
-    else if(!this.pending){const id=this.hitFacility(w);if(id)drag.hold=setTimeout(()=>{if(this.drag!==drag||drag.moved||this.pointers.size!==1)return;
+    else if(!this.pending&&!this.sceneOnly){const id=this.hitFacility(w);if(id)drag.hold=setTimeout(()=>{if(this.drag!==drag||drag.moved||this.pointers.size!==1)return;
      // Press and hold lifts a placed item straight into a drag.
      this.onSelect({kind:'pickup',id});this.setMoveMode(id);if(this.pending){this.grabPending(drag,this.worldPoint(drag.last));navigator.vibrate?.(12);}},380);}}
    if(this.pointers.size===2){const[a,b]=[...this.pointers.values()];this.pinch={dist:Math.hypot(a.x-b.x,a.y-b.y),zoom:this.zoom};this.drag.moved=true;this.drag.item=false;clearTimeout(this.drag.hold);}});
@@ -1115,6 +1125,7 @@ export class GuildRenderer {
   return this.villageRects().find(b=>pointInRect(b,tile))?.key||SITE_COTTAGES.find(c=>pointInRect(c,tile))?.style||null;
  }
  select(p){
+  if(this.sceneOnly)return;
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
   if(this.pending){const d=this.footprint();this.setPending(tile.x-d.w/2,tile.y-d.h/2);return;}
   if(this.villagePick){const v=this.villagePick;v.x=Math.round((tile.x-v.w/2)*4)/4;v.y=Math.round((tile.y-v.h/2)*4)/4;this.updateVillagePick();return;}

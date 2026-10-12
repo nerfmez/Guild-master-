@@ -58,6 +58,7 @@ function label(c, text, x, y, size = 16, color = '#fff7e6', align = 'center', st
   c.font = `700 ${size}px "Noto Sans Thai", "Sarabun", system-ui, sans-serif`; c.textAlign = align; c.textBaseline = 'middle';
   c.lineWidth = Math.max(3, size / 5); c.strokeStyle = stroke; c.strokeText(text, x, y); c.fillStyle = color; c.fillText(text, x, y);
 }
+function panelLabel(c, text, x, y, size = 16, color = '#5a4a38', align = 'center') { label(c, text, x, y, size, color, align, '#fff3dc'); }
 function burst(c, x, y, t, color, n = 10, r0 = 6, r1 = 40) {
   for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + t * 2, d = r0 + (r1 - r0) * t; c.fillStyle = color; c.globalAlpha = Math.max(0, 1 - t); c.fillRect(x + Math.cos(a) * d - 2, y + Math.sin(a) * d - 2, 4, 4); }
   c.globalAlpha = 1;
@@ -80,11 +81,11 @@ function scoreboard(c, list, upto, partial, y0) {
   const cols = Math.min(list.length, 8), w = Math.min(112, (W - 40) / cols), x0 = (W - cols * w) / 2;
   list.slice(0, 8).forEach((e, i) => {
     const x = x0 + i * w + w / 2, shown = e.scores.map((v, k) => k < upto ? v : k === upto ? Math.round(v * partial) : 0), total = Math.round(shown.reduce((a, b) => a + b, 0) / 3);
-    c.fillStyle = '#2c241ecc'; c.fillRect(x - w / 2 + 4, y0, w - 8, 78);
-    label(c, e.name.slice(0, 9), x, y0 + 12, 13, e.kind === 'member' ? '#ffe28a' : '#fff7e6');
-    shown.forEach((v, k) => { c.fillStyle = '#ffffff22'; c.fillRect(x - w / 2 + 12, y0 + 26 + k * 12, w - 24, 8); c.fillStyle = STAGE_LOOK[k]; c.fillRect(x - w / 2 + 12, y0 + 26 + k * 12, (w - 24) * v / 100, 8); });
+    c.fillStyle = '#fff3dcee'; c.fillRect(x - w / 2 + 4, y0, w - 8, 78);
+    panelLabel(c, e.name.slice(0, 9), x, y0 + 12, 13, e.kind === 'member' ? '#8a6420' : '#5a4a38');
+    shown.forEach((v, k) => { c.fillStyle = '#e6dac0'; c.fillRect(x - w / 2 + 12, y0 + 26 + k * 12, w - 24, 8); c.fillStyle = STAGE_LOOK[k]; c.fillRect(x - w / 2 + 12, y0 + 26 + k * 12, (w - 24) * v / 100, 8); });
     const passLine = x - w / 2 + 12 + (w - 24) * EXAM_RULES.passMark / 100; c.fillStyle = '#f4b860'; c.fillRect(passLine, y0 + 24, 2, 34);
-    label(c, `${total}`, x, y0 + 68, 14, total >= EXAM_RULES.passMark ? '#a8f0a0' : '#fff7e6');
+    panelLabel(c, `${total}`, x, y0 + 68, 14, total >= EXAM_RULES.passMark ? '#4f7a3a' : '#5a4a38');
   });
 }
 export function drawExamShow(canvas, state, now) {
@@ -130,7 +131,7 @@ export function drawExamShow(canvas, state, now) {
     person(c, state, e, W / 2 - 70 + (clash ? 20 : 0), 330, 4, t * 5, 1);
     person(c, state, { name: 'กรรมการ', kind: 'judge', cls: 'paladin' }, W / 2 + 70 - (clash ? 20 : 0), 330, 4, t * 5 + 1, -1);
     if (clash) burst(c, W / 2, 280, (t * 6) % 1, '#fff1c4', 12, 6, 50);
-    c.fillStyle = '#2c241ecc'; c.fillRect(W / 2 - 160, 200, 320, 14); c.fillStyle = '#d9584a'; c.fillRect(W / 2 - 158, 202, 316 * (1 - local * (1 - lead)), 10);
+    c.fillStyle = '#fff3dcee'; c.fillRect(W / 2 - 160, 200, 320, 14); c.fillStyle = '#d9584a'; c.fillRect(W / 2 - 158, 202, 316 * (1 - local * (1 - lead)), 10);
     label(c, `${e.name} ดวลกับกรรมการ`, W / 2, 186, 18);
   }
   scoreboard(c, list, k, p, 440);
@@ -181,13 +182,13 @@ function bunting(c, t, y) {
 }
 function bracket(c, live, v) {
   const F = live.fighters, M = live.matches, done = v.done ?? 0, y = 486, w = W / 8;
-  c.fillStyle = '#2c241ee6'; c.fillRect(0, y - 26, W, H - y + 26);
+  c.fillStyle = '#fff3dcee'; c.fillRect(0, y - 26, W, H - y + 26);
   F.forEach((f, i) => {
     const out = M.some((m, k) => k < done && (m.a === i || m.b === i) && m.winner !== i), wins = M.filter((m, k) => k < done && m.winner === i).length;
     const playing = v.current != null && (M[v.current].a === i || M[v.current].b === i), x = i * w + w / 2;
-    c.fillStyle = playing ? '#b85a4a' : out ? '#3a322b' : '#4a3f35'; c.fillRect(i * w + 4, y - 18, w - 8, 44);
-    label(c, f.name.split('แห่ง')[0].slice(0, 9), x, y - 2, 13, out ? '#8a7a6a' : f.kind === 'member' ? '#ffe28a' : f.kind === 'famous' ? '#ffb8a0' : '#fff7e6');
-    label(c, out ? 'ตกรอบ' : '★'.repeat(wins) || (f.kind === 'member' ? 'กิลด์เรา' : f.kind === 'famous' ? 'คนดัง' : ''), x, y + 16, 11, out ? '#7a6a5a' : '#f4d48a');
+    c.fillStyle = playing ? '#f3d6c9' : out ? '#e9e2d5' : '#fff8e7'; c.fillRect(i * w + 4, y - 18, w - 8, 44);
+    panelLabel(c, f.name.split('แห่ง')[0].slice(0, 9), x, y - 2, 13, out ? '#8a7a6a' : f.kind === 'member' ? '#8a6420' : f.kind === 'famous' ? '#a44332' : '#5a4a38');
+    panelLabel(c, out ? 'ตกรอบ' : '★'.repeat(wins) || (f.kind === 'member' ? 'กิลด์เรา' : f.kind === 'famous' ? 'คนดัง' : ''), x, y + 16, 11, out ? '#7a6a5a' : '#8a6420');
   });
 }
 function drawTournament(c, state, live, v, t) {
@@ -217,7 +218,7 @@ function drawTournament(c, state, live, v, t) {
   person(c, state, a, ax, 420, 6, t * 5, 1, { rot: fallA ? -1.3 : 0, flash: clash && Math.sin(t * 11) > 0 });
   person(c, state, b, bx, 420, 6, t * 5 + 1, -1, { rot: fallB ? 1.3 : 0, flash: clash && Math.sin(t * 11) < 0 });
   if (clash) { burst(c, W / 2, 340, (t * 5.5) % 1, '#fff1c4', 16, 8, 70); c.fillStyle = '#ffffff33'; c.fillRect(0, 0, W, H); }
-  const bar = (x, hp, f, align) => { c.fillStyle = '#2c241ee6'; c.fillRect(x, 88, 330, 26); c.fillStyle = hp > .3 ? '#8fc48a' : '#d9584a'; c.fillRect(align === 'left' ? x + 3 : x + 3 + 324 * (1 - hp), 91, 324 * hp, 20);
+  const bar = (x, hp, f, align) => { c.fillStyle = '#fff3dcee'; c.fillRect(x, 88, 330, 26); c.fillStyle = hp > .3 ? '#8fc48a' : '#d9584a'; c.fillRect(align === 'left' ? x + 3 : x + 3 + 324 * (1 - hp), 91, 324 * hp, 20);
     label(c, f.name.slice(0, 16), align === 'left' ? x + 4 : x + 326, 132, 17, f.kind === 'member' ? '#ffe28a' : '#fff7e6', align); label(c, `${JOBS[f.cls]?.name || ''} · พลัง ${f.power}`, align === 'left' ? x + 4 : x + 326, 154, 12, '#ffe9c7', align); };
   bar(24, hpA, a, 'left'); bar(W - 354, hpB, b, 'right');
   label(c, 'VS', W / 2, 101, 34, '#f4b860');
@@ -245,8 +246,8 @@ function drawHarvest(c, state, live, v, t) {
   crowd(c, t, 380, 6, .5);
   // The giant-vegetable contest: farms' scores rise through the fair.
   const farms = live.farms || [];
-  c.fillStyle = '#2c241ecc'; c.fillRect(W / 2 - 240, 90, 480, 30 + farms.length * 26);
-  label(c, '🎃 ประกวดผลผลิต', W / 2, 108, 18);
-  farms.forEach((f, i) => { const sc = Math.round(f.score * Math.min(1, v.progress * 1.2)); c.fillStyle = '#ffffff22'; c.fillRect(W / 2 - 100, 128 + i * 26, 300, 14); c.fillStyle = i === 0 && v.progress > .8 ? '#f4b860' : '#8fc48a'; c.fillRect(W / 2 - 100, 128 + i * 26, 3 * sc, 14); label(c, f.name, W / 2 - 110, 135 + i * 26, 13, '#fff7e6', 'right'); });
+  c.fillStyle = '#fff3dcee'; c.fillRect(W / 2 - 240, 90, 480, 30 + farms.length * 26);
+  panelLabel(c, '🎃 ประกวดผลผลิต', W / 2, 108, 18);
+  farms.forEach((f, i) => { const sc = Math.round(f.score * Math.min(1, v.progress * 1.2)); c.fillStyle = '#e6dac0'; c.fillRect(W / 2 - 100, 128 + i * 26, 300, 14); c.fillStyle = i === 0 && v.progress > .8 ? '#f4b860' : '#8fc48a'; c.fillRect(W / 2 - 100, 128 + i * 26, 3 * sc, 14); panelLabel(c, f.name, W / 2 - 110, 135 + i * 26, 13, '#5a4a38', 'right'); });
   if (v.progress > .9) confetti(c, t, 40);
 }
