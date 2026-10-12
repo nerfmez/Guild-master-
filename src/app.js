@@ -59,7 +59,7 @@ function inventoryCount(id){const inv=state.inventory||{};if(Array.isArray(inv))
 function item(id){return EQUIPMENT.find(e=>e.id===id);}
 function availableCount(id){return inventoryCount(id);}
 function pct(value,max=100){return Math.max(0,Math.min(100,100*(Number(value)||0)/max));}
-// ---- R46 · one more turn: corner goals, chests, flying coins, rank-up celebration, the monster book, the away summary. ----
+// ---- R47 · one more turn: corner goals, chests, flying coins, rank-up celebration, the monster book, the away summary. ----
 let lastGold=null,digest=[],digestClock=0,chestShown=null,chestCelebrated='';
 const SMALL_NEWS=new Set(['info','cozy','member','hunt','petition','mission','loot','craft','bond','build','level','trade','shop']);
 /** Big news pops up at once; small news is gathered and read out together every minute or so. */
@@ -542,7 +542,7 @@ $('title-new').addEventListener('click',()=>{if(hasSave&&!(introActive(state)&&s
 // Player identity: the guild master and the guild's name.
 function profile(){return state.profile||DEFAULT_PROFILE;}
 function masterSprite(p){return{id:'master',name:p.masterName,class:'master',hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle};}
-function syncBrand(){const p=profile();if($('brand-name').textContent!==p.guildName)$('brand-name').textContent=p.guildName;const sub=state.profile?`หัวหน้ากิลด์ ${p.masterName}`:'LITTLE LEAF GUILD';if($('brand-sub').textContent!==sub)$('brand-sub').textContent=sub;const title=`Guild Master · R46`;if(document.title!==title)document.title=title;}
+function syncBrand(){const p=profile();if($('brand-name').textContent!==p.guildName)$('brand-name').textContent=p.guildName;const sub=state.profile?`หัวหน้ากิลด์ ${p.masterName}`:'LITTLE LEAF GUILD';if($('brand-sub').textContent!==sub)$('brand-sub').textContent=sub;const title=`Guild Master · R47`;if(document.title!==title)document.title=title;}
 // ---- Festivals: pick one the village can host, set the prize money and an item, choose who fights. ----
 function renderFestival(){
  const live=state.festivals?.live,v=festivalView(state),kinds=Object.keys(FESTIVALS);ui.festKind??=kinds.find(k=>getFestivalInfo(state,k).level>0)||'tournament';
