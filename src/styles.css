@@ -640,3 +640,10 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
 .fm-gear small.fm-warn{color:#b0674f}
 .bounty-actions{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}.bounty-actions button{font-size:11.5px;padding:6px 10px}.rally-card .bounty-actions{margin-top:6px}
 .bounty-card .bounty-actions,.rally-card .bounty-actions{display:flex}
+/* Illustrated raster assets retain clean brush edges at UI scale. */
+.drawn-icon{display:inline-block;width:100%;height:100%;object-fit:contain;vertical-align:middle;pointer-events:none;image-rendering:auto}
+.dock-icon,.item-icon,.qart canvas,.board-card .qart canvas,.prep-hero canvas{image-rendering:auto}
+.resource-icon{display:inline-flex;align-items:center;justify-content:center;min-width:20px;width:24px;height:26px}
+.menu-grid button>span{width:34px;height:34px}
+.qrewards i:has(.drawn-icon){display:inline-block;width:20px;height:20px}
+@media(max-width:620px){.resource-icon{min-width:17px;width:20px;height:22px}.menu-grid button>span{width:25px;height:25px}}
