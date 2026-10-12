@@ -33,5 +33,5 @@ export function initMobileUI({ beforeOpen = () => {}, afterClose = () => {}, bef
   $('restore-ui').addEventListener('click',()=>sceneOnly(false));
   window.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('scene-only')){event.preventDefault();sceneOnly(false);}});
   media.addEventListener('change', layout); layout();
-  return { sync, compact: () => media.matches, record(text, error, action) { records.unshift({ text, error, action, read: dialog.open }); records.length = Math.min(records.length, 24); if (dialog.open) render(); sync(); } };
+  return { sync, reset() { records.length = 0; render(); sync(); }, compact: () => media.matches, record(text, error, action) { records.unshift({ text, error, action, read: dialog.open }); records.length = Math.min(records.length, 24); if (dialog.open) render(); sync(); } };
 }
