@@ -489,10 +489,10 @@ function syncHeroHud(){const hero=state.hero;syncCallHud();if(!hero?.active)retu
 /** The minimap: the land around the master, roads, hunting grounds, spots to gather, the fallen, and today's quarry. */
 let heroMapAt=0;
 function drawHeroMap(){const now=performance.now();if(now-heroMapAt<120)return;heroMapAt=now;const cv=$('hero-map'),c=cv.getContext('2d'),h=state.hero,W=cv.width,H=cv.height,s=2.4;
- const P=(x,y)=>[W/2+((x-y)-(h.x-h.y))*s,H/2+((x+y)-(h.x+h.y))*s/2];c.clearRect(0,0,W,H);c.fillStyle='#2c241edd';c.fillRect(0,0,W,H);
+ const P=(x,y)=>[W/2+((x-y)-(h.x-h.y))*s,H/2+((x+y)-(h.x+h.y))*s/2];c.clearRect(0,0,W,H);c.fillStyle='#fff3dcef';c.fillRect(0,0,W,H);
  const zoneCol={meadow:'#8fae6a',woods:'#5f8a55',hills:'#a8a090',mist:'#6f8f8a',canyon:'#c48a5a',peak:'#7a6f80'};
  for(const [id,z] of Object.entries(HUNT_ZONES)){const [x,y]=P(z.x,z.y);c.fillStyle=zoneCol[id]||'#8a8';c.globalAlpha=.55;c.beginPath();c.ellipse(x,y,z.r*s*1.4,z.r*s*.7,0,0,Math.PI*2);c.fill();}c.globalAlpha=1;
- c.strokeStyle='#d9c39a';c.lineWidth=1.5;for(const pts of Object.values(WORLD_PATHS)){c.beginPath();pts.forEach(([x,y],i)=>{const q=P(x,y);i?c.lineTo(...q):c.moveTo(...q);});c.stroke();}
+ c.strokeStyle='#9c8057';c.lineWidth=1.5;for(const pts of Object.values(WORLD_PATHS)){c.beginPath();pts.forEach(([x,y],i)=>{const q=P(x,y);i?c.lineTo(...q):c.moveTo(...q);});c.stroke();}
  if(RANKS.indexOf(state.rank)<RANKS.indexOf('B')){const [x0,y0]=P(80,-70),[x1,y1]=P(80,60);c.strokeStyle='#d9584a';c.setLineDash([3,3]);c.beginPath();c.moveTo(x0,y0);c.lineTo(x1,y1);c.stroke();c.setLineDash([]);}
  {const [x,y]=P(2,10);c.fillStyle='#f3d58e';c.fillRect(x-3,y-3,6,6);}
  for(const nd of GATHER_NODES){if((h.nodes?.[nd.id]??-1)>=state.day)continue;const [x,y]=P(nd.x,nd.y);if(x<0||y<0||x>W||y>H)continue;c.fillStyle=nd.kind==='tree'?'#7fd18b':nd.kind==='rock'?'#c9c3b4':'#d7a8f0';c.fillRect(x-1.5,y-1.5,3,3);}
@@ -501,7 +501,7 @@ function drawHeroMap(){const now=performance.now();if(now-heroMapAt<120)return;h
  {const bm=state.bounty&&(state.world?.monsters||[]).find(m=>m.id===state.bounty.monsterId&&!m.dead);if(bm)mark(bm.x,bm.y,'☠','#ff7a5a');for(const m of state.world?.monsters||[])if(m.boss&&!m.dead)mark(m.x,m.y,'♛','#d9a8ff');}
  {const ci=heroCallInfo(state);if(ci&&ci.target&&!['done','call'].includes(ci.step)){const t=ci.step==='carry'&&h.carry?guildDoor(state):ci.target;if(Math.floor(now/350)%2)mark(t.x,t.y,'❗','#ff6a5a');else mark(t.x,t.y,'❗','#ffd36a');}}
  for(const ct of heroContracts(state)){if(ct.done||!ct.at)continue;const [x,y]=P(ct.at.x,ct.at.y);c.fillStyle='#ffd36a';c.font='bold 12px sans-serif';c.textAlign='center';c.fillText('★',Math.max(6,Math.min(W-6,x)),Math.max(10,Math.min(H-2,y+4)));}
- c.save();c.translate(W/2,H/2);c.rotate(Math.atan2((h.fx+h.fy)/2,h.fx-h.fy));c.fillStyle='#fff';c.beginPath();c.moveTo(6,0);c.lineTo(-4,-4);c.lineTo(-4,4);c.closePath();c.fill();c.restore();
+ c.save();c.translate(W/2,H/2);c.rotate(Math.atan2((h.fx+h.fy)/2,h.fx-h.fy));c.fillStyle='#4f663e';c.beginPath();c.moveTo(6,0);c.lineTo(-4,-4);c.lineTo(-4,4);c.closePath();c.fill();c.restore();
  c.strokeStyle='#b98a3e';c.lineWidth=2;c.strokeRect(1,1,W-2,H-2);}
 $('hero-toggle').addEventListener('click',()=>{if(dispatch('heroMode',{on:!heroOn()})){closeMenu();syncHeroMode();if(!heroOn()){ui.zoom=1;renderer?.resetView?.();}}});
 $('hero-exit').addEventListener('click',()=>{if(dispatch('heroMode',{on:false})){syncHeroMode();ui.zoom=1;renderer?.resetView?.();}});

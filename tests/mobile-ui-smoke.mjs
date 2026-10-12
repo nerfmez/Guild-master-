@@ -21,6 +21,50 @@ try{
   if(label==='standalone')await page.route(/^https?:/,r=>{if(r.request().isNavigationRequest())return r.continue();errors.push('Standalone network: '+r.request().url());return r.abort()});
   await page.goto('http://localhost:5197/'+(label==='standalone'?'play.html':'index.html')+'?still',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.guildDebug?.getRendererInfo()?.ready,null,{timeout:60000});await page.locator('#title-continue').click();await page.waitForTimeout(250);
   assert.match(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme),/light/);
+  // Audit secondary HUDs and dialog surfaces even when they are not visible in this save.
+  const palette=await page.evaluate(()=>{
+   const gallery=document.createElement('section');gallery.id='palette-audit';
+   gallery.innerHTML=`<div class="guild-sign"><b>กิลด์</b></div><div class="prep-title"><b>คำร้อง</b></div><div class="event-banner"><div><b>เหตุการณ์</b><small>รายละเอียด</small></div></div><div class="display-case"><span>💎</span></div><div class="dungeon-dialog"><div class="dd-head"><b>ดันเจี้ยน</b></div></div><div class="show-dialog">เทศกาล</div><div class="hero-status"><b>Hero</b><small>Lv.1</small><div class="hero-pack">สัมภาระ</div><div class="hero-jobs"><span>ภารกิจ</span><span class="done">สำเร็จ</span></div><div class="hero-bar"><i></i></div></div><div class="market-hero"><div><small>ตลาด</small><b>25,906 G</b></div></div><div class="boss-bar"><b>บอส</b><em>ระยะต่อสู้</em><small>100/100</small><i></i></div><div class="hero-call"><small>เหตุด่วน</small><b>ช่วยเพื่อน</b><span>รายละเอียด</span></div><div class="hero-encounter-hud"><b>เหตุการณ์สุ่ม</b></div>`;
+   document.body.append(gallery);
+   gallery.style.cssText='position:fixed;inset:0;z-index:100;background:#fff9ec;display:grid;gap:10px;padding:15px;overflow:auto;align-content:start';
+   for(const el of gallery.children)el.style.cssText='position:static;transform:none;min-width:0;width:auto;margin:0;max-width:none;';
+   const rgb=value=>(value.match(/[\d.]+/g)||[]).map(Number);
+   const bad=[];
+   for(const el of gallery.querySelectorAll('*')){
+    const s=getComputedStyle(el),bg=rgb(s.backgroundColor);
+    if(bg.length>=3&&(bg[3]??1)>.5&&Math.max(...bg.slice(0,3))<150)bad.push(el.className+': dark background '+s.backgroundColor);
+    if(el.textContent.trim()&&!el.children.length&&Math.min(...rgb(s.color).slice(0,3))>170)bad.push(el.className+': pale text '+s.color);
+    const stops=s.backgroundImage.match(/rgba?\([^)]+\)/g)||[];
+    if(stops.some(x=>(rgb(x)[3]??1)>.5&&Math.max(...rgb(x).slice(0,3))<150))bad.push(el.className+': dark gradient');
+   }
+   return bad;
+  });
+  assert.deepEqual(palette,[],label+' secondary HUD palette');
+  if(label==='portrait')await page.locator('#palette-audit').screenshot({path:'artifacts/mobile-ui-palette.png'});
+  await page.locator('#palette-audit').evaluate(e=>e.remove());
+  if(label==='portrait'){
+   const pixels=await page.evaluate(async()=>{
+    const {createGame,act}=await import('./src/game.js');
+    const {QUESTS}=await import('./src/content.js');
+    const {drawFestivalShow}=await import('./src/showcase.js');
+    const {drawDungeonScene}=await import('./src/dungeon.js');
+    const samples=[];
+    for(const kind of ['tournament','harvest']){
+     const s=createGame(73);s.gold=2000;s.village.arena=s.village.fairground=1;
+     const result=act(s,'startFestival',{kind,gold:150});if(!result.ok)throw Error(result.message);
+     const canvas=document.createElement('canvas');drawFestivalShow(canvas,s,1000);
+     const [x,y]=kind==='tournament'?[1,461]:[241,91];
+     samples.push({kind,rgb:Array.from(canvas.getContext('2d').getImageData(x,y,1,1).data)});
+    }
+    const s=createGame(73);const result=act(s,'sendMission',{questId:'patrol',memberIds:s.members.slice(0,3).map(m=>m.id),policy:'balanced'});
+    if(!result.ok)throw Error(result.message);
+    const cv=document.createElement('canvas');cv.width=800;cv.height=440;
+    drawDungeonScene(cv,s.missions.at(-1),QUESTS.find(q=>q.id==='patrol'),s,{time:1,paused:true});
+    samples.push({kind:'dungeon',rgb:Array.from(cv.getContext('2d').getImageData(200,3,1,1).data)});
+    return samples;
+   });
+   for(const sample of pixels)assert.ok(Math.min(...sample.rgb.slice(0,3))>150,sample.kind+' canvas HUD stays light');
+  }
   const compact=label!=='desktop';assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('compact-ui')),compact);
   if(compact){
    assert.equal(await page.locator('#goal-card').isVisible(),false);assert.equal(await page.locator('#near-goals').isVisible(),false);assert.equal(await page.locator('#city-stats').isVisible(),false);
