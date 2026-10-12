@@ -451,7 +451,23 @@ export function makeSmithyShop(seed=31,frame=0){
  });
  out.smoke=base.smoke&&{...base.smoke};return out;
 }
-export function makeOutdoor(type){
+function guildFlagEmblem(c,x,y,symbol,color){
+ const mark=C.cream;
+ if(symbol==='star'){
+  const pts=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?3:7;pts.push([x+Math.cos(a)*r,y+Math.sin(a)*r]);}P(c,pts,mark);
+ }else if(symbol==='moon'){
+  E(c,x-3,y-35,9,11,mark);E(c,x+1,y-38,9,11,color);
+ }else if(symbol==='sword'){
+  P(c,[[x,y-44],[x+2,y-34],[x,y-30],[x-2,y-34]],mark);R(c,x-6,y-35,12,2,mark);R(c,x-1,y-31,2,5,mark);R(c,x-3,y-27,6,2,mark);
+ }else if(symbol==='shield'){
+  P(c,[[x-7,y-42],[x+7,y-42],[x+6,y-33],[x,y-28],[x-6,y-33]],mark);P(c,[[x-4,y-39],[x+4,y-39],[x+3,y-34],[x,y-32],[x-3,y-34]],color);
+ }else if(symbol==='sun'){
+  E(c,x,y-35,5,5,mark);for(let a=0;a<8;a++){const r=a*Math.PI/4,ax=x+Math.cos(r)*8,ay=y-35+Math.sin(r)*8;R(c,ax-1,ay-1,2,2,mark);}
+ }else{
+  P(c,[[x,y-44],[x-2,y-37],[x-7,y-34],[x-5,y-29],[x,y-32],[x+5,y-29],[x+7,y-34],[x+2,y-37]],mark);L(c,x,y-37,x,y-29,color,1);
+ }
+}
+export function makeOutdoor(type,guild={}){
  return object(c=>{
   if(type==='well'){
    cube(c,0,0,1,1,0,10,'#b9b9a4','#e2d9bb','#999f8f');top(c,.18,.18,.64,.64,10.1,'#6b8d88',C.ink);
@@ -460,7 +476,7 @@ export function makeOutdoor(type){
   }else if(type==='table'){table(c,1.4,.8);top(c,.22,.18,.6,.4,17.2,'#f0e2bd');plant(c);}
   else if(type==='planter'){cube(c,0,0,1.25,.5,0,5,'#b4906a','#d7bb8c','#937653');for(let i=0;i<5;i++){const[x,y]=q(.15+i*.23,.23,7);E(c,x,y-3,4,4,'#91aa81');R(c,x-1,y-6,3,3,i%2?'#e8c59f':'#d8aaa3');}}
   else if(type==='banner'){
-   const[x,y]=q(.2,.2);cube(c,0,0,.45,.45,0,4);R(c,x,y-51,2,50,C.edge);R(c,x-15,y-50,31,2,C.edge);P(c,[[x-13,y-48],[x+13,y-48],[x+13,y-25],[x,y-18],[x-13,y-25]],'#ad8175');R(c,x-10,y-45,20,1,'#e0b6a1');R(c,x-1,y-41,3,14,C.cream);R(c,x-6,y-35,13,3,C.cream);R(c,x-3,y-25,7,2,'#e1bc8c');
+   const[x,y]=q(.2,.2),color=guild.bannerColor||'#ad8175';cube(c,0,0,.45,.45,0,4);R(c,x,y-51,2,50,C.edge);R(c,x-15,y-50,31,2,C.edge);P(c,[[x-13,y-48],[x+13,y-48],[x+13,y-25],[x,y-18],[x-13,y-25]],color);R(c,x-10,y-45,20,1,'#e0b6a1');guildFlagEmblem(c,x,y,guild.bannerSymbol||'leaf',color);R(c,x-3,y-25,7,2,'#e1bc8c');
   }else if(type==='crates'){cube(c,0,0,.6,.6,0,13);cube(c,.72,.15,.45,.45,0,10);stroke(c,[0,.6,2],[.6,.6,11],C.edge);stroke(c,[0,.6,11],[.6,.6,2],C.edge);}
   else plant(c,true);
  });

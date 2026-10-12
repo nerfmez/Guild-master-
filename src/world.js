@@ -120,7 +120,7 @@ export class GuildRenderer {
  }
 
  setState(state){
-  this.state=state;const signature=JSON.stringify([state.grid,state.building,state.rooms,state.facilities.map(f=>[f.id,f.type,f.x,f.y,f.level,f.rotation])]);
+  this.state=state;const signature=JSON.stringify([state.grid,state.building,state.rooms,state.profile?.bannerColor,state.profile?.bannerSymbol,state.facilities.map(f=>[f.id,f.type,f.x,f.y,f.level,f.rotation])]);
   if(signature!==this.signature){this.signature=signature;if(this.ready)this.rebuild();}
   if(this.ready){this.syncActors();this.syncVillage();}
  }
@@ -130,7 +130,7 @@ export class GuildRenderer {
   const groundSig=JSON.stringify([this.state.grid,siteRoads(this.state)]);
   if(groundSig!==this.groundSig||!this.scene.textures.exists('ground')){this.groundSig=groundSig;const terrain=makeGround(this.state);this.groundImage.setTexture(this.texture('ground',terrain.canvas));}
   for(const image of this.siteProps)image.destroy();this.siteProps=[];
-  for(const d of siteDecorations(this.state)){const p=gridPoint(d.x,d.y);this.siteProps.push(this.put('outside-'+d.type,makeOutdoor(d.type),p.x,p.y,p.y+12));}
+  for(const d of siteDecorations(this.state)){const p=gridPoint(d.x,d.y);this.siteProps.push(this.put('outside-'+d.type,makeOutdoor(d.type,this.state.profile),p.x,p.y,p.y+12));}
   for(const part of makeBuilding(this.state).layers){const p=gridPoint(part.x,part.y),key='building-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
   for(const room of this.state.rooms||[])for(const part of makePartition(room,this.state).layers){const p=gridPoint(part.x,part.y),key='partition-'+room.id+'-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
   const furn=this.furnitureCache??=new Map();

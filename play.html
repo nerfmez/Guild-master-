@@ -145,6 +145,8 @@ body.on-title .topbar,body.on-title .screen-bottom,body.on-title .world-actions,
 .pill.on{background:var(--sage);border-color:var(--sage);color:#fff}
 .guild-sign{display:grid;justify-items:center;gap:2px;margin:10px auto 14px;padding:14px 20px 12px;max-width:300px;background:#eee0c6;border:3px solid #b8955e;border-radius:8px;box-shadow:0 4px 0 #b8955e;color:var(--ink);text-align:center}
 .guild-sign img{width:34px;height:34px}.guild-sign b{font-size:21px}.guild-sign small{font-size:11px;opacity:.85}
+.guild-flag-preview{display:grid;place-items:center;width:48px;height:48px;margin:0 0 5px;background:var(--flag-color,#ad8175);color:#fff4dc;border:2px solid #715844;clip-path:polygon(0 0,100% 0,100% 70%,50% 100%,0 70%);font:700 25px Georgia,serif;text-shadow:0 1px 1px #493629}
+.setup-emblem-pick{display:grid;gap:5px;margin:9px 0}.setup-emblem-pick>span{font-size:11.5px;color:#9b7a4a;font-weight:600}.setup-emblem-pick>div{display:flex;flex-wrap:wrap;align-items:center;gap:7px}.setup-emblem-pick .swatch{width:31px;height:31px}.emblem-choice{min-width:60px;min-height:55px;padding:4px 7px;display:grid;place-items:center;gap:0;font:22px Georgia,serif;background:#fffdf6}.emblem-choice small{font:10px 'Noto Sans Thai',Tahoma,sans-serif;color:var(--muted)}.emblem-choice.on{background:#eaf0df;border-color:#819f7b;box-shadow:0 0 0 2px #819f7b}
 .name-ideas{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 @media(max-width:620px){.setup-master{flex-direction:column;align-items:stretch}.setup-stage{flex-direction:row;justify-content:center}.setup-stage canvas{width:104px;height:104px}}
 .management-dialog{z-index:30;bottom:calc(max(21px,env(safe-area-inset-bottom)) + 74px)}
@@ -7097,13 +7099,24 @@ const PROFILE_LOOKS = {
   skin: ['#f7d4ae', '#e8b88c', '#b9805a'],
   hairStyle: ['short', 'long'],
 };
-const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ดาวเหนือ', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short' };
+const GUILD_BANNER_COLORS = [
+  { id: '#ad8175', name: 'ดินเผา' }, { id: '#6689a5', name: 'ฟ้าคราม' }, { id: '#68896b', name: 'เขียวใบไม้' },
+  { id: '#8975a7', name: 'ม่วงลาเวนเดอร์' }, { id: '#c29246', name: 'ทองอำพัน' }, { id: '#598c8c', name: 'เขียวน้ำทะเล' },
+  { id: '#b65f69', name: 'แดงกุหลาบ' },
+];
+const GUILD_EMBLEMS = [
+  { id: 'leaf', name: 'ใบไม้', glyph: '♧' }, { id: 'star', name: 'ดาว', glyph: '★' }, { id: 'moon', name: 'จันทร์', glyph: '☾' },
+  { id: 'sword', name: 'ดาบ', glyph: '⚔' }, { id: 'shield', name: 'โล่', glyph: '⬟' }, { id: 'sun', name: 'ตะวัน', glyph: '☼' },
+];
+const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ดาวเหนือ', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short', bannerColor: GUILD_BANNER_COLORS[0].id, bannerSymbol: 'leaf' };
 /** Clean player-entered names and look choices; unknown values fall back to defaults. */
 function normalizeProfile(input = {}) {
   const text = (value, fallback) => { const clean = String(value ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20); return clean || fallback; };
   const pick = (key, value) => PROFILE_LOOKS[key].includes(value) ? value : DEFAULT_PROFILE[key];
+  const bannerColor = GUILD_BANNER_COLORS.some(color => color.id === input.bannerColor) ? input.bannerColor : DEFAULT_PROFILE.bannerColor;
+  const bannerSymbol = GUILD_EMBLEMS.some(symbol => symbol.id === input.bannerSymbol) ? input.bannerSymbol : DEFAULT_PROFILE.bannerSymbol;
   return { masterName: text(input.masterName, DEFAULT_PROFILE.masterName), guildName: text(input.guildName, DEFAULT_PROFILE.guildName),
-    hair: pick('hair', input.hair), outfit: pick('outfit', input.outfit), skin: pick('skin', input.skin), hairStyle: pick('hairStyle', input.hairStyle) };
+    hair: pick('hair', input.hair), outfit: pick('outfit', input.outfit), skin: pick('skin', input.skin), hairStyle: pick('hairStyle', input.hairStyle), bannerColor, bannerSymbol };
 }
 
 const INTRO_STEPS = ['reception', 'board', 'training', 'patrol', 'wait', 'visit', 'done'];
@@ -9742,7 +9755,7 @@ function saveChecksum(text) {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-return {SAVE_VERSION,DAY_LENGTH,getRankIndex,getRoomSize,getFacilityEntry,rootClass,contentOf,createGame,PROFILE_LOOKS,DEFAULT_PROFILE,normalizeProfile,INTRO_STEPS,introActive,getMemberStats,CONDITIONS,EFFICIENCY_RANGE,memberCondition,getEfficiencyReport,investmentGain,townComfort,jobSlots,getGuildStats,getRankProgress,renownFactor,getAvailableQuests,getAvailableRecruits,townNeeds,townSatisfaction,getLodging,applicantInterval,regularLimit,addApplicant,staffLevel,staffOn,staffSalary,staffStatus,hallSeats,barPrice,mealPrice,getTeamLuck,rollLoot,suggestTeam,getSellPrice,partyLimit,previewMission,canPlaceFacility,findWalkPath,getWalkableSpots,getBuildingExpansionCost,getPartitionCost,canPlacePartition,previewPartitionMove,getUpgradeCost,getExpansionCost,AUTO_PETITION_WAIT,isImportantQuest,petitionHome,guildDoor,petitionWalkTime,getPayout,getVillageInfo,idleRate,getGuildUpgradeCost,getProjectCost,getProjectStatus,TRADE_LOT,marketPrice,tradeQuote,gearPrice,repairCost,addPetition,bonusStep,boardThreshold,boardStatus,rallyCost,hunterOf,bountyBoostCost,getDirector,getAdventurerRank,lessonFee,venueCenter,getGoals,getFestivalInfo,festivalPrizeItems,CAMP_COSTS,noteKill,noteTreasure,progressCounters,getFestivalEntrants,getDailyGoals,heroContracts,heroCraftStatus,HERO_CALL,heroCallInfo,nearGoals,tick,getCraftCost,classChoices,act,deserializeGame,serializeGame};
+return {SAVE_VERSION,DAY_LENGTH,getRankIndex,getRoomSize,getFacilityEntry,rootClass,contentOf,createGame,PROFILE_LOOKS,GUILD_BANNER_COLORS,GUILD_EMBLEMS,DEFAULT_PROFILE,normalizeProfile,INTRO_STEPS,introActive,getMemberStats,CONDITIONS,EFFICIENCY_RANGE,memberCondition,getEfficiencyReport,investmentGain,townComfort,jobSlots,getGuildStats,getRankProgress,renownFactor,getAvailableQuests,getAvailableRecruits,townNeeds,townSatisfaction,getLodging,applicantInterval,regularLimit,addApplicant,staffLevel,staffOn,staffSalary,staffStatus,hallSeats,barPrice,mealPrice,getTeamLuck,rollLoot,suggestTeam,getSellPrice,partyLimit,previewMission,canPlaceFacility,findWalkPath,getWalkableSpots,getBuildingExpansionCost,getPartitionCost,canPlacePartition,previewPartitionMove,getUpgradeCost,getExpansionCost,AUTO_PETITION_WAIT,isImportantQuest,petitionHome,guildDoor,petitionWalkTime,getPayout,getVillageInfo,idleRate,getGuildUpgradeCost,getProjectCost,getProjectStatus,TRADE_LOT,marketPrice,tradeQuote,gearPrice,repairCost,addPetition,bonusStep,boardThreshold,boardStatus,rallyCost,hunterOf,bountyBoostCost,getDirector,getAdventurerRank,lessonFee,venueCenter,getGoals,getFestivalInfo,festivalPrizeItems,CAMP_COSTS,noteKill,noteTreasure,progressCounters,getFestivalEntrants,getDailyGoals,heroContracts,heroCraftStatus,HERO_CALL,heroCallInfo,nearGoals,tick,getCraftCost,classChoices,act,deserializeGame,serializeGame};
 })();
 const Artwork=(()=>{
 /* Original pixel artwork drawn at runtime. All world coordinates use 32px tiles. */
@@ -10947,7 +10960,23 @@ function makeSmithyShop(seed=31,frame=0){
  });
  out.smoke=base.smoke&&{...base.smoke};return out;
 }
-function makeOutdoor(type){
+function guildFlagEmblem(c,x,y,symbol,color){
+ const mark=C.cream;
+ if(symbol==='star'){
+  const pts=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?3:7;pts.push([x+Math.cos(a)*r,y+Math.sin(a)*r]);}P(c,pts,mark);
+ }else if(symbol==='moon'){
+  E(c,x-3,y-35,9,11,mark);E(c,x+1,y-38,9,11,color);
+ }else if(symbol==='sword'){
+  P(c,[[x,y-44],[x+2,y-34],[x,y-30],[x-2,y-34]],mark);R(c,x-6,y-35,12,2,mark);R(c,x-1,y-31,2,5,mark);R(c,x-3,y-27,6,2,mark);
+ }else if(symbol==='shield'){
+  P(c,[[x-7,y-42],[x+7,y-42],[x+6,y-33],[x,y-28],[x-6,y-33]],mark);P(c,[[x-4,y-39],[x+4,y-39],[x+3,y-34],[x,y-32],[x-3,y-34]],color);
+ }else if(symbol==='sun'){
+  E(c,x,y-35,5,5,mark);for(let a=0;a<8;a++){const r=a*Math.PI/4,ax=x+Math.cos(r)*8,ay=y-35+Math.sin(r)*8;R(c,ax-1,ay-1,2,2,mark);}
+ }else{
+  P(c,[[x,y-44],[x-2,y-37],[x-7,y-34],[x-5,y-29],[x,y-32],[x+5,y-29],[x+7,y-34],[x+2,y-37]],mark);L(c,x,y-37,x,y-29,color,1);
+ }
+}
+function makeOutdoor(type,guild={}){
  return object(c=>{
   if(type==='well'){
    cube(c,0,0,1,1,0,10,'#b9b9a4','#e2d9bb','#999f8f');top(c,.18,.18,.64,.64,10.1,'#6b8d88',C.ink);
@@ -10956,7 +10985,7 @@ function makeOutdoor(type){
   }else if(type==='table'){table(c,1.4,.8);top(c,.22,.18,.6,.4,17.2,'#f0e2bd');plant(c);}
   else if(type==='planter'){cube(c,0,0,1.25,.5,0,5,'#b4906a','#d7bb8c','#937653');for(let i=0;i<5;i++){const[x,y]=q(.15+i*.23,.23,7);E(c,x,y-3,4,4,'#91aa81');R(c,x-1,y-6,3,3,i%2?'#e8c59f':'#d8aaa3');}}
   else if(type==='banner'){
-   const[x,y]=q(.2,.2);cube(c,0,0,.45,.45,0,4);R(c,x,y-51,2,50,C.edge);R(c,x-15,y-50,31,2,C.edge);P(c,[[x-13,y-48],[x+13,y-48],[x+13,y-25],[x,y-18],[x-13,y-25]],'#ad8175');R(c,x-10,y-45,20,1,'#e0b6a1');R(c,x-1,y-41,3,14,C.cream);R(c,x-6,y-35,13,3,C.cream);R(c,x-3,y-25,7,2,'#e1bc8c');
+   const[x,y]=q(.2,.2),color=guild.bannerColor||'#ad8175';cube(c,0,0,.45,.45,0,4);R(c,x,y-51,2,50,C.edge);R(c,x-15,y-50,31,2,C.edge);P(c,[[x-13,y-48],[x+13,y-48],[x+13,y-25],[x,y-18],[x-13,y-25]],color);R(c,x-10,y-45,20,1,'#e0b6a1');guildFlagEmblem(c,x,y,guild.bannerSymbol||'leaf',color);R(c,x-3,y-25,7,2,'#e1bc8c');
   }else if(type==='crates'){cube(c,0,0,.6,.6,0,13);cube(c,.72,.15,.45,.45,0,10);stroke(c,[0,.6,2],[.6,.6,11],C.edge);stroke(c,[0,.6,11],[.6,.6,2],C.edge);}
   else plant(c,true);
  });
@@ -13049,7 +13078,7 @@ class GuildRenderer {
  }
 
  setState(state){
-  this.state=state;const signature=JSON.stringify([state.grid,state.building,state.rooms,state.facilities.map(f=>[f.id,f.type,f.x,f.y,f.level,f.rotation])]);
+  this.state=state;const signature=JSON.stringify([state.grid,state.building,state.rooms,state.profile?.bannerColor,state.profile?.bannerSymbol,state.facilities.map(f=>[f.id,f.type,f.x,f.y,f.level,f.rotation])]);
   if(signature!==this.signature){this.signature=signature;if(this.ready)this.rebuild();}
   if(this.ready){this.syncActors();this.syncVillage();}
  }
@@ -13059,7 +13088,7 @@ class GuildRenderer {
   const groundSig=JSON.stringify([this.state.grid,siteRoads(this.state)]);
   if(groundSig!==this.groundSig||!this.scene.textures.exists('ground')){this.groundSig=groundSig;const terrain=makeGround(this.state);this.groundImage.setTexture(this.texture('ground',terrain.canvas));}
   for(const image of this.siteProps)image.destroy();this.siteProps=[];
-  for(const d of siteDecorations(this.state)){const p=gridPoint(d.x,d.y);this.siteProps.push(this.put('outside-'+d.type,makeOutdoor(d.type),p.x,p.y,p.y+12));}
+  for(const d of siteDecorations(this.state)){const p=gridPoint(d.x,d.y);this.siteProps.push(this.put('outside-'+d.type,makeOutdoor(d.type,this.state.profile),p.x,p.y,p.y+12));}
   for(const part of makeBuilding(this.state).layers){const p=gridPoint(part.x,part.y),key='building-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
   for(const room of this.state.rooms||[])for(const part of makePartition(room,this.state).layers){const p=gridPoint(part.x,part.y),key='partition-'+room.id+'-'+part.name;this.rooms.push(this.put(this.texture(key,part.sprite.canvas),part.sprite,p.x,p.y,p.y+part.sort));}
   const furn=this.furnitureCache??=new Map();
@@ -14200,7 +14229,7 @@ const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])
 return {GuildRenderer};
 })();
 const {partitionSize,partitionRect,containsRect}=Site;
-const {venueCenter,heroCallInfo,HERO_CALL,guildDoor,getGoals,getFestivalInfo,festivalPrizeItems,CAMP_COSTS,partyLimit,createGame,tick,act,serializeGame,deserializeGame,getGuildStats,getMemberStats,previewMission,getAvailableQuests,getAvailableRecruits,getUpgradeCost,getExpansionCost,getBuildingExpansionCost,getRoomSize,getPartitionCost,DAY_LENGTH,introActive,suggestTeam,getSellPrice,normalizeProfile,PROFILE_LOOKS,DEFAULT_PROFILE,getPayout,getVillageInfo,getProjectStatus,getGuildUpgradeCost,getCraftCost,getRankProgress,marketPrice,tradeQuote,gearPrice,getAdventurerRank,classChoices,rootClass,lessonFee,contentOf,boardStatus,bonusStep,rallyCost,getLodging,regularLimit,getEfficiencyReport,investmentGain,memberCondition,CONDITIONS,staffStatus,staffSalary,barPrice,mealPrice,hallSeats,townNeeds,townSatisfaction,nearGoals,getDailyGoals,getFestivalEntrants,heroContracts,heroCraftStatus,bountyBoostCost}=Engine;
+const {venueCenter,heroCallInfo,HERO_CALL,guildDoor,getGoals,getFestivalInfo,festivalPrizeItems,CAMP_COSTS,partyLimit,createGame,tick,act,serializeGame,deserializeGame,getGuildStats,getMemberStats,previewMission,getAvailableQuests,getAvailableRecruits,getUpgradeCost,getExpansionCost,getBuildingExpansionCost,getRoomSize,getPartitionCost,DAY_LENGTH,introActive,suggestTeam,getSellPrice,normalizeProfile,PROFILE_LOOKS,DEFAULT_PROFILE,GUILD_BANNER_COLORS,GUILD_EMBLEMS,getPayout,getVillageInfo,getProjectStatus,getGuildUpgradeCost,getCraftCost,getRankProgress,marketPrice,tradeQuote,gearPrice,getAdventurerRank,classChoices,rootClass,lessonFee,contentOf,boardStatus,bonusStep,rallyCost,getLodging,regularLimit,getEfficiencyReport,investmentGain,memberCondition,CONDITIONS,staffStatus,staffSalary,barPrice,mealPrice,hallSeats,townNeeds,townSatisfaction,nearGoals,getDailyGoals,getFestivalEntrants,heroContracts,heroCraftStatus,bountyBoostCost}=Engine;
 const {CHESTS,CHEST_RARITIES,POLICIES,codexView}=Progress;
 const {makeMonster}=Bestiary;
 const {STAFF,FACILITIES,MEMBERS,QUESTS,EQUIPMENT,JOBS,RANKS,REGIONS,GUILD_EVENTS,MISSION_POLICIES,RANK_REQUIREMENTS,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,PETITION_LINES,GUILD_UPGRADES,VILLAGE_PROJECTS,RANK_UNLOCKS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,RANK_POWER,HUNT_ZONES,JOB_COMBAT,PARTS,GOODS,TREASURES,BUY_RATES,TRADE_RULES,HOME_NEEDS,HOUSE_TIERS,FESTIVALS,MONSTER_TRAITS,MONSTER_STATS}=Content;
@@ -14983,13 +15012,15 @@ function openSetup(mode){setup={mode,page:0,...normalizeProfile(mode==='edit'?pr
 function renderSetup(){const edit=setup.mode==='edit',first=setup.page===0;
  const look=LOOK_ROWS.map(([key,label])=>`<div class="look-row"><span>${label}</span><div>${PROFILE_LOOKS[key].map(c=>`<button class="swatch ${setup[key]===c?'on':''}" data-look="${key}" data-value="${c}" style="background:${c}" aria-label="${label} ${c}"></button>`).join('')}</div></div>`).join('')+`<div class="look-row"><span>ทรงผม</span><div>${[['short','สั้น'],['long','ยาว']].map(([v,l])=>`<button class="pill ${setup.hairStyle===v?'on':''}" data-look="hairStyle" data-value="${v}">${l}</button>`).join('')}</div></div>`;
  $('setup-content').innerHTML=first?`<small class="report-kicker">${edit?'แก้ไขหัวหน้ากิลด์':'สร้างหัวหน้ากิลด์ · 1/2'}</small><h2 id="setup-title">${edit?'หน้าตาและชื่อของคุณ':'หัวหน้ากิลด์คนใหม่คือคุณ'}</h2><div class="setup-master"><div class="setup-stage"><canvas id="setup-preview" width="96" height="96"></canvas><b id="setup-preview-name"></b></div><div class="setup-fields"><label class="setup-label">ชื่อหัวหน้ากิลด์<input id="setup-master" maxlength="20" placeholder="เช่น อาริน" value="${h(setup.masterName)}"></label>${look}</div></div><div class="dialog-actions"><button class="secondary" data-setup="${edit?'close':'back'}">${edit?'ยกเลิก':'กลับ'}</button><button class="primary" data-setup="next">${edit?'ต่อไป':'ต่อไป →'}</button></div>`
- :`<small class="report-kicker">${edit?'แก้ไขกิลด์':'ตั้งชื่อกิลด์ · 2/2'}</small><h2 id="setup-title">ตั้งชื่อกิลด์ของคุณ</h2><div class="guild-sign"><img src="${h(document.querySelector('.brand img')?.src||'')}" alt=""><b id="setup-sign"></b><small id="setup-sign-sub"></small></div><label class="setup-label">ชื่อกิลด์<input id="setup-guild" maxlength="20" placeholder="เช่น กิลด์ดาวเหนือ" value="${h(setup.guildName)}"></label><div class="name-ideas">${NAME_IDEAS.map(x=>`<button class="pill" data-name-idea="${h(x)}">${h(x)}</button>`).join('')}</div><div class="dialog-actions"><button class="secondary" data-setup="prev">← ย้อนกลับ</button><button class="primary" data-setup="done">${edit?'บันทึก':'เปิดกิลด์!'}</button></div>`;
+ :`<small class="report-kicker">${edit?'แก้ไขกิลด์':'กิลด์ของคุณ · 2/2'}</small><h2 id="setup-title">ตั้งธงและชื่อกิลด์</h2><div class="guild-sign"><span id="setup-flag" class="guild-flag-preview" aria-label="ตัวอย่างธงกิลด์"></span><b id="setup-sign"></b><small id="setup-sign-sub"></small></div><div class="setup-emblem-pick"><span>สีธง</span><div>${GUILD_BANNER_COLORS.map(c=>`<button class="swatch ${setup.bannerColor===c.id?'on':''}" data-banner-color="${c.id}" style="background:${c.id}" aria-label="${c.name}" aria-pressed="${setup.bannerColor===c.id}"></button>`).join('')}</div></div><div class="setup-emblem-pick"><span>สัญลักษณ์กิลด์</span><div>${GUILD_EMBLEMS.map(e=>`<button class="emblem-choice ${setup.bannerSymbol===e.id?'on':''}" data-banner-symbol="${e.id}" aria-label="${e.name}" aria-pressed="${setup.bannerSymbol===e.id}">${e.glyph}<small>${e.name}</small></button>`).join('')}</div></div><label class="setup-label">ชื่อกิลด์<input id="setup-guild" maxlength="20" placeholder="เช่น กิลด์ดาวเหนือ" value="${h(setup.guildName)}"></label><div class="name-ideas">${NAME_IDEAS.map(x=>`<button class="pill" data-name-idea="${h(x)}">${h(x)}</button>`).join('')}</div><div class="dialog-actions"><button class="secondary" data-setup="prev">← ย้อนกลับ</button><button class="primary" data-setup="done">${edit?'บันทึก':'เปิดกิลด์!'}</button></div>`;
  updateSetupPreview();}
-function updateSetupPreview(){const p=normalizeProfile(setup);if($('setup-preview')){drawPortrait($('setup-preview'),masterSprite(p),96);$('setup-preview-name').textContent=setup.masterName.trim()||'(ยังไม่ตั้งชื่อ)';}if($('setup-sign')){$('setup-sign').textContent=setup.guildName.trim()||'ชื่อกิลด์';$('setup-sign-sub').textContent=`หัวหน้ากิลด์ ${p.masterName}`;}}
+function updateSetupPreview(){const p=normalizeProfile(setup);if($('setup-preview')){drawPortrait($('setup-preview'),masterSprite(p),96);$('setup-preview-name').textContent=setup.masterName.trim()||'(ยังไม่ตั้งชื่อ)';}if($('setup-sign')){$('setup-sign').textContent=setup.guildName.trim()||'ชื่อกิลด์';$('setup-sign-sub').textContent=`หัวหน้ากิลด์ ${p.masterName}`;const flag=$('setup-flag'),emblem=GUILD_EMBLEMS.find(e=>e.id===p.bannerSymbol);if(flag){flag.style.setProperty('--flag-color',p.bannerColor);flag.textContent=emblem?.glyph||'♧';flag.title=`ธงสี${GUILD_BANNER_COLORS.find(c=>c.id===p.bannerColor)?.name||''} ตรา${emblem?.name||''}`;}}}
 $('setup-dialog').addEventListener('input',event=>{if(event.target.id==='setup-master')setup.masterName=event.target.value;if(event.target.id==='setup-guild')setup.guildName=event.target.value;updateSetupPreview();});
 $('setup-dialog').addEventListener('cancel',event=>{event.preventDefault();if(setup?.mode==='edit')$('setup-dialog').close();});
 $('setup-dialog').addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;const d=b.dataset;
  if(d.look){setup[d.look]=d.value;b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));updateSetupPreview();return;}
+ if(d.bannerColor){setup.bannerColor=d.bannerColor;b.parentElement.querySelectorAll('button').forEach(x=>{const on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',String(on));});updateSetupPreview();return;}
+ if(d.bannerSymbol){setup.bannerSymbol=d.bannerSymbol;b.parentElement.querySelectorAll('button').forEach(x=>{const on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',String(on));});updateSetupPreview();return;}
  if(d.nameIdea){setup.guildName=d.nameIdea;$('setup-guild').value=d.nameIdea;updateSetupPreview();return;}
  if(d.setup==='back'){$('setup-dialog').close();return;}
  if(d.setup==='close'){$('setup-dialog').close();return;}

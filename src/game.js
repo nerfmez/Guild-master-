@@ -133,13 +133,24 @@ export const PROFILE_LOOKS = {
   skin: ['#f7d4ae', '#e8b88c', '#b9805a'],
   hairStyle: ['short', 'long'],
 };
-export const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ดาวเหนือ', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short' };
+export const GUILD_BANNER_COLORS = [
+  { id: '#ad8175', name: 'ดินเผา' }, { id: '#6689a5', name: 'ฟ้าคราม' }, { id: '#68896b', name: 'เขียวใบไม้' },
+  { id: '#8975a7', name: 'ม่วงลาเวนเดอร์' }, { id: '#c29246', name: 'ทองอำพัน' }, { id: '#598c8c', name: 'เขียวน้ำทะเล' },
+  { id: '#b65f69', name: 'แดงกุหลาบ' },
+];
+export const GUILD_EMBLEMS = [
+  { id: 'leaf', name: 'ใบไม้', glyph: '♧' }, { id: 'star', name: 'ดาว', glyph: '★' }, { id: 'moon', name: 'จันทร์', glyph: '☾' },
+  { id: 'sword', name: 'ดาบ', glyph: '⚔' }, { id: 'shield', name: 'โล่', glyph: '⬟' }, { id: 'sun', name: 'ตะวัน', glyph: '☼' },
+];
+export const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ดาวเหนือ', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short', bannerColor: GUILD_BANNER_COLORS[0].id, bannerSymbol: 'leaf' };
 /** Clean player-entered names and look choices; unknown values fall back to defaults. */
 export function normalizeProfile(input = {}) {
   const text = (value, fallback) => { const clean = String(value ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20); return clean || fallback; };
   const pick = (key, value) => PROFILE_LOOKS[key].includes(value) ? value : DEFAULT_PROFILE[key];
+  const bannerColor = GUILD_BANNER_COLORS.some(color => color.id === input.bannerColor) ? input.bannerColor : DEFAULT_PROFILE.bannerColor;
+  const bannerSymbol = GUILD_EMBLEMS.some(symbol => symbol.id === input.bannerSymbol) ? input.bannerSymbol : DEFAULT_PROFILE.bannerSymbol;
   return { masterName: text(input.masterName, DEFAULT_PROFILE.masterName), guildName: text(input.guildName, DEFAULT_PROFILE.guildName),
-    hair: pick('hair', input.hair), outfit: pick('outfit', input.outfit), skin: pick('skin', input.skin), hairStyle: pick('hairStyle', input.hairStyle) };
+    hair: pick('hair', input.hair), outfit: pick('outfit', input.outfit), skin: pick('skin', input.skin), hairStyle: pick('hairStyle', input.hairStyle), bannerColor, bannerSymbol };
 }
 
 export const INTRO_STEPS = ['reception', 'board', 'training', 'patrol', 'wait', 'visit', 'done'];
