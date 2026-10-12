@@ -26,7 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run export
       - run: mkdir -p site && cp play.html site/index.html && touch site/.nojekyll
-      # Isolated PR #23 preview; rebuild after fixing the notification UI startup error.
+      # Isolated PR #23 preview; rebuild after tablet HUD layout adjustment.
       # Production homepage remains built from main.
       - uses: actions/checkout@v4
         with:
