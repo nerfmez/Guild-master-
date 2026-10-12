@@ -4,21 +4,22 @@ export function initMobileUI({ beforeOpen = () => {}, afterClose = () => {}, bef
   const media = matchMedia('(max-width:900px), (max-height:500px), (pointer:coarse) and (max-width:1400px)'), records = [];
   const nodes = [document.querySelector('.corner-stack'), $('city-stats'),$('event-banner')];
   const anchors = nodes.map(node => { const anchor = document.createComment('HUD home'); node.before(anchor); return anchor; });
-  const sync = () => { const goals = $('near-goals').querySelectorAll('button').length + 1 + Number(!$('event-banner').hidden), unread = records.filter(r => !r.read).length;
-    $('notifications-count').textContent = String(goals + unread); button.setAttribute('aria-label', `ข่าวและเป้าหมาย ${goals + unread} เรื่อง`); button.classList.toggle('urgent', $('goal-card').classList.contains('urgent') || unread > 0);
+  const sync = () => { const unread = records.filter(r => !r.read).length;
+    $('notifications-count').textContent = String(unread); button.setAttribute('aria-label', `ข่าวใหม่ ${unread} เรื่อง`); button.classList.toggle('urgent', unread > 0);
   };
   const render = () => { const box = $('notification-news'); box.replaceChildren();
-    if (!records.length) { const p = document.createElement('p'); p.className = 'tiny-note'; p.textContent = 'ข่าวใหม่จะรวมไว้ที่นี่ เป้าหมายและหีบอยู่ด้านล่าง'; box.append(p); }
+    if (!records.length) { const p = document.createElement('p'); p.className = 'tiny-note'; p.textContent = 'ยังไม่มีข่าวใหม่'; box.append(p); }
     for (const record of records) { const el = document.createElement(record.action ? 'button' : 'p'); el.className = 'notification-news' + (record.error ? ' error' : ''); el.textContent = record.text;
       if (record.action) { el.type = 'button'; el.addEventListener('click', () => { dialog.close(); record.action(); }); } box.append(el);
     }
   };
   const layout = () => { document.body.classList.toggle('compact-ui', media.matches);
-    nodes.forEach((node, i) => { if (media.matches) $('notification-hud').append(node); else anchors[i].after(node); });
+    nodes.forEach((node, i) => { anchors[i].after(node); });
     if (!media.matches && dialog.open) dialog.close(); sync();
   };
   button.addEventListener('click', () => { beforeOpen(); records.forEach(r => r.read = true); render(); sync(); dialog.showModal(); });
   $('notifications-close').addEventListener('click', () => dialog.close());
+  $('quest-alert-button').addEventListener('click', () => { beforeOpen(); dialog.close(); document.querySelector('#menu-button')?.click(); document.querySelector('[data-tab="quests"]')?.click(); });
   dialog.addEventListener('close', afterClose);
   $('notification-hud').addEventListener('click',event=>{if(event.target.closest('button'))dialog.close();},true);
   dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();});
@@ -33,5 +34,5 @@ export function initMobileUI({ beforeOpen = () => {}, afterClose = () => {}, bef
   $('restore-ui').addEventListener('click',()=>sceneOnly(false));
   window.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('scene-only')){event.preventDefault();sceneOnly(false);}});
   media.addEventListener('change', layout); layout();
-  return { sync, reset() { records.length = 0; render(); sync(); }, compact: () => media.matches, record(text, error, action) { records.unshift({ text, error, action, read: dialog.open }); records.length = Math.min(records.length, 24); if (dialog.open) render(); sync(); } };
+  return { sync, setQuestCount(count) { const badge=$('quest-alert-count'); if(!badge)return;badge.textContent=String(count);badge.hidden=count===0;$('quest-alert-button').classList.toggle('urgent',count>0);$('quest-alert-button').setAttribute('aria-label',count?`กระดานคำร้อง มี ${count} งานรอรับ`:'กระดานคำร้อง'); }, reset() { records.length = 0; render(); sync(); }, compact: () => media.matches, record(text, error, action) { records.unshift({ text, error, action, read: dialog.open }); records.length = Math.min(records.length, 24); if (dialog.open) render(); sync(); } };
 }
