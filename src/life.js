@@ -196,6 +196,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(state.world) * 20; state.world.kills++;
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
+  ctx.codex?.(m.species);
   const s = statsOf(m.species), party = state.world.hunters.filter(o => o.party === h.party && o.mode === 'hunt' && dist(o, m) < 9);
   if (m.quest) { h.bag.kills += 1; const qp = MONSTER_PART[m.species]; if (qp && (m.questBoss || rand(state.world) < .5)) { h.bag.parts ??= {}; h.bag.parts[qp] = (h.bag.parts[qp] || 0) + (m.questBoss ? 4 : 1); } return; }
   h.bag.gold += s.gold[0] + Math.floor(rand(state.world) * (s.gold[1] - s.gold[0] + 1));
@@ -205,7 +206,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   const part = MONSTER_PART[m.species];
   if (part && rand(state.world) < TRADE_RULES.partChance) { h.bag.parts ??= {}; h.bag.parts[part] = (h.bag.parts[part] || 0) + (s.boss ? 5 : 1); }
   const zoneRank = rankIdx(HUNT_ZONES[m.zone]?.rank || 'F');
-  if (s.boss || m.elite || rand(state.world) < TRADE_RULES.treasureChance * (1 + zoneRank * 0.5)) {
+  if (s.boss || m.elite || rand(state.world) < TRADE_RULES.treasureChance * (1 + zoneRank * 0.5) * (ctx.luck?.() || 1)) {
     const pool = Object.entries(TREASURES).filter(([, t]) => !t.boss && rankIdx(t.rank) <= zoneRank).map(([id]) => id);
     h.bag.treasures ??= [];
     if (s.boss) h.bag.treasures.push('rustCrown');
@@ -558,6 +559,7 @@ function heroStrike(state, ctx, m, dmg, kind) {
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(w) * 20; w.kills++; hero.kills++;
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
+  ctx.codex?.(m.species);
   const s = statsOf(m.species);
   // What the master takes goes straight to the guild: coins to the coffers, parts to the storehouse.
   const gold = s.gold[0] + Math.floor(rand(w) * (s.gold[1] - s.gold[0] + 1));

@@ -34,7 +34,7 @@ export function sellLoot(state, ctx, hunter, who) {
     if (willing && room && budget >= price) {
       budget -= price; paid += price; sold += 1;
       if (item.part) t.store[item.part] = (t.store[item.part] || 0) + 1;
-      else { t.treasures.push({ id: item.treasure, from: who.name }); found.push(TREASURES[item.treasure].name); }
+      else { t.treasures.push({ id: item.treasure, from: who.name }); found.push(TREASURES[item.treasure].name); ctx.found?.(item.treasure); }
     } else elsewhere += Math.round(value * 0.6);
   }
   bag.parts = {}; bag.treasures = [];

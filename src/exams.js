@@ -72,7 +72,7 @@ function finishRound(state, ctx) {
     if (e.kind !== 'member') continue;
     const member = state.members.find(m => m.id === e.id); if (!member) continue;
     member.errand = null;
-    if (e.pass) { member.rank = e.rank; member.morale = clamp(member.morale + 8, 0, 100); ctx.log(`${member.name}สอบผ่าน! เลื่อนเป็นนักผจญภัยแรงค์ ${e.rank}`, 'rank'); }
+    if (e.pass) { ctx.passed?.(); member.rank = e.rank; member.morale = clamp(member.morale + 8, 0, 100); ctx.log(`${member.name}สอบผ่าน! เลื่อนเป็นนักผจญภัยแรงค์ ${e.rank}`, 'rank'); }
     else { member.examReadyAt = state.elapsed + EXAM_RULES.every * .8; member.morale = clamp(member.morale - 6, 0, 100); ctx.log(`${member.name}สอบแรงค์ ${e.rank} ไม่ผ่าน จะฝึกแล้วกลับมาสอบรอบหน้า`, 'warning'); }
   }
   ex.last = { round: s.round, at: state.elapsed, results };

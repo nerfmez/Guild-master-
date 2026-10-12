@@ -654,6 +654,8 @@ test('promotion needs renown and a record of work, then the exam letter arrives'
   state.members.forEach(m => { m.level = 6; });
   complete(state, dispatch(state, 'escort', party, 'cautious'));
   assert.equal(state.rank, 'E');
+  assert.equal(state.progress.offer?.cards.length, 3, 'a rank-up offers three guild policies');
+  assert.ok(state.progress.chests.some(c => c.tier === 'gold'), 'and a gold chest');
   // Easy work far below the guild's rank earns little renown.
   state.rank = 'C';
   assert.equal(renownFactor(state, QUESTS.find(q => q.id === 'patrol')), 0.1);
@@ -1346,4 +1348,69 @@ test('dining tables seat four for a meal from the kitchen; tired adventurers eat
   tick(state, 0.5);
   assert.equal(m.seatKind, 'dining', 'a tired adventurer sits down for a meal');
   assert.ok(m.energy > 40 && state.gold >= gold + price - 1);
+});
+
+test('one more turn: the monster book pays for first kills and full pages, chests roll a rarity, treasure sets pay out', async () => {
+  const { CODEX_FAMILIES, rollChest, CHESTS } = await import('../src/progress.js');
+  const { noteKill, noteTreasure } = await import('../src/game.js');
+  const state = createGame(301);
+  const gold = state.gold, meadow = CODEX_FAMILIES.find(f => f.id === 'meadow');
+  // The book counts kills from anywhere: the living world reports them through the life context.
+  for (const sp of meadow.species) { const before = state.gold; noteKill(state, sp); assert.ok(state.gold > before, 'a first kill pays a bonus'); }
+  assert.ok(state.progress.families.meadow, 'a full page is marked');
+  assert.ok(state.progress.chests.some(c => c.tier === 'silver'), 'and pays a silver chest');
+  const again = state.gold; noteKill(state, meadow.species[0]); assert.equal(state.gold, again, 'only the first of a kind pays');
+  assert.ok(state.gold > gold);
+  // Chests: the tier sets the odds; a gold chest never rolls common.
+  let seed = 7; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 200; i++) assert.notEqual(rollChest({ tier: 'gold' }, rand).rarity, 'common');
+  const n = state.progress.chests.length, before = state.gold;
+  const r = act(state, 'openChest', {});
+  assert.ok(r.ok && state.gold > before && state.progress.chests.length === n - 1 && state.progress.opened === 1);
+  assert.ok(CHESTS[r.chest.tier] && r.chest.rarity);
+  // Treasure sets: the village set pays once every piece has reached the guild.
+  for (const id of ['oldCoin', 'silverBangle', 'jadeIdol']) { state.trade.treasures.push({ id, from: 'test' }); noteTreasure(state, id); }
+  assert.ok(state.progress.sets.village, 'the set is complete');
+  assert.ok(state.progress.chests.some(c => c.tier === 'gold'), 'a full set pays a gold chest');
+  // Everything survives a save.
+  const back = deserializeGame(serializeGame(state));
+  assert.deepEqual(back.progress.kills, state.progress.kills);
+  assert.equal(back.progress.chests.length, state.progress.chests.length);
+  assert.ok(back.progress.sets.village && back.progress.families.meadow);
+});
+
+test('daily goals: three every morning, a wood chest each, a silver chest for all three', () => {
+  const state = createGame(302);
+  tick(state, 1);
+  const p = state.progress;
+  assert.equal(p.daily.day, state.day); assert.equal(p.daily.list.length, 3);
+  // Push every counter far past the goal.
+  state.record.jobs += 99; state.world.kills += 999; state.trade.stats.bought += 99; state.record.hall += 9999; state.record.income += 99999; state.record.joined += 9; state.record.passed += 9;
+  tick(state, 1);
+  assert.ok(p.daily.list.every(g => g.done) && p.daily.bonus);
+  assert.equal(p.chests.filter(c => c.tier === 'wood').length, 3);
+  assert.equal(p.chests.filter(c => c.tier === 'silver').length, 1);
+  // A new day brings new goals measured from the new morning.
+  tick(state, DAY_LENGTH);
+  assert.equal(p.daily.day, state.day); assert.ok(p.daily.list.every(g => !g.done));
+});
+
+test('guild policies change the numbers they promise; coming back after a while leaves a chest at the door', async () => {
+  const { offerPolicies } = await import('../src/progress.js');
+  const { getUpgradeCost, applicantInterval, nearGoals } = await import('../src/game.js');
+  const state = createGame(303);
+  const f = state.facilities[0], cost = getUpgradeCost(state, f.id).gold, wait = applicantInterval(state);
+  state.progress.offer = { rank: 'E', cards: ['thrift', 'welcome', 'medic'] };
+  assert.equal(act(state, 'choosePolicy', { policyId: 'broker' }).ok, false, 'only an offered card');
+  assert.ok(act(state, 'choosePolicy', { policyId: 'thrift' }).ok);
+  assert.ok(getUpgradeCost(state, f.id).gold < cost, 'the workshop policy makes upgrades cheaper');
+  assert.equal(state.progress.offer, null);
+  offerPolicies(state.progress, 'D', () => 0.5);
+  assert.ok(!state.progress.offer.cards.includes('thrift'), 'a policy already kept is not offered again');
+  state.progress.offer = { rank: 'D', cards: ['welcome'] }; act(state, 'choosePolicy', { policyId: 'welcome' });
+  assert.ok(applicantInterval(state) < wait, 'an open door brings newcomers sooner');
+  const r = act(state, 'collectIdle', { seconds: 1800 });
+  assert.ok(r.ok && r.chest === 'wood', 'half an hour away: a wood chest');
+  assert.ok(nearGoals(state).length <= 3);
+  assert.equal(deserializeGame(serializeGame(state)).progress.policies.join(), 'thrift,welcome');
 });

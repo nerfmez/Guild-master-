@@ -17,7 +17,7 @@ function placeSomewhere(state, type) {
 }
 const canPay = (state, cost, reserve = 0) => Object.entries(cost || {}).every(([k, v]) => state[k] - (k === 'gold' ? reserve : 0) >= v);
 
-export function simulate(seed = 1, { maxSeconds = 7 * 3600, plan = "standard", log = false, maxMembers = 8, freePlay = 0 } = {}) {
+export function simulate(seed = 1, { maxSeconds = 7 * 3600, plan = "standard", log = false, maxMembers = 8, freePlay = 0, onStep = null } = {}) {
   const state = createGame(seed);
   const m = { seed, ranks: {}, village: {}, finishedAt: null, boardRuns: 0, playerRuns: 0, failures: 0, minGold: state.gold, goldSamples: [], petitionsSeen: 0, petitionsLost: 0, upgrades: 0, projects: 0 };
   const seen = new Set();
@@ -28,7 +28,11 @@ export function simulate(seed = 1, { maxSeconds = 7 * 3600, plan = "standard", l
   const book = () => { for (const entry of state.ledger) { if (entry === top) break; const key = entry.text.replace(/[:：].*$/, '').replace(/^(สร้าง|อัปเกรด|รับ|เปลี่ยนอาชีพ|ซื้อ|ขาย|หมู่บ้าน|พัฒนา).*$/, '$1').slice(0, 24); m.ledger[key] = (m.ledger[key] || 0) + entry.gold; } top = state.ledger[0]; };
   while (state.elapsed < maxSeconds) {
     tick(state, STEP);
+    onStep?.(state);
     book();
+    // Rewards: keep the first policy card offered and open every chest straight away.
+    if (state.progress?.offer) act(state, 'choosePolicy', { policyId: state.progress.offer.cards[0] });
+    while (state.progress?.chests.length) { const r = act(state, 'openChest', {}); if (!r.ok) break; m.chests = (m.chests || 0) + 1; m.chestGold = (m.chestGold || 0) + r.chest.reward.gold; m.rarity ??= {}; m.rarity[r.chest.rarity] = (m.rarity[r.chest.rarity] || 0) + 1; }
     for (const p of state.petitions) if (!seen.has(p.id) && !p.important) { seen.add(p.id); m.petitionsSeen++; }
     // Count runs as they finish.
     for (const mission of state.missions) if (mission.status !== 'active' && !lastMissions.has(mission.id)) {

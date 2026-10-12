@@ -7,6 +7,7 @@ import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecisio
 import { SPECIES } from './monsters.js';
 import { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf } from './town.js';
 import { goalBoard, claimGoal, sanitizeMastery, setGoalJobs } from './goals.js';
+import { createProgress, sanitizeProgress, addChest, rollChest, recordKill, recordTreasure, offerPolicies, choosePolicy, hasPolicy, newDailyGoals, dailyView, POLICIES, CHESTS, CHEST_RARITIES, TREASURE_SETS, CODEX_FAMILIES } from './progress.js';
 import { createFestivals, startFestival, tickFestivals, sanitizeFestivals, festivalStatus, festivalVisitors } from './festivals.js';
 import { createExams, registerExam, withdrawExam, tickExams, sanitizeExams } from './exams.js';
 import { createTrade, sellLoot, tickTrade, dailyTrade, wholesale, sendCaravan, treasureAction, sanitizeTrade, storeUsed, storeCapacity } from './trade.js';
@@ -70,6 +71,7 @@ function transact(state, amount, reason, direction = -1) {
     wood: ((amount.wood || 0) * direction) || 0, stone: ((amount.stone || 0) * direction) || 0, herb: ((amount.herb || 0) * direction) || 0 });
   if (state.ledger.length > MAX_LEDGER) state.ledger.length = MAX_LEDGER;
   const gold = (amount.gold || 0) * direction;
+  if (gold > 0 && state.record) state.record.income = Math.round((state.record.income || 0) + gold);
   if (gold && state.today) { const book = gold > 0 ? state.today.income : state.today.expense, key = ledgerKey(reason); book[key] = Math.round((book[key] || 0) + Math.abs(gold)); }
 }
 /** Group ledger lines for the day's summary: "ค่านายหน้า: ลาดตระเวน" counts as commission. */
@@ -107,7 +109,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, frontier: { camp: 0 }, bounty: null, mastery: { claimed: {} }, exams: createExams(), festivals: createFestivals(), eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0, today: newDay(1), history: [],
     policy: { memberHunting: true, autoPetitions: true, registration: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0, bounties: 0 }, market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, occupancy: 1, raidScar: 0, grown: 1, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
+    record: { jobs: 0, bounties: 0, income: 0, hall: 0, joined: 0, passed: 0 }, progress: createProgress(), market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, occupancy: 1, raidScar: 0, grown: 1, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -248,7 +250,7 @@ export function townComfort(state) {
   const room = getLodging(state), crowded = room.count >= room.lodging * 0.95 ? -10 : 0;
   const parts = [['พื้นฐาน', 36], ['ที่พักแออัด', crowded], ['ชุดโต๊ะน้ำชา', bestRoomLevel(state, 'lounge') * 6], ['เตาทำอาหาร', bestRoomLevel(state, 'kitchen') * 4], ['ร้านค้า', (v.shop || 0) * 3], ['โรงเตี๊ยม', (v.inn || 0) * 3],
     ['เวทีและลานเทศกาล', (v.stage || 0) * 3 + (v.fairground || 0) * 2], ['อนุสาวรีย์', (v.monument || 0) * 3], ['เทศกาลกำลังจัด', state.festivals?.live ? 12 : 0],
-    ['ค่าตอบแทนปกติ', (PAYOUT_PLANS[state.payoutPlan]?.morale || 0) * 1.5]].filter(([, n]) => n);
+    ['ค่าตอบแทนปกติ', (PAYOUT_PLANS[state.payoutPlan]?.morale || 0) * 1.5], ['นโยบายกิลด์อบอุ่น', hasPolicy(state, 'cheer') ? 6 : 0]].filter(([, n]) => n);
   return { value: clamp(Math.round(parts.reduce((a, [, n]) => a + n, 0)), 20, 95), parts };
 }
 
@@ -256,7 +258,7 @@ export function townComfort(state) {
 function xpNeeded(level) { return Math.round(30 + level * 10 + level * level * 2.5); }
 function addXp(state, member, amount) {
   if (member.level >= MAX_LEVEL) return;
-  member.xp += amount;
+  member.xp += amount * (hasPolicy(state, 'drill') ? 1.15 : 1);
   while (member.level < MAX_LEVEL && member.xp >= xpNeeded(member.level)) {
     member.xp -= xpNeeded(member.level);
     member.level += 1;
@@ -413,7 +415,7 @@ export function getLodging(state) {
   return { inn, rooms, lodging: inn + rooms, town, cap: Math.min(town, inn + rooms), count, coming, limit: inn + rooms <= town ? 'lodging' : 'town' };
 }
 /** Seconds between newcomers while there is room: renown brings them faster. */
-export function applicantInterval(state) { return Math.max(12, Math.round(45 / ((1 + state.rep / 300) * (1 + staffOn(state, 'registrar') * 0.15)))); }
+export function applicantInterval(state) { return Math.max(10, Math.round(45 / ((1 + state.rep / 300) * (1 + staffOn(state, 'registrar') * 0.15) * (hasPolicy(state, 'welcome') ? 1.3 : 1)))); }
 /** Named regulars stay about a quarter of everyone registered (never fewer than four). */
 export function regularLimit(state) { return Math.max(4, Math.ceil(state.members.length / 4)); }
 const APPLICANT_START = { x: -12, y: 17.5 };
@@ -455,6 +457,7 @@ function registerApplicant(state, applicant) {
   if (applicant.fond) joined.morale = 95;
   state.members.push(joined);
   if (state.today) state.today.joined += 1;
+  if (state.record) state.record.joined = (state.record.joined || 0) + 1;
   state.goals.firstRecruit = true;
   addLog(state, `${content.name} (${JOBS[content.class].name} Lv.${applicant.level}) ลงทะเบียนกับกิลด์ เช่าห้องพักในเมืองแล้ว`, applicant.famous ? 'rank' : 'member');
   return joined;
@@ -527,11 +530,11 @@ export function hallSeats(state) {
 }
 /** A drink at the bar: better with a bigger bar and a bartender; a team back from a won job celebrates and spends more. */
 export function barPrice(state, celebrate = false) {
-  return Math.round((3 + bestRoomLevel(state, 'bar') * 1.5) * (1 + staffOn(state, 'bartender') * 0.2) * (celebrate ? 2.5 : 1));
+  return Math.round((3 + bestRoomLevel(state, 'bar') * 1.5) * (1 + staffOn(state, 'bartender') * 0.2) * (celebrate ? 2.5 : 1) * (hasPolicy(state, 'tavern') ? 1.25 : 1));
 }
 /** A meal at a dining table: cooked at the stove, better with a cook. */
 export function mealPrice(state) {
-  return Math.round((4 + bestRoomLevel(state, 'kitchen') * 1.5 + bestRoomLevel(state, 'dining')) * (1 + staffOn(state, 'cook') * 0.15));
+  return Math.round((4 + bestRoomLevel(state, 'kitchen') * 1.5 + bestRoomLevel(state, 'dining')) * (1 + staffOn(state, 'cook') * 0.15) * (hasPolicy(state, 'tavern') ? 1.25 : 1));
 }
 /** An adventurer dropping in sits down: a meal when tired (and there is a table and a kitchen), otherwise a drink at the bar. */
 function visitGuild(state, member) {
@@ -543,6 +546,7 @@ function visitGuild(state, member) {
   if ((member.purse || 0) < price + 10) return;
   member.purse -= price;
   transact(state, { gold: price }, meal ? 'อาหารจากครัว' : 'บาร์และครัว', 1);
+  state.record.hall = (state.record.hall || 0) + price;
   state.village.prosperity += price * 0.02;
   const cook = staffOn(state, 'cook'), bartender = staffOn(state, 'bartender'), kitchen = bestRoomLevel(state, 'kitchen');
   if (meal) { member.energy = clamp(member.energy + 5 + kitchen + cook * 2, 0, 100); member.morale = clamp(member.morale + 1, 0, 100); }
@@ -818,7 +822,8 @@ export function getUpgradeCost(state, facilityId) {
   const room = typeof facilityId === 'object' ? facilityId : state.facilities.find(facility => facility.id === facilityId);
   if (!room || !FACILITIES[room.type]) return null;
   const base = FACILITIES[room.type].cost;
-  return Object.fromEntries(RESOURCE_KEYS.map(key => [key, Math.ceil((base[key] || 0) * (0.7 + room.level * 0.6))]));
+  const thrift = hasPolicy(state, 'thrift') ? 0.85 : 1;
+  return Object.fromEntries(RESOURCE_KEYS.map(key => [key, Math.ceil((base[key] || 0) * (0.7 + room.level * 0.6) * thrift)]));
 }
 export function getExpansionCost(state) {
   return { gold: 500 + state.landLevel * 350, wood: 18 + state.landLevel * 8, stone: 12 + state.landLevel * 6 };
@@ -938,13 +943,13 @@ function resolveMission(state, mission, outcome) {
     if (mission.petition) {
       // The client pays the fee; the guild keeps its commission and the team shares the rest.
       const pay = getPayout(state, Math.floor(mission.petition.fee * multiplier), mission.petition.plan);
-      rewards.gold = pay.guild; wages = pay.adventurers + (mission.petition.bonus || 0);
+      rewards.gold = Math.round(pay.guild * (hasPolicy(state, 'broker') ? 1.12 : 1)); wages = pay.adventurers + (mission.petition.bonus || 0);
       mission.memberIds.forEach(id => { const member = memberById(state, id); member.purse = (member.purse || 0) + wages / mission.memberIds.length; });
       state.village.prosperity += pay.fee * 0.05;
     }
     transact(state, rewards, mission.petition ? `ค่านายหน้า: ${quest.name}` : `รางวัล: ${quest.name}`, 1);
     // Work the adventurers picked up by themselves earns the guild half the renown of work it sends.
-    const rep = Math.max(1, Math.round(quest.reward.rep * multiplier * renownFactor(state, quest) * (mission.auto ? 0.5 : 1) * (1 + roomLevel(state, 'reception') * 0.05) * (1 + (state.upgrades?.trophyHall || 0) * 0.06)));
+    const rep = Math.max(1, Math.round(quest.reward.rep * multiplier * renownFactor(state, quest) * (mission.auto ? 0.5 : 1) * (1 + roomLevel(state, 'reception') * 0.05) * (1 + (state.upgrades?.trophyHall || 0) * 0.06) * (hasPolicy(state, 'fame') ? 1.2 : 1)));
     state.rep += rep;
     state.completedQuests[quest.id] = (state.completedQuests[quest.id] || 0) + 1;
     if (mission.petition) { state.record ??= { jobs: 0 }; state.record.jobs += 1; }
@@ -955,7 +960,7 @@ function resolveMission(state, mission, outcome) {
     if (mission.rt?.field) mission.result.saved = { what: mission.rt.field.name, pct: Math.round(saved * 100) };
     if (mission.rt?.wagon) mission.result.saved = { what: 'เกวียน', pct: Math.round(saved * 100) };
     if (mission.rt?.npcs) mission.result.rescued = mission.rt.npcs.length;
-    if (quest.id === 'dragon' && !wasCompleted) { state.trade.treasures = [...(state.trade.treasures || []), 'emberCrown']; addLog(state, 'ทีมนำมงกุฎเพลิงราชันมังกรกลับมาด้วย! วางโชว์หรือประมูลได้ที่ตลาด', 'story'); }
+    if (quest.id === 'dragon' && !wasCompleted) { state.trade.treasures = [...(state.trade.treasures || []), { id: 'emberCrown', from: 'ราชันมังกรเพลิง' }]; noteTreasure(state, 'emberCrown'); addLog(state, 'ทีมนำมงกุฎเพลิงราชันมังกรกลับมาด้วย! วางโชว์หรือประมูลได้ที่ตลาด', 'story'); }
     state.goals.firstMission = true;
     improveBonds(state, mission.memberIds, 9);
     if (quest.id === 'hollow') state.story.chapter = Math.max(2, state.story.chapter);
@@ -1026,6 +1031,11 @@ function updateRank(state) {
     state.rank = nextRank;
     transact(state, { gold: 120 + rankIndex(nextRank) * 45 }, `เงินสนับสนุนกิลด์ระดับ ${nextRank}`, 1);
     addLog(state, `กิลด์เลื่อนเป็นระดับ ${nextRank}! เปิดคำร้องและสิ่งปลูกสร้างใหม่`, 'rank');
+    state.progress ??= createProgress();
+    if (state.progress.offer) choosePolicy(state.progress, state.progress.offer.cards[0]);
+    addChest(state.progress, 'gold', `เลื่อนเป็นกิลด์ระดับ ${nextRank}`);
+    offerPolicies(state.progress, nextRank, () => worldRandom(state));
+    state.celebrate = { kind: 'rank', rank: nextRank, at: state.elapsed };
     nextRank = RANKS[rankIndex(state.rank) + 1];
   }
 }
@@ -1068,6 +1078,7 @@ function dailyUpdate(state) {
   settleIdle(state, true);
   restockShops(state);
   state.daily = { missionCounts: {}, work: {}, lessons: {}, garden: Boolean(garden) };
+  startDailyGoals(state);
   if (state.day % 3 === 0) {
     const choices = ['ชาวบ้านฝากขนมปังมาให้กิลด์ สมาชิกทุกคนขวัญดีขึ้น', 'เด็ก ๆ นำภาพวาดทีมกิลด์มาติดผนัง ทุกคนยิ้มให้กัน'];
     const text = choices[Math.floor(nextRandom(state) * choices.length)];
@@ -1347,7 +1358,7 @@ function lifeContext(state) {
     sellLoot: (hunter, who) => sellLoot(state, tradeContext(state), hunter, who),
     bossZone: () => bossAlive(state)?.zone || state.bounty?.zone || null,
     freeToDefend: member => !isBusy(state, member.id) && member.injury <= 40 && member.energy >= 20,
-    onSpecialKill: (monster, hunter) => onSpecialKill(state, monster, hunter), onRaidReach: monster => onRaidReach(state, monster),
+    onSpecialKill: (monster, hunter) => onSpecialKill(state, monster, hunter), codex: species => noteKill(state, species), luck: () => hasPolicy(state, 'scavenger') ? 2 : 1, onRaidReach: monster => onRaidReach(state, monster),
     campLevel: () => state.frontier?.camp || 0,
     atHome: member => !isBusy(state, member.id), lodge: member => lodgeSpot(state, member),
     visitGuild: member => visitGuild(state, member), hallCap: () => 8 + hallSeats(state).total, hasBar: () => hallSeats(state).total > 0,
@@ -1436,7 +1447,7 @@ export function getDirector(state) { return state.director; }
 // ---- Trade: helpers trade.js uses. ----
 function tradeContext(state) {
   return {
-    income: (gold, reason) => { if (gold > 0) transact(state, { gold }, reason, 1); }, expense: (gold, reason) => { if (gold > 0) transact(state, { gold }, reason); },
+    income: (gold, reason) => { if (gold > 0) transact(state, { gold: hasPolicy(state, 'trader') && /ขายส่ง|คาราวาน|ประมูล/.test(reason) ? Math.round(gold * 1.1) : gold }, reason, 1); }, found: id => noteTreasure(state, id), expense: (gold, reason) => { if (gold > 0) transact(state, { gold }, reason); },
     margin: () => roomLevel(state, 'appraisal') ? bestRoomLevel(state, 'appraisal') * 0.05 + staffOn(state, 'appraiser') * 0.04 : 0,
     log: (text, type) => addLog(state, text, type), random: () => worldRandom(state), villageLevel: () => getVillageInfo(state).level,
     rep: n => { state.rep += n; }, prosperity: n => { state.village.prosperity += n; }, renown: () => state.rep,
@@ -1513,7 +1524,7 @@ function festivalContext(state) {
       if (i >= 0 && TREASURES[item.id]) { state.trade.treasures.splice(i, 1); return { type: 'treasure', id: item.id, name: TREASURES[item.id].name, value: TREASURES[item.id].value }; }
       return null;
     },
-    returnItem: item => { if (item.type === 'gear') state.inventory[item.id] = (state.inventory[item.id] || 0) + 1; else state.trade.treasures.push(item.id); },
+    returnItem: item => { if (item.type === 'gear') state.inventory[item.id] = (state.inventory[item.id] || 0) + 1; else state.trade.treasures.push({ id: item.id, from: item.from || '' }); },
     canEnter: id => { const m = memberById(state, id); return Boolean(m) && !isBusy(state, id) && m.injury <= 40 && m.energy >= 30; },
     enter: (id, end) => { const m = memberById(state, id); if (m) { m.errand = { kind: 'festival', start: state.elapsed, end }; m.task = 'rest'; } },
     leave: id => { const m = memberById(state, id); if (m?.errand?.kind === 'festival') m.errand = null; },
@@ -1561,7 +1572,7 @@ function upgradeCamp(state) {
 /** Exams run in rounds at the arena (exams.js); members sign up and pay before a round starts. */
 function examContext(state) {
   return {
-    arena: () => state.village?.arena || 0, rankInfo: member => getAdventurerRank(state, member),
+    arena: () => state.village?.arena || 0, passed: () => { state.record.passed = (state.record.passed || 0) + 1; }, rankInfo: member => getAdventurerRank(state, member),
     payFee: (member, fee, reason) => payFee(state, member, fee, reason), log: (text, type) => addLog(state, text, type),
     random: () => petitionRandom(state), busy: member => isBusy(state, member.id), chance: (member, rule) => examChance(state, member, rule),
     refund: (member, rank) => { member.purse = (member.purse || 0) + (ADVENTURER_RANK_RULES[rank]?.fee || 0); addLog(state, `${member.name}ติดงานตอนสอบเริ่ม ได้ค่าสมัครคืน`, 'member'); },
@@ -1749,10 +1760,87 @@ function buyMaterial(state, payload) {
 }
 /** Income earned while the game was closed: the coffer and market keep paying for up to two hours. */
 function collectIdle(state, payload) {
-  const seconds = clamp(Number(payload.seconds) || 0, 0, 7200), gold = Math.floor(idleRate(state) * seconds);
-  if (gold < 1) return failure('ยังไม่มีดอกผลสะสม');
-  transact(state, { gold }, 'ดอกผลระหว่างปิดเกม', 1);
-  return { ok: true, message: `ระหว่างที่ไม่อยู่ กองทุนและตลาดได้ ${gold} G`, gold };
+  const away = Math.max(0, Number(payload.seconds) || 0), seconds = clamp(away, 0, 7200), gold = Math.floor(idleRate(state) * seconds);
+  // Ten minutes or more away: the villagers leave a small chest at the door.
+  const chest = away >= 600 && !introActive(state) ? addChest(state.progress, away >= 4 * 3600 ? 'silver' : 'wood', 'ของฝากจากชาวบ้านระหว่างที่คุณไม่อยู่') : null;
+  if (gold < 1 && !chest) return failure('ยังไม่มีดอกผลสะสม');
+  if (gold >= 1) transact(state, { gold }, 'ดอกผลระหว่างปิดเกม', 1);
+  return { ok: true, message: [gold >= 1 ? `ระหว่างที่ไม่อยู่ กองทุนและตลาดได้ ${gold} G` : '', chest ? `ชาวบ้านฝาก${CHESTS[chest.tier].name}ไว้ที่ประตู` : ''].filter(Boolean).join(' · '), gold, chest: chest?.tier || null, seconds: Math.round(away) };
+}
+
+// ---- One more turn: the monster book, treasure sets, chests, daily goals and guild policies. ----
+/** A monster fell anywhere in the world: the first of its kind pays a little, a full page pays a chest. */
+export function noteKill(state, species) {
+  const news = recordKill(state.progress, species);
+  if (!news) return;
+  const gold = 20 + rankIndex(state.rank) * 10;
+  transact(state, { gold }, 'โบนัสสมุดภาพมอน', 1); state.rep += 1;
+  addLog(state, `📖 บันทึกใหม่ในสมุดภาพมอน: ${news.name} · โบนัส ${gold} G`, 'codex');
+  for (const page of news.pages) { addChest(state.progress, 'silver', `สมุดภาพครบหน้า ${page.name}`); addLog(state, `📖 สมุดภาพครบหน้า “${page.name}”! ได้หีบเงิน`, 'reward'); }
+}
+/** A treasure reached the guild: finish any set it completes. */
+export function noteTreasure(state, id) {
+  for (const set of recordTreasure(state.progress, id)) {
+    transact(state, { gold: set.reward.gold }, `ครบชุดสมบัติ ${set.name}`, 1); state.rep += set.reward.rep;
+    addChest(state.progress, 'gold', `ครบชุดสมบัติ ${set.name}`);
+    addLog(state, `${set.icon} ครบชุดสมบัติ “${set.name}”! +${set.reward.gold} G ชื่อเสียง +${set.reward.rep} และหีบทอง`, 'reward');
+  }
+}
+/** Counters the daily goals measure. */
+export function progressCounters(state) {
+  const r = state.record || {};
+  return { jobs: r.jobs || 0, kills: state.world?.kills || 0, bought: state.trade?.stats?.bought || 0, hall: r.hall || 0, income: r.income || 0, joined: r.joined || 0, passed: r.passed || 0 };
+}
+function startDailyGoals(state) {
+  if (introActive(state)) return;
+  newDailyGoals(state.progress, state.day, progressCounters(state), rankIndex(state.rank), () => worldRandom(state));
+}
+function checkDailyGoals(state) {
+  const p = state.progress; if (!p || introActive(state)) return;
+  if (!p.daily || p.daily.day !== state.day) { startDailyGoals(state); return; }
+  const view = dailyView(p, progressCounters(state));
+  view.forEach((g, i) => {
+    if (g.done || g.have < g.need) return;
+    p.daily.list[i].done = true;
+    addChest(p, 'wood', `เป้าหมายวันนี้: ${g.text}`);
+    addLog(state, `✅ เป้าหมายวันนี้สำเร็จ: ${g.text} · ได้หีบไม้`, 'reward');
+  });
+  if (!p.daily.bonus && p.daily.list.length && p.daily.list.every(g => g.done)) {
+    p.daily.bonus = true; addChest(p, 'silver', 'ทำเป้าหมายวันนี้ครบทั้ง 3 อย่าง');
+    addLog(state, '🌟 ทำเป้าหมายวันนี้ครบทุกข้อ! ได้หีบเงินเป็นรางวัลพิเศษ', 'reward');
+  }
+}
+export function getDailyGoals(state) { return state.progress?.daily?.day === state.day ? dailyView(state.progress, progressCounters(state)) : []; }
+/** Open a chest: roll the rarity, pay out, and send any treasure to the guild's strongroom. */
+function openChest(state, payload) {
+  const p = state.progress, chest = p.chests.find(c => c.id === Number(payload.chestId)) || (payload.chestId == null ? p.chests[0] : null);
+  if (!chest) return failure('ไม่มีหีบให้เปิด');
+  const roll = rollChest(chest, () => worldRandom(state), rankIndex(state.rank));
+  p.chests = p.chests.filter(c => c !== chest); p.opened += 1;
+  const { rep = 0, ...goods } = roll.reward;
+  transact(state, goods, `เปิด${CHESTS[chest.tier].name}`, 1); state.rep += rep;
+  let treasure = null;
+  if (roll.treasure) {
+    if ((state.trade.treasures || []).length < 12) { state.trade.treasures.push({ id: roll.treasure, from: CHESTS[chest.tier].name }); treasure = roll.treasure; noteTreasure(state, roll.treasure); }
+    else { const value = TREASURES[roll.treasure].value; transact(state, { gold: value }, 'ห้องเก็บสมบัติเต็ม ขายสมบัติจากหีบ', 1); roll.reward.gold += value; }
+  }
+  const rarity = CHEST_RARITIES[roll.rarity];
+  return { ok: true, message: `${CHESTS[chest.tier].icon} ${CHESTS[chest.tier].name} · ${rarity.name}: +${roll.reward.gold} G${treasure ? ` และ${TREASURES[treasure].name}` : ''}`, chest: { ...chest, rarity: roll.rarity, reward: roll.reward, treasure } };
+}
+/** What is close: up to three small targets for the corner of the screen. */
+export function nearGoals(state) {
+  const out = [];
+  const daily = getDailyGoals(state).filter(g => !g.done).sort((a, b) => b.have / b.need - a.have / a.need)[0];
+  if (daily) out.push({ icon: daily.icon, text: `วันนี้: ${daily.text}`, have: daily.have, need: daily.need, action: 'tab:goals' });
+  // The cheapest upgrade still out of reach, or one that is ready now.
+  const ups = state.facilities.filter(f => FACILITIES[f.type] && (f.level || 1) < (FACILITIES[f.type].maxLevel || 3)).map(f => ({ f, c: getUpgradeCost(state, f.id) }))
+    .map(x => ({ ...x, short: Math.max(0, (x.c.gold || 0) - state.gold), mats: ['wood', 'stone', 'herb'].every(k => (state[k] || 0) >= (x.c[k] || 0)) })).filter(x => x.mats).sort((a, b) => a.short - b.short || (a.c.gold || 0) - (b.c.gold || 0));
+  const up = ups[0];
+  if (up) out.push({ icon: '⬆', text: up.short ? `อีก ${up.short} G → ${FACILITIES[up.f.type].name}ระดับ ${(up.f.level || 1) + 1}` : `พร้อมแล้ว: ${FACILITIES[up.f.type].name}ระดับ ${(up.f.level || 1) + 1}`, have: Math.min(state.gold, up.c.gold || 0), need: up.c.gold || 1, action: `upgrade:${up.f.id}`, ready: !up.short });
+  // The monster-book page closest to full.
+  const p = state.progress, pages = p ? CODEX_FAMILIES.map(f => ({ f, have: f.species.filter(s => p.kills[s]).length })).filter(x => !p.families[x.f.id] && x.have > 0).sort((a, b) => (b.have / b.f.species.length) - (a.have / a.f.species.length)) : [];
+  if (pages[0]) out.push({ icon: '📖', text: `สมุดภาพ: อีก ${pages[0].f.species.length - pages[0].have} ชนิด ครบหน้า${pages[0].f.name}`, have: pages[0].have, need: pages[0].f.species.length, action: 'tab:codex' });
+  return out.slice(0, 3);
 }
 function petitionCommand(state, type, payload) {
   const petition = state.petitions.find(p => p.id === payload.petitionId);
@@ -1830,8 +1918,8 @@ export function tick(state, seconds) {
         member.energy = clamp(member.energy + (stats.recoveryRate + (traitOf(member).recovery || 0)) * step, 0, 100);
         member.morale = clamp(member.morale + ((comfort - member.morale) * 0.006 + (traitOf(member).morale || 0)) * step, 0, 100);
       }
-      if (healingAssignments.has(member.id)) member.injury = clamp(member.injury - (0.08 + bestRoomLevel(state, 'infirmary') * 0.06) * step, 0, 100);
-      else if (member.task === 'rest') member.injury = clamp(member.injury - (0.015 + (state.village?.clinic || 0) * 0.04) * step, 0, 100);
+      if (healingAssignments.has(member.id)) member.injury = clamp(member.injury - (0.08 + bestRoomLevel(state, 'infirmary') * 0.06) * step * (hasPolicy(state, 'medic') ? 1.4 : 1), 0, 100);
+      else if (member.task === 'rest') member.injury = clamp(member.injury - (0.015 + (state.village?.clinic || 0) * 0.04) * step * (hasPolicy(state, 'medic') ? 1.4 : 1), 0, 100);
     }
     for (const mission of [...state.missions]) {
       if (mission.status !== 'active') continue;
@@ -1859,6 +1947,7 @@ export function tick(state, seconds) {
     tickLife(state, lifeContext(state), step);
     tickDirector(state, directorContext(state));
     tickTrade(state, tradeContext(state), step);
+    checkDailyGoals(state);
     if (state.clock >= DAY_LENGTH - 0.00001) {
       state.clock = 0;
       state.day += 1;
@@ -2045,6 +2134,8 @@ function command(state, type, payload = {}) {
     case 'buyMaterial': return buyMaterial(state, payload);
     case 'sellMaterial': return sellMaterial(state, payload);
     case 'collectIdle': return collectIdle(state, payload);
+    case 'openChest': return openChest(state, payload);
+    case 'choosePolicy': { const r = choosePolicy(state.progress, payload.policyId); if (r.ok) addLog(state, r.message, 'policy'); return r.ok ? success(r.message) : failure(r.message); }
     case 'chooseEvent': return chooseEvent(state, payload);
     case 'recallMission': {
       const mission = state.missions.find(item => item.id === payload.missionId && item.status === 'active');
@@ -2317,7 +2408,11 @@ export function deserializeGame(source) {
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
   // Older saves count the quests they already cleared as their record of work.
   const jobs = data.record?.jobs ?? Object.values(state.completedQuests).reduce((sum, n) => sum + n, 0);
-  state.record = { jobs: Number.isInteger(jobs) && jobs >= 0 && jobs < 10000000 ? jobs : 0, bounties: Number.isInteger(data.record?.bounties) && data.record.bounties >= 0 ? data.record.bounties : 0 };
+  const counter = v => Number.isFinite(v) && v >= 0 && v < 1e12 ? Math.round(v) : 0;
+  state.record = { jobs: Number.isInteger(jobs) && jobs >= 0 && jobs < 10000000 ? jobs : 0, bounties: Number.isInteger(data.record?.bounties) && data.record.bounties >= 0 ? data.record.bounties : 0,
+    income: counter(data.record?.income), hall: counter(data.record?.hall), joined: counter(data.record?.joined), passed: counter(data.record?.passed) };
+  state.progress = sanitizeProgress(data.progress);
+  if (!data.progress) for (const x of [...(data.trade?.treasures || []), ...(data.trade?.displayed || [])]) { const id = typeof x === 'string' ? x : x?.id; if (TREASURES[id]) state.progress.treasures[id] = true; }
   if (data.foundTreasures !== undefined) state.foundTreasures = Array.isArray(data.foundTreasures) ? [...new Set(data.foundTreasures.filter(id => EQUIPMENT_BY_ID[id]?.loot))] : [];
   state.inventory = { ...(data.inventory || {}) };
   if (!state.inventory || typeof state.inventory !== 'object' || Array.isArray(state.inventory)) throw new Error('คลังอุปกรณ์ไม่ถูกต้อง');
