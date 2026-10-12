@@ -53,7 +53,7 @@ function syncMusic(dt){musicClock-=dt;if(musicClock>0)return;musicClock=1.5;
  setNightAmbience(id==='boss'||id==='festival'?0:nightAmount(state.clock||0),id);}
 let audioContext;
 function playChime(){if(!ui.sound)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();audioContext.resume();const now=audioContext.currentTime;for(const [i,f] of [523.25,659.25,783.99].entries()){const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sine';osc.frequency.value=f;gain.gain.setValueAtTime(0,now+i*.065);gain.gain.linearRampToValueAtTime(.035,now+i*.065+.012);gain.gain.exponentialRampToValueAtTime(.001,now+i*.065+.23);osc.connect(gain);gain.connect(audioContext.destination);osc.start(now+i*.065);osc.stop(now+i*.065+.24);}}catch{}}
-function toast(text,error=false,onClick=null){mobileHUD?.record(text,error,onClick);if(mobileHUD?.compact()&&!error)return;const node=document.createElement('div');node.className='toast'+(error?' error':' success')+(onClick?' clickable':'');node.textContent=text;if(onClick){node.setAttribute('role','button');node.onclick=()=>{node.remove();onClick();};}$('toasts').appendChild(node);setTimeout(()=>node.remove(),5500);while($('toasts').children.length>3)$('toasts').firstChild.remove();}
+function toast(text,error=false,onClick=null){mobileHUD?.record(text,error,onClick);const node=document.createElement('div');node.className='toast'+(error?' error':' success')+(onClick?' clickable':'');node.textContent=text;if(onClick){node.setAttribute('role','button');node.onclick=()=>{node.remove();onClick();};}$('toasts').appendChild(node);setTimeout(()=>node.remove(),5500);while($('toasts').children.length>3)$('toasts').firstChild.remove();}
 function save(manual=false){if(!ui.inGame)return true;try{writeSaveSlot(slotStorage,activeSlot,state);saveFailure='';$('save-status').textContent=`ช่อง ${activeSlot} · บันทึกแล้ว · `+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});if(manual)toast(`บันทึกกิลด์ในช่อง ${activeSlot} แล้ว`);return true;}catch(error){saveFailure=`บันทึกช่อง ${activeSlot} ไม่ได้ กรุณาส่งออกไฟล์เซฟ`;$('save-status').textContent='⚠ '+saveFailure;if(manual)toast(saveFailure,true);return false;}}
 
 function dispatch(type,payload={}){try{const result=act(state,type,payload);if(!result.ok){toast(result.message||'ยังทำรายการนี้ไม่ได้',true);return false;}toast(result.message||'เรียบร้อย');playChime();renderer?.setState(state);save();syncUI();return true;}catch(error){console.error(error);toast('ทำรายการไม่สำเร็จ ข้อมูลกิลด์ยังอยู่',true);return false;}}
@@ -135,9 +135,21 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-hero-class
 // ---- R48 · one more turn: corner goals, chests, flying coins, rank-up celebration, the monster book, the away summary. ----
 let lastGold=null,digest=[],digestClock=0,chestShown=null,chestCelebrated='';
 const SMALL_NEWS=new Set(['info','cozy','member','hunt','petition','mission','loot','craft','bond','build','level','trade','shop']);
-/** Big news pops up at once; small news is gathered and read out together every minute or so. */
-function noteLog(e){if(!e||e.type==='daily'||e.type==='policy')return;if(/ไปสอบเลื่อนเป็นแรงค์|สอบผ่าน! เลื่อนเป็นนักผจญภัย|สอบแรงค์ \S+ ไม่ผ่าน|การสอบเลื่อนแรงค์รอบที่|^ประกาศ/.test(e.text))return;if(SMALL_NEWS.has(e.type)){digest.push(e);return;}toast(e.text);playChime();}
-function flushDigest(dt){digestClock+=dt;if(digestClock<75||!digest.length)return;digestClock=0;const list=digest;digest=[];if(list.length===1){toast(list[0].text);return;}toast(`📰 ระหว่างนี้มี ${list.length} เรื่อง · ล่าสุด: ${list.at(-1).text}`,false,()=>navigate('journal'));}
+/** All news receives a small on-screen notice; consecutive low-priority updates are queued, never lost. */
+let newsToastClock=0;
+function noteLog(e){
+ if(!e||e.type==='daily'||e.type==='policy')return;
+ if(/ไปสอบเลื่อนเป็นแรงค์|สอบผ่าน! เลื่อนเป็นนักผจญภัย|สอบแรงค์ \\S+ ไม่ผ่าน|การสอบเลื่อนแรงค์รอบที่|^ประกาศ/.test(e.text))return;
+ if(SMALL_NEWS.has(e.type)){digest.push(e);return;}
+ toast(e.text,false,()=>navigate('journal'));
+}
+function flushDigest(dt){
+ newsToastClock+=dt;
+ if(!digest.length||newsToastClock<4)return;
+ newsToastClock=0;
+ const e=digest.shift();
+ toast('📰 '+e.text,false,()=>navigate('journal'));
+}
 function syncNear(){const box=$('near-goals');if(!box)return;const chests=state.progress?.chests||[],rows=introActive(state)?[]:nearGoals(state);const best=chests.find(c=>c.tier==='gold')||chests.find(c=>c.tier==='silver')||chests[0];
  const html=(best?`<button class="near-row chest tier-${best.tier}" data-open-chest><i>${CHESTS[best.tier].icon}</i><span><b>มีหีบรอเปิด ${chests.length} ใบ</b><small>แตะเพื่อเปิด</small></span></button>`:'')+rows.map(r=>`<button class="near-row${r.ready?' ready':''}" data-near="${h(r.action)}"><i>${r.icon}</i><span><b>${h(r.text)}</b><u><u style="width:${pct(r.have,r.need)}%"></u></u></span></button>`).join('');
  if(box.__html!==html){box.innerHTML=html;box.__html=html;}mobileHUD?.sync();}
