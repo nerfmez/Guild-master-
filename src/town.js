@@ -2,8 +2,8 @@
    winding around whatever stands in the way and joining paths that are already there. Paths start as
    trodden trails and wear into dirt roads, and into cobbles once the village is a town.
    Pure logic: grid units only, no drawing. */
-import { VILLAGE_LOTS, VILLAGE_BUSINESSES, BUILDING_FOOTPRINTS, HOUSE_TIERS, HOME_NEEDS, HOUSE_UPGRADES } from './content.js';
-import { buildingRect, WORLD_PATHS, SITE_COTTAGES } from './site.js';
+import { VILLAGE_LOTS, VILLAGE_BUSINESSES, BUILDING_FOOTPRINTS, BUILDING_STAGES, FACILITIES, HOUSE_TIERS, HOME_NEEDS, HOUSE_UPGRADES } from './content.js';
+import { buildingRect, WORLD_PATHS, SITE_COTTAGES, SITE_TREES, siteRoads, siteDecorations } from './site.js';
 
 const RES = 0.5;
 const lotOf = (state, key) => state.village?.lots?.[key] || (key[0] === 'h' ? VILLAGE_LOTS.houses[+key.slice(1)] : VILLAGE_LOTS[key]);
@@ -165,9 +165,25 @@ export function sanitizeHomes(data, houses) {
   }
   return out;
 }
-/** Can this building stand here, turned this way? Checks other village buildings and the guild only. */
-export function spotFree(state, key, kind, x, y, rot) {
-  const [w, h] = footprintOf(kind, rot), g = buildingRect(state), others = villageBuildings(state).filter(b => b.key !== key);
-  const hit = r => x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y;
-  return !others.some(o => hit({ x: o.x - 0.4, y: o.y - 0.4, w: o.w + 0.8, h: o.h + 0.8 })) && !hit({ x: g.x - 1, y: g.y - 1, w: g.w + 2, h: g.h + 3 });
+/** Reserve the hall's actual future footprint, independently of purchased land. */
+export function guildExpansionReserve(state) {
+  const g=buildingRect(state),last=BUILDING_STAGES.at(-1);
+  return {x:g.x-1,y:g.y-1,w:Math.max(g.w,last.width)+2,h:Math.max(g.h,last.height)+3};
 }
+export function villagePlacementBlockers(state,key) {
+  return [
+    {...guildExpansionReserve(state),reason:'พื้นที่สำหรับต่อเติมกิลด์และทางเข้า'},
+    ...siteRoads(state).map(r=>({...r,reason:'ต้องเว้นถนนและทางเข้า'})),
+    ...SITE_COTTAGES.map(c=>({x:c.x-.3,y:c.y-.3,w:c.w+.6,h:c.h+.6,reason:'ทับอาคารเดิม'})),
+    ...siteDecorations(state).map(r=>({...r,reason:'ทับของรอบกิลด์'})),
+    ...SITE_TREES.map(([x,y])=>({x:x-.5,y:y-.5,w:1,h:1,reason:'ทับต้นไม้'})),
+    ...villageBuildings(state).filter(b=>b.key!==key).map(b=>({x:b.x-.4,y:b.y-.4,w:b.w+.8,h:b.h+.8,reason:'ทับอาคารอื่น'})),
+    ...(state.facilities||[]).filter(f=>FACILITIES[f.type]).map(f=>{const d=FACILITIES[f.type];return{x:f.x,y:f.y,w:f.rotation%2?d.h:d.w,h:f.rotation%2?d.w:d.h,reason:'ทับของหรือแปลงสมุนไพรของกิลด์'};})
+  ];
+}
+export function villagePlacementProblem(state,key,kind,x,y,rot=0) {
+  const [w,h]=footprintOf(kind,rot);
+  const block=villagePlacementBlockers(state,key).find(r=>x<r.x+r.w&&x+w>r.x&&y<r.y+r.h&&y+h>r.y);
+  return block?.reason||null;
+}
+export const spotFree=(state,key,kind,x,y,rot)=>!villagePlacementProblem(state,key,kind,x,y,rot);

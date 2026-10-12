@@ -779,7 +779,7 @@ $('management-dialog').addEventListener('close',()=>document.body.classList.remo
 // Placement bar: live validity from the renderer; nothing is placed until the player confirms.
 function updatePlacementBar(info){if(!info?.active)return;const status=$('pb-status'),text=info.ok?'ลากของเพื่อย้าย · แตะพื้นเพื่อย้ายไปตรงนั้น':(info.message||'วางตรงนี้ไม่ได้');if(status.textContent!==text)status.textContent=text;status.classList.toggle('bad',!info.ok);$('build-hint').querySelector('[data-confirm-placement]').disabled=!info.ok;}
 if(renderer)renderer.onPlacement=updatePlacementBar;
-if(renderer)renderer.onVillagePick=info=>{const status=$('pb-status'),text=info.ok?'แตะพื้นที่ว่างรอบหมู่บ้านเพื่อย้ายจุดสร้าง':info.message;if(status.textContent!==text)status.textContent=text;status.classList.toggle('bad',!info.ok);$('build-hint').querySelector('[data-confirm-placement]').disabled=!info.ok;};
+if(renderer)renderer.onVillagePick=info=>{const status=$('pb-status'),text=info.ok?'แตะพื้นที่ว่างเพื่อวาง · กรอบสีทองเป็นแนวต่อเติมกิลด์':info.message;if(status.textContent!==text)status.textContent=text;status.classList.toggle('bad',!info.ok);$('build-hint').querySelector('[data-confirm-placement]').disabled=!info.ok;};
 // Follow camera chip: who is being followed, a shortcut to their quest, and a stop button.
 let followInfo=null;
 function updateFollowChip(info){followInfo=info;$('follow-chip').hidden=!info;if(!info)return;$('fc-name').textContent=(info.kind==='event'?'ดู ':info.kind==='member'?'ติดตาม ':'ติดตามทีม ')+info.name;$('fc-sub').textContent=info.kind==='event'?(info.quest||''):info.quest?'ภารกิจ: '+info.quest:'อยู่ในกิลด์';$('fc-mission').hidden=!info.missionId;}
