@@ -6,6 +6,7 @@ import { drainFx } from './life.js';
 import { pathTier, footprintOf, ROTATABLE, homeOf, villageBuildings, doorOf, population } from './town.js';
 const SHOT_COLORS={arrow:0xc9a06a,pierce:0xf3e2b0,magic:0xb7a6ff,bolt:0xf08a4b,fire:0xf08a4b,frostbolt:0x9fd3f0,frost:0x9fd3f0,spark:0xc9dcff,light:0xfff1c4,note:0xf2b8d8};
 import { QUESTS,REGIONS } from './content.js';
+import { WORLD_PATHS } from './site.js';
 import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
 import { decorateFrontier } from './frontier-art.js';
@@ -44,7 +45,7 @@ export class GuildRenderer {
  checkScene(deep=true){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank(deep))return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R46',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R47',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -152,13 +153,20 @@ export class GuildRenderer {
  }
  // World ground is painted lazily in crisp chunks around the view, a few rows per frame.
  initGround(){
-  for(const c of this.groundChunks||[])c.image?.destroy();this.groundJob=null;
+  for(const c of this.groundChunks||[])c.image?.destroy();this.underlay?.image?.destroy();this.groundJob=null;
   const CH=1024,pts=[[WORLD.x0,WORLD.y0],[WORLD.x1,WORLD.y0],[WORLD.x0,WORLD.y1],[WORLD.x1,WORLD.y1]].map(([x,y])=>gridPoint(x,y));
   const x0=Math.floor(Math.min(...pts.map(p=>p.x))/CH)*CH,x1=Math.max(...pts.map(p=>p.x)),y0=Math.floor(Math.min(...pts.map(p=>p.y))/CH)*CH,y1=Math.max(...pts.map(p=>p.y));
   this.groundChunks=[];for(let top=y0;top<y1;top+=CH)for(let left=x0;left<x1;left+=CH)this.groundChunks.push({left,top,size:CH,image:null,painter:null});
+  // A coarse picture of the whole world is painted first and drawn smooth beneath the crisp chunks:
+  // land that is not painted in detail yet already shows its river, roads and biome colours blending into each other.
+  const span=Math.max(x1-x0,y1-y0);this.underlay={left:x0,top:y0,size:span,painter:null,image:null};
  }
  updateGround(budget=8){
   if(!this.groundChunks||!this.camera)return;const v=this.camera.worldView,m=200,start=performance.now();
+  const u=this.underlay;if(u&&!u.image){u.painter??=makeGroundPainter(u.left,u.top,u.size,24);while(performance.now()-start<budget)if(u.painter.step(4)){
+   const soft=document.createElement('canvas');soft.width=u.painter.canvas.width;soft.height=u.painter.canvas.height;const sc=soft.getContext('2d');sc.filter='blur(1.5px)';sc.drawImage(u.painter.canvas,0,0);
+   this.texture('ground-underlay',soft);this.scene.textures.get('ground-underlay').setFilter(Phaser.Textures.FilterMode.LINEAR);
+   u.image=this.scene.add.image(u.left,u.top,'ground-underlay').setOrigin(0).setScale(24).setDepth(-9999.8);u.image.noCull=true;u.painter=null;break;}return;}
   while(performance.now()-start<budget){
    let job=this.groundJob;
    if(!job){let bd=Infinity;for(const c of this.groundChunks){if((c.image&&!c.stale)||c.left>v.right+m||c.left+c.size<v.x-m||c.top>v.bottom+m||c.top+c.size<v.y-m)continue;const d=(c.left+c.size/2-v.centerX)**2+(c.top+c.size/2-v.centerY)**2;if(d<bd){bd=d;job=c;}}
@@ -329,7 +337,9 @@ export class GuildRenderer {
   // The camera filter hides an object from this camera without touching its own visibility, which the game logic owns.
   {const cam=this.camera,v=cam?.worldView;if(v){const moved=Math.abs(v.x-(this.cullAt?.x??1e9))+Math.abs(v.y-(this.cullAt?.y??1e9))+Math.abs(v.width-(this.cullAt?.w??0))*2;this.viewClock=(this.viewClock||0)-dt;
    if(this.viewClock<=0||moved>90){this.viewClock=.2;this.cullAt={x:v.x,y:v.y,w:v.width};const m=160,x0=v.x-m,x1=v.right+m,y0=v.y-m,y1=v.bottom+m,id=cam.id;
-    for(const o of this.scene.children.list){if(o.type==='Graphics'||o.type==='Container'||o.scrollFactorX!==1||o.noCull)continue;const w=o.displayWidth||0,h=o.displayHeight||0,l=o.x-(o.originX||0)*w,t=o.y-(o.originY||0)*h;o.cameraFilter=l>x1||l+w<x0||t>y1||t+h<y0?id:0;}}}}
+    for(const o of this.scene.children.list){if(o.type==='Graphics'||o.type==='Container'||o.scrollFactorX!==1||o.noCull)continue;
+     // An image whose texture was just swapped out has no frame for a moment: leave it drawn rather than read its size.
+     if('frame'in o&&!o.frame?.data?.sourceSize){o.cameraFilter=0;continue;}const w=o.displayWidth||0,h=o.displayHeight||0,l=o.x-(o.originX||0)*w,t=o.y-(o.originY||0)*h;o.cameraFilter=l>x1||l+w<x0||t>y1||t+h<y0?id:0;}}}}
   this.cullClock=(this.cullClock||0)-dt;if(this.cullClock<=0&&this.camera){this.cullClock=.25;const v=this.camera.worldView,m=220;for(const c of this.groundChunks||[])c.image?.setVisible(c.left<v.right+m&&c.left+c.size>v.x-m&&c.top<v.bottom+m&&c.top+c.size>v.y-m);for(const img of this.worldProps||[])img.setVisible(img.x+img.width>v.x-m&&img.x<v.right+m&&img.y+img.height>v.y-m&&img.y<v.bottom+m);for(const f of this.foes){const p=gridPoint(f.x,f.y),on=p.x>v.x-m&&p.x<v.right+m&&p.y>v.y-m&&p.y<v.bottom+m+60;f.image.setVisible(on);f.shadow.setVisible(on);}}
   // Mission foes, strike effects and the floating quest tag for each travelling team.
   const live=new Set();
@@ -645,11 +655,58 @@ export class GuildRenderer {
   return c;}
  // Morning comes at the start of each day; dusk, night and a short dawn close it.
  darkness(){const t=(this.state.clock||0)/240;return t<.72?0:t<.8?.5*(t-.72)/.08:t<.95?.5:.5*(1-(t-.95)/.05);}
+/** A soft colour grade over the whole view: warm sunlight from above, a gentle vignette, gold at dusk, blue at night. */
+ atmosphereColors(t){
+  const K=[[0,[255,205,150,.2],[150,130,150,.04],.18],[.1,[255,238,196,.12],[150,140,130,.02],.15],[.56,[255,236,190,.1],[150,140,130,.02],.15],[.68,[255,160,80,.3],[205,112,132,.16],.24],
+   [.78,[126,92,172,.2],[44,52,112,.18],.3],[.88,[44,62,142,.16],[22,26,62,.2],.38],[.97,[232,152,172,.18],[92,102,172,.1],.24],[1,[255,205,150,.2],[150,130,150,.04],.18]];
+  let i=0;while(i<K.length-2&&t>=K[i+1][0])i++;const a=K[i],b=K[i+1],f=(t-a[0])/((b[0]-a[0])||1),mix=(p,q)=>p.map((v,k)=>v+(q[k]-v)*f);
+  return{top:mix(a[1],b[1]),bottom:mix(a[2],b[2]),vignette:a[3]+(b[3]-a[3])*f};
+ }
+ updateAtmosphere(){
+  const cam=this.camera;if(!cam)return;const tex=this.scene.textures;
+  if(!this.atmos?.scene){if(!tex.exists('atmosphere')){const ct=tex.createCanvas('atmosphere',64,64);ct.setFilter(Phaser.Textures.FilterMode.LINEAR);}this.atmosKey=null;this.atmos=this.scene.add.image(0,0,'atmosphere').setOrigin(0).setScrollFactor(0).setDepth(99965);this.atmos.noCull=true;}
+  const t=((this.state.clock||0)/240)%1,key=Math.round(t*120);
+  if(key!==this.atmosKey){this.atmosKey=key;const ct=tex.get('atmosphere'),c=ct.getContext(),col=this.atmosphereColors(t),rgba=([r,g,b,a],k=1)=>`rgba(${r|0},${g|0},${b|0},${(a*k).toFixed(3)})`;
+   c.clearRect(0,0,64,64);let g=c.createLinearGradient(0,0,0,64);g.addColorStop(0,rgba(col.top));g.addColorStop(.45,rgba(col.top,0));g.addColorStop(.62,rgba(col.bottom,0));g.addColorStop(1,rgba(col.bottom));c.fillStyle=g;c.fillRect(0,0,64,64);
+   g=c.createRadialGradient(32,30,14,32,32,46);g.addColorStop(0,'rgba(40,28,20,0)');g.addColorStop(1,`rgba(40,28,20,${col.vignette.toFixed(3)})`);c.fillStyle=g;c.fillRect(0,0,64,64);ct.refresh();}
+  const z=cam.zoom||1,w=cam.width,h=cam.height;this.atmos.setPosition(w/2-w/(2*z)-2,h/2-h/(2*z)-2).setDisplaySize(w/z+4,h/z+4);
+ }
+ /** Land the map does not cover yet (plain grass far from every biome, road, village and quest site, and beyond the world's edge) lies under fog.
+     The fog is one soft picture drawn twice, drifting apart slowly, so it costs two images however much of it there is. */
+ updateFog(dt){
+  if(!this.scene)return;
+  if(this.fogScene!==this.scene){this.fogScene=this.scene;this.fogLayers=null;this.fogWait=0;}
+  // Built once the world is decorated (props are placed over the first frames), so it knows what is really on the map.
+  this.fogWait=(this.fogWait||0)+dt;
+  if(!this.fogLayers&&this.fogWait>1.5&&(this.worldProps?.length||0)>200){
+   const M=40,S=16,c0=gridPoint(WORLD.x0-M,WORLD.y0-M),c1=gridPoint(WORLD.x1+M,WORLD.y0-M),c2=gridPoint(WORLD.x0-M,WORLD.y1+M),c3=gridPoint(WORLD.x1+M,WORLD.y1+M);
+   const left=Math.min(c0.x,c2.x),right=Math.max(c1.x,c3.x),top=Math.min(c0.y,c1.y),bottom=Math.max(c2.y,c3.y),W=Math.ceil((right-left)/S),H=Math.ceil((bottom-top)/S);
+   const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;const c=canvas.getContext('2d');
+   // What is really on the map: every tree, rock, building and landmark already placed, the water, the roads and the painted frontier.
+   const C=3,gx0=WORLD.x0-M,gy0=WORLD.y0-M,NX=Math.ceil((WORLD.x1-WORLD.x0+2*M)/C)+1,NY=Math.ceil((WORLD.y1-WORLD.y0+2*M)/C)+1,dist=new Float32Array(NX*NY).fill(1e9),q=[];
+   const mark=(x,y)=>{const i=Math.round((x-gx0)/C),j=Math.round((y-gy0)/C);if(i<0||j<0||i>=NX||j>=NY)return;const k=j*NX+i;if(dist[k]){dist[k]=0;q.push(k);}};
+   for(const o of this.scene.children.list){if(o.type!=='Image'||o.scrollFactorX!==1||o.depth<-9000||o.depth>=99000||!o.frame?.data?.sourceSize)continue;const g=gridPosition(o.x+o.displayWidth*(.5-o.originX),o.y+o.displayHeight*(1-o.originY));mark(g.x,g.y);}
+   for(const pts of Object.values(WORLD_PATHS))for(let k=1;k<pts.length;k++){const [ax,ay]=pts[k-1],[bx,by]=pts[k],n=Math.ceil(Math.hypot(bx-ax,by-ay)/C)+1;for(let t=0;t<=n;t++)mark(ax+(bx-ax)*t/n,ay+(by-ay)*t/n);}
+   for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const x=gx0+i*C,y=gy0+j*C;if(x<WORLD.x0||x>WORLD.x1||y<WORLD.y0||y>WORLD.y1)continue;const b=biomeAt(x,y);if(inWater(x,y,1)||b.canyon>.45||b.peak>.45||Math.hypot(x,y-8)<26)mark(x,y);}
+   // Distance from every cell to the nearest thing on the map, in cells.
+   for(let h=0;h<q.length;h++){const k=q[h],i=k%NX,j=(k-i)/NX,d=dist[k]+1;for(const [di,dj] of [[1,0],[-1,0],[0,1],[0,-1]]){const a=i+di,b=j+dj;if(a<0||b<0||a>=NX||b>=NY)continue;const n=b*NX+a;if(dist[n]>d){dist[n]=d;q.push(n);}}}
+   const seed=(k=>()=>((k=Math.imul(k,1664525)+1013904223>>>0)/4294967296))(9173);
+   for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const d=dist[j*NX+i],empty=Math.min(1,Math.max(0,(d-2.2)/2.5));if(empty<=0)continue;
+    const p=gridPoint(gx0+i*C+(seed()-.5)*C*.6,gy0+j*C+(seed()-.5)*C*.6),x=(p.x-left)/S,y=(p.y-top)/S,r=(C*CELL_W/S)*(1.5+seed()*.6),a=.85*empty;
+    const g=c.createRadialGradient(x,y-r*.15,0,x,y,r);g.addColorStop(0,`rgba(246,247,248,${a})`);g.addColorStop(.6,`rgba(236,240,244,${a*.65})`);g.addColorStop(1,'rgba(230,236,242,0)');c.fillStyle=g;c.beginPath();c.ellipse(x,y,r,r*.62,0,0,Math.PI*2);c.fill();}
+   this.texture('world-fog',canvas);this.scene.textures.get('world-fog').setFilter(Phaser.Textures.FilterMode.LINEAR);
+   // Two copies: one drifts east, the other west, so the fog breathes without any per-puff work.
+   this.fogLayers=[0,1].map(i=>{const img=this.scene.add.image(left,top,'world-fog').setOrigin(0).setScale(S).setDepth(99950+i).setAlpha(i?.45:.75);img.noCull=true;return{img,left,top,ph:i*2.1};});
+  }
+  if(!this.fogLayers)return;
+  const t=this.realTime||0;for(const [i,l] of this.fogLayers.entries()){const d=i?-1:1;l.img.setPosition(l.left+Math.sin(t*.05+l.ph)*60*d,l.top+Math.cos(t*.04+l.ph)*18);}
+ }
  updateCity(dt,playing){
+  this.updateAtmosphere();this.updateFog(dt);
   if(!this.scene)return;const level=getVillageInfo(this.state).level,dark=this.darkness(),t=this.realTime||0;
   for(const k of ['lamp0','lamp1','banner','gate','glow'])if(!this.scene.textures.exists('city-'+k))this.texture('city-'+k,this.cityCanvas(k.replace(/[01]$/,''),k==='lamp1'));
   // Night falls over everything except the lamps and the interface.
-  if(!this.night){this.night=this.scene.add.rectangle(0,0,10,10,0x101a3a).setOrigin(0).setScrollFactor(0).setDepth(99970);}
+  if(!this.night?.scene){this.night=this.scene.add.rectangle(0,0,10,10,0x101a3a).setOrigin(0).setScrollFactor(0).setDepth(99970);}
   const cam=this.camera;if(cam){const z=cam.zoom||1;this.night.setPosition(-cam.width/z,-cam.height/z).setSize(cam.width*3/z,cam.height*3/z);}this.night.setAlpha(dark*.9).setVisible(dark>0.01);
   // Street furniture by stage: lamps from the third level, a gate from the fourth, banners at the fifth.
   const key=level+'';if(this.cityKey!==key){this.cityKey=key;for(const o of this.cityProps||[])o.image.destroy(),o.glow?.destroy();this.cityProps=[];
