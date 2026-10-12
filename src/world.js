@@ -721,10 +721,10 @@ const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])
   if(kind==='lamp'){c.width=12;c.height=36;px(5,8,2,27,'#4f4540');px(3,33,6,3,'#4f4540');px(2,2,8,7,'#4f4540');px(3,3,6,5,lit?'#ffd08a':'#d8cfae');px(4,0,4,2,'#4f4540');}
   else if(kind==='banner'){c.width=14;c.height=40;px(6,0,2,38,'#6f5240');px(3,36,8,4,'#6f5240');px(8,4,6,14,'#c9584a');px(8,18,3,3,'#c9584a');px(11,18,3,3,'#c9584a');px(9,7,3,3,'#ffe08a');}
   else if(kind==='gate'){c.width=64;c.height=58;px(4,14,10,44,'#9a8f80');px(50,14,10,44,'#9a8f80');px(2,10,14,6,'#7f7466');px(48,10,14,6,'#7f7466');px(4,4,56,8,'#8a6446');px(6,6,52,4,'#b98a60');px(22,0,20,6,'#8a6446');px(26,1,12,3,'#ffe08a');for(let y=18;y<56;y+=8){px(5,y,8,1,'#7f7466');px(51,y,8,1,'#7f7466');}}
-  else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,173,78,.48)');r.addColorStop(1,'rgba(255,173,78,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
+  else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,146,46,.66)');r.addColorStop(1,'rgba(255,140,40,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
   return c;}
  // A full night spans midnight; dawn and dusk fade continuously.
- darkness(){return nightAmount(this.state.clock||0)*.5;}
+ darkness(){return nightAmount(this.state.clock||0)*.68;}
 /** A soft colour grade over the whole view: warm sunlight from above, a gentle vignette, gold at dusk, blue at night. */
  atmosphereColors(t){
   const K=[[0,[80,102,142,.09],[38,52,82,.08],.18],[.2,[80,102,142,.09],[38,52,82,.08],.18],
@@ -777,8 +777,8 @@ const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])
   if(!this.scene)return;const level=getVillageInfo(this.state).level,dark=this.darkness(),t=this.realTime||0;
   for(const k of ['lamp0','lamp1','banner','gate','glow'])if(!this.scene.textures.exists('city-'+k))this.texture('city-'+k,this.cityCanvas(k.replace(/[01]$/,''),k==='lamp1'));
   // Night falls over everything except the lamps and the interface.
-  if(!this.night?.scene){this.night=this.scene.add.rectangle(0,0,10,10,0x18283e).setOrigin(0).setScrollFactor(0).setDepth(99970);}
-  const cam=this.camera;if(cam){const z=cam.zoom||1;this.night.setPosition(-cam.width/z,-cam.height/z).setSize(cam.width*3/z,cam.height*3/z);}this.night.setAlpha(dark*1.04).setVisible(dark>0.01);
+  if(!this.night?.scene){this.night=this.scene.add.rectangle(0,0,10,10,0x111d33).setOrigin(0).setScrollFactor(0).setDepth(99970);}
+  const cam=this.camera;if(cam){const z=cam.zoom||1;this.night.setPosition(-cam.width/z,-cam.height/z).setSize(cam.width*3/z,cam.height*3/z);}this.night.setAlpha(dark*1.08).setVisible(dark>0.01);
   // Street furniture by stage: lamps from the third level, a gate from the fourth, banners at the fifth.
   const key=level+'';if(this.cityKey!==key){this.cityKey=key;for(const o of this.cityProps||[])o.image.destroy(),o.glow?.destroy();this.cityProps=[];
    const lamps=[[-7.5,16.3],[-1.5,16.3],[4.5,16.3],[17.5,16.3],[23.5,16.3],[29.5,16.3],[35.5,16.3]];
@@ -786,7 +786,7 @@ const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])
    if(level>=4)for(const [x,y] of [[-13.5,17.2],[41,17.2]]){const p=gridPoint(x,y);this.cityProps.push({kind:'gate',image:this.scene.add.image(p.x,p.y,'city-gate').setOrigin(.5,1).setDepth(p.y+1)});}
    if(level>=5)for(const [x,y] of lamps.filter((_,i)=>i%2===0)){const p=gridPoint(x+.6,y-.3);this.cityProps.push({kind:'banner',image:this.scene.add.image(p.x,p.y,'city-banner').setOrigin(.5,1).setDepth(p.y)});}}
   for(const o of this.cityProps||[])if(o.kind==='lamp'){o.image.setTexture(dark>.15?'city-lamp1':'city-lamp0');o.glow.setVisible(dark>.01).setScale(1.4).setAlpha(Math.min(1,dark*2)*(.92+Math.sin(t*1.4+o.image.x)*.035));}
-  this.updateBuildingLights(dark*2,t);
+  this.updateBuildingLights(Math.min(1,dark*2),t);
   this.updateFolk(dt,playing,dark);
   // A town that just grew throws a party: fireworks over the rooftops for a few seconds.
   const at=this.state.village?.celebrateAt;if(at!==undefined&&at!==this.celebrated){if(this.celebrated!==undefined&&this.state.elapsed-at<30)this.fireworks=8;this.celebrated=at;}

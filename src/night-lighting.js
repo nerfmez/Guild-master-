@@ -26,7 +26,7 @@ export function makeNightLight(sprite) {
   const colors = new Set();
   for (const light of sprite.nightLights || []) {
     if (light.points) {
-      p.fillStyle = '#ffda95'; polygon(p, light.points);
+      p.fillStyle = '#ffbe5c'; polygon(p, light.points);
       for (const color of light.colors || []) colors.add(color.toLowerCase());
     }
   }
@@ -44,14 +44,14 @@ export function makeNightLight(sprite) {
     const y = oy + (points ? points.reduce((s,a)=>s+a[1],0)/points.length : light.y);
     if (light.kind === 'lamp') {
       p.fillStyle='#795338'; p.fillRect(Math.round(x)-3,Math.round(y)-4,6,8);
-      p.fillStyle='#ffd17e'; p.fillRect(Math.round(x)-2,Math.round(y)-3,4,6);
+      p.fillStyle='#ffb54f'; p.fillRect(Math.round(x)-2,Math.round(y)-3,4,6);
       p.fillStyle='#fff0c3'; p.fillRect(Math.round(x)-1,Math.round(y)-2,2,4);
     }
     const radius = light.radius || (points ? 22 : 36), sy = light.kind === 'spill' ? .5 : .8;
     g.save(); g.translate(x,y); g.scale(1,sy);
     const halo=g.createRadialGradient(0,0,0,0,0,radius);
-    halo.addColorStop(0,light.kind==='spill'?'rgba(255,154,65,.3)':'rgba(255,172,76,.38)');
-    halo.addColorStop(.4,'rgba(255,158,64,.13)'); halo.addColorStop(1,'rgba(255,150,50,0)');
+    halo.addColorStop(0,light.kind==='spill'?'rgba(255,136,40,.44)':'rgba(255,150,48,.56)');
+    halo.addColorStop(.4,'rgba(255,132,36,.2)'); halo.addColorStop(1,'rgba(255,120,30,0)');
     g.fillStyle=halo;g.fillRect(-radius,-radius,radius*2,radius*2);g.restore();
   }
   return {panes,glow,pad};
