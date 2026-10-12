@@ -721,6 +721,22 @@ body.compact-ui .hero-status #hero-details-toggle{font-size:9px;min-height:24px;
 body.play-focus .brand,body.play-focus .calendar,body.play-focus .resources{display:none}body.play-focus .world-actions{top:max(12px,env(safe-area-inset-top))}
 @media(max-height:500px){body.compact-ui .brand{display:none}body.compact-ui .topbar{grid-template-columns:minmax(0,1fr) auto;gap:8px;right:14px}body.compact-ui .resources{grid-row:1;grid-column:1;width:min(620px,calc(100vw - 125px));justify-self:start}body.compact-ui .world-actions{top:calc(max(10px,env(safe-area-inset-top)) + 38px)}body.compact-ui .hero-status{top:86px;width:148px}body.compact-ui .hero-map{top:86px;width:116px;height:79px}body.compact-ui .hero-encounter-hud{top:92px;right:145px;width:190px;max-height:120px;overflow:auto}body.compact-ui .hero-stick{width:85px;height:85px;bottom:12px}body.compact-ui .hero-buttons{bottom:12px}body.compact-ui .hero-calling .hero-call{top:84px}}
 body.compact-ui .resource.rank>div{display:block}body.compact-ui .resources{overflow-x:auto;scrollbar-width:none;pointer-events:auto;overscroll-behavior:contain}body.compact-ui .resources .resource{flex-shrink:0}
+.landscape-control,#restore-ui{display:none}
+body.compact-ui #scene-only-button{order:3}
+@media(orientation:landscape){
+ body.compact-ui .screen-bottom{display:flex;align-items:flex-end;justify-content:flex-end;gap:6px;pointer-events:none}
+ body.compact-ui .screen-bottom .time-controls{position:static;margin-right:auto;pointer-events:auto}
+ body.compact-ui .dock{display:none;width:min(344px,calc(100vw - 182px));grid-template-columns:repeat(8,minmax(0,1fr));pointer-events:auto;padding:2px}
+ body.compact-ui.landscape-dock-open .dock{display:grid}
+ body.compact-ui .dock-btn{height:38px;padding:3px;gap:0}
+ body.compact-ui .dock-btn>span{display:none}
+ body.compact-ui .dock-icon{width:24px;height:24px}
+ body.compact-ui .landscape-control{display:flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0;font-size:23px;background:#f8edd3f2;border-color:#967b49;pointer-events:auto}
+ body.compact-ui .dock-badge{top:-5px;right:-2px;font-size:9px;min-width:14px;height:14px}
+}
+body.scene-only .world-area>:not(#world-wrap):not(#restore-ui),body.scene-only .toasts{display:none!important}
+body.scene-only #restore-ui{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:35;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;font-size:22px;background:#fff3dcc9;border:1px solid #b8955e;opacity:.5}
+body.scene-only #restore-ui:hover,body.scene-only #restore-ui:focus-visible{opacity:1}
 </style>
 </head>
 <body>
@@ -733,7 +749,7 @@ body.compact-ui .resource.rank>div{display:block}body.compact-ui .resources{over
     <div id="calendar" class="calendar"></div>
    </header>
    <div id="city-stats" class="city-stats" aria-label="ตัวเลขเมือง"></div>
-   <div class="world-actions" aria-label="มุมมองฉาก"><button id="notifications-button" class="compact-control" aria-haspopup="dialog" aria-controls="notifications-dialog">☷ <span id="notifications-count">0</span></button><button id="fullscreen-button" aria-label="เล่นเต็มจอ" aria-pressed="false">⛶</button><button id="view-controls-toggle" class="compact-control" aria-label="มุมมองเพิ่มเติม" aria-expanded="false">⋯</button><button id="zoom-in" aria-label="ซูมเข้า">+</button><button id="zoom-out" aria-label="ซูมออก">−</button><button id="home-view" aria-label="กลับมุมมองกิลด์">⌂</button><button id="hero-toggle" aria-label="ออกไปข้างนอกเป็นหัวหน้ากิลด์" title="ออกไปข้างนอกเอง">⚔</button></div>
+   <div class="world-actions" aria-label="มุมมองฉาก"><button id="notifications-button" class="compact-control" aria-haspopup="dialog" aria-controls="notifications-dialog">☷ <span id="notifications-count">0</span></button><button id="scene-only-button" aria-label="ซ่อน UI ดูบรรยากาศ" title="ซ่อน UI ดูบรรยากาศ" aria-pressed="false">◉</button><button id="fullscreen-button" aria-label="เล่นเต็มจอ" aria-pressed="false">⛶</button><button id="view-controls-toggle" class="compact-control" aria-label="มุมมองเพิ่มเติม" aria-expanded="false">⋯</button><button id="zoom-in" aria-label="ซูมเข้า">+</button><button id="zoom-out" aria-label="ซูมออก">−</button><button id="home-view" aria-label="กลับมุมมองกิลด์">⌂</button><button id="hero-toggle" aria-label="ออกไปข้างนอกเป็นหัวหน้ากิลด์" title="ออกไปข้างนอกเอง">⚔</button></div>
    <div id="hero-hud" class="hero-hud" hidden><div class="hero-status"><div class="hs-top"><span id="hero-cls" class="hs-cls">🛡</span><div><b id="hero-name">หัวหน้ากิลด์</b><small id="hero-level">Lv.1</small></div></div><div class="hero-bar hp"><i id="hero-hp"></i></div><div class="hero-bar xp"><i id="hero-xp"></i></div><div class="hero-bar ult"><i id="hero-ultbar"></i></div><small id="hero-info"></small><small id="hero-buffs"></small><div id="hero-pack" class="hero-pack"></div><div id="hero-jobs" class="hero-jobs"></div><div id="hero-order" class="hero-order" hidden><button type="button" data-hero-order="follow">ตามมา</button><button type="button" data-hero-order="attack">บุก</button><button type="button" data-hero-order="hold">รอ</button></div><button id="hero-details-toggle" class="compact-control" aria-expanded="false">ข้อมูลตัวละคร</button><button id="hero-map-toggle" class="compact-control" aria-pressed="false">แผนที่</button><button id="hero-exit" type="button">🏠 กลับกิลด์</button></div><div id="hero-call" class="hero-call" hidden></div><aside id="hero-encounter-hud" class="hero-encounter-hud" aria-label="ภารกิจย่อย Hero" hidden></aside><canvas id="hero-map" class="hero-map" width="220" height="150" aria-label="แผนที่เล็ก"></canvas><div id="hero-stick" class="hero-stick" aria-label="เดิน (WASD)"><i></i></div><div class="hero-buttons"><button id="hero-act" type="button" hidden>✋<small>เก็บ</small></button><button id="hero-ult" type="button" aria-label="ท่าไม้ตาย (U)">💥<small>ไม้ตาย</small><i class="cd"></i></button><button id="hero-s2" type="button" aria-label="สกิล 2 (L)">🛡<small>สกิล 2</small><i class="cd"></i></button><button id="hero-s1" type="button" aria-label="สกิล 1 (K)">🌀<small>สกิล 1</small><i class="cd"></i></button><button id="hero-dash" type="button" aria-label="หลบ (Shift)">💨<small>หลบ</small><i class="cd"></i></button><button id="hero-attack" type="button" aria-label="โจมตี (J)">⚔<small>โจมตี</small></button></div><p class="hero-help">WASD เดิน · J/Space โจมตี · K สกิล 1 · L สกิล 2 · U ไม้ตาย · Shift หลบ · E เก็บ/ช่วยคน · แตะมอนเพื่อล็อกเป้า · เวลาเดินที่ ×1</p></div>
    <div class="corner-stack"><button id="goal-card" class="goal-card" type="button" aria-live="polite"></button><div id="near-goals" class="near-goals" aria-label="เป้าหมายใกล้ตัว"></div></div>
    <div id="event-banner" class="event-banner" hidden role="status"></div>
@@ -751,7 +767,9 @@ body.compact-ui .resource.rank>div{display:block}body.compact-ui .resources{over
      <button class="dock-btn" data-tab="workshop" data-dock="workshop"><canvas class="dock-icon" width="40" height="40" data-item="sword"></canvas><span>คราฟต์</span></button>
      <button id="menu-button" class="dock-btn" data-tab="home" data-dock="home" aria-haspopup="dialog" aria-controls="management-dialog"><canvas class="dock-icon" width="40" height="40" data-item="banner"></canvas><span>กิลด์</span></button>
     </nav>
+    <button id="dock-toggle" class="landscape-control" aria-label="เปิดเมนู" aria-controls="dock" aria-expanded="false">☰</button>
    </div>
+   <button id="restore-ui" aria-label="แสดง UI" title="แสดง UI">☷</button>
   </main>
   <dialog id="management-dialog" class="management-dialog" aria-labelledby="panel-heading">
    <aside class="notebook">
@@ -1888,7 +1906,7 @@ return {initFullscreen};
 })();
 const MobileUI=(()=>{
 /* Keep the world's corners clear on phones; the original controls live in a drawer. */
-function initMobileUI({ beforeOpen = () => {}, afterClose = () => {} } = {}) {
+function initMobileUI({ beforeOpen = () => {}, afterClose = () => {}, beforeSceneOnly = () => {}, afterSceneOnly = () => {} } = {}) {
   const $ = id => document.getElementById(id), button = $('notifications-button'), dialog = $('notifications-dialog');
   const media = matchMedia('(max-width:900px), (max-height:500px), (pointer:coarse) and (max-width:1400px)'), records = [];
   const nodes = [document.querySelector('.corner-stack'), $('city-stats'),$('event-banner')];
@@ -1914,6 +1932,13 @@ function initMobileUI({ beforeOpen = () => {}, afterClose = () => {} } = {}) {
   $('view-controls-toggle').addEventListener('click', () => { const el = $('view-controls-toggle'), expanded = el.getAttribute('aria-expanded') !== 'true'; el.setAttribute('aria-expanded', String(expanded)); document.querySelector('.world-actions').classList.toggle('expanded', expanded); });
   $('hero-details-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('hero-details-open');$('hero-details-toggle').setAttribute('aria-expanded',String(on));});
   $('hero-map-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('hero-map-open');$('hero-map-toggle').setAttribute('aria-pressed',String(on));});
+  document.querySelectorAll('.dock-btn').forEach(el=>{if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label',el.querySelector('span').textContent.trim());});
+  $('dock-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('landscape-dock-open');$('dock-toggle').setAttribute('aria-expanded',String(on));$('dock-toggle').setAttribute('aria-label',on?'พับเมนู':'เปิดเมนู');$('dock-toggle').textContent=on?'×':'☰';});
+  $('dock').addEventListener('click',event=>{if(event.target.closest('.dock-btn')){document.body.classList.remove('landscape-dock-open');$('dock-toggle').setAttribute('aria-expanded','false');$('dock-toggle').setAttribute('aria-label','เปิดเมนู');$('dock-toggle').textContent='☰';}});
+  const sceneOnly=on=>{document.body.classList.toggle('scene-only',on);$('scene-only-button').setAttribute('aria-pressed',String(on));if(on){beforeSceneOnly();$('restore-ui').focus({preventScroll:true});}else{afterSceneOnly();$('scene-only-button').focus({preventScroll:true});}};
+  $('scene-only-button').addEventListener('click',()=>sceneOnly(true));
+  $('restore-ui').addEventListener('click',()=>sceneOnly(false));
+  window.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('scene-only')){event.preventDefault();sceneOnly(false);}});
   media.addEventListener('change', layout); layout();
   return { sync, compact: () => media.matches, record(text, error, action) { records.unshift({ text, error, action, read: dialog.open }); records.length = Math.min(records.length, 24); if (dialog.open) render(); sync(); } };
 }
@@ -13169,6 +13194,15 @@ class GuildRenderer {
    // While the master is out, ready spots glint so they are easy to spot.
    o.img.setAlpha(1);if(near&&ready&&!o.img.cameraFilter){const k=.85+Math.sin(t*4+o.n.x)*.15;o.img.setTint(Phaser.Display.Color.GetColor(255,Math.round(240*k+15),Math.round(200*k+55)));}else o.img.clearTint();}
  }
+ // Let scenery keep moving while hiding gameplay overlays and disabling selection.
+ setSceneOnly(on){
+  this.sceneOnly=on;this.stopFollow();this.hpBars?.setVisible(!on);this.heroMarks?.setVisible(!on);
+  if(on){
+   this.heroGoalMarker?.setVisible(false);
+   for(const s of this.lifeSprites?.values()||[]){s.label?.setVisible(false);s.crown?.setVisible(false);}
+   for(const o of this.fxTexts||[])o.text.setVisible(false);
+  }
+ }
  /** The monster under a tap, for locking on. */
  pickMonster(clientX,clientY){if(!this.camera)return null;const w=this.worldPoint(this.screenPoint({clientX,clientY}));let best=null,bd=40;for(const m of this.state.world?.monsters||[]){if(m.dead)continue;const q=gridPoint(m.x,m.y),d=Math.hypot(q.x-w.x,q.y-12-w.y);if(d<bd){bd=d;best=m.id;}}return best;}
  updateHero(dt){
@@ -13187,12 +13221,13 @@ class GuildRenderer {
   // Health and a little name tag above the master's head.
   const ratio=h.hp/Math.max(1,h.maxHp);this.hpBars.fillStyle(0x3b302a,.85).fillRect(Math.round(at.x-11),Math.round(at.y-40),22,4);this.hpBars.fillStyle(ratio<.35?0xe0a050:0x7fd18b,1).fillRect(Math.round(at.x-10),Math.round(at.y-39),Math.round(20*ratio),2);
   // Marks for the master: the locked foe, traps, a lead ring around nearby friends, and who can be helped up.
-  const g=this.heroMarks??=this.scene.add.graphics().setDepth(4);g.clear();
+  const g=this.heroMarks??=this.scene.add.graphics().setDepth(4);g.clear();g.setVisible(!this.sceneOnly);
   const lock=h.lock&&(this.state.world?.monsters||[]).find(o=>o.id===h.lock&&!o.dead);if(lock){const q=gridPoint(lock.x,lock.y);g.lineStyle(2,0xffd36a,.95).strokeEllipse(q.x,q.y,34,17);g.lineStyle(1,0xff8a5a,.8).strokeEllipse(q.x,q.y,40,20);}
   for(const t of h.traps||[]){const q=gridPoint(t.x,t.y);g.fillStyle(0x6b4a32,.9).fillEllipse(q.x,q.y,16,8);g.lineStyle(1,0xd9c39a,1).strokeEllipse(q.x,q.y,16,8);}
   g.lineStyle(1,0xffe9a8,.25).strokeEllipse(at.x,at.y,8*CELL_W,4*CELL_W);
   for(const hn of this.state.world?.hunters||[]){if(hn.mode!=='down'||hn.carriedBy==='hero')continue;const q=gridPoint(hn.x,hn.y);if(Math.hypot(hn.x-h.x,hn.y-h.y)<8){const pulse=.5+Math.sin((this.realTime||0)*6)*.3;g.lineStyle(2,0xff6a5a,pulse).strokeEllipse(q.x,q.y,30,15);}}
   for(const c of h.contracts||[]){if(c.done||!c.monsterId||c.day!==this.state.day)continue;const mm=(this.state.world?.monsters||[]).find(o=>o.id===c.monsterId&&!o.dead);if(!mm)continue;const q=gridPoint(mm.x,mm.y);g.fillStyle(0xffd36a,1).fillTriangle(q.x-5,q.y-52,q.x+5,q.y-52,q.x,q.y-44);}
+  if(this.sceneOnly)return;
   // The camera stays with the master.
   if(!this.heroCam){this.heroCam=true;this.stopFollow?.();this.zoomTarget=Math.max(.3,Math.min(2.4,2.1/(this.baseZoom||1)));}
   const k=1-Math.pow(.004,Math.min(dt,.1));this.focusX+=(at.x-this.focusX)*k;this.focusY+=(at.y-10-this.focusY)*k;this.userPanned=true;
@@ -13200,7 +13235,7 @@ class GuildRenderer {
   this.applyView();
  }
  updateHeroGoal(){
-  const h=this.state.hero,c=h?.encounters?.challenge,on=h?.active&&c?.kind==='reach';
+  const h=this.state.hero,c=h?.encounters?.challenge,on=!this.sceneOnly&&h?.active&&c?.kind==='reach';
   if(!on){this.heroGoalMarker?.setVisible(false);return;}
   if(!this.heroGoalMarker?.scene){
    const g=this.scene.add.graphics();g.lineStyle(2,0xd5ad68,.9).strokeEllipse(0,0,28,14);g.fillStyle(0xffe7a2,.35).fillEllipse(0,0,22,10);g.lineStyle(2,0xffedb9,1);g.beginPath();g.moveTo(0,-23);g.lineTo(6,-15);g.lineTo(0,-7);g.lineTo(-6,-15);g.closePath();g.strokePath();
@@ -13227,7 +13262,7 @@ class GuildRenderer {
   this.updateCaravan();
   this.updateFestival(dt);
   const w=this.state.world;if(!w||!this.scene)return;const t=this.realTime||0;
-  this.lifeSprites??=new Map();this.hpBars??=this.scene.add.graphics().setDepth(99990);this.hpBars.clear();
+  this.lifeSprites??=new Map();this.hpBars??=this.scene.add.graphics().setDepth(99990);this.hpBars.clear();this.hpBars.setVisible(!this.sceneOnly);
   const seen=new Set(),hunters=new Map(w.hunters.map(h=>[h.id,h]));
   const bar=(x,y,ratio,color)=>{if(ratio>=1)return;this.hpBars.fillStyle(0x3b302a,.8).fillRect(Math.round(x-8),Math.round(y),16,3);this.hpBars.fillStyle(color,1).fillRect(Math.round(x-7),Math.round(y)+1,Math.max(1,Math.round(14*Math.max(0,ratio))),1);};
   const sprite=(id,make)=>{let s=this.lifeSprites.get(id);if(!s){s=make();this.lifeSprites.set(id,s);}seen.add(id);return s;};
@@ -13241,8 +13276,8 @@ class GuildRenderer {
    const under=m.under>0;s.image.setTexture(this.monTex(m.species,frame,s.flash>0)).setPosition(Math.round(p.x),Math.round(p.y-lift+(under?10:0))).setDepth(p.y).setFlipX(!!s.flip).setScale(scale).setAlpha(under?.25:s.alpha).setVisible(s.alpha>0).setTint(m.elite?0xffe0b0:0xffffff);
    // Bosses carry a wide health bar with their name and current act.
    if((m.questBoss||MONSTER_STATS[m.species]?.boss)&&!m.dead){const y=p.y-sp.size[1]*scale-14,w=64,r=Math.max(0,m.hp/m.maxHp);this.hpBars.fillStyle(0x2c241e,.9).fillRect(Math.round(p.x-w/2-1),Math.round(y-1),w+2,7);this.hpBars.fillStyle(m.enraged?0xff5a3a:0xd9623f,1).fillRect(Math.round(p.x-w/2),Math.round(y),Math.round(w*r),5);
-    s.label??=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#ffe9c7',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);s.label.setText(`${SPECIES[m.species]?.name||''}${m.phaseName?' · '+m.phaseName:''}`).setPosition(Math.round(p.x),Math.round(y-2)).setDepth(p.y+2).setVisible(s.alpha>0);}else s.label?.setVisible(false);
-   if(m.elite&&!m.dead){s.crown??=this.scene.add.text(0,0,'👑',{fontSize:'12px'}).setOrigin(.5,1);s.crown.setPosition(Math.round(p.x),Math.round(p.y-sp.size[1]*scale-10)).setDepth(p.y+1).setVisible(s.alpha>0);}else s.crown?.setVisible(false);
+    s.label??=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#ffe9c7',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);s.label.setText(`${SPECIES[m.species]?.name||''}${m.phaseName?' · '+m.phaseName:''}`).setPosition(Math.round(p.x),Math.round(y-2)).setDepth(p.y+2).setVisible(!this.sceneOnly&&s.alpha>0);}else s.label?.setVisible(false);
+   if(m.elite&&!m.dead){s.crown??=this.scene.add.text(0,0,'👑',{fontSize:'12px'}).setOrigin(.5,1);s.crown.setPosition(Math.round(p.x),Math.round(p.y-sp.size[1]*scale-10)).setDepth(p.y+1).setVisible(!this.sceneOnly&&s.alpha>0);}else s.crown?.setVisible(false);
    s.shadow.setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y-.5).setAlpha(s.alpha).setVisible(s.alpha>0);
    if(!m.dead&&!under)bar(p.x,p.y-sp.size[1]*scale-6,m.hp/m.maxHp,m.raid||m.elite||MONSTER_STATS[m.species]?.boss?0xd9623f:0xe0a24a);
   }
@@ -13380,7 +13415,7 @@ class GuildRenderer {
   }
  }
  // Damage numbers, skill flashes and knock-outs.
- floatText(x,y,text,color,size=9){
+ floatText(x,y,text,color,size=9){if(this.sceneOnly)return;
   this.fxTexts??=[];let o=this.fxTexts.find(o=>!o.live);
   if(!o){if(this.fxTexts.length>=48)return;o={text:this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#fff',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2)};this.fxTexts.push(o);}
   Object.assign(o,{live:true,age:0,x,y,drift:(Math.random()-.5)*8});o.text.setText(text).setColor(color).setFontSize(size).setVisible(true).setAlpha(1);
@@ -13436,7 +13471,7 @@ class GuildRenderer {
    else if(e.type==='revive')this.floatText(p.x,p.y-40,'ฟื้นแล้ว','#9fe08a',9);
    else if(e.type==='sell')this.floatText(p.x,p.y-40,`ขายของ ${e.amount} ชิ้น`,'#ffe08a',9);
   }
-  for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
+  for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setVisible(!this.sceneOnly).setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
  }
  // A point given in a piece of furniture's own frame (before it is turned), as a grid point in the hall.
  localPoint(f,lx,ly){const d=FACILITIES[f.type],r=f.rotation||0,[x,y]=r===1?[d.h-ly,lx]:r===2?[d.w-lx,d.h-ly]:r===3?[ly,d.w-lx]:[lx,ly];return{x:f.x+x,y:f.y+y};}
@@ -13690,7 +13725,7 @@ class GuildRenderer {
   bind('pointerdown',e=>{this.stopFollow();const p=this.screenPoint(e);this.canvas.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,p);
    if(this.pointers.size===1){const drag=this.drag={id:e.pointerId,start:p,last:p,moved:false},w=this.worldPoint(p);
     if(this.pending&&this.hitPending(w))this.grabPending(drag,w);
-    else if(!this.pending){const id=this.hitFacility(w);if(id)drag.hold=setTimeout(()=>{if(this.drag!==drag||drag.moved||this.pointers.size!==1)return;
+    else if(!this.pending&&!this.sceneOnly){const id=this.hitFacility(w);if(id)drag.hold=setTimeout(()=>{if(this.drag!==drag||drag.moved||this.pointers.size!==1)return;
      // Press and hold lifts a placed item straight into a drag.
      this.onSelect({kind:'pickup',id});this.setMoveMode(id);if(this.pending){this.grabPending(drag,this.worldPoint(drag.last));navigator.vibrate?.(12);}},380);}}
    if(this.pointers.size===2){const[a,b]=[...this.pointers.values()];this.pinch={dist:Math.hypot(a.x-b.x,a.y-b.y),zoom:this.zoom};this.drag.moved=true;this.drag.item=false;clearTimeout(this.drag.hold);}});
@@ -13717,6 +13752,7 @@ class GuildRenderer {
   return this.villageRects().find(b=>pointInRect(b,tile))?.key||SITE_COTTAGES.find(c=>pointInRect(c,tile))?.style||null;
  }
  select(p){
+  if(this.sceneOnly)return;
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
   if(this.pending){const d=this.footprint();this.setPending(tile.x-d.w/2,tile.y-d.h/2);return;}
   if(this.villagePick){const v=this.villagePick;v.x=Math.round((tile.x-v.w/2)*4)/4;v.y=Math.round((tile.y-v.h/2)*4)/4;this.updateVillagePick();return;}
@@ -13827,7 +13863,7 @@ function showCallDialog(force=false){const ci=heroCallInfo(state);if(!ci||ci.ste
  ${classes}<div class="call-learn">${CALL_LEARN.map(([i,t])=>`<span><i>${i}</i>${t}</span>`).join('')}</div><p class="tiny-note">รางวัล: ${n(ci.reward.gold)} G · ชื่อเสียง +${ci.reward.rep} · หีบเงิน · ของที่ระลึกจากศัตรูชนิดใหม่</p>
  <div class="dialog-actions"><button class="secondary" data-call-later>ไว้ทีหลัง</button><button class="primary" data-call-go ${wait>0?'disabled':''}>${wait>0?`🩹 พักอีก ${wait} วินาที`:'⚔ ออกโรงเอง'}</button></div>`;
  if(!$('call-dialog').open)$('call-dialog').showModal();}
-function maybeCall(){const ci=heroCallInfo(state);if(!ci||!ui.inGame||!$('title-screen').hidden||introActive(state))return;
+function maybeCall(){if(document.body.classList.contains('scene-only'))return;const ci=heroCallInfo(state);if(!ci||!ui.inGame||!$('title-screen').hidden||introActive(state))return;
  if(ci.step==='done'&&ci.report){if(!document.querySelector('dialog[open]'))showCallDone();return;}
  if(ci.step==='call'&&!ci.seen&&!heroOn()&&!document.querySelector('dialog[open]'))showCallDialog();}
 function showCallDone(){const ci=heroCallInfo(state);
@@ -13897,7 +13933,7 @@ function openChestNow(){const c=state.progress?.chests?.[0];if(!c)return;const r
  $('chest-content').innerHTML=`<div class="chest-stage open rarity-${x.rarity}" style="--rar:${rar.color}"><i class="rays"></i><div class="chest-box pop">${def.icon}</div></div><small style="color:${rar.color}">ระดับ${h(rar.name)}</small><h2>${h(def.name)}</h2><div class="chest-loot">${items.map(([i,t],k)=>`<span style="animation-delay:${.15+k*.12}s"><i>${i}</i>${h(t)}</span>`).join('')}</div>${x.treasure?'<p class="tiny-note">สมบัติเข้าห้องเก็บของแล้ว วางโชว์หรือประมูลได้ที่ตลาด</p>':''}<div class="dialog-actions">${left?`<button class="secondary" data-chest-close>เก็บ</button><button class="primary" data-chest-next>เปิดใบถัดไป (${left})</button>`:'<button class="primary" data-chest-close>เก็บ</button>'}</div>`;
  save();syncHUD();}
 /** A guild rank-up: confetti, the rank seal, and one guild policy to keep out of three. */
-function maybeCelebrate(){const offer=state.progress?.offer;if(!offer||!ui.inGame||document.querySelector('dialog[open]')||!$('title-screen').hidden||introActive(state))return;const key=offer.rank+offer.cards.join();if(chestCelebrated===key&&$('celebrate-dialog').open)return;chestCelebrated=key;
+function maybeCelebrate(){if(document.body.classList.contains('scene-only'))return;const offer=state.progress?.offer;if(!offer||!ui.inGame||document.querySelector('dialog[open]')||!$('title-screen').hidden||introActive(state))return;const key=offer.rank+offer.cards.join();if(chestCelebrated===key&&$('celebrate-dialog').open)return;chestCelebrated=key;
  if(ui.sound)sfx('fanfare',.5);
  const bits=Array.from({length:36},(_,i)=>`<i style="left:${(i*37)%100}%;background:${['#e7b54b','#d8735c','#7fa66a','#6aa6d8','#b07ad8'][i%5]};animation-delay:${(i%9)*.12}s;animation-duration:${2.2+(i%5)*.35}s"></i>`).join('');
  $('celebrate-content').innerHTML=`<div class="confetti" aria-hidden="true">${bits}</div><div class="celebrate-seal"><span class="rank-seal">${h(offer.rank)}</span></div><small>สมาคมกิลด์ประกาศ</small><h2>กิลด์เลื่อนเป็นระดับ ${h(offer.rank)}!</h2><p>ได้หีบทองเป็นของขวัญ และเลือกนโยบายกิลด์ได้ 1 ใบ นโยบายอยู่ถาวร ทำให้กิลด์ของคุณไม่เหมือนใคร</p><div class="policy-cards">${offer.cards.map(id=>{const p=POLICIES[id];return `<button class="policy-card" data-policy="${h(id)}"><i>${p.icon}</i><b>${h(p.name)}</b><small>${h(p.text)}</small></button>`;}).join('')}</div>`;
@@ -14198,7 +14234,7 @@ function renderMarketHub(){const tab=ui.marketTab||'overview',v=getVillageInfo(s
 function renderJournal(){const stats=getGuildStats(state);const nextRequirement=RANK_REQUIREMENTS[stats.nextRank];const nextQuest=QUESTS.find(q=>q.id===nextRequirement?.quest);let goals=state.story?.finished?['ช่วยทีมสำรวจกลับบ้าน','รักษาหัวใจป่า','มีบ้านให้ทุกคนกลับมา']:[stats.nextRank?`ชื่อเสียง ${n(state.rep)} / ${n(nextRequirement?.rep||0)}`:'กิลด์ระดับ A',nextQuest?`สำเร็จคำร้อง ${nextQuest.name}`:'สำเร็จคำร้องรักษาหัวใจป่า'];const ledger=(state.ledger||[]).slice(0,8);return `${state.story?.finished?'<div class="finished-banner"><b>ทุกคนกลับบ้านแล้ว ❧</b><br>จบบทแรกของเดโม่แล้ว ขอบคุณที่ดูแลนักผจญภัยทุกคน เล่นต่อ รับคนใหม่ และพัฒนาหมู่บ้านได้ · แผนที่ใหม่และระดับ B ขึ้นไปจะมาในเกมเต็ม</div>':''}<div class="chapter-card"><small>OUR GUILD STORY · CHAPTER ${state.story?.chapter||1}</small><h2>${state.story?.finished?'บ้านใต้ร่มใบไม้':stats.nextRank?'ก้าวต่อไป · กิลด์ระดับ '+stats.nextRank:'รักษาหัวใจป่า'}</h2><p>จากบ้านเล็กท้ายเมือง สู่สถานที่ที่ผู้คนฝากความหวัง</p></div>${renderPromotion()}<div class="stat-grid"><div class="stat-box">คำร้องที่สำเร็จ<b>${n(Object.values(state.completedQuests||{}).reduce((s,v)=>s+Number(v||0),0))} งาน</b></div><div class="stat-box">ค่าดูแลต่อวัน<b>${n(stats.upkeep)} G</b></div><div class="stat-box">รายรับวันนี้<b>${n(stats.incomeToday)} G</b></div><div class="stat-box">รายจ่ายวันนี้<b>${n(stats.expenseToday)} G</b></div></div><div class="section-title">ช่วงเวลาดี ๆ ในกิลด์</div>${GUILD_EVENTS.map(e=>`<div class="item-card"><b style="font-size:12px">${h(e.name)}</b><p>${h(e.description)}</p><div class="build-cost">${h(moneyCost(e.cost))}</div><button class="secondary full-button" data-host-event="${e.id}" ${!state.facilities.some(f=>f.type===e.requires)||!canAfford(e.cost)?'disabled':''}>${state.facilities.some(f=>f.type===e.requires)?'จัดกิจกรรม':'ต้องมี'+FACILITIES[e.requires].name}</button></div>`).join('')}<div class="section-title">บัญชีล่าสุด</div>${ledger.length?ledger.map(entry=>{const amount=Number(entry.amount||entry.gold||0);return`<div class="ledger-row"><span>${h(entry.label||entry.text||entry.reason||entry.type)} · วันที่ ${entry.day}</span><b class="${amount<0?'negative':''}">${amount>0?'+':''}${n(amount)} G</b></div>`;}).join(''):'<p class="tiny-note">เริ่มรับคำร้องเพื่อเพิ่มรายรับของกิลด์</p>'}${eventHistory()}<div class="section-title">เรื่องราวที่เกิดขึ้น</div>${(state.log||[]).slice(0,14).map(entry=>`<div class="log-entry"><small>วันที่ ${h(entry.day)} · GUILD MEMORY</small>${h(entry.text)}</div>`).join('')}`;}
 function navigate(tab){ui.villageBuildingId=null;ui.partitionId=null;ui.petitionId=null;ui.roomDraftW=null;ui.roomDraftH=null;ui.tab=tab;openMenu();ui.questId=null;ui.memberId=null;ui.facilityId=null;ui.missionId=null;ui.selected.clear();syncUI();$('panel-content').scrollTop=0;}
 function cancelBuild(){if(ui.villagePlace){ui.villagePlace=null;renderer?.stopVillagePlacement();}ui.buildType=null;ui.moveId=null;ui.roomPlacement=null;ui.moveRoomId=null;renderer?.setRoomMode(null);renderer?.setBuildMode(null);renderer?.setMoveMode(null);syncHUD();}
-function onSceneSelect(selection){if(selection.kind==='villageBuilding'){cancelBuild();navigate('village');ui.villageBuildingId=selection.id;syncUI();return;}if(selection.kind==='mission'){openMenu();ui.tab='quests';ui.missionId=selection.id;ui.questId=null;ui.memberId=null;syncUI();return;}if(selection.kind==='pickup'){const f=state.facilities.find(f=>f.id===selection.id);if(!f)return;closeMenu();ui.buildType=null;ui.roomPlacement=null;ui.moveRoomId=null;ui.facilityId=null;ui.moveId=f.id;syncHUD();return;}if(selection.kind==='member'&&selection.id==='master'){cancelBuild();openSetup('edit');return;}if(selection.kind==='room'&&ui.roomPlacement){if(dispatch('buildRoom',{...ui.roomPlacement,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='moveRoom'&&ui.moveRoomId){if(dispatch('moveRoom',{roomId:ui.moveRoomId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='partition'){cancelBuild();navigate('build');ui.partitionId=selection.id;syncUI();}else if(selection.kind==='build'&&ui.buildType){if(dispatch('build',{type:ui.buildType,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='move'&&ui.moveId){if(dispatch('move',{facilityId:ui.moveId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='member'){cancelBuild();navigate('members');ui.memberId=selection.id;syncUI();}else if(selection.kind==='facility'){cancelBuild();navigate('build');ui.facilityId=selection.id;syncUI();}}
+function onSceneSelect(selection){if(document.body.classList.contains('scene-only'))return;if(selection.kind==='villageBuilding'){cancelBuild();navigate('village');ui.villageBuildingId=selection.id;syncUI();return;}if(selection.kind==='mission'){openMenu();ui.tab='quests';ui.missionId=selection.id;ui.questId=null;ui.memberId=null;syncUI();return;}if(selection.kind==='pickup'){const f=state.facilities.find(f=>f.id===selection.id);if(!f)return;closeMenu();ui.buildType=null;ui.roomPlacement=null;ui.moveRoomId=null;ui.facilityId=null;ui.moveId=f.id;syncHUD();return;}if(selection.kind==='member'&&selection.id==='master'){cancelBuild();openSetup('edit');return;}if(selection.kind==='room'&&ui.roomPlacement){if(dispatch('buildRoom',{...ui.roomPlacement,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='moveRoom'&&ui.moveRoomId){if(dispatch('moveRoom',{roomId:ui.moveRoomId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='partition'){cancelBuild();navigate('build');ui.partitionId=selection.id;syncUI();}else if(selection.kind==='build'&&ui.buildType){if(dispatch('build',{type:ui.buildType,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='move'&&ui.moveId){if(dispatch('move',{facilityId:ui.moveId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='member'){cancelBuild();navigate('members');ui.memberId=selection.id;syncUI();}else if(selection.kind==='facility'){cancelBuild();navigate('build');ui.facilityId=selection.id;syncUI();}}
 let confirmCallback;
 function confirmAction(title,message,callback){$('confirm-title').textContent=title;$('confirm-message').textContent=message;confirmCallback=callback;$('confirm-dialog').showModal();}
 $('confirm-cancel').addEventListener('click',()=>{$('confirm-dialog').close();confirmCallback=null;});$('confirm-ok').addEventListener('click',()=>{$('confirm-dialog').close();const callback=confirmCallback;confirmCallback=null;callback?.();});
@@ -14214,7 +14250,7 @@ function syncHeroMode(){const on=heroOn();if(!on){clearHeroInput();if($('hero-ev
  if(on&&heroSpeedBefore===null){heroSpeedBefore=ui.speed;ui.speed=1;state.settings.speed=1;}else if(!on&&heroSpeedBefore!==null){ui.speed=heroSpeedBefore;state.settings.speed=heroSpeedBefore;heroSpeedBefore=null;}
  // Reports of finished jobs wait while the master is out fighting, and open on the way back in.
  if(!on&&reportQueue.length&&!$('report-dialog').open)setTimeout(()=>{if(!heroOn()&&reportQueue.length&&!$('report-dialog').open)showReport();},400);}
-function heroInput(){const h=state.hero;if(!h?.active)return;if($('hero-event-dialog').open){h.input={};return;}let sx=heroStick.x,sy=heroStick.y;
+function heroInput(){const h=state.hero;if(!h?.active)return;if($('hero-event-dialog').open||document.body.classList.contains('scene-only')){h.input={};return;}let sx=heroStick.x,sy=heroStick.y;
  if(heroKeys.has('KeyD')||heroKeys.has('ArrowRight'))sx+=1;if(heroKeys.has('KeyA')||heroKeys.has('ArrowLeft'))sx-=1;if(heroKeys.has('KeyS')||heroKeys.has('ArrowDown'))sy+=1;if(heroKeys.has('KeyW')||heroKeys.has('ArrowUp'))sy-=1;
  // Screen directions turn into the isometric grid: right is +x−y, down is +x+y.
  const len=Math.min(1,Math.hypot(sx,sy)),gx=sx+sy,gy=sy-sx,gl=Math.hypot(gx,gy)||1;
@@ -14254,11 +14290,11 @@ const heroPress=(id,fn)=>{const el=$(id);el.addEventListener('pointerdown',e=>{e
 heroPress('hero-attack',on=>{heroAttackHeld=on;});for(const [id,key] of [['hero-s1','s1'],['hero-s2','s2'],['hero-ult','ult'],['hero-dash','dash'],['hero-act','act']])heroPress(id,on=>{if(on)heroTap(key);});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-hero-order]');if(b)dispatch('heroOrder',{order:b.dataset.heroOrder});});
 // Tap a monster to lock on (anywhere but the controls).
-$('guild-world').addEventListener('pointerup',e=>{if(!heroOn()||!renderer?.pickMonster)return;const id=renderer.pickMonster(e.clientX,e.clientY);if(id&&state.hero){state.hero.lock=state.hero.lock===id?null:id;}});
+$('guild-world').addEventListener('pointerup',e=>{if(document.body.classList.contains('scene-only')||!heroOn()||!renderer?.pickMonster)return;const id=renderer.pickMonster(e.clientX,e.clientY);if(id&&state.hero){state.hero.lock=state.hero.lock===id?null:id;}});
 {const stick=$('hero-stick'),knob=stick.querySelector('i');const move=e=>{const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=r.width/2;let x=(e.clientX-cx)/max,y=(e.clientY-cy)/max;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l;}heroStick.x=x;heroStick.y=y;knob.style.transform=`translate(${x*max*.6}px,${y*max*.6}px)`;};
  stick.addEventListener('pointerdown',e=>{e.preventDefault();heroStick.id=e.pointerId;stick.setPointerCapture(e.pointerId);move(e);});stick.addEventListener('pointermove',e=>{if(heroStick.id===e.pointerId)move(e);});
  for(const ev of ['pointerup','pointercancel'])stick.addEventListener(ev,()=>{heroStick.id=null;heroStick.x=0;heroStick.y=0;knob.style.transform='';});}
-window.addEventListener('keydown',e=>{if(!heroOn()||e.target.matches?.('input,select,textarea')||document.querySelector('dialog[open]'))return;const k=e.code;
+window.addEventListener('keydown',e=>{if(document.body.classList.contains('scene-only')||!heroOn()||e.target.matches?.('input,select,textarea')||document.querySelector('dialog[open]'))return;const k=e.code;
  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyJ','Space'].includes(k)){heroKeys.add(k);e.preventDefault();e.stopImmediatePropagation();}
  else{const key={KeyK:'s1',KeyL:'s2',KeyU:'ult',KeyE:'act',ShiftLeft:'dash',ShiftRight:'dash'}[k];if(key){heroTap(key);e.preventDefault();e.stopImmediatePropagation();}}},true);
 window.addEventListener('keyup',e=>{heroKeys.delete(e.code);});
@@ -14275,7 +14311,7 @@ function syncHeroEncounterHud(){
  }else if(view?.pending)setHTML(el,`<b>${h(view.pending.title)}</b><button type="button" data-hero-open-event>เลือกว่าจะทำอะไร</button>`);
  else if(view?.notice)setHTML(el,`<b>${view.notice.won?'สำเร็จ!':'ไว้ลองใหม่คราวหน้า'} · ${h(view.notice.title)}</b><small>${h(view.notice.outcome)}</small>`);
 }
-function showHeroEncounter(){
+function showHeroEncounter(){if(document.body.classList.contains('scene-only'))return;
  const view=heroEncounterView(state),ev=view?.pending,dialog=$('hero-event-dialog');
  if(!ev||dialog.open||!$('title-screen').hidden||document.querySelector('dialog[open]'))return;
  clearHeroInput();
@@ -14295,7 +14331,7 @@ $('hero-event-dialog').addEventListener('close',()=>{clearHeroInput();lastFrame=
 $('hero-encounter-hud').addEventListener('click',event=>{if(event.target.closest('[data-hero-open-event]'))showHeroEncounter();if(event.target.closest('[data-hero-abandon]')){dispatch('abandonHeroChallenge');syncHeroHud();}});
 $('zoom-in').addEventListener('click',()=>{ui.zoom=Math.min(2.4,(renderer?.zoom||1)+.15);renderer?.setZoom(ui.zoom);});$('zoom-out').addEventListener('click',()=>{ui.zoom=Math.max(.3,(renderer?.zoom||1)-.15);renderer?.setZoom(ui.zoom);});$('home-view').addEventListener('click',()=>{ui.zoom=1;renderer?.resetView?.();renderer?.setZoom(1);});
 document.addEventListener('input',event=>{const d=event.target.dataset;if(d.roomDimension){ui[d.roomDimension==='width'?'roomWidth':'roomHeight']=Number(event.target.value);if($('room-estimate'))$('room-estimate').textContent=moneyCost(getPartitionCost(ui.roomWidth,ui.roomHeight));}if(d.partitionSize)ui[d.partitionSize==='width'?'roomDraftW':'roomDraftH']=Number(event.target.value);});
-document.addEventListener('keydown',event=>{if(event.target.matches('input,select,textarea,button')||document.querySelector('dialog[open]'))return;if((event.key==='Enter'||event.key===' ')&&event.target.matches('[role="button"]')){event.preventDefault();event.target.click();return;}if(event.code==='KeyR'&&(ui.buildType||ui.moveId||ui.roomPlacement||ui.moveRoomId||ui.villagePlace)){event.preventDefault();if(ui.villagePlace)renderer?.rotateVillagePick();else renderer?.rotatePlacement();syncHUD();return;}if(event.code==='Space'){event.preventDefault();ui.paused=!ui.paused;syncHUD();}if(['1','2','4'].includes(event.key)){if(heroOn()&&event.key!=='1'){toast('ตอนออกไปเองใช้ได้แค่ความเร็ว ×1',true);return;}ui.speed=Number(event.key);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();}if(event.key==='Escape'){cancelBuild();closeMenu();}});
+document.addEventListener('keydown',event=>{if(document.body.classList.contains('scene-only'))return;if(event.target.matches('input,select,textarea,button')||document.querySelector('dialog[open]'))return;if((event.key==='Enter'||event.key===' ')&&event.target.matches('[role="button"]')){event.preventDefault();event.target.click();return;}if(event.code==='KeyR'&&(ui.buildType||ui.moveId||ui.roomPlacement||ui.moveRoomId||ui.villagePlace)){event.preventDefault();if(ui.villagePlace)renderer?.rotateVillagePick();else renderer?.rotatePlacement();syncHUD();return;}if(event.code==='Space'){event.preventDefault();ui.paused=!ui.paused;syncHUD();}if(['1','2','4'].includes(event.key)){if(heroOn()&&event.key!=='1'){toast('ตอนออกไปเองใช้ได้แค่ความเร็ว ×1',true);return;}ui.speed=Number(event.key);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();}if(event.key==='Escape'){cancelBuild();closeMenu();}});
 
 // Goal card: always says what to do next, and opens the screen that does it.
 function introGoal(){const step=state.intro.step,cost=type=>moneyCost(FACILITIES[type].cost);
@@ -14371,7 +14407,7 @@ $('goal-card').addEventListener('click',()=>runGoal($('goal-card').dataset.goal)
 
 // The storyteller: a choice opens a small dialog once; big events show a banner with a watch button.
 let shownEvent=null;
-function showEvent(force=false){const ev=state.director?.pending;if(!ev||document.querySelector('dialog[open]'))return;if(!force&&(shownEvent===ev.expires+ev.id||$('management-dialog').open||$('report-dialog').open||$('visitor-dialog').open||$('confirm-dialog').open))return;shownEvent=ev.expires+ev.id;
+function showEvent(force=false){if(document.body.classList.contains('scene-only'))return;const ev=state.director?.pending;if(!ev||document.querySelector('dialog[open]'))return;if(!force&&(shownEvent===ev.expires+ev.id||$('management-dialog').open||$('report-dialog').open||$('visitor-dialog').open||$('confirm-dialog').open))return;shownEvent=ev.expires+ev.id;
  const left=Math.max(0,Math.ceil((ev.expires-state.elapsed)/60));
  $('event-content').innerHTML=`<small class="report-kicker">${ev.kind==='major'?'เหตุการณ์ใหญ่':'เรื่องที่ต้องตัดสินใจ'}</small><h2 id="event-title"><span class="event-big-icon">${h(ev.icon)}</span>${h(ev.title)}</h2><p>${h(ev.text)}</p><div class="event-choices">${ev.choices.map(c=>`<button class="event-choice" data-event-choice="${h(c.id)}"><b>${h(c.label)}</b><small>${h(c.desc)}</small></button>`).join('')}</div><div class="dialog-actions"><button class="secondary" data-event-later>ไว้ทีหลัง (${left} นาที)</button></div>`;
  $('event-dialog').showModal();}
@@ -14384,7 +14420,7 @@ $('event-banner').addEventListener('click',event=>{const w=event.target.closest(
 // Mission report: a clear payoff when a team comes home.
 const reported=new Set(state.missions.filter(m=>m.status!=='active'&&m.status!=='decision').map(m=>m.id));const reportQueue=[];
 function queueReports(before){for(const m of state.missions){if(reported.has(m.id)||m.status==='active'||m.status==='decision')continue;reported.add(m.id);if(m.auto&&!m.result?.loot?.some(e=>e.tier==='rare'||e.tier==='legendary')&&RANKS.indexOf(state.rank)===RANKS.indexOf(before.rank))continue;reportQueue.push({mission:m,before,rank:state.rank});}if(reportQueue.length&&!$('report-dialog').open&&!heroOn())showReport();}
-function showReport(){const r=reportQueue.shift();if(!r)return;const m=r.mission,q=QUESTS.find(q=>q.id===m.questId),res=m.result||{},rw=res.reward||{};
+function showReport(){if(document.body.classList.contains('scene-only'))return;const r=reportQueue.shift();if(!r)return;const m=r.mission,q=QUESTS.find(q=>q.id===m.questId),res=m.result||{},rw=res.reward||{};
  const chips=[['gold','◈','G'],['wood','▰','ไม้'],['stone','◆','หิน'],['herb','❧','สมุนไพร'],['rep','★','ชื่อเสียง']].filter(([k])=>rw[k]>0).map(([k,icon,label])=>`<span class="report-chip"><b>${icon} +${n(rw[k])}</b><small>${label}</small></span>`).join('');
  const xp=Math.round((q?.reward?.xp||0)*(res.success?1:.35)),team=m.memberIds.map(id=>state.members.find(x=>x.id===id)).filter(Boolean).map(x=>{const up=x.level>(r.before.levels.get(x.id)||x.level);return `<div class="report-member ${up?'up':''}">${portrait(x)}<b>${h(x.name)}</b><small>${up?'เลเวลอัป! Lv.'+x.level:'Lv.'+x.level} · +${n(xp)} XP${x.injury>0?' · บาดเจ็บ':''}</small></div>`;}).join('');
  let rank='';if(RANKS.indexOf(r.rank)>RANKS.indexOf(r.before.rank)){const unlocked=[...(RANK_UNLOCKS[r.rank]||[])];rank=`<div class="report-rank"><span class="rank-seal">${h(r.rank)}</span><div><b>กิลด์เลื่อนเป็นระดับ ${h(r.rank)}!</b><small>${unlocked.length?'ปลดล็อก: '+h(unlocked.join(' · ')):'เปิดคำร้องและสิ่งปลูกสร้างใหม่'}</small></div></div>`;}
@@ -14397,7 +14433,7 @@ $('report-dialog').addEventListener('close',()=>{lastFrame=performance.now();if(
 // Opening chapter: title screen, prologue and adventurers knocking at the door.
 const VISITOR_LINES={get mira(){return `ได้ยินว่าบ้านข้างต้นโอ๊กเปิดเป็น${profile().guildName}แล้ว… คุณ${profile().masterName} ให้ฉันช่วยเฝ้าบ้านหลังนี้ได้ไหม`;},finn:'มิราเล่าว่ามีหุ่นฝึกแล้ว! ผมจำทางรอบหมู่บ้านได้หมดเลยนะ',lune:'ขอมาด้วยคนค่ะ อยากลองใช้เวทช่วยชาวบ้านดูบ้าง',noa:'ได้ยินว่าทีมแรกกลับมาอย่างปลอดภัย ถ้ามีใครบาดเจ็บ ฉันดูแลให้เองนะ'};
 const VISITOR_NEXT={training:'ต่อไป: วางหุ่นฝึกให้มิราฝึกฝีมือ',patrol:'ครบทีมแล้ว! นักผจญภัยจะหยิบงานลาดตระเวนจากกระดานเอง',done:'นักผจญภัยครบสี่คนแล้ว ลองวางบาร์ให้ทุกคนได้นั่งพักหลังเลิกงาน (เมนู “สร้าง”)'};
-function showVisitors(){if(!state.intro||state.intro.step!=='visit'||$('visitor-dialog').open)return;const ids=state.intro.visitors,people=ids.map(id=>MEMBERS.find(m=>m.id===id)).filter(Boolean);if(!people.length)return;
+function showVisitors(){if(document.body.classList.contains('scene-only'))return;if(!state.intro||state.intro.step!=='visit'||$('visitor-dialog').open)return;const ids=state.intro.visitors,people=ids.map(id=>MEMBERS.find(m=>m.id===id)).filter(Boolean);if(!people.length)return;
  $('visitor-content').innerHTML=`<small class="report-kicker">ก๊อก ก๊อก · มีคนมาที่ประตูกิลด์</small><h2 id="visitor-title">${people.length>1?h(people.map(p=>p.name).join(' และ '))+' มาขอเข้าร่วม':h(people[0].name)+' มาขอเข้าร่วมกิลด์'}</h2><div class="visitor-list">${people.map(p=>`<div class="visitor-card">${portrait(p)}<div><b>${h(p.name)}</b><small>${h(jobName(p.class))} · ${h(p.trait||'')}</small><p>“${h(VISITOR_LINES[p.id]||p.description)}”</p><span>${h(p.description)}</span></div></div>`).join('')}</div><div class="report-next"><small>ต่อไป</small><span>${h(VISITOR_NEXT[state.intro.after]||'')}</span></div><div class="dialog-actions"><button class="primary" data-welcome>ต้อนรับเข้ากิลด์</button></div>`;
  injectIcons($('visitor-content'));$('visitor-dialog').showModal();}
 $('visitor-dialog').addEventListener('cancel',event=>event.preventDefault());
@@ -14465,7 +14501,7 @@ function showLesson(id){const x=getGoals(state).list.find(g=>g.id===id);if(!x)re
 $('lesson-dialog')?.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.lessonClose!==undefined){$('lesson-dialog').close();return;}if(b.dataset.lessonGo!==undefined){$('lesson-dialog').close();const x=getGoals(state).list.find(g=>g.id===ui.lessonGoal);if(x)runGoal(x.action);}});
 // The first time an objective comes up, its lesson opens by itself (once per objective).
 let lessonsSeen=null;
-function autoLesson(){const cur=getGoals(state).current;if(!cur||!ui.inGame||introActive(state)||!$('title-screen').hidden)return;if(!lessonsSeen){try{lessonsSeen=JSON.parse(localStorage.getItem('guild-master:lessons')||'{}');}catch{lessonsSeen={};}}
+function autoLesson(){if(document.body.classList.contains('scene-only'))return;const cur=getGoals(state).current;if(!cur||!ui.inGame||introActive(state)||!$('title-screen').hidden)return;if(!lessonsSeen){try{lessonsSeen=JSON.parse(localStorage.getItem('guild-master:lessons')||'{}');}catch{lessonsSeen={};}}
  if(lessonsSeen[cur.id]||heroOn()||document.querySelector('dialog[open]'))return;lessonsSeen[cur.id]=true;try{localStorage.setItem('guild-master:lessons',JSON.stringify(lessonsSeen));}catch{}if(cur.id!=='patrol')showLesson(cur.id);}
 function renderGuildUpgrades(){return `<div class="village-hero"><small>สิ่งที่กิลด์ลงทุนแล้วได้ผลถาวร</small><h2>พัฒนากิลด์</h2><p>ทุกอย่างในหน้านี้เป็นของตัวกิลด์เอง ไม่ใช่ของหมู่บ้าน ราคาเพิ่มขึ้นทุกระดับ</p></div><div class="upgrade-grid">${Object.entries(GUILD_UPGRADES).map(([id,u])=>{const lv=state.upgrades?.[id]||0,cost=getGuildUpgradeCost(state,id),max=lv>=u.max,ok=!max&&canAfford(cost);return `<div class="upgrade-card"><div class="up-head"><span class="up-icon">${u.icon}</span><div><b>${h(u.name)}</b><small>ระดับ ${lv}/${u.max}</small></div></div><p>${h(u.description)}</p><div class="up-pips">${'<i class="on"></i>'.repeat(lv)}${'<i></i>'.repeat(u.max-lv)}</div>${max?'':`<span class="build-cost">${h(moneyCost(cost))}</span>`}<button class="${ok?'primary':''}" data-upgrade-guild="${id}" ${ok?'':'disabled'}>${max?'ระดับสูงสุด':'พัฒนา'}</button></div>`;}).join('')}</div>${state.rank==='B'||state.frontier?.camp?`<div class="section-title">ชายแดนตะวันออก</div><div class="upgrade-grid">${campCard()}</div>`:''}`;}
 // ---- Efficiency: how well the adventurers work, what holds them back, and what fixing it is worth. ----
@@ -14554,7 +14590,7 @@ function drawMissionScene(){const big=$('dungeon-dialog').open,id=big?ui.bigMiss
 // A full-screen window into the dungeon: watch the fight like an online game.
 document.addEventListener('click',event=>{const b=event.target.closest('[data-dungeon-full],[data-dungeon-close]');if(!b)return;if(b.dataset.dungeonFull){const m=state.missions.find(x=>x.id===b.dataset.dungeonFull),q=QUESTS.find(x=>x.id===m?.questId);ui.bigMission=b.dataset.dungeonFull;$('dd-title').textContent=`${q?.name||''} · ${(m?.memberIds||[]).map(id=>state.members.find(x=>x.id===id)?.name).filter(Boolean).join(' · ')}`;$('dungeon-dialog').showModal();}else $('dungeon-dialog').close();});
 
-mobileHUD=initMobileUI({beforeOpen:()=>{clearHeroInput();closeMenu();},afterClose:()=>{clearHeroInput();lastFrame=performance.now();}});
+mobileHUD=initMobileUI({beforeOpen:()=>{clearHeroInput();closeMenu();},afterClose:()=>{clearHeroInput();lastFrame=performance.now();},beforeSceneOnly:()=>{renderer?.setSceneOnly(true);clearHeroInput();closeMenu();cancelBuild();},afterSceneOnly:()=>{renderer?.setSceneOnly(false);clearHeroInput();lastFrame=performance.now();syncHUD();}});
 initFullscreen($('fullscreen-button'),{notify:text=>toast(text,true),resize:()=>window.dispatchEvent(new Event('resize'))});
 syncUI();injectIcons($('dock'));if(hasSave)save();showTitle();requestAnimationFrame(frame);if(loadNotice)setTimeout(()=>toast(loadNotice,true),800);if(idleNotice)setTimeout(()=>toast(idleNotice),1300);document.addEventListener('visibilitychange',()=>{lastFrame=performance.now();if(document.hidden)save();});window.addEventListener('pagehide',()=>save());
 // Read-only diagnostics, useful for reproducible bug reports without a cheat menu.

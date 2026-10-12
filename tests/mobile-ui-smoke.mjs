@@ -69,7 +69,14 @@ try{
   if(compact){
    assert.equal(await page.locator('#goal-card').isVisible(),false);assert.equal(await page.locator('#near-goals').isVisible(),false);assert.equal(await page.locator('#city-stats').isVisible(),false);
    assert.equal(await page.locator('#zoom-in').isVisible(),false);
-   const bar=await page.locator('#dock').boundingBox();assert.ok(bar.height<=66&&bar.x>=0&&bar.x+bar.width<=width);
+   const landscape=width>height;
+   if(landscape){assert.equal(await page.locator('#dock').isVisible(),false);await page.locator('#dock-toggle').click();}
+   const bar=await page.locator('#dock').boundingBox();assert.ok(bar.height<=(landscape?44:66)&&bar.x>=0&&bar.x+bar.width<=width);
+   if(landscape){
+    await page.screenshot({path:`artifacts/mobile-ui-${label}-menu.png`});
+    await page.locator('[data-dock="market"]').click();assert.equal(await page.locator('#management-dialog').evaluate(e=>e.open),true);assert.equal(await page.locator('#dock').isVisible(),false);
+    await page.locator('#management-dialog .close-dialog').click();
+   }
    await page.screenshot({path:`artifacts/mobile-ui-${label}.png`});
    await page.locator('#notifications-button').click();await page.locator('#notifications-dialog').waitFor({state:'visible'});
    assert.equal(await page.locator('#near-goals').isVisible(),true);assert.equal(await page.locator('#goal-card').isVisible(),true);
@@ -80,6 +87,30 @@ try{
    const full=await page.evaluate(()=>Boolean(document.fullscreenElement)||document.body.classList.contains('play-focus'));assert.equal(full,true);assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('compact-ui')),true,'touch layout remains compact in fullscreen');
    await page.locator('#fullscreen-button').click();await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>Boolean(document.fullscreenElement)||document.body.classList.contains('play-focus')),false);
   }
+  if(label==='standalone'){await page.locator('#hero-toggle').click();assert.equal(await page.evaluate(()=>window.guildDebug.getState().hero.active),true);await page.waitForTimeout(200);}
+  await page.locator('#scene-only-button').click();
+  assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('scene-only')),true);
+  for(const selector of ['.topbar','.world-actions','.screen-bottom','#hero-hud','.toasts'])assert.equal(await page.locator(selector).isVisible(),false,selector+' hidden for scenery');
+  assert.equal(await page.locator('#restore-ui').isVisible(),true);
+  assert.equal(await page.evaluate(()=>window.guildDebug.renderer().hpBars.visible),false,'canvas health overlays hidden');
+  const elapsed=await page.evaluate(()=>window.guildDebug.getState().elapsed);
+  const cameraBefore=await page.evaluate(()=>window.guildDebug.renderer().focusX);
+  await page.mouse.move(width/2,height/2);await page.mouse.down();await page.mouse.move(width/2+75,height/2+20,{steps:8});await page.mouse.up();
+  assert.notEqual(await page.evaluate(()=>window.guildDebug.renderer().focusX),cameraBefore,'scenery camera pans');
+  const zoomBefore=await page.evaluate(()=>window.guildDebug.renderer().zoom);await page.mouse.wheel(0,-100);await page.waitForTimeout(200);
+  assert.notEqual(await page.evaluate(()=>window.guildDebug.renderer().zoom),zoomBefore,'scenery camera zooms');
+  assert.ok(await page.evaluate(()=>window.guildDebug.getState().elapsed)>elapsed,'simulation keeps running');
+  // A long press on furniture must not start moving it while the UI is hidden.
+  const furniture=await page.evaluate(()=>{const f=window.guildDebug.getState().facilities[0];window.guildDebug.focusGrid(f.x,f.y,1);return{x:f.x,y:f.y};});
+  const point=await page.evaluate(f=>window.guildDebug.getScenePoint(f.x,f.y),furniture);
+  await page.mouse.move(point.x,point.y);await page.mouse.down();await page.waitForTimeout(450);await page.mouse.up();
+  assert.equal(await page.evaluate(()=>Boolean(window.guildDebug.renderer().pending)),false,'scenery does not lift furniture');
+  assert.equal(await page.locator('dialog[open]').count(),0,'no modal interrupts scenery');
+  if(label==='landscape')await page.screenshot({path:'artifacts/mobile-ui-scenery.png'});
+  await page.locator('#restore-ui').click();assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('scene-only')),false);
+  assert.equal(await page.locator('.world-actions').isVisible(),true);
+  if(label==='standalone'){assert.equal(await page.locator('#hero-hud').isVisible(),true);assert.equal(await page.evaluate(()=>window.guildDebug.renderer().hpBars.visible),true,'Hero overlays restored');}
+  await page.locator('#scene-only-button').click();await page.keyboard.press('Escape');assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('scene-only')),false,'Escape restores UI');
   console.log(label+' passed');await page.close();
  }
  const fallback=await browser.newPage({viewport:{width:390,height:844}});

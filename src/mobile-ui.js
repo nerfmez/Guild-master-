@@ -1,5 +1,5 @@
 /* Keep the world's corners clear on phones; the original controls live in a drawer. */
-export function initMobileUI({ beforeOpen = () => {}, afterClose = () => {} } = {}) {
+export function initMobileUI({ beforeOpen = () => {}, afterClose = () => {}, beforeSceneOnly = () => {}, afterSceneOnly = () => {} } = {}) {
   const $ = id => document.getElementById(id), button = $('notifications-button'), dialog = $('notifications-dialog');
   const media = matchMedia('(max-width:900px), (max-height:500px), (pointer:coarse) and (max-width:1400px)'), records = [];
   const nodes = [document.querySelector('.corner-stack'), $('city-stats'),$('event-banner')];
@@ -25,6 +25,13 @@ export function initMobileUI({ beforeOpen = () => {}, afterClose = () => {} } = 
   $('view-controls-toggle').addEventListener('click', () => { const el = $('view-controls-toggle'), expanded = el.getAttribute('aria-expanded') !== 'true'; el.setAttribute('aria-expanded', String(expanded)); document.querySelector('.world-actions').classList.toggle('expanded', expanded); });
   $('hero-details-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('hero-details-open');$('hero-details-toggle').setAttribute('aria-expanded',String(on));});
   $('hero-map-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('hero-map-open');$('hero-map-toggle').setAttribute('aria-pressed',String(on));});
+  document.querySelectorAll('.dock-btn').forEach(el=>{if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label',el.querySelector('span').textContent.trim());});
+  $('dock-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('landscape-dock-open');$('dock-toggle').setAttribute('aria-expanded',String(on));$('dock-toggle').setAttribute('aria-label',on?'พับเมนู':'เปิดเมนู');$('dock-toggle').textContent=on?'×':'☰';});
+  $('dock').addEventListener('click',event=>{if(event.target.closest('.dock-btn')){document.body.classList.remove('landscape-dock-open');$('dock-toggle').setAttribute('aria-expanded','false');$('dock-toggle').setAttribute('aria-label','เปิดเมนู');$('dock-toggle').textContent='☰';}});
+  const sceneOnly=on=>{document.body.classList.toggle('scene-only',on);$('scene-only-button').setAttribute('aria-pressed',String(on));if(on){beforeSceneOnly();$('restore-ui').focus({preventScroll:true});}else{afterSceneOnly();$('scene-only-button').focus({preventScroll:true});}};
+  $('scene-only-button').addEventListener('click',()=>sceneOnly(true));
+  $('restore-ui').addEventListener('click',()=>sceneOnly(false));
+  window.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('scene-only')){event.preventDefault();sceneOnly(false);}});
   media.addEventListener('change', layout); layout();
   return { sync, compact: () => media.matches, record(text, error, action) { records.unshift({ text, error, action, read: dialog.open }); records.length = Math.min(records.length, 24); if (dialog.open) render(); sync(); } };
 }

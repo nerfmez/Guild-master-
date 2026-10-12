@@ -711,3 +711,19 @@ body.compact-ui .hero-status #hero-details-toggle{font-size:9px;min-height:24px;
 body.play-focus .brand,body.play-focus .calendar,body.play-focus .resources{display:none}body.play-focus .world-actions{top:max(12px,env(safe-area-inset-top))}
 @media(max-height:500px){body.compact-ui .brand{display:none}body.compact-ui .topbar{grid-template-columns:minmax(0,1fr) auto;gap:8px;right:14px}body.compact-ui .resources{grid-row:1;grid-column:1;width:min(620px,calc(100vw - 125px));justify-self:start}body.compact-ui .world-actions{top:calc(max(10px,env(safe-area-inset-top)) + 38px)}body.compact-ui .hero-status{top:86px;width:148px}body.compact-ui .hero-map{top:86px;width:116px;height:79px}body.compact-ui .hero-encounter-hud{top:92px;right:145px;width:190px;max-height:120px;overflow:auto}body.compact-ui .hero-stick{width:85px;height:85px;bottom:12px}body.compact-ui .hero-buttons{bottom:12px}body.compact-ui .hero-calling .hero-call{top:84px}}
 body.compact-ui .resource.rank>div{display:block}body.compact-ui .resources{overflow-x:auto;scrollbar-width:none;pointer-events:auto;overscroll-behavior:contain}body.compact-ui .resources .resource{flex-shrink:0}
+.landscape-control,#restore-ui{display:none}
+body.compact-ui #scene-only-button{order:3}
+@media(orientation:landscape){
+ body.compact-ui .screen-bottom{display:flex;align-items:flex-end;justify-content:flex-end;gap:6px;pointer-events:none}
+ body.compact-ui .screen-bottom .time-controls{position:static;margin-right:auto;pointer-events:auto}
+ body.compact-ui .dock{display:none;width:min(344px,calc(100vw - 182px));grid-template-columns:repeat(8,minmax(0,1fr));pointer-events:auto;padding:2px}
+ body.compact-ui.landscape-dock-open .dock{display:grid}
+ body.compact-ui .dock-btn{height:38px;padding:3px;gap:0}
+ body.compact-ui .dock-btn>span{display:none}
+ body.compact-ui .dock-icon{width:24px;height:24px}
+ body.compact-ui .landscape-control{display:flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0;font-size:23px;background:#f8edd3f2;border-color:#967b49;pointer-events:auto}
+ body.compact-ui .dock-badge{top:-5px;right:-2px;font-size:9px;min-width:14px;height:14px}
+}
+body.scene-only .world-area>:not(#world-wrap):not(#restore-ui),body.scene-only .toasts{display:none!important}
+body.scene-only #restore-ui{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:35;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;font-size:22px;background:#fff3dcc9;border:1px solid #b8955e;opacity:.5}
+body.scene-only #restore-ui:hover,body.scene-only #restore-ui:focus-visible{opacity:1}
