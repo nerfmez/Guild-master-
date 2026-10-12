@@ -432,6 +432,12 @@ body.on-title .event-banner{visibility:hidden}
 body.hero-mode .screen-bottom,body.hero-mode .corner-stack,body.hero-mode #follow-chip,body.hero-mode .city-stats{display:none!important}
 @media(max-width:620px){.hero-help{display:none}.hero-status{top:calc(max(15px,env(safe-area-inset-top)) + 112px)}}
 body.on-title .hero-hud{display:none}
+.hero-encounter-hud{position:absolute;right:24px;top:145px;width:250px;display:grid;gap:6px;padding:12px 14px;background:#fff8e9f2;border:1px solid #b8a27a;border-radius:9px;box-shadow:0 3px 16px #41352425;color:#5c503d;font-size:12px;line-height:1.6}
+.hero-encounter-hud b{font-size:13px}.hero-encounter-hud small{font-size:11px;color:#82745b}.hero-encounter-hud button{font-size:11px;min-height:32px;padding:5px 9px}
+#hero-buffs:empty{display:none}#hero-buffs{color:#c7e6b6}
+.hero-event-dialog{width:min(520px,calc(100vw - 28px));max-height:calc(100dvh - 36px);overflow:auto;padding:24px}.hero-event-dialog h2{font-size:22px;line-height:1.5}.hero-event-dialog p{font-size:13px}.hero-event-dialog .event-choice{width:100%;text-align:left;padding:12px 14px;min-height:58px;margin:7px 0;display:grid;gap:5px}.hero-event-dialog .event-choice b{font-size:13px}.hero-event-dialog .event-choice small{font-size:11px;line-height:1.6}.hero-event-dialog .hero-event-note{font-size:10px;color:#8a7b60}.hero-event-dialog .hero-event-outcome{line-height:2}
+@media(max-width:620px){.hero-encounter-hud{top:calc(max(15px,env(safe-area-inset-top)) + 276px);right:14px;width:min(260px,calc(100vw - 28px));padding:10px 12px;font-size:11px}.hero-event-dialog{padding:20px}.hero-event-dialog h2{font-size:19px}}
+@media(max-height:500px) and (min-width:621px){.hero-encounter-hud{top:95px;right:70px;width:220px;max-height:140px;overflow:auto}}
 /* Seven dock buttons still fit a phone */
 @media(max-width:620px){.dock{gap:2px;padding:4px}.dock-btn{width:52px;font-size:11px}.dock-btn .dock-icon{width:32px;height:32px}}
 /* Live quest panel */
@@ -672,6 +678,11 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
 .hero-call span{font-size:11.5px;color:#f3e3c0;line-height:1.5}
 @media(max-width:620px){.hero-call{left:10px;right:58px;transform:none;width:auto;min-width:0;top:calc(max(15px,env(safe-area-inset-top)) + 106px);padding:6px 9px}.hero-call b{font-size:13px}.hero-call span{font-size:10.5px}
  body.hero-calling .hero-status,body.hero-calling .hero-map{margin-top:78px}}
+
+/* R48 minimap stays above the encounter card. */
+.hero-encounter-hud{right:70px;top:calc(max(20px,env(safe-area-inset-top)) + 240px)}
+@media(max-width:620px){.hero-encounter-hud{right:14px;top:calc(max(15px,env(safe-area-inset-top)) + 240px);width:min(205px,max(155px,calc(100vw - 220px)))}}
+@media(max-height:500px) and (min-width:621px){.hero-encounter-hud{right:310px;top:95px}}
 </style>
 </head>
 <body>
@@ -685,7 +696,7 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
    </header>
    <div id="city-stats" class="city-stats" aria-label="ตัวเลขเมือง"></div>
    <div class="world-actions" aria-label="มุมมองฉาก"><button id="zoom-in" aria-label="ซูมเข้า">+</button><button id="zoom-out" aria-label="ซูมออก">−</button><button id="home-view" aria-label="กลับมุมมองกิลด์">⌂</button><button id="hero-toggle" aria-label="ออกไปข้างนอกเป็นหัวหน้ากิลด์" title="ออกไปข้างนอกเอง">⚔</button></div>
-   <div id="hero-hud" class="hero-hud" hidden><div class="hero-status"><div class="hs-top"><span id="hero-cls" class="hs-cls">🛡</span><div><b id="hero-name">หัวหน้ากิลด์</b><small id="hero-level">Lv.1</small></div></div><div class="hero-bar hp"><i id="hero-hp"></i></div><div class="hero-bar xp"><i id="hero-xp"></i></div><div class="hero-bar ult"><i id="hero-ultbar"></i></div><small id="hero-info"></small><div id="hero-pack" class="hero-pack"></div><div id="hero-jobs" class="hero-jobs"></div><div id="hero-order" class="hero-order" hidden><button type="button" data-hero-order="follow">ตามมา</button><button type="button" data-hero-order="attack">บุก</button><button type="button" data-hero-order="hold">รอ</button></div><button id="hero-exit" type="button">🏠 กลับกิลด์</button></div><div id="hero-call" class="hero-call" hidden></div><canvas id="hero-map" class="hero-map" width="220" height="150" aria-label="แผนที่เล็ก"></canvas><div id="hero-stick" class="hero-stick" aria-label="เดิน (WASD)"><i></i></div><div class="hero-buttons"><button id="hero-act" type="button" hidden>✋<small>เก็บ</small></button><button id="hero-ult" type="button" aria-label="ท่าไม้ตาย (U)">💥<small>ไม้ตาย</small><i class="cd"></i></button><button id="hero-s2" type="button" aria-label="สกิล 2 (L)">🛡<small>สกิล 2</small><i class="cd"></i></button><button id="hero-s1" type="button" aria-label="สกิล 1 (K)">🌀<small>สกิล 1</small><i class="cd"></i></button><button id="hero-dash" type="button" aria-label="หลบ (Shift)">💨<small>หลบ</small><i class="cd"></i></button><button id="hero-attack" type="button" aria-label="โจมตี (J)">⚔<small>โจมตี</small></button></div><p class="hero-help">WASD เดิน · J/Space โจมตี · K สกิล 1 · L สกิล 2 · U ไม้ตาย · Shift หลบ · E เก็บ/ช่วยคน · แตะมอนเพื่อล็อกเป้า · เวลาเดินที่ ×1</p></div>
+   <div id="hero-hud" class="hero-hud" hidden><div class="hero-status"><div class="hs-top"><span id="hero-cls" class="hs-cls">🛡</span><div><b id="hero-name">หัวหน้ากิลด์</b><small id="hero-level">Lv.1</small></div></div><div class="hero-bar hp"><i id="hero-hp"></i></div><div class="hero-bar xp"><i id="hero-xp"></i></div><div class="hero-bar ult"><i id="hero-ultbar"></i></div><small id="hero-info"></small><small id="hero-buffs"></small><div id="hero-pack" class="hero-pack"></div><div id="hero-jobs" class="hero-jobs"></div><div id="hero-order" class="hero-order" hidden><button type="button" data-hero-order="follow">ตามมา</button><button type="button" data-hero-order="attack">บุก</button><button type="button" data-hero-order="hold">รอ</button></div><button id="hero-exit" type="button">🏠 กลับกิลด์</button></div><div id="hero-call" class="hero-call" hidden></div><aside id="hero-encounter-hud" class="hero-encounter-hud" aria-label="ภารกิจย่อย Hero" hidden></aside><canvas id="hero-map" class="hero-map" width="220" height="150" aria-label="แผนที่เล็ก"></canvas><div id="hero-stick" class="hero-stick" aria-label="เดิน (WASD)"><i></i></div><div class="hero-buttons"><button id="hero-act" type="button" hidden>✋<small>เก็บ</small></button><button id="hero-ult" type="button" aria-label="ท่าไม้ตาย (U)">💥<small>ไม้ตาย</small><i class="cd"></i></button><button id="hero-s2" type="button" aria-label="สกิล 2 (L)">🛡<small>สกิล 2</small><i class="cd"></i></button><button id="hero-s1" type="button" aria-label="สกิล 1 (K)">🌀<small>สกิล 1</small><i class="cd"></i></button><button id="hero-dash" type="button" aria-label="หลบ (Shift)">💨<small>หลบ</small><i class="cd"></i></button><button id="hero-attack" type="button" aria-label="โจมตี (J)">⚔<small>โจมตี</small></button></div><p class="hero-help">WASD เดิน · J/Space โจมตี · K สกิล 1 · L สกิล 2 · U ไม้ตาย · Shift หลบ · E เก็บ/ช่วยคน · แตะมอนเพื่อล็อกเป้า · เวลาเดินที่ ×1</p></div>
    <div class="corner-stack"><button id="goal-card" class="goal-card" type="button" aria-live="polite"></button><div id="near-goals" class="near-goals" aria-label="เป้าหมายใกล้ตัว"></div></div>
    <div id="event-banner" class="event-banner" hidden role="status"></div>
    <div id="follow-chip" class="follow-chip" hidden role="status"><span class="fc-dot" aria-hidden="true"></span><div class="fc-text"><b id="fc-name"></b><small id="fc-sub"></small></div><button id="fc-mission" type="button">ภารกิจ</button><button id="fc-stop" type="button" aria-label="หยุดติดตาม">✕</button></div>
@@ -731,6 +742,7 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
   <dialog id="celebrate-dialog" class="celebrate-dialog" aria-label="กิลด์เลื่อนระดับ"><div id="celebrate-content"></div></dialog>
   <dialog id="away-dialog" class="away-dialog" aria-label="ระหว่างที่คุณไม่อยู่"><div id="away-content"></div></dialog>
   <dialog id="call-dialog" class="event-dialog call-dialog" aria-labelledby="call-title"><div id="call-content"></div></dialog>
+  <dialog id="hero-event-dialog" class="event-dialog hero-event-dialog" aria-labelledby="hero-event-title"><div id="hero-event-content"></div></dialog>
   <dialog id="event-dialog" class="event-dialog" aria-labelledby="event-title"><div id="event-content"></div></dialog>
   <dialog id="report-dialog" class="report-dialog" aria-labelledby="report-title"><div id="report-content"></div></dialog>
   <dialog id="confirm-dialog"><h2 id="confirm-title"></h2><p id="confirm-message"></p><div class="dialog-actions"><button id="confirm-cancel" class="secondary">ยกเลิก</button><button id="confirm-ok" class="primary">ยืนยัน</button></div></dialog>
@@ -2702,6 +2714,241 @@ function spotFree(state, key, kind, x, y, rot) {
 
 return {villageBuildings,ROTATABLE,footprintOf,doorOf,routePath,homeOf,needsMet,homeStatus,housingCapacity,population,tickTown,pathTier,sanitizePaths,sanitizeHomes,spotFree};
 })();
+const HeroEvents=(()=>{
+/* Encounters for the player-controlled guild master. Their own saved random stream
+   keeps idle guild simulations unchanged; only time spent playing Hero advances them. */
+const { HERO_BOUNDS }=HeroData;
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const reward = (ctx, data) => ctx.reward(data);
+const buff = (state, kind) => { state.hero.encounters.buffs = [{ kind, left: 30 }]; };
+const toneNames = { funny: 'เรื่องปั่นข้างทาง', strange: 'เรื่องประหลาด', exciting: 'จังหวะลุ้น' };
+const BUFFS = {
+  tea: { name: 'ชาหกแต่ขาไว', speed: 1.25, power: 1, regen: 1 },
+  cape: { name: 'ผ้าคลุมตากผ้า', speed: 1, power: 1.2, regen: 1 },
+  mushroom: { name: 'จังหวะเห็ดดิสโก้', speed: 1.15, power: 1, regen: 1.5 },
+};
+
+const HERO_ENCOUNTERS = [
+  { id: 'gooseToll', tone: 'funny', icon: '♬', title: 'ห่านด่านตรวจเอกสาร',
+    text: 'ห่านตัวหนึ่งขวางทางแล้วร้อง “ก๊าบ!” สามครั้ง ชาวบ้านแปลให้ว่า: ใบอนุญาตเป็นตัวเอกหมดอายุแล้ว ต้องต่อที่ห่านเท่านั้น',
+    choices: [
+      { id: 'honk', label: 'ก๊าบกลับอย่างมืออาชีพ', desc: 'ชื่อเสียง +2 · XP +8', run: (s, c) => { reward(c, { rep: 2, xp: 8 }); return 'คุณก๊าบสำเนียงราชการ ห่านประทับใจจนประทับตราด้วยรอยเท้า ชาวบ้านยกให้เป็นล่ามประจำหมู่บ้าน'; } },
+      { id: 'pay', label: 'จ่ายค่าธรรมเนียมขนมปัง', cost: 10, desc: 'เงิน −10 G · ฟื้น HP 25', run: (s, c) => { reward(c, { hp: 25 }); return 'ห่านกินขนมปัง ส่วนคุณได้ขนมปังจากแม่ค้าผู้ขำจนมือสั่น ห่านยืนยันว่าไม่มีผลประโยชน์ทับซ้อน'; } },
+    ] },
+  { id: 'slimeUnion', tone: 'funny', icon: '◇', title: 'สไลม์ตั้งสหภาพ',
+    text: 'สไลม์สองตัวถือป้าย “หยุดตีตอนพักเที่ยง” พวกมันยื่นข้อเรียกร้องให้เพิ่มเวลางีบ และเลิกเรียกว่าเยลลี่เดินได้',
+    choices: [
+      { id: 'talk', label: 'เซ็นข้อตกลงพักเที่ยง', desc: 'สมุนไพร +2 · ชื่อเสียง +1', run: (s, c) => { reward(c, { herb: 2, rep: 1 }); return 'สไลม์มอบสมุนไพรแทนลายเซ็น แล้วถามว่ากิลด์รับสมัครฝ่ายบุคคลที่ไม่มีบุคคลไหม'; } },
+      { id: 'spar', label: 'ท้าดวลนอกเวลางาน', desc: 'สู้สไลม์ 2 ตัวใน 35 วิ · รางวัล 35 G และ XP +15', challenge: { kind: 'hunt', species: 'leafSlime', count: 2, seconds: 35, reward: { gold: 35, xp: 15 }, objective: 'ปราบสไลม์คู่เจรจากับทีมของคุณ', win: 'สไลม์ยอมรับผลดวล แล้วส่งใบเบิกโอทีมาให้คุณเซ็น', lose: 'สไลม์เลิกงานตรงเวลา คู่เจรจาเด้งกลับบ้านอย่างมีศักดิ์ศรี' } },
+    ] },
+  { id: 'teaSprint', tone: 'funny', icon: '♨', title: 'ชาเข้มจนรองเท้าสั่น',
+    text: 'ลุงร้านชาท้าให้ชิมสูตร “ตื่นยันชาติหน้า” บนถ้วยเขียนว่าอ่อนโยน แต่ช้อนข้าง ๆ กำลังวิ่งวนเอง',
+    choices: [
+      { id: 'drink', label: 'ชนถ้วยกับลุง', desc: 'เดินเร็วขึ้น 25% นาน 30 วิ', run: s => { buff(s, 'tea'); return 'ชาไม่ได้ทำให้คุณตาสว่างอย่างเดียว ตอนนี้รองเท้าตื่นก่อนเจ้าของแล้ว'; } },
+      { id: 'water', label: 'ขอน้ำเปล่าแบบไม่วิ่ง', desc: 'ฟื้น HP 20', run: (s, c) => { reward(c, { hp: 20 }); return 'ลุงบอกว่าสูตรนี้ปลอดภัย น้ำเปล่าส่ายหน้าเล็กน้อย แต่คุณเลือกเชื่อลุง'; } },
+    ] },
+  { id: 'laundryCape', tone: 'funny', icon: '⚑', title: 'ผ้าคลุมผู้กล้าหอมปรับผ้านุ่ม',
+    text: 'ผ้าปูเตียงปลิวมาติดไหล่คุณพอดี เด็ก ๆ ตะโกนว่า “ฮีโร่มาแล้ว!” เจ้าของผ้าตะโกนว่า “ผ้าเพิ่งซัก!”',
+    choices: [
+      { id: 'pose', label: 'ขอใส่เท่สักครึ่งนาที', desc: 'โจมตีแรงขึ้น 20% นาน 30 วิ', run: s => { buff(s, 'cape'); return 'เจ้าของผ้าอนุญาตถ้าไม่เปื้อน คุณตั้งชื่อท่าว่า พลังหอมติดทนนาน'; } },
+      { id: 'return', label: 'คืนผ้าแล้วช่วยตาก', desc: 'เงิน +15 G · ชื่อเสียง +2', run: (s, c) => { reward(c, { gold: 15, rep: 2 }); return 'ได้รับค่าช่วยตากผ้า เด็ก ๆ เรียกคุณว่า จอมยุทธ์ไม้หนีบผ้า'; } },
+    ] },
+  { id: 'mushroomDisco', tone: 'strange', icon: '♪', title: 'เห็ดดิสโก้ขอเพลง',
+    text: 'วงเห็ดเรืองแสงเปิดฟลอร์กลางทาง DJ เห็ดบอกว่าเพลงต่อไปต้องมีคนเต้น ไม่งั้นสปอร์จะน้อยใจ',
+    choices: [
+      { id: 'dance', label: 'เต้นท่าที่ไม่มีใครขอ', desc: 'เดินเร็วขึ้น 15% · ฟื้น HP เร็วขึ้น 50% นาน 30 วิ', run: s => { buff(s, 'mushroom'); return 'ท่าของคุณประหลาดจนเห็ดปรับ BPM ไม่ทัน แต่ฟลอร์แตกจริง ๆ'; } },
+      { id: 'clap', label: 'ปรบมือจากข้างเวที', desc: 'สมุนไพร +2 · XP +8', run: (s, c) => { reward(c, { herb: 2, xp: 8 }); return 'DJ แจกของที่ระลึกเป็นสมุนไพร ย้ำว่านี่ไม่ใช่หมวกของสมาชิกวง'; } },
+    ] },
+  { id: 'goblinAuction', tone: 'funny', icon: '◈', title: 'ประมูลกล่องที่ห้ามเขย่า',
+    text: 'ก็อบลินขายกล่องสุ่มราคา 20 G ยืนยันว่าไม่มีมอนอยู่ข้างใน เสียงจากกล่องพูดว่า “ถูกต้องครับ”',
+    choices: [
+      { id: 'buy', label: 'ซื้อด้วยความมั่นใจที่ผิดที่', cost: 20, desc: 'เงิน −20 G · 50% ได้ 55 G · อีก 50% ได้สมุนไพร 1', run: (s, c) => { if (random(s.hero.encounters) < .5) { reward(c, { gold: 55 }); return 'กล่องมีเงิน 55 G จริง ๆ เสียงเมื่อกี้คือก็อบลินทำเสียงเอง ฝีมือขายของน่ากลัวกว่ามอน'; } reward(c, { herb: 1 }); return 'กล่องมีสมุนไพรหนึ่งต้นกับกระดาษ “ครั้งหน้าอาจรวย” อย่างน้อยกระดาษไม่ได้กัด'; } },
+      { id: 'inspect', label: 'ถามว่ามีใบเสร็จไหม', desc: 'XP +6', run: (s, c) => { reward(c, { xp: 6 }); return 'ก็อบลินวิ่งหนีทันที คุณได้รับประสบการณ์การเป็นลูกค้าที่ร้านค้าไม่ต้องการ'; } },
+    ] },
+  { id: 'ghostHomework', tone: 'strange', icon: '☾', title: 'ผีลืมส่งการบ้าน',
+    text: 'เงาเย็นเฉียบโผล่จากต้นไม้ “ช่วยด้วย… ข้าถูกสาป…” มันยื่นสมุดคณิตศาสตร์: 7 + 8 เท่าไร ครูจะตรวจในอีกสามร้อยปี',
+    choices: [
+      { id: 'fifteen', label: 'ตอบ 15 อย่างมั่นใจ', desc: 'เงิน +20 G · XP +12', run: (s, c) => { reward(c, { gold: 20, xp: 12 }); return 'ผีโล่งใจจนโปร่งใสกว่าเดิม มอบค่าติวแล้วขอตัวไปหลอกครูว่าเครื่องพิมพ์เสีย'; } },
+      { id: 'seventyEight', label: 'ตอบ 78 เพราะเอามาต่อกัน', desc: 'ฟื้น HP 15 · XP +5', run: (s, c) => { reward(c, { hp: 15, xp: 5 }); return 'ผีหัวเราะจนลืมสาป อากาศรอบตัวอุ่นขึ้น มันบอกว่าจะไปลองถามครูศิลปะแทน'; } },
+    ] },
+  { id: 'talkingStone', tone: 'strange', icon: '◆', title: 'ก้อนหินอ่านอนาคต',
+    text: 'ก้อนหินกระซิบว่า “อีกสามวินาทีเจ้าจะตัดสินใจเรื่องโง่ ๆ” จากนั้นเสนอให้ลูบหัวเพื่อลุ้นสมบัติ มันไม่มีหัวที่เห็นชัด',
+    choices: [
+      { id: 'rub', label: 'ลูบด้านที่น่าจะเป็นหัว', desc: '60% ได้ 40 G · อีก 40% เสีย HP 12 (ไม่ทำให้สลบ)', run: (s, c) => { if (random(s.hero.encounters) < .6) { reward(c, { gold: 40 }); return 'หินจามเหรียญออกมา แล้วบอกว่าอนาคตเปลี่ยนได้ถ้าเกาคางถูกที่'; } reward(c, { hp: -12 }); return 'คุณลูบเท้าหิน มันสะดุ้งแล้วกลิ้งทับปลายรองเท้า คำทำนายแม่นอย่างน่าหงุดหงิด'; } },
+      { id: 'compliment', label: 'ชมว่ามันดูหนักแน่นดี', desc: 'หิน +2', run: (s, c) => { reward(c, { stone: 2 }); return 'หินเขินจนสะเก็ดหลุดสองก้อน ยืนยันว่าไม่ได้อาย แค่กัดเซาะตามธรรมชาติ'; } },
+    ] },
+  { id: 'lostCourier', tone: 'exciting', icon: '➶', title: 'พัสดุที่กำลังจาม',
+    text: 'คนส่งของข้อเท้าพลิกฝากพัสดุไปยังจุดนัดหมายใกล้ ๆ “อย่าช้านะ ยาในกล่องจะจาม!” กล่องสั่นเหมือนกำลังกลั้นอยู่',
+    choices: [
+      { id: 'deliver', label: 'รับวิ่งส่งเอง', desc: 'ไปถึงจุดแสงใน 35 วิ · รางวัล 40 G และ XP +18', challenge: { kind: 'reach', seconds: 35, range: 9, reward: { gold: 40, xp: 18 }, objective: 'นำพัสดุไปถึงจุดแสง', win: 'ส่งทันก่อนกล่องจาม! ผู้รับบอกว่านี่คือยารักษาอาการจามของกล่อง', lose: 'ส่งไม่ทัน คนส่งของมารับไปเอง กล่องจามจนใบเสร็จปลิว ไม่มีใครหักค่าปรับคุณ' } },
+      { id: 'splint', label: 'ช่วยหาไม้ดามข้อเท้าแทน', desc: 'ชื่อเสียง +2', run: (s, c) => { reward(c, { rep: 2 }); return 'ช่วยคนส่งของเดินต่อได้ เขายิ้มขอบคุณ ส่วนพัสดุบอก “ฮัดชิ่ว” เบา ๆ'; } },
+    ] },
+  { id: 'fallingStar', tone: 'exciting', icon: '✦', title: 'ดาวตกลงผิดที่',
+    text: 'ดาวดวงเล็กตกลงใกล้ ๆ มีเสียงประกาศจากฟ้าว่า “ของหล่น ใครเก็บได้เอาไปเลย แต่เราจะดูดกลับในสามสิบวินาที”',
+    choices: [
+      { id: 'chase', label: 'วิ่งตามแสงดาว!', desc: 'ไปถึงจุดแสงใน 30 วิ · ได้หีบไม้และ XP +20', challenge: { kind: 'reach', seconds: 30, range: 11, reward: { chest: 'wood', xp: 20 }, objective: 'เก็บดาวก่อนถูกดูดกลับ', win: 'คว้าดาวทัน! มันกลายเป็นหีบไม้ ท้องฟ้าขอให้คุณอย่าให้คะแนนบริการแค่ดาวเดียว', lose: 'ดาวถูกดูดกลับฟ้าพร้อมเสียง “ขออภัยในความไม่สะดวก” คุณยังมีรองเท้าครบคู่' } },
+      { id: 'wish', label: 'ขอพรให้เข่าไม่ลั่น', desc: 'ฟื้น HP 30', run: (s, c) => { reward(c, { hp: 30 }); return 'ดาวกะพริบรับคำขอ เข่าของคุณเงียบลง ส่วนกระเป๋าเงินยังเงียบเหมือนเดิม'; } },
+    ] },
+  { id: 'echoDuel', tone: 'exciting', icon: '⚔', title: 'เงาท้าดวลแต่จำท่าไม่ได้',
+    text: 'เงาของคุณหลุดออกมาท้าดวล มันแปลงเป็นเห็ดนักสู้แล้วถามว่า “ท่าฟันหมุนกดปุ่มไหนนะ?” นี่เป็นโอกาสก่อนมันอ่านคู่มือจบ',
+    choices: [
+      { id: 'duel', label: 'ดวลก่อนมันจำปุ่มได้', desc: 'ปราบเงา 1 ตัวใน 40 วิ · รางวัล 45 G และ XP +25', challenge: { kind: 'hunt', species: 'mushHopper', count: 1, seconds: 40, reward: { gold: 45, xp: 25 }, objective: 'ปราบเงานักสู้กับทีมของคุณ', win: 'เงาขอยอมแพ้ แล้วกลับมาติดเท้าคุณพร้อมบ่นว่าเกมนี้ไม่มีปุ่มง่ายกว่านี้หรือ', lose: 'เงากลับมาติดเท้าเพราะอ่านคู่มือไม่เข้าใจ ถือว่าเสมอแบบไม่มีกรรมการ' } },
+      { id: 'pose', label: 'ท้าประกวดท่ายืนเท่แทน', desc: 'XP +10 · ชื่อเสียง +1', run: (s, c) => { reward(c, { xp: 10, rep: 1 }); return 'เงาทำท่าเดียวกับคุณทุกครั้ง กรรมการให้เสมอ แต่ชาวบ้านยกให้คุณชนะเพราะมีสี'; } },
+    ] },
+  { id: 'honeyAlarm', tone: 'exciting', icon: '!', title: 'สัญญาณเตือนขโมยน้ำผึ้ง',
+    text: 'ผึ้งสามตัวเข้าใจว่าคุณเป็นโจร เพราะเสื้อสีเดียวกับป้ายผู้ต้องสงสัย เจ้าของสวนขอให้ช่วยหยุดพวกมันโดยไม่ทำต้นชาเสียหาย',
+    choices: [
+      { id: 'fight', label: 'ใช้ฝีมือเคลียร์ความเข้าใจผิด', desc: 'สู้ผึ้ง 3 ตัวใน 45 วิ · รางวัล 45 G และสมุนไพร +3', challenge: { kind: 'hunt', species: 'fuzzBee', count: 3, seconds: 45, reward: { gold: 45, herb: 3 }, objective: 'ปราบผึ้งทั้งสามกับทีมของคุณ', win: 'ผึ้งเลิกไล่ เจ้าของสวนแจกค่าขอโทษและรับปากว่าจะวาดป้ายผู้ต้องสงสัยให้ชัดกว่านี้', lose: 'คนสวนเป่านกหวีดเรียกผึ้งกลับรัง ป้ายใหม่เขียนว่า “อย่าจับคนจากสีเสื้อ”' } },
+      { id: 'explain', label: 'ชูใบเสร็จร้านน้ำผึ้ง', desc: 'ฟื้น HP 20 · ชื่อเสียง +1', run: (s, c) => { reward(c, { hp: 20, rep: 1 }); return 'ผึ้งอ่านใบเสร็จแล้วผงกหัว คนสวนยอมรับว่าแผนกสืบสวนของสวนยังต้องอบรม'; } },
+    ] },
+  { id: 'fakeBoss', tone: 'funny', icon: '♛', title: 'บอสประจำซอยเพิ่งเปิดตัว',
+    text: 'กระต่ายใส่มงกุฎกระดาษตะโกนว่า “ข้าคือภัยพิบัติ!” เสียงเด็กหลังพุ่มไม้กระซิบ “อย่าลืมประโยคที่ซ้อมสิ”',
+    choices: [
+      { id: 'act', label: 'เล่นบทผู้กล้าประกอบฉาก', desc: 'ดวลกระต่าย 1 ตัวใน 30 วิ · รางวัล 25 G และ XP +12', challenge: { kind: 'hunt', species: 'hornHare', count: 1, seconds: 30, reward: { gold: 25, xp: 12 }, objective: 'ชนะบอสกระดาษกับทีมของคุณ', win: 'บอสล้มอย่างสมศักดิ์ศรี เด็ก ๆ ปรบมือแล้วขอจองคุณเล่นภาคสอง', lose: 'ผู้กำกับสั่งคัต กระต่ายลืมบทและวิ่งไปกินหญ้าแทน ไม่มีการเรียกเก็บค่าถ่ายซ่อม' } },
+      { id: 'audience', label: 'เป็นผู้ชมแถวหน้า', desc: 'ฟื้น HP 15 · ชื่อเสียง +1', run: (s, c) => { reward(c, { hp: 15, rep: 1 }); return 'เด็กแจกขนมและที่นั่ง VIP บอสกระดาษแพ้ลมก่อนถึงฉากสุดท้าย'; } },
+    ] },
+  { id: 'umbrellaOracle', tone: 'strange', icon: '☂', title: 'พยากรณ์อากาศจากร่มพูดได้',
+    text: 'ร่มลอยได้พยากรณ์ว่า “วันนี้ฝนเหรียญ 0% แต่ถ้าเดินไปทางนั้นอาจมีของหล่น 100%” มันชี้ด้วยด้ามอย่างสุภาพ',
+    choices: [
+      { id: 'follow', label: 'ตามคำพยากรณ์', desc: 'ไปถึงจุดแสงใน 35 วิ · ได้ 30 G และไม้ +3', challenge: { kind: 'reach', seconds: 35, range: 8, reward: { gold: 30, wood: 3 }, objective: 'หาของหล่นตามที่ร่มชี้', win: 'เจอถุงเหรียญกับไม้ที่มีคนฝากไว้ ร่มกระซิบว่าอาชีพเสริมของมันคือพนักงานส่งของ', lose: 'ร่มเปลี่ยนคำพยากรณ์เป็น “ของหล่นถูกเก็บแล้ว 100%” แล้วแกล้งหุบตัว' } },
+      { id: 'forecast', label: 'ถามโอกาสฝนตกในใจ', desc: 'XP +8', run: (s, c) => { reward(c, { xp: 8 }); return 'ร่มเปิดตัวเต็มที่แล้วพูด “พกเราไว้ดีกว่า” คุณเพิ่งเจอการขายตรงที่มีมารยาทที่สุด'; } },
+    ] },
+];
+const definitions = new Map(HERO_ENCOUNTERS.map(e => [e.id, e]));
+
+function createHeroEncounters(seed = 1) {
+  return { rng: (seed >>> 0) || 1, nextIn: 24, travel: 0, killsAtLast: 0, serial: 0, recent: [], history: [], pending: null, challenge: null, buffs: [] };
+}
+function random(e) { e.rng = (Math.imul(e.rng, 1664525) + 1013904223) >>> 0; return e.rng / 4294967296; }
+function heroEncounterModifiers(hero) {
+  const result = { speed: 1, power: 1, regen: 1 };
+  for (const b of hero.encounters?.buffs || []) if (b.left > 0 && BUFFS[b.kind]) for (const key of Object.keys(result)) result[key] *= BUFFS[b.kind][key];
+  return result;
+}
+function remember(state, ctx, def, outcome) {
+  const e = state.hero.encounters;
+  e.history.unshift({ id: def.id, day: state.day, outcome }); e.history.length = Math.min(e.history.length, 16);
+  ctx.log(`${def.icon} ${def.title} — ${outcome}`, 'event');
+}
+function resetPacing(hero) {
+  const e = hero.encounters; e.nextIn = 65 + random(e) * 50; e.travel = 0; e.killsAtLast = hero.kills;
+}
+function removeChallengeMonsters(state) {
+  const ids = new Set(state.hero.encounters.challenge?.monsterIds || []);
+  state.world.monsters = state.world.monsters.filter(m => !ids.has(m.id));
+}
+function finishChallenge(state, ctx, won, reason = '') {
+  const e = state.hero.encounters, challenge = e.challenge, def = definitions.get(challenge.eventId);
+  const choice = def.choices.find(c => c.id === challenge.choiceId);
+  removeChallengeMonsters(state); e.challenge = null;
+  if (won) reward(ctx, { ...choice.challenge.reward, from: def.title });
+  const outcome = reason || (won ? choice.challenge.win : choice.challenge.lose);
+  e.notice = { eventId: def.id, outcome, won, left: 12 };
+  remember(state, ctx, def, outcome);
+}
+function cancelHeroEncounters(state, ctx) {
+  const e = state.hero.encounters; if (!e) return;
+  if (e.challenge) finishChallenge(state, ctx, false, 'กลับกิลด์ก่อนจบเหตุการณ์ · ไม่เสียค่าปรับ');
+  e.pending = null; e.buffs = []; delete e.notice; delete e.lastX; delete e.lastY;
+}
+function recordHeroEncounterKill(hero, monster) {
+  const c = hero.encounters?.challenge;
+  if (c?.kind === 'hunt' && c.monsterIds.includes(monster.id) && !c.defeated.includes(monster.id)) c.defeated.push(monster.id);
+}
+function tickHeroEncounters(state, ctx, dt) {
+  const hero = state.hero; if (!hero) return;
+  if (!hero.active) { const e = hero.encounters; if (e && (e.pending || e.challenge || e.buffs.length || e.notice)) cancelHeroEncounters(state, ctx); return; }
+  const e = hero.encounters ??= createHeroEncounters(state.seed + 37);
+  if (hero.down > 0) { if (e.challenge) finishChallenge(state, ctx, false, 'ชาวบ้านหามกลับกิลด์แล้ว · เหตุการณ์ยุติ ไม่มีค่าปรับ'); e.pending = null; e.lastX = hero.x; e.lastY = hero.y; return; }
+  for (const b of e.buffs) b.left = Math.max(0, b.left - dt); e.buffs = e.buffs.filter(b => b.left > 0);
+  if (e.notice) { e.notice.left -= dt; if (e.notice.left <= 0) delete e.notice; }
+  if (Number.isFinite(e.lastX)) e.travel += Math.min(distance(hero, { x: e.lastX, y: e.lastY }), 12 * dt);
+  e.lastX = hero.x; e.lastY = hero.y;
+  if (e.challenge) {
+    const c = e.challenge; c.left = Math.max(0, c.left - dt);
+    const won = c.kind === 'reach' ? distance(hero, c.goal) <= 1.2 : c.defeated.length >= c.monsterIds.length;
+    if (won) finishChallenge(state, ctx, true);
+    else if (c.left <= 0 || (c.kind === 'hunt' && c.monsterIds.some(id => !c.defeated.includes(id) && !state.world.monsters.some(m => m.id === id && !m.dead)))) finishChallenge(state, ctx, false);
+    return;
+  }
+  if (e.pending) return;
+  e.nextIn = Math.max(0, e.nextIn - dt);
+  if (e.nextIn > 0 || (state.heroCall && (state.heroCall.step !== 'done' || state.heroCall.report)) || hero.carry || (e.travel < 10 && hero.kills <= e.killsAtLast) || state.director?.pending || state.director?.active || state.director?.incoming) return;
+  // Give the player a breath between fights, never cover an incoming attack with a choice.
+  if (state.world.monsters.some(m => !m.dead && distance(m, hero) < 4.5)) return;
+  const last = definitions.get(e.recent[0]);
+  const pool = HERO_ENCOUNTERS.filter(def => !e.recent.slice(0, 3).includes(def.id) && def.tone !== last?.tone);
+  const def = pool[Math.floor(random(e) * pool.length)];
+  e.pending = { id: def.id, serial: ++e.serial }; e.recent.unshift(def.id); e.recent.length = Math.min(6, e.recent.length);
+  resetPacing(hero);
+  ctx.log(`${def.icon} ${def.title} — หัวหน้ากิลด์เจอเรื่องระหว่างเดินทาง`, 'event');
+}
+function resolveHeroEncounter(state, ctx, choiceId) {
+  const hero = state.hero, e = hero?.encounters;
+  if (!hero?.active || hero.down > 0 || !e?.pending) return { ok: false, message: 'ไม่มีเหตุการณ์ Hero รอตัดสินใจ' };
+  const def = definitions.get(e.pending.id);
+  if (choiceId === 'leave') { e.pending = null; remember(state, ctx, def, 'เดินต่ออย่างปลอดภัย ไม่เสียอะไร'); return { ok: true, message: 'คุณเดินต่อ เรื่องนี้เอาไว้เล่าตอนกลับกิลด์' }; }
+  const choice = def.choices.find(c => c.id === choiceId);
+  if (!choice) return { ok: false, message: 'ตัวเลือกไม่ถูกต้อง' };
+  if (choice.cost && state.gold < choice.cost) return { ok: false, message: `เงินกิลด์ไม่พอ ต้องใช้ ${choice.cost} G` };
+  if (choice.cost) ctx.pay(choice.cost, def.title);
+  e.pending = null;
+  if (!choice.challenge) { const message = choice.run(state, ctx); remember(state, ctx, def, message); return { ok: true, message }; }
+  const spec = choice.challenge;
+  const bounds = ctx.bounds || { ...HERO_BOUNDS, x1: HERO_BOUNDS.westOnly };
+  const challenge = { eventId: def.id, choiceId: choice.id, kind: spec.kind, left: spec.seconds, monsterIds: [], defeated: [] };
+  if (spec.kind === 'reach') {
+    const angle = random(e) * Math.PI * 2;
+    challenge.goal = { x: clamp(hero.x + Math.cos(angle) * spec.range, bounds.x0 + 2, bounds.x1 - 2), y: clamp(hero.y + Math.sin(angle) * spec.range, bounds.y0 + 2, bounds.y1 - 2) };
+  } else for (let i = 0; i < spec.count; i++) {
+    const angle = i * Math.PI * 2 / spec.count, at = { x: clamp(hero.x + Math.cos(angle) * 2.8, bounds.x0 + 1, bounds.x1 - 1), y: clamp(hero.y + Math.sin(angle) * 2.8, bounds.y0 + 1, bounds.y1 - 1) };
+    challenge.monsterIds.push(ctx.spawn(spec.species, at, def.id));
+  }
+  e.challenge = challenge;
+  return { ok: true, message: `${spec.objective} · ${spec.seconds} วินาที` };
+}
+function abandonHeroChallenge(state, ctx) {
+  if (!state.hero?.active || !state.hero.encounters?.challenge) return { ok: false, message: 'ไม่มีภารกิจย่อย Hero' };
+  finishChallenge(state, ctx, false, 'ขอถอนตัวจากเหตุการณ์ · ไม่เสียค่าปรับ');
+  return { ok: true, message: 'ถอนตัวแล้ว เดินสำรวจต่อได้เลย' };
+}
+function heroEncounterView(state) {
+  const hero = state.hero, e = hero?.encounters;
+  if (!hero?.active || !e) return null;
+  const def = definitions.get(e.pending?.id);
+  const pending = def ? { ...e.pending, title: def.title, text: def.text, icon: def.icon, tone: toneNames[def.tone], choices: [...def.choices.map(c => ({ id: c.id, label: c.label, desc: c.desc, disabled: Boolean(c.cost && state.gold < c.cost) })), { id: 'leave', label: 'เดินต่อก่อน', desc: 'ไม่เสียอะไร · ข้ามเหตุการณ์นี้' }] } : null;
+  const challenge = e.challenge, activeDef = definitions.get(challenge?.eventId), choice = activeDef?.choices.find(c => c.id === challenge.choiceId);
+  const notice = e.notice && definitions.has(e.notice.eventId) ? { ...e.notice, title: definitions.get(e.notice.eventId).title } : null;
+  return { pending, notice, challenge: choice ? { ...challenge, title: activeDef.title, icon: activeDef.icon, objective: choice.challenge.objective, need: choice.challenge.count || 1, have: challenge.kind === 'hunt' ? challenge.defeated.length : 0, distance: challenge.goal ? distance(hero, challenge.goal) : null } : null, buffs: e.buffs.filter(b => b.left > 0 && BUFFS[b.kind]).map(b => ({ ...b, name: BUFFS[b.kind].name })) };
+}
+
+function sanitizeHeroEncounters(data, hero, monsters = []) {
+  const fresh = createHeroEncounters(); if (!data || typeof data !== 'object') return fresh;
+  const number = (v, lo, hi, fallback) => Number.isFinite(v) ? clamp(v, lo, hi) : fallback;
+  fresh.rng = Number.isInteger(data.rng) ? (data.rng >>> 0) || 1 : 1;
+  fresh.nextIn = number(data.nextIn, 0, 115, 24); fresh.travel = number(data.travel, 0, 1000, 0);
+  fresh.killsAtLast = number(data.killsAtLast, 0, hero.kills, hero.kills); fresh.serial = Math.floor(number(data.serial, 0, 1e9, 0));
+  fresh.recent = (Array.isArray(data.recent) ? data.recent : []).filter(id => definitions.has(id)).slice(0, 6);
+  fresh.history = (Array.isArray(data.history) ? data.history : []).filter(h => h && definitions.has(h.id)).slice(0, 16).map(h => ({ id: h.id, day: Math.floor(number(h.day, 1, 1e7, 1)), outcome: String(h.outcome || '').slice(0, 300) }));
+  if (!hero.active) return fresh;
+  if (definitions.has(data.notice?.eventId) && Number.isFinite(data.notice.left) && data.notice.left > 0) fresh.notice = { eventId: data.notice.eventId, outcome: String(data.notice.outcome || '').slice(0, 300), won: Boolean(data.notice.won), left: Math.min(12, data.notice.left) };
+  fresh.buffs = (Array.isArray(data.buffs) ? data.buffs : []).filter(b => b && BUFFS[b.kind] && Number.isFinite(b.left) && b.left > 0).slice(0, 1).map(b => ({ kind: b.kind, left: Math.min(30, b.left) }));
+  if (definitions.has(data.pending?.id)) fresh.pending = { id: data.pending.id, serial: fresh.serial };
+  const c = data.challenge, choice = definitions.get(c?.eventId)?.choices.find(x => x.id === c.choiceId && x.challenge);
+  if (choice && !fresh.pending && Number.isFinite(c.left) && c.left > 0) {
+    const spec = choice.challenge, validGoal = c.goal && Number.isFinite(c.goal.x) && Number.isFinite(c.goal.y) && c.goal.x >= HERO_BOUNDS.x0 && c.goal.x <= HERO_BOUNDS.x1 && c.goal.y >= HERO_BOUNDS.y0 && c.goal.y <= HERO_BOUNDS.y1;
+    const ids = (Array.isArray(c.monsterIds) ? c.monsterIds : []).filter(id => typeof id === 'string').slice(0, spec.count || 0);
+    const defeated = [...new Set((Array.isArray(c.defeated) ? c.defeated : []).filter(id => ids.includes(id)))];
+    if (spec.kind === 'reach' ? validGoal : ids.length === spec.count && new Set(ids).size === ids.length && ids.every(id => defeated.includes(id) || monsters.some(m => m.id === id && m.heroEncounter === c.eventId && m.species === spec.species && !m.dead))) {
+      fresh.challenge = { eventId: c.eventId, choiceId: c.choiceId, kind: spec.kind, left: Math.min(spec.seconds, c.left), monsterIds: ids, defeated, ...(spec.kind === 'reach' ? { goal: { x: c.goal.x, y: c.goal.y } } : {}) };
+    }
+  }
+  return fresh;
+}
+
+return {HERO_ENCOUNTERS,createHeroEncounters,heroEncounterModifiers,cancelHeroEncounters,recordHeroEncounterKill,tickHeroEncounters,resolveHeroEncounter,abandonHeroChallenge,heroEncounterView,sanitizeHeroEncounters};
+})();
 const Life=(()=>{
 /* The living world: adventurers (guild members and free adventurers) walk out to hunting grounds,
    fight monsters in real time, carry fallen friends home, and sell their loot in the village.
@@ -2709,6 +2956,8 @@ const Life=(()=>{
 const { siteQuestRoute, SITE_QUEST_SITES, FRONTIER_CAMP }=Site;
 const { HERO, HERO_BOUNDS, HERO_CLASSES, HERO_TREE, HERO_GEAR, GATHER_NODES, NODE_KINDS, CONTRACT_KINDS, gatherYield, computeHeroStats, heroXpNeeded }=HeroData;
 const { PARTS, HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES, JOB_COMBAT }=Content;
+
+const { createHeroEncounters, heroEncounterModifiers, recordHeroEncounterKill }=HeroEvents;
 
 const SUB = 0.25;          // seconds per combat step
 const WALK = 1.7;          // tiles per second
@@ -2905,6 +3154,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   emit({ type: 'hit', id: m.id, from: h.id, x: m.x, y: m.y, fx: h.x, fy: h.y, amount: Math.round(dmg), kind, crit: dmg > h.power * .6 });
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(state.world) * 20; state.world.kills++;
+  if (h.escort && state.hero?.active) recordHeroEncounterKill(state.hero, m);
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
   ctx.codex?.(m.species);
   const s = statsOf(m.species), party = state.world.hunters.filter(o => o.party === h.party && o.mode === 'hunt' && dist(o, m) < 9);
@@ -3062,7 +3312,7 @@ function monsterAct(state, ctx, m, dt) {
   if (m.air > 0) return;
   if (trait === 'regen' && m.calm > 3) m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .015 * dt);
   // Quest parties only meet their own quest's foes; wild monsters leave them be.
-  const targets = m.call ? [] : w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend', 'escort'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
+  const targets = m.call ? [] : w.hunters.filter(h => (!m.heroEncounter || h.escort) && ['hunt', 'go', 'return', 'carry', 'defend', 'escort'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
   const hero = state.hero;
   if (m.windup > 0) { m.windup -= dt; if (m.windup <= 0) callCharge(state, ctx, m); return; }
   if (m.dormant) { m.target = null; m.fighting = false; m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .05 * dt); return; }
@@ -3289,14 +3539,18 @@ function addFree(state, ctx, affinity = null) {
 function worldRandom(state) { return rand(state.world); }
 
 // ---- The guild master, played by the player: four classes, combos, skills, a finisher, gathering, rescues and companions. ----
-function heroStats(heroOrLevel) { return typeof heroOrLevel === 'number' ? computeHeroStats({ level: heroOrLevel }) : computeHeroStats(heroOrLevel); }
+function heroStats(heroOrLevel) {
+  const st = typeof heroOrLevel === 'number' ? computeHeroStats({ level: heroOrLevel }) : computeHeroStats(heroOrLevel);
+  if (typeof heroOrLevel === 'object') { const mods = heroEncounterModifiers(heroOrLevel); st.power *= mods.power; st.regen *= mods.regen; }
+  return st;
+}
 const PACK = () => ({ gold: 0, wood: 0, stone: 0, herb: 0, heartwood: 0, ore: 0, glowHerb: 0, parts: {} });
-function createHero() {
+function createHero(seed = 1) {
   const hp = computeHeroStats({ level: 1, cls: 'warrior' }).maxHp;
   return { active: false, x: 0, y: 0, hp, maxHp: hp, level: 1, xp: 0, atkCd: 0, s1Cd: 0, s2Cd: 0, dashCd: 0, dash: 0, dashT: 0, iframe: 0, down: 0, fx: 0, fy: 1, kills: 0, id: 'hero', mode: 'hunt', guard: 0,
     cls: 'warrior', classChosen: false, tree: {}, gear: {}, owned: [], mats: { heartwood: 0, ore: 0, glowHerb: 0 }, pack: PACK(), ult: 0, combo: 0, comboT: 0, lock: null, carry: null,
     companions: [], order: 'follow', injuredUntil: 0, nodes: {}, contracts: [], contractDay: 0, selfKills: {}, traps: [], focus: 0, gatherCd: 0, gatherDay: 0, gatheredToday: 0,
-    stats: { gathered: 0, rescued: 0, contracts: 0, led: 0 } };
+    stats: { gathered: 0, rescued: 0, contracts: 0, led: 0 }, encounters: createHeroEncounters(seed) };
 }
 const heroBoundsX = (ctx) => (ctx.guildRankIndex?.() ?? 0) >= 4 ? HERO_BOUNDS.x1 : HERO_BOUNDS.westOnly;
 function heroHurt(state, ctx, m, dmg) {
@@ -3331,6 +3585,7 @@ function heroStrike(state, ctx, m, dmg, kind, quiet = false) {
   if (!quiet) emit({ type: 'hit', id: m.id, from: 'hero', x: m.x, y: m.y, fx: hero.x, fy: hero.y, amount: Math.round(dmg), kind, crit: dmg > st.power * 1.4 });
   if (m.hp > 0) return true;
   m.dead = true; m.respawn = 30 + rand(w) * 20; w.kills++; hero.kills++;
+  recordHeroEncounterKill(hero, m);
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
   ctx.codex?.(m.species);
   const s = statsOf(m.species), pack = hero.pack;
@@ -3343,16 +3598,20 @@ function heroStrike(state, ctx, m, dmg, kind, quiet = false) {
   hero.selfKills[m.species] = (hero.selfKills[m.species] || 0) + 1;
   // Companions learn from the fight beside the master.
   for (const id of hero.companions) { const who = state.members.find(x => x.id === id); if (who) ctx.addXp?.(who, Math.round(s.xp * .4)); }
-  hero.xp += s.xp;
+  addHeroXp(state, ctx, s.xp);
+  ctx.heroKill?.(m);
+  if (m.raid || m.boss) ctx.onSpecialKill?.(m, hero);
+  return true;
+}
+function addHeroXp(state, ctx, amount) {
+  const hero = state.hero;
+  hero.xp += amount;
   while (hero.xp >= heroXpNeeded(hero.level)) {
     hero.xp -= heroXpNeeded(hero.level); hero.level += 1;
     const ns = heroStats(hero); hero.maxHp = ns.maxHp; hero.hp = ns.maxHp;
     emit({ type: 'level', id: 'hero', x: hero.x, y: hero.y, level: hero.level });
     ctx.log(`⭐ หัวหน้ากิลด์เลเวลอัปเป็น Lv.${hero.level}! ได้แต้มทักษะ 1 แต้ม`, 'success');
   }
-  ctx.heroKill?.(m);
-  if (m.raid || m.boss) ctx.onSpecialKill?.(m, hero);
-  return true;
 }
 /** The foe the master means: the locked one, else the nearest ahead, else the nearest close by. */
 function heroTarget(state, living, range) {
@@ -3483,7 +3742,7 @@ function tickHero(state, ctx, dt) {
   const len = Math.hypot(input.dx || 0, input.dy || 0);
   if (input.dash && hero.dashCd <= 0) { hero.dash = HERO.dashTime; hero.dashT = 0; hero.perfectUsed = false; hero.dashCd = HERO.dashCd; input.dash = false; emit({ type: 'dash', id: 'hero', x: hero.x, y: hero.y }); }
   if (len > 0.05) { hero.fx = input.dx / len; hero.fy = input.dy / len; }
-  const carrying = Boolean(hero.carry), speed = hero.dash > 0 ? HERO.dashSpeed : len > 0.05 ? HERO.speed * Math.min(1, len) * (carrying ? HERO.carrySpeed : 1) : 0;
+  const carrying = Boolean(hero.carry), speed = hero.dash > 0 ? HERO.dashSpeed : len > 0.05 ? HERO.speed * Math.min(1, len) * heroEncounterModifiers(hero).speed * (carrying ? HERO.carrySpeed : 1) : 0;
   if (speed) { const b = HERO_BOUNDS; hero.x = clamp(hero.x + hero.fx * speed * dt, b.x0, heroBoundsX(ctx)); hero.y = clamp(hero.y + hero.fy * speed * dt, b.y0, b.y1); }
   hero.moving = speed > 0;
   const door = ctx.door(), atHome = Math.hypot(hero.x - door.x, hero.y - door.y) < 2.5;
@@ -3562,6 +3821,8 @@ function sanitizeHero(data) {
   h.contractDay = int(data.contractDay, 0, 1e7) ? data.contractDay : 0;
   h.contracts = (Array.isArray(data.contracts) ? data.contracts : []).filter(c => c && CONTRACT_KINDS[c.kind] && typeof c.id === 'string').slice(0, 4)
     .map(c => ({ id: c.id.slice(0, 30), kind: c.kind, day: int(c.day, 0, 1e7) ? c.day : 0, zone: HUNT_ZONES[c.zone] ? c.zone : null, have: int(c.have, 0, 1e5) ? c.have : 0, need: int(c.need, 1, 1e5) ? c.need : 1, done: c.done === true, monsterId: typeof c.monsterId === 'string' ? c.monsterId.slice(0, 30) : null }));
+  for (const [key, max] of Object.entries({ down: HERO.downTime, atkCd: HERO_CLASSES[h.cls].attack.cd, s1Cd: HERO_CLASSES[h.cls].s1.cd, s2Cd: HERO_CLASSES[h.cls].s2.cd, dashCd: HERO.dashCd, dash: HERO.dashTime })) if (num(data[key], 0, max)) h[key] = data[key];
+  if (h.hp <= 0 && h.down <= 0) h.down = HERO.downTime;
   return h;
 }
 
@@ -3747,7 +4008,7 @@ function recallExpedition(state, ctx, mission) {
   if (mission.rt) { mission.rt.stage = 'return'; mission.rt.won = false; }
 }
 
-return {INN,drainFx,createWorld,pointIn,spawnMonster,freeLevelRank,rallyToBoss,freeStats,BOSS_PHASES,stageHeroCall,releaseCallFallen,tickLife,rallyDefenders,recallHunters,addFree,worldRandom,heroStats,createHero,heroNearby,setHeroActive,sanitizeHero,QUEST_FOES,QUEST_BOSS,DEFEND_FIELDS,EXPEDITION,CAMP_AT,startExpedition,recallExpedition};
+return {INN,drainFx,createWorld,pointIn,spawnMonster,freeLevelRank,rallyToBoss,freeStats,BOSS_PHASES,stageHeroCall,releaseCallFallen,tickLife,rallyDefenders,recallHunters,addFree,worldRandom,heroStats,createHero,addHeroXp,heroNearby,setHeroActive,sanitizeHero,QUEST_FOES,QUEST_BOSS,DEFEND_FIELDS,EXPEDITION,CAMP_AT,startExpedition,recallExpedition};
 })();
 const Storyteller=(()=>{
 /* The storyteller: small happenings, choices to make and big events, paced so they never pile up.
@@ -6049,12 +6310,13 @@ const { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,p
 const { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,TOWN_CAPS,STAFF,STAFF_MAX_LEVEL,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES }=Content;
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
-const { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, stageHeroCall, releaseCallFallen, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, heroNearby, heroStats, startExpedition, recallExpedition }=Life;
+const { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, stageHeroCall, releaseCallFallen, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, addHeroXp, heroNearby, heroStats, startExpedition, recallExpedition }=Life;
+const { tickHeroEncounters, resolveHeroEncounter, abandonHeroChallenge, cancelHeroEncounters, sanitizeHeroEncounters }=HeroEvents;
 const { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector }=Storyteller;
 const { SPECIES }=Bestiary;
 const { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf }=Town;
 const { goalBoard, claimGoal, sanitizeMastery, setGoalJobs }=Goals;
-const { HERO_CLASSES, HERO_TREE, HERO_GEAR, CLASS_CHANGE_FEE, CONTRACT_KINDS, RARE_MATS, treePoints }=HeroData;
+const { HERO_CLASSES, HERO_TREE, HERO_GEAR, CLASS_CHANGE_FEE, HERO_BOUNDS, CONTRACT_KINDS, RARE_MATS, treePoints }=HeroData;
 const { createProgress, sanitizeProgress, addChest, rollChest, recordKill, recordTreasure, offerPolicies, choosePolicy, hasPolicy, newDailyGoals, dailyView, POLICIES, CHESTS, CHEST_RARITIES, TREASURE_SETS, CODEX_FAMILIES }=Progress;
 const { createFestivals, startFestival, tickFestivals, sanitizeFestivals, festivalStatus, festivalVisitors, festivalEntrants }=Festivals;
 const { createExams, registerExam, withdrawExam, tickExams, sanitizeExams }=Exams;
@@ -6157,7 +6419,7 @@ function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, frontier: { camp: 0 }, bounty: null, mastery: { claimed: {} }, exams: createExams(), festivals: createFestivals(), eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0, today: newDay(1), history: [],
     policy: { memberHunting: true, autoPetitions: true, registration: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0, bounties: 0, income: 0, hall: 0, joined: 0, passed: 0 }, progress: createProgress(), market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, occupancy: 1, raidScar: 0, grown: 1, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), heroCall: null, idleBank: 0,
+    record: { jobs: 0, bounties: 0, income: 0, hall: 0, joined: 0, passed: 0 }, progress: createProgress(), market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, occupancy: 1, raidScar: 0, grown: 1, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(seed + 37), heroCall: null, idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -7417,6 +7679,24 @@ function lifeContext(state) {
     indoors: member => member.task === 'train' || member.task === 'work' || (member.injury > 15 && roomLevel(state, 'infirmary') > 0) || state.missions.some(m => m.status === 'active' && m.prep > 0 && m.memberIds.includes(member.id)),
   };
 }
+function heroEncounterContext(state) {
+  return {
+    bounds: { ...HERO_BOUNDS, x1: rankIndex(state.rank) >= 4 ? HERO_BOUNDS.x1 : HERO_BOUNDS.westOnly },
+    log: (text, type) => addLog(state, text, type),
+    pay: (gold, from) => transact(state, { gold }, `เหตุการณ์ Hero: ${from}`),
+    reward: ({ gold = 0, wood = 0, stone = 0, herb = 0, hp = 0, xp = 0, rep = 0, chest, from = 'ระหว่างทาง' }) => {
+      if (gold || wood || stone || herb) transact(state, { gold, wood, stone, herb }, `เหตุการณ์ Hero: ${from}`, 1);
+      state.rep += rep;
+      if (hp) state.hero.hp = clamp(state.hero.hp + hp, 1, state.hero.maxHp);
+      if (xp) addHeroXp(state, lifeContext(state), xp);
+      if (chest) { const added = addChest(state.progress, chest, `Hero: ${from}`); if (!added) addLog(state, 'ช่องเก็บหีบเต็ม · ได้รางวัลส่วนอื่นแล้ว เปิดหีบเดิมเพื่อให้มีที่ว่าง', 'warning'); }
+    },
+    spawn: (species, at, eventId) => {
+      const m = spawnMonster(state.world, species, 'hero', at, { heroEncounter: eventId, swarm: true, target: 'hero' });
+      state.world.monsters.push(m); return m.id;
+    },
+  };
+}
 /** Where an adventurer's room is: the inn first, then the rooms let in village houses. */
 function lodgeSpot(state, member) {
   // The wounded go to the clinic when the town has one.
@@ -8222,6 +8502,7 @@ function tick(state, seconds) {
     tickErrands(state);
     tickVillage(state, step);
     tickLife(state, lifeContext(state), step);
+    tickHeroEncounters(state, heroEncounterContext(state), step);
     tickDirector(state, directorContext(state));
     tickTrade(state, tradeContext(state), step);
     checkDailyGoals(state);
@@ -8437,7 +8718,9 @@ function command(state, type, payload = {}) {
     case 'setBuyRate': if (!BUY_RATES[payload.rate]) return failure('ราคารับซื้อไม่ถูกต้อง'); state.trade.buyRate = payload.rate; return success(`ตั้งราคารับซื้อเป็น${BUY_RATES[payload.rate].name}`);
     case 'setAutoWholesale': state.trade.autoWholesale = Boolean(payload.on); return success(state.trade.autoWholesale ? 'โกดังใกล้เต็มจะขายส่งเอง' : 'เก็บของไว้ทั้งหมด ไม่ขายเอง');
     case 'toggleWorkshop': if (!VILLAGE_PROJECTS[payload.workshop] || !['tannery', 'apothecary', 'jeweler'].includes(payload.workshop)) return failure('ไม่พบโรงงานนี้'); state.trade.halt[payload.workshop] = !state.trade.halt[payload.workshop]; if (!state.trade.halt[payload.workshop]) delete state.trade.halt[payload.workshop]; return success(state.trade.halt[payload.workshop] ? `${VILLAGE_PROJECTS[payload.workshop].name}หยุดรับวัตถุดิบ` : `${VILLAGE_PROJECTS[payload.workshop].name}กลับมาทำงาน`);
-    case 'heroMode': { if (introActive(state)) return failure('รอให้บทนำจบก่อน'); const wait = Math.ceil((state.hero?.injuredUntil || 0) - state.elapsed); if (payload.on && wait > 0) return failure(`หัวหน้ากิลด์ยังพักรักษาตัว ออกไปได้อีกครั้งในอีก ${wait} วินาที`); const hero = setHeroActive(state, lifeContext(state), Boolean(payload.on)); return success(hero.active ? 'หัวหน้ากิลด์ออกไปข้างนอกเอง' : 'หัวหน้ากิลด์กลับมาประจำโต๊ะ'); }
+    case 'heroMode': { if (introActive(state)) return failure('รอให้บทนำจบก่อน'); const wait = Math.ceil((state.hero?.injuredUntil || 0) - state.elapsed); if (payload.on && wait > 0) return failure(`หัวหน้ากิลด์ยังพักรักษาตัว ออกไปได้อีกครั้งในอีก ${wait} วินาที`); if (!payload.on) cancelHeroEncounters(state, heroEncounterContext(state)); const hero = setHeroActive(state, lifeContext(state), Boolean(payload.on)); return success(hero.active ? 'หัวหน้ากิลด์ออกไปข้างนอกเอง' : 'หัวหน้ากิลด์กลับมาประจำโต๊ะ'); }
+    case 'resolveHeroEncounter': return resolveHeroEncounter(state, heroEncounterContext(state), payload.choiceId);
+    case 'abandonHeroChallenge': return abandonHeroChallenge(state, heroEncounterContext(state));
     case 'moveVillageBuilding': return moveVillageBuilding(state, payload);
     case 'wholesale': return wholesale(state, tradeContext(state), payload);
     case 'sendCaravan': return sendCaravan(state, tradeContext(state), payload);
@@ -8688,6 +8971,9 @@ function deserializeGame(source) {
   state.festivals = sanitizeFestivals(data.festivals, new Set(state.members.map(m => m.id)));
   state.hero = sanitizeHero(data.hero);
   state.heroCall = sanitizeHeroCall(data.heroCall, state);
+  state.hero.encounters = sanitizeHeroEncounters(data.hero?.encounters, state.hero, state.world.monsters);
+  const heroMonsters = new Set(state.hero.encounters.challenge?.monsterIds || []);
+  state.world.monsters = state.world.monsters.filter(m => !m.heroEncounter || heroMonsters.has(m.id));
   // A quest party that lost its walkers sets out again from the door.
   for (const m of state.missions) if (m.status === 'active' && m.rt && !state.world.hunters.some(h => h.party === m.id)) delete m.rt;
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
@@ -12778,6 +13064,7 @@ class GuildRenderer {
  /** The monster under a tap, for locking on. */
  pickMonster(clientX,clientY){if(!this.camera)return null;const w=this.worldPoint(this.screenPoint({clientX,clientY}));let best=null,bd=40;for(const m of this.state.world?.monsters||[]){if(m.dead)continue;const q=gridPoint(m.x,m.y),d=Math.hypot(q.x-w.x,q.y-12-w.y);if(d<bd){bd=d;best=m.id;}}return best;}
  updateHero(dt){
+  this.updateHeroGoal();
   const h=this.state.hero,master=this.actors.get('master');
   this.updateNodes();
   if(!h?.active){if(this.heroImage)this.heroImage.setVisible(false);this.heroMarks?.clear();this.heroCam=false;return;}
@@ -12803,6 +13090,16 @@ class GuildRenderer {
   const k=1-Math.pow(.004,Math.min(dt,.1));this.focusX+=(at.x-this.focusX)*k;this.focusY+=(at.y-10-this.focusY)*k;this.userPanned=true;
   if(this.zoomTarget){this.zoom+=(this.zoomTarget-this.zoom)*Math.min(1,dt*4);if(Math.abs(this.zoomTarget-this.zoom)<.005){this.zoom=this.zoomTarget;this.zoomTarget=null;}}
   this.applyView();
+ }
+ updateHeroGoal(){
+  const h=this.state.hero,c=h?.encounters?.challenge,on=h?.active&&c?.kind==='reach';
+  if(!on){this.heroGoalMarker?.setVisible(false);return;}
+  if(!this.heroGoalMarker?.scene){
+   const g=this.scene.add.graphics();g.lineStyle(2,0xd5ad68,.9).strokeEllipse(0,0,28,14);g.fillStyle(0xffe7a2,.35).fillEllipse(0,0,22,10);g.lineStyle(2,0xffedb9,1);g.beginPath();g.moveTo(0,-23);g.lineTo(6,-15);g.lineTo(0,-7);g.lineTo(-6,-15);g.closePath();g.strokePath();
+   const text=this.scene.add.text(0,-28,'จุดหมาย',{fontFamily:'"Noto Sans Thai",sans-serif',fontSize:'9px',color:'#fff5d9',stroke:'#66543a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);
+   this.heroGoalMarker=this.scene.add.container(0,0,[g,text]);
+  }
+  const p=gridPoint(c.goal.x,c.goal.y);this.heroGoalMarker.setPosition(p.x,p.y).setDepth(p.y+3).setVisible(true);
  }
  // While a festival runs its building twinkles, bunting and balloons go up, and lanterns rise over the village.
  updateFestival(dt){
@@ -13346,6 +13643,7 @@ const {STAFF,FACILITIES,MEMBERS,QUESTS,EQUIPMENT,JOBS,RANKS,REGIONS,GUILD_EVENTS
 const {storeUsed,storeCapacity,wholesalePrice,goodValue,caravanLoad,caravanCapacity}=Trade;
 const {ROTATABLE,homeStatus,homeOf,villageBuildings,housingCapacity}=Town;
 const { illustratedIcon }=IllustratedArt;
+const { heroEncounterView }=HeroEvents;
 const {drawPortrait,drawItemIcon,drawBattleScene,drawQuestArt,villagerLook,applicantLook}=Artwork;
 const {GuildRenderer}=World;
 const {drawDungeonScene,missionStage,buildDungeon}=Dungeon;
@@ -13801,11 +14099,11 @@ $('pause-button').addEventListener('click',()=>{ui.paused=!ui.paused;syncHUD();}
 // ---- Guild master on foot: the player's own character with a stick (or WASD) and action buttons. ----
 const heroKeys=new Set(),heroStick={x:0,y:0,id:null};let heroAttackHeld=false,heroSpeedBefore=null;
 function heroOn(){return Boolean(state.hero?.active);}
-function syncHeroMode(){const on=heroOn();$('hero-hud').hidden=!on;document.body.classList.toggle('hero-mode',on);$('hero-toggle').classList.toggle('active',on);
+function syncHeroMode(){const on=heroOn();if(!on){clearHeroInput();if($('hero-event-dialog').open)$('hero-event-dialog').close();}$('hero-hud').hidden=!on;document.body.classList.toggle('hero-mode',on);$('hero-toggle').classList.toggle('active',on);
  if(on&&heroSpeedBefore===null){heroSpeedBefore=ui.speed;ui.speed=1;state.settings.speed=1;}else if(!on&&heroSpeedBefore!==null){ui.speed=heroSpeedBefore;state.settings.speed=heroSpeedBefore;heroSpeedBefore=null;}
  // Reports of finished jobs wait while the master is out fighting, and open on the way back in.
  if(!on&&reportQueue.length&&!$('report-dialog').open)setTimeout(()=>{if(!heroOn()&&reportQueue.length&&!$('report-dialog').open)showReport();},400);}
-function heroInput(){const h=state.hero;if(!h?.active)return;let sx=heroStick.x,sy=heroStick.y;
+function heroInput(){const h=state.hero;if(!h?.active)return;if($('hero-event-dialog').open){h.input={};return;}let sx=heroStick.x,sy=heroStick.y;
  if(heroKeys.has('KeyD')||heroKeys.has('ArrowRight'))sx+=1;if(heroKeys.has('KeyA')||heroKeys.has('ArrowLeft'))sx-=1;if(heroKeys.has('KeyS')||heroKeys.has('ArrowDown'))sy+=1;if(heroKeys.has('KeyW')||heroKeys.has('ArrowUp'))sy-=1;
  // Screen directions turn into the isometric grid: right is +x−y, down is +x+y.
  const len=Math.min(1,Math.hypot(sx,sy)),gx=sx+sy,gy=sy-sx,gl=Math.hypot(gx,gy)||1;
@@ -13821,7 +14119,7 @@ function syncHeroHud(){const hero=state.hero;syncCallHud();if(!hero?.active)retu
  const pack=items.length?`🎒 ${items.map(([i,v])=>`${i}${n(v)}`).join(' ')}`:'🎒 กระเป๋าว่าง',jobs=heroContracts(state).map(c=>`<span class="${c.done?'done':''}">${c.icon} ${h(c.name)} ${c.done?'✔':c.need>1?`${c.have}/${c.need}`:''}</span>`).join('');
  if($('hero-pack').__h!==pack){$('hero-pack').textContent=pack;$('hero-pack').__h=pack;}if($('hero-jobs').__h!==jobs){$('hero-jobs').innerHTML=jobs;$('hero-jobs').__h=jobs;}
  $('hero-order').hidden=!(hero.companions||[]).length;document.querySelectorAll('[data-hero-order]').forEach(b=>b.classList.toggle('active',b.dataset.heroOrder===(hero.order||'follow')));
- drawHeroMap();}
+ drawHeroMap();syncHeroEncounterHud();}
 /** The minimap: the land around the master, roads, hunting grounds, spots to gather, the fallen, and today's quarry. */
 let heroMapAt=0;
 function drawHeroMap(){const now=performance.now();if(now-heroMapAt<120)return;heroMapAt=now;const cv=$('hero-map'),c=cv.getContext('2d'),h=state.hero,W=cv.width,H=cv.height,s=2.4;
@@ -13854,6 +14152,36 @@ window.addEventListener('keydown',e=>{if(!heroOn()||e.target.matches?.('input,se
  else{const key={KeyK:'s1',KeyL:'s2',KeyU:'ult',KeyE:'act',ShiftLeft:'dash',ShiftRight:'dash'}[k];if(key){heroTap(key);e.preventDefault();e.stopImmediatePropagation();}}},true);
 window.addEventListener('keyup',e=>{heroKeys.delete(e.code);});
 window.addEventListener('blur',()=>{heroKeys.clear();heroAttackHeld=false;});
+// Hero encounters pause the world while the player reads or chooses.
+function clearHeroInput(){heroKeys.clear();heroAttackHeld=false;heroStick.x=heroStick.y=0;heroStick.id=null;if(state.hero)state.hero.input={};$('hero-stick').querySelector('i').style.transform='';}
+function syncHeroEncounterHud(){
+ const view=heroEncounterView(state),el=$('hero-encounter-hud'),c=view?.challenge;
+ $('hero-buffs').textContent=(view?.buffs||[]).map(b=>`${b.name} · ${Math.ceil(b.left)} วิ`).join(' · ');
+ el.hidden=!c&&!view?.pending&&!view?.notice;
+ if(c){let progress=`${c.have}/${c.need} ตัว`;
+  if(c.goal){const dx=c.goal.x-state.hero.x,dy=c.goal.y-state.hero.y,angle=Math.atan2(dx+dy,2*(dx-dy));const arrows=['→','↘','↓','↙','←','↖','↑','↗'];progress=`${arrows[(Math.round(angle/(Math.PI/4))+8)%8]} ห่าง ${Math.ceil(c.distance)} ช่อง`;}
+  setHTML(el,`<small>${h(c.icon)} ${h(c.title)}</small><b>${h(c.objective)}</b><span>${h(progress)} · เหลือ ${Math.ceil(c.left)} วิ</span><button type="button" data-hero-abandon>ถอนตัว · ไม่มีค่าปรับ</button>`);
+ }else if(view?.pending)setHTML(el,`<b>${h(view.pending.title)}</b><button type="button" data-hero-open-event>เลือกว่าจะทำอะไร</button>`);
+ else if(view?.notice)setHTML(el,`<b>${view.notice.won?'สำเร็จ!':'ไว้ลองใหม่คราวหน้า'} · ${h(view.notice.title)}</b><small>${h(view.notice.outcome)}</small>`);
+}
+function showHeroEncounter(){
+ const view=heroEncounterView(state),ev=view?.pending,dialog=$('hero-event-dialog');
+ if(!ev||dialog.open||!$('title-screen').hidden||document.querySelector('dialog[open]'))return;
+ clearHeroInput();
+ $('hero-event-content').innerHTML=`<small class="report-kicker">HERO · ${h(ev.tone)}</small><h2 id="hero-event-title">${h(ev.icon)} ${h(ev.title)}</h2><p>${h(ev.text)}</p><div class="event-choices">${ev.choices.map(c=>`<button type="button" class="event-choice" data-hero-choice="${h(c.id)}" ${c.disabled?'disabled':''}><b>${h(c.label)}</b><small>${h(c.desc)}${c.disabled?' · เงินกิลด์ไม่พอ':''}</small></button>`).join('')}</div><p class="hero-event-note">เวลาหยุดระหว่างเลือก · กด Esc เพื่อเดินต่อ</p>`;
+ dialog.showModal();
+}
+$('hero-event-dialog').addEventListener('click',event=>{
+ const b=event.target.closest('[data-hero-choice],[data-hero-event-continue]');if(!b)return;
+ if(b.hasAttribute('data-hero-event-continue')){$('hero-event-dialog').close();return;}
+ const result=act(state,'resolveHeroEncounter',{choiceId:b.dataset.heroChoice});
+ if(!result.ok){toast(result.message,true);return;}
+ $('hero-event-content').innerHTML=`<small class="report-kicker">เรื่องเล่าระหว่างทาง</small><h2 id="hero-event-title">${state.hero.encounters.challenge?'ลุยกันเลย!':'แล้วเรื่องก็ลงเอยแบบนี้…'}</h2><p class="hero-event-outcome">${h(result.message)}</p><div class="dialog-actions"><button type="button" class="primary" data-hero-event-continue>${state.hero.encounters.challenge?'เริ่มภารกิจ':'เดินต่อ'}</button></div>`;
+ $('hero-event-content').querySelector('[data-hero-event-continue]').focus();renderer?.setState(state);syncHUD();syncHeroHud();save();
+});
+$('hero-event-dialog').addEventListener('cancel',event=>{event.preventDefault();if(state.hero.encounters?.pending)act(state,'resolveHeroEncounter',{choiceId:'leave'});$('hero-event-dialog').close();save();});
+$('hero-event-dialog').addEventListener('close',()=>{clearHeroInput();lastFrame=performance.now();});
+$('hero-encounter-hud').addEventListener('click',event=>{if(event.target.closest('[data-hero-open-event]'))showHeroEncounter();if(event.target.closest('[data-hero-abandon]')){dispatch('abandonHeroChallenge');syncHeroHud();}});
 $('zoom-in').addEventListener('click',()=>{ui.zoom=Math.min(2.4,(renderer?.zoom||1)+.15);renderer?.setZoom(ui.zoom);});$('zoom-out').addEventListener('click',()=>{ui.zoom=Math.max(.3,(renderer?.zoom||1)-.15);renderer?.setZoom(ui.zoom);});$('home-view').addEventListener('click',()=>{ui.zoom=1;renderer?.resetView?.();renderer?.setZoom(1);});
 document.addEventListener('input',event=>{const d=event.target.dataset;if(d.roomDimension){ui[d.roomDimension==='width'?'roomWidth':'roomHeight']=Number(event.target.value);if($('room-estimate'))$('room-estimate').textContent=moneyCost(getPartitionCost(ui.roomWidth,ui.roomHeight));}if(d.partitionSize)ui[d.partitionSize==='width'?'roomDraftW':'roomDraftH']=Number(event.target.value);});
 document.addEventListener('keydown',event=>{if(event.target.matches('input,select,textarea,button')||document.querySelector('dialog[open]'))return;if((event.key==='Enter'||event.key===' ')&&event.target.matches('[role="button"]')){event.preventDefault();event.target.click();return;}if(event.code==='KeyR'&&(ui.buildType||ui.moveId||ui.roomPlacement||ui.moveRoomId||ui.villagePlace)){event.preventDefault();if(ui.villagePlace)renderer?.rotateVillagePick();else renderer?.rotatePlacement();syncHUD();return;}if(event.code==='Space'){event.preventDefault();ui.paused=!ui.paused;syncHUD();}if(['1','2','4'].includes(event.key)){if(heroOn()&&event.key!=='1'){toast('ตอนออกไปเองใช้ได้แค่ความเร็ว ×1',true);return;}ui.speed=Number(event.key);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();}if(event.key==='Escape'){cancelBuild();closeMenu();}});
@@ -13932,7 +14260,7 @@ $('goal-card').addEventListener('click',()=>runGoal($('goal-card').dataset.goal)
 
 // The storyteller: a choice opens a small dialog once; big events show a banner with a watch button.
 let shownEvent=null;
-function showEvent(force=false){const ev=state.director?.pending;if(!ev||$('event-dialog').open)return;if(!force&&(shownEvent===ev.expires+ev.id||$('management-dialog').open||$('report-dialog').open||$('visitor-dialog').open||$('confirm-dialog').open))return;shownEvent=ev.expires+ev.id;
+function showEvent(force=false){const ev=state.director?.pending;if(!ev||document.querySelector('dialog[open]'))return;if(!force&&(shownEvent===ev.expires+ev.id||$('management-dialog').open||$('report-dialog').open||$('visitor-dialog').open||$('confirm-dialog').open))return;shownEvent=ev.expires+ev.id;
  const left=Math.max(0,Math.ceil((ev.expires-state.elapsed)/60));
  $('event-content').innerHTML=`<small class="report-kicker">${ev.kind==='major'?'เหตุการณ์ใหญ่':'เรื่องที่ต้องตัดสินใจ'}</small><h2 id="event-title"><span class="event-big-icon">${h(ev.icon)}</span>${h(ev.title)}</h2><p>${h(ev.text)}</p><div class="event-choices">${ev.choices.map(c=>`<button class="event-choice" data-event-choice="${h(c.id)}"><b>${h(c.label)}</b><small>${h(c.desc)}</small></button>`).join('')}</div><div class="dialog-actions"><button class="secondary" data-event-later>ไว้ทีหลัง (${left} นาที)</button></div>`;
  $('event-dialog').showModal();}
@@ -14110,7 +14438,7 @@ document.addEventListener('click',event=>{const b=event.target.closest('[data-au
 
 document.addEventListener('click',event=>{const b=event.target.closest('[data-watch-mission]');if(!b)return;closeMenu();renderer?.focusMission(b.dataset.watchMission);});
 let lastFrame=performance.now(),uiTimer=0,saveTimer=0,seenLog=state.log[0];
-function frame(now){state.settings.paused=ui.paused;const dt=Math.max(0,Math.min((now-lastFrame)/1000,.25));lastFrame=now;if(renderer?.ready&&!document.hidden&&!ui.paused&&!$('confirm-dialog').open&&!$('settings-dialog').open&&!$('report-dialog').open&&!$('event-dialog').open&&!$('visitor-dialog').open&&!$('story-dialog').open&&!$('setup-dialog').open&&!$('lesson-dialog').open&&!$('chest-dialog').open&&!$('celebrate-dialog').open&&!$('away-dialog').open&&$('title-screen').hidden){const before={rank:state.rank,levels:new Map(state.members.map(m=>[m.id,m.level]))};heroInput();tick(state,dt*(heroOn()?1:ui.speed));queueReports(before);if(state.intro?.step==='visit'&&!$('report-dialog').open&&!$('management-dialog').open)showVisitors();showEvent();syncEventBanner();renderer?.setState(state);uiTimer+=dt;saveTimer+=dt;if(state.log[0]!==seenLog){const fresh=[];for(const e of state.log){if(e===seenLog||fresh.length>=20)break;fresh.push(e);}fresh.reverse().forEach(noteLog);seenLog=state.log[0];}flushDigest(dt);syncHeroHud();if(uiTimer>.9){syncHUD();syncHeroMode();if(!document.activeElement?.matches('input,select,textarea')&&(ui.missionId||ui.questId||ui.tab==='journal'||ui.tab==='trade'||ui.tab==='market'||ui.tab==='festival'||ui.tab==='goals'||ui.tab==='codex'||ui.tab==='fieldmaster'||ui.tab==='town'||ui.tab==='efficiency'||ui.tab==='staff'||ui.tab==='members'||ui.tab==='build'||ui.tab==='workshop'||ui.tab==='village'))syncUI();uiTimer=0;}if(saveTimer>12){save();saveTimer=0;}}if(ui.missionId||$('dungeon-dialog').open)drawMissionScene();if($('show-dialog').open)drawShow(now);syncMusic(dt);requestAnimationFrame(frame);}
+function frame(now){state.settings.paused=ui.paused;const dt=Math.max(0,Math.min((now-lastFrame)/1000,.25));lastFrame=now;if(renderer?.ready&&!document.hidden&&!ui.paused&&!$('confirm-dialog').open&&!$('settings-dialog').open&&!$('report-dialog').open&&!$('event-dialog').open&&!$('hero-event-dialog').open&&!$('visitor-dialog').open&&!$('story-dialog').open&&!$('setup-dialog').open&&!$('lesson-dialog').open&&!$('chest-dialog').open&&!$('celebrate-dialog').open&&!$('away-dialog').open&&$('title-screen').hidden){const before={rank:state.rank,levels:new Map(state.members.map(m=>[m.id,m.level]))};heroInput();tick(state,dt*(heroOn()?1:ui.speed));queueReports(before);if(state.intro?.step==='visit'&&!$('report-dialog').open&&!$('management-dialog').open)showVisitors();showHeroEncounter();showEvent();syncEventBanner();renderer?.setState(state);uiTimer+=dt;saveTimer+=dt;if(state.log[0]!==seenLog){const fresh=[];for(const e of state.log){if(e===seenLog||fresh.length>=20)break;fresh.push(e);}fresh.reverse().forEach(noteLog);seenLog=state.log[0];}flushDigest(dt);syncHeroHud();if(uiTimer>.9){syncHUD();syncHeroMode();if(!document.activeElement?.matches('input,select,textarea')&&(ui.missionId||ui.questId||ui.tab==='journal'||ui.tab==='trade'||ui.tab==='market'||ui.tab==='festival'||ui.tab==='goals'||ui.tab==='codex'||ui.tab==='fieldmaster'||ui.tab==='town'||ui.tab==='efficiency'||ui.tab==='staff'||ui.tab==='members'||ui.tab==='build'||ui.tab==='workshop'||ui.tab==='village'))syncUI();uiTimer=0;}if(saveTimer>12){save();saveTimer=0;}}if(ui.missionId||$('dungeon-dialog').open)drawMissionScene();if($('show-dialog').open)drawShow(now);syncMusic(dt);requestAnimationFrame(frame);}
 function drawMissionScene(){const big=$('dungeon-dialog').open,id=big?ui.bigMission:ui.missionId,canvas=big?$('dungeon-big'):$('mission-scene');if(!canvas||!id)return;const mission=state.missions.find(m=>m.id===id);const quest=QUESTS.find(q=>q.id===mission?.questId);if(mission&&quest)drawDungeonScene(canvas,mission,quest,state,{paused:ui.paused||document.hidden||(!big&&!$('management-dialog').open),time:performance.now()/1000,eventPending:missionEventPending(mission)});}
 // A full-screen window into the dungeon: watch the fight like an online game.
 document.addEventListener('click',event=>{const b=event.target.closest('[data-dungeon-full],[data-dungeon-close]');if(!b)return;if(b.dataset.dungeonFull){const m=state.missions.find(x=>x.id===b.dataset.dungeonFull),q=QUESTS.find(x=>x.id===m?.questId);ui.bigMission=b.dataset.dungeonFull;$('dd-title').textContent=`${q?.name||''} · ${(m?.memberIds||[]).map(id=>state.members.find(x=>x.id===id)?.name).filter(Boolean).join(' · ')}`;$('dungeon-dialog').showModal();}else $('dungeon-dialog').close();});

@@ -570,6 +570,7 @@ export class GuildRenderer {
  /** The monster under a tap, for locking on. */
  pickMonster(clientX,clientY){if(!this.camera)return null;const w=this.worldPoint(this.screenPoint({clientX,clientY}));let best=null,bd=40;for(const m of this.state.world?.monsters||[]){if(m.dead)continue;const q=gridPoint(m.x,m.y),d=Math.hypot(q.x-w.x,q.y-12-w.y);if(d<bd){bd=d;best=m.id;}}return best;}
  updateHero(dt){
+  this.updateHeroGoal();
   const h=this.state.hero,master=this.actors.get('master');
   this.updateNodes();
   if(!h?.active){if(this.heroImage)this.heroImage.setVisible(false);this.heroMarks?.clear();this.heroCam=false;return;}
@@ -595,6 +596,16 @@ export class GuildRenderer {
   const k=1-Math.pow(.004,Math.min(dt,.1));this.focusX+=(at.x-this.focusX)*k;this.focusY+=(at.y-10-this.focusY)*k;this.userPanned=true;
   if(this.zoomTarget){this.zoom+=(this.zoomTarget-this.zoom)*Math.min(1,dt*4);if(Math.abs(this.zoomTarget-this.zoom)<.005){this.zoom=this.zoomTarget;this.zoomTarget=null;}}
   this.applyView();
+ }
+ updateHeroGoal(){
+  const h=this.state.hero,c=h?.encounters?.challenge,on=h?.active&&c?.kind==='reach';
+  if(!on){this.heroGoalMarker?.setVisible(false);return;}
+  if(!this.heroGoalMarker?.scene){
+   const g=this.scene.add.graphics();g.lineStyle(2,0xd5ad68,.9).strokeEllipse(0,0,28,14);g.fillStyle(0xffe7a2,.35).fillEllipse(0,0,22,10);g.lineStyle(2,0xffedb9,1);g.beginPath();g.moveTo(0,-23);g.lineTo(6,-15);g.lineTo(0,-7);g.lineTo(-6,-15);g.closePath();g.strokePath();
+   const text=this.scene.add.text(0,-28,'จุดหมาย',{fontFamily:'"Noto Sans Thai",sans-serif',fontSize:'9px',color:'#fff5d9',stroke:'#66543a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);
+   this.heroGoalMarker=this.scene.add.container(0,0,[g,text]);
+  }
+  const p=gridPoint(c.goal.x,c.goal.y);this.heroGoalMarker.setPosition(p.x,p.y).setDepth(p.y+3).setVisible(true);
  }
  // While a festival runs its building twinkles, bunting and balloons go up, and lanterns rise over the village.
  updateFestival(dt){

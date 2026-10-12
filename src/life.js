@@ -5,6 +5,8 @@ import { siteQuestRoute, SITE_QUEST_SITES, FRONTIER_CAMP } from './site.js';
 import { HERO, HERO_BOUNDS, HERO_CLASSES, HERO_TREE, HERO_GEAR, GATHER_NODES, NODE_KINDS, CONTRACT_KINDS, gatherYield, computeHeroStats, heroXpNeeded } from './hero.js';
 import { PARTS, HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES, JOB_COMBAT } from './content.js';
 
+import { createHeroEncounters, heroEncounterModifiers, recordHeroEncounterKill } from './hero-events.js';
+
 const SUB = 0.25;          // seconds per combat step
 const WALK = 1.7;          // tiles per second
 const CARRY = 1.15;
@@ -200,6 +202,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   emit({ type: 'hit', id: m.id, from: h.id, x: m.x, y: m.y, fx: h.x, fy: h.y, amount: Math.round(dmg), kind, crit: dmg > h.power * .6 });
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(state.world) * 20; state.world.kills++;
+  if (h.escort && state.hero?.active) recordHeroEncounterKill(state.hero, m);
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
   ctx.codex?.(m.species);
   const s = statsOf(m.species), party = state.world.hunters.filter(o => o.party === h.party && o.mode === 'hunt' && dist(o, m) < 9);
@@ -357,7 +360,7 @@ function monsterAct(state, ctx, m, dt) {
   if (m.air > 0) return;
   if (trait === 'regen' && m.calm > 3) m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .015 * dt);
   // Quest parties only meet their own quest's foes; wild monsters leave them be.
-  const targets = m.call ? [] : w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend', 'escort'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
+  const targets = m.call ? [] : w.hunters.filter(h => (!m.heroEncounter || h.escort) && ['hunt', 'go', 'return', 'carry', 'defend', 'escort'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
   const hero = state.hero;
   if (m.windup > 0) { m.windup -= dt; if (m.windup <= 0) callCharge(state, ctx, m); return; }
   if (m.dormant) { m.target = null; m.fighting = false; m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .05 * dt); return; }
@@ -584,14 +587,18 @@ export function addFree(state, ctx, affinity = null) {
 export function worldRandom(state) { return rand(state.world); }
 
 // ---- The guild master, played by the player: four classes, combos, skills, a finisher, gathering, rescues and companions. ----
-export function heroStats(heroOrLevel) { return typeof heroOrLevel === 'number' ? computeHeroStats({ level: heroOrLevel }) : computeHeroStats(heroOrLevel); }
+export function heroStats(heroOrLevel) {
+  const st = typeof heroOrLevel === 'number' ? computeHeroStats({ level: heroOrLevel }) : computeHeroStats(heroOrLevel);
+  if (typeof heroOrLevel === 'object') { const mods = heroEncounterModifiers(heroOrLevel); st.power *= mods.power; st.regen *= mods.regen; }
+  return st;
+}
 const PACK = () => ({ gold: 0, wood: 0, stone: 0, herb: 0, heartwood: 0, ore: 0, glowHerb: 0, parts: {} });
-export function createHero() {
+export function createHero(seed = 1) {
   const hp = computeHeroStats({ level: 1, cls: 'warrior' }).maxHp;
   return { active: false, x: 0, y: 0, hp, maxHp: hp, level: 1, xp: 0, atkCd: 0, s1Cd: 0, s2Cd: 0, dashCd: 0, dash: 0, dashT: 0, iframe: 0, down: 0, fx: 0, fy: 1, kills: 0, id: 'hero', mode: 'hunt', guard: 0,
     cls: 'warrior', classChosen: false, tree: {}, gear: {}, owned: [], mats: { heartwood: 0, ore: 0, glowHerb: 0 }, pack: PACK(), ult: 0, combo: 0, comboT: 0, lock: null, carry: null,
     companions: [], order: 'follow', injuredUntil: 0, nodes: {}, contracts: [], contractDay: 0, selfKills: {}, traps: [], focus: 0, gatherCd: 0, gatherDay: 0, gatheredToday: 0,
-    stats: { gathered: 0, rescued: 0, contracts: 0, led: 0 } };
+    stats: { gathered: 0, rescued: 0, contracts: 0, led: 0 }, encounters: createHeroEncounters(seed) };
 }
 const heroBoundsX = (ctx) => (ctx.guildRankIndex?.() ?? 0) >= 4 ? HERO_BOUNDS.x1 : HERO_BOUNDS.westOnly;
 function heroHurt(state, ctx, m, dmg) {
@@ -626,6 +633,7 @@ function heroStrike(state, ctx, m, dmg, kind, quiet = false) {
   if (!quiet) emit({ type: 'hit', id: m.id, from: 'hero', x: m.x, y: m.y, fx: hero.x, fy: hero.y, amount: Math.round(dmg), kind, crit: dmg > st.power * 1.4 });
   if (m.hp > 0) return true;
   m.dead = true; m.respawn = 30 + rand(w) * 20; w.kills++; hero.kills++;
+  recordHeroEncounterKill(hero, m);
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
   ctx.codex?.(m.species);
   const s = statsOf(m.species), pack = hero.pack;
@@ -638,16 +646,20 @@ function heroStrike(state, ctx, m, dmg, kind, quiet = false) {
   hero.selfKills[m.species] = (hero.selfKills[m.species] || 0) + 1;
   // Companions learn from the fight beside the master.
   for (const id of hero.companions) { const who = state.members.find(x => x.id === id); if (who) ctx.addXp?.(who, Math.round(s.xp * .4)); }
-  hero.xp += s.xp;
+  addHeroXp(state, ctx, s.xp);
+  ctx.heroKill?.(m);
+  if (m.raid || m.boss) ctx.onSpecialKill?.(m, hero);
+  return true;
+}
+export function addHeroXp(state, ctx, amount) {
+  const hero = state.hero;
+  hero.xp += amount;
   while (hero.xp >= heroXpNeeded(hero.level)) {
     hero.xp -= heroXpNeeded(hero.level); hero.level += 1;
     const ns = heroStats(hero); hero.maxHp = ns.maxHp; hero.hp = ns.maxHp;
     emit({ type: 'level', id: 'hero', x: hero.x, y: hero.y, level: hero.level });
     ctx.log(`⭐ หัวหน้ากิลด์เลเวลอัปเป็น Lv.${hero.level}! ได้แต้มทักษะ 1 แต้ม`, 'success');
   }
-  ctx.heroKill?.(m);
-  if (m.raid || m.boss) ctx.onSpecialKill?.(m, hero);
-  return true;
 }
 /** The foe the master means: the locked one, else the nearest ahead, else the nearest close by. */
 function heroTarget(state, living, range) {
@@ -778,7 +790,7 @@ function tickHero(state, ctx, dt) {
   const len = Math.hypot(input.dx || 0, input.dy || 0);
   if (input.dash && hero.dashCd <= 0) { hero.dash = HERO.dashTime; hero.dashT = 0; hero.perfectUsed = false; hero.dashCd = HERO.dashCd; input.dash = false; emit({ type: 'dash', id: 'hero', x: hero.x, y: hero.y }); }
   if (len > 0.05) { hero.fx = input.dx / len; hero.fy = input.dy / len; }
-  const carrying = Boolean(hero.carry), speed = hero.dash > 0 ? HERO.dashSpeed : len > 0.05 ? HERO.speed * Math.min(1, len) * (carrying ? HERO.carrySpeed : 1) : 0;
+  const carrying = Boolean(hero.carry), speed = hero.dash > 0 ? HERO.dashSpeed : len > 0.05 ? HERO.speed * Math.min(1, len) * heroEncounterModifiers(hero).speed * (carrying ? HERO.carrySpeed : 1) : 0;
   if (speed) { const b = HERO_BOUNDS; hero.x = clamp(hero.x + hero.fx * speed * dt, b.x0, heroBoundsX(ctx)); hero.y = clamp(hero.y + hero.fy * speed * dt, b.y0, b.y1); }
   hero.moving = speed > 0;
   const door = ctx.door(), atHome = Math.hypot(hero.x - door.x, hero.y - door.y) < 2.5;
@@ -857,6 +869,8 @@ export function sanitizeHero(data) {
   h.contractDay = int(data.contractDay, 0, 1e7) ? data.contractDay : 0;
   h.contracts = (Array.isArray(data.contracts) ? data.contracts : []).filter(c => c && CONTRACT_KINDS[c.kind] && typeof c.id === 'string').slice(0, 4)
     .map(c => ({ id: c.id.slice(0, 30), kind: c.kind, day: int(c.day, 0, 1e7) ? c.day : 0, zone: HUNT_ZONES[c.zone] ? c.zone : null, have: int(c.have, 0, 1e5) ? c.have : 0, need: int(c.need, 1, 1e5) ? c.need : 1, done: c.done === true, monsterId: typeof c.monsterId === 'string' ? c.monsterId.slice(0, 30) : null }));
+  for (const [key, max] of Object.entries({ down: HERO.downTime, atkCd: HERO_CLASSES[h.cls].attack.cd, s1Cd: HERO_CLASSES[h.cls].s1.cd, s2Cd: HERO_CLASSES[h.cls].s2.cd, dashCd: HERO.dashCd, dash: HERO.dashTime })) if (num(data[key], 0, max)) h[key] = data[key];
+  if (h.hp <= 0 && h.down <= 0) h.down = HERO.downTime;
   return h;
 }
 

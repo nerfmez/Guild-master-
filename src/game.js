@@ -2,12 +2,13 @@ import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,
 import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,TOWN_CAPS,STAFF,STAFF_MAX_LEVEL,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
-import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, stageHeroCall, releaseCallFallen, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, heroNearby, heroStats, startExpedition, recallExpedition } from './life.js';
+import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, stageHeroCall, releaseCallFallen, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, addHeroXp, heroNearby, heroStats, startExpedition, recallExpedition } from './life.js';
+import { tickHeroEncounters, resolveHeroEncounter, abandonHeroChallenge, cancelHeroEncounters, sanitizeHeroEncounters } from './hero-events.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
 import { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf } from './town.js';
 import { goalBoard, claimGoal, sanitizeMastery, setGoalJobs } from './goals.js';
-import { HERO_CLASSES, HERO_TREE, HERO_GEAR, CLASS_CHANGE_FEE, CONTRACT_KINDS, RARE_MATS, treePoints } from './hero.js';
+import { HERO_CLASSES, HERO_TREE, HERO_GEAR, CLASS_CHANGE_FEE, HERO_BOUNDS, CONTRACT_KINDS, RARE_MATS, treePoints } from './hero.js';
 import { createProgress, sanitizeProgress, addChest, rollChest, recordKill, recordTreasure, offerPolicies, choosePolicy, hasPolicy, newDailyGoals, dailyView, POLICIES, CHESTS, CHEST_RARITIES, TREASURE_SETS, CODEX_FAMILIES } from './progress.js';
 import { createFestivals, startFestival, tickFestivals, sanitizeFestivals, festivalStatus, festivalVisitors, festivalEntrants } from './festivals.js';
 import { createExams, registerExam, withdrawExam, tickExams, sanitizeExams } from './exams.js';
@@ -110,7 +111,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, frontier: { camp: 0 }, bounty: null, mastery: { claimed: {} }, exams: createExams(), festivals: createFestivals(), eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0, today: newDay(1), history: [],
     policy: { memberHunting: true, autoPetitions: true, registration: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0, bounties: 0, income: 0, hall: 0, joined: 0, passed: 0 }, progress: createProgress(), market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, occupancy: 1, raidScar: 0, grown: 1, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), heroCall: null, idleBank: 0,
+    record: { jobs: 0, bounties: 0, income: 0, hall: 0, joined: 0, passed: 0 }, progress: createProgress(), market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, occupancy: 1, raidScar: 0, grown: 1, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(seed + 37), heroCall: null, idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -1370,6 +1371,24 @@ function lifeContext(state) {
     indoors: member => member.task === 'train' || member.task === 'work' || (member.injury > 15 && roomLevel(state, 'infirmary') > 0) || state.missions.some(m => m.status === 'active' && m.prep > 0 && m.memberIds.includes(member.id)),
   };
 }
+function heroEncounterContext(state) {
+  return {
+    bounds: { ...HERO_BOUNDS, x1: rankIndex(state.rank) >= 4 ? HERO_BOUNDS.x1 : HERO_BOUNDS.westOnly },
+    log: (text, type) => addLog(state, text, type),
+    pay: (gold, from) => transact(state, { gold }, `เหตุการณ์ Hero: ${from}`),
+    reward: ({ gold = 0, wood = 0, stone = 0, herb = 0, hp = 0, xp = 0, rep = 0, chest, from = 'ระหว่างทาง' }) => {
+      if (gold || wood || stone || herb) transact(state, { gold, wood, stone, herb }, `เหตุการณ์ Hero: ${from}`, 1);
+      state.rep += rep;
+      if (hp) state.hero.hp = clamp(state.hero.hp + hp, 1, state.hero.maxHp);
+      if (xp) addHeroXp(state, lifeContext(state), xp);
+      if (chest) { const added = addChest(state.progress, chest, `Hero: ${from}`); if (!added) addLog(state, 'ช่องเก็บหีบเต็ม · ได้รางวัลส่วนอื่นแล้ว เปิดหีบเดิมเพื่อให้มีที่ว่าง', 'warning'); }
+    },
+    spawn: (species, at, eventId) => {
+      const m = spawnMonster(state.world, species, 'hero', at, { heroEncounter: eventId, swarm: true, target: 'hero' });
+      state.world.monsters.push(m); return m.id;
+    },
+  };
+}
 /** Where an adventurer's room is: the inn first, then the rooms let in village houses. */
 function lodgeSpot(state, member) {
   // The wounded go to the clinic when the town has one.
@@ -2175,6 +2194,7 @@ export function tick(state, seconds) {
     tickErrands(state);
     tickVillage(state, step);
     tickLife(state, lifeContext(state), step);
+    tickHeroEncounters(state, heroEncounterContext(state), step);
     tickDirector(state, directorContext(state));
     tickTrade(state, tradeContext(state), step);
     checkDailyGoals(state);
@@ -2390,7 +2410,9 @@ function command(state, type, payload = {}) {
     case 'setBuyRate': if (!BUY_RATES[payload.rate]) return failure('ราคารับซื้อไม่ถูกต้อง'); state.trade.buyRate = payload.rate; return success(`ตั้งราคารับซื้อเป็น${BUY_RATES[payload.rate].name}`);
     case 'setAutoWholesale': state.trade.autoWholesale = Boolean(payload.on); return success(state.trade.autoWholesale ? 'โกดังใกล้เต็มจะขายส่งเอง' : 'เก็บของไว้ทั้งหมด ไม่ขายเอง');
     case 'toggleWorkshop': if (!VILLAGE_PROJECTS[payload.workshop] || !['tannery', 'apothecary', 'jeweler'].includes(payload.workshop)) return failure('ไม่พบโรงงานนี้'); state.trade.halt[payload.workshop] = !state.trade.halt[payload.workshop]; if (!state.trade.halt[payload.workshop]) delete state.trade.halt[payload.workshop]; return success(state.trade.halt[payload.workshop] ? `${VILLAGE_PROJECTS[payload.workshop].name}หยุดรับวัตถุดิบ` : `${VILLAGE_PROJECTS[payload.workshop].name}กลับมาทำงาน`);
-    case 'heroMode': { if (introActive(state)) return failure('รอให้บทนำจบก่อน'); const wait = Math.ceil((state.hero?.injuredUntil || 0) - state.elapsed); if (payload.on && wait > 0) return failure(`หัวหน้ากิลด์ยังพักรักษาตัว ออกไปได้อีกครั้งในอีก ${wait} วินาที`); const hero = setHeroActive(state, lifeContext(state), Boolean(payload.on)); return success(hero.active ? 'หัวหน้ากิลด์ออกไปข้างนอกเอง' : 'หัวหน้ากิลด์กลับมาประจำโต๊ะ'); }
+    case 'heroMode': { if (introActive(state)) return failure('รอให้บทนำจบก่อน'); const wait = Math.ceil((state.hero?.injuredUntil || 0) - state.elapsed); if (payload.on && wait > 0) return failure(`หัวหน้ากิลด์ยังพักรักษาตัว ออกไปได้อีกครั้งในอีก ${wait} วินาที`); if (!payload.on) cancelHeroEncounters(state, heroEncounterContext(state)); const hero = setHeroActive(state, lifeContext(state), Boolean(payload.on)); return success(hero.active ? 'หัวหน้ากิลด์ออกไปข้างนอกเอง' : 'หัวหน้ากิลด์กลับมาประจำโต๊ะ'); }
+    case 'resolveHeroEncounter': return resolveHeroEncounter(state, heroEncounterContext(state), payload.choiceId);
+    case 'abandonHeroChallenge': return abandonHeroChallenge(state, heroEncounterContext(state));
     case 'moveVillageBuilding': return moveVillageBuilding(state, payload);
     case 'wholesale': return wholesale(state, tradeContext(state), payload);
     case 'sendCaravan': return sendCaravan(state, tradeContext(state), payload);
@@ -2641,6 +2663,9 @@ export function deserializeGame(source) {
   state.festivals = sanitizeFestivals(data.festivals, new Set(state.members.map(m => m.id)));
   state.hero = sanitizeHero(data.hero);
   state.heroCall = sanitizeHeroCall(data.heroCall, state);
+  state.hero.encounters = sanitizeHeroEncounters(data.hero?.encounters, state.hero, state.world.monsters);
+  const heroMonsters = new Set(state.hero.encounters.challenge?.monsterIds || []);
+  state.world.monsters = state.world.monsters.filter(m => !m.heroEncounter || heroMonsters.has(m.id));
   // A quest party that lost its walkers sets out again from the door.
   for (const m of state.missions) if (m.status === 'active' && m.rt && !state.world.hunters.some(h => h.party === m.id)) delete m.rt;
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;
