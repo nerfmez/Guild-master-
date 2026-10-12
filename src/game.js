@@ -2,11 +2,12 @@ import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,
 import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,TOWN_CAPS,STAFF,STAFF_MAX_LEVEL,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
-import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, startExpedition, recallExpedition } from './life.js';
+import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, heroNearby, heroStats, startExpedition, recallExpedition } from './life.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
 import { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf } from './town.js';
 import { goalBoard, claimGoal, sanitizeMastery, setGoalJobs } from './goals.js';
+import { HERO_CLASSES, HERO_TREE, HERO_GEAR, CLASS_CHANGE_FEE, CONTRACT_KINDS, RARE_MATS, treePoints } from './hero.js';
 import { createProgress, sanitizeProgress, addChest, rollChest, recordKill, recordTreasure, offerPolicies, choosePolicy, hasPolicy, newDailyGoals, dailyView, POLICIES, CHESTS, CHEST_RARITIES, TREASURE_SETS, CODEX_FAMILIES } from './progress.js';
 import { createFestivals, startFestival, tickFestivals, sanitizeFestivals, festivalStatus, festivalVisitors, festivalEntrants } from './festivals.js';
 import { createExams, registerExam, withdrawExam, tickExams, sanitizeExams } from './exams.js';
@@ -950,6 +951,7 @@ function resolveMission(state, mission, outcome) {
     transact(state, rewards, mission.petition ? `ค่านายหน้า: ${quest.name}` : `รางวัล: ${quest.name}`, 1);
     // Work the adventurers picked up by themselves earns the guild half the renown of work it sends.
     const rep = Math.max(1, Math.round(quest.reward.rep * multiplier * renownFactor(state, quest) * (mission.auto ? 0.5 : 1) * (1 + roomLevel(state, 'reception') * 0.05) * (1 + (state.upgrades?.trophyHall || 0) * 0.06) * (hasPolicy(state, 'fame') ? 1.2 : 1)));
+    if (mission.led && state.hero) { const bonus = Math.round((rewards.gold || 0) * (state.hero.tree?.l3 ? .25 : .15)); if (bonus) transact(state, { gold: bonus }, 'โบนัสนำทีม: หัวหน้ากิลด์ลงสนาม', 1); state.rep += 2; state.hero.stats.led += 1; heroContractProgress(state, 'lead'); }
     state.rep += rep;
     state.completedQuests[quest.id] = (state.completedQuests[quest.id] || 0) + 1;
     if (mission.petition) { state.record ??= { jobs: 0 }; state.record.jobs += 1; }
@@ -1079,6 +1081,7 @@ function dailyUpdate(state) {
   restockShops(state);
   state.daily = { missionCounts: {}, work: {}, lessons: {}, garden: Boolean(garden) };
   startDailyGoals(state);
+  rollHeroContracts(state);
   if (state.day % 3 === 0) {
     const choices = ['ชาวบ้านฝากขนมปังมาให้กิลด์ สมาชิกทุกคนขวัญดีขึ้น', 'เด็ก ๆ นำภาพวาดทีมกิลด์มาติดผนัง ทุกคนยิ้มให้กัน'];
     const text = choices[Math.floor(nextRandom(state) * choices.length)];
@@ -1358,7 +1361,7 @@ function lifeContext(state) {
     sellLoot: (hunter, who) => sellLoot(state, tradeContext(state), hunter, who),
     bossZone: () => bossAlive(state)?.zone || state.bounty?.zone || null,
     freeToDefend: member => !isBusy(state, member.id) && member.injury <= 40 && member.energy >= 20,
-    onSpecialKill: (monster, hunter) => onSpecialKill(state, monster, hunter), codex: species => noteKill(state, species), luck: () => hasPolicy(state, 'scavenger') ? 2 : 1, onRaidReach: monster => onRaidReach(state, monster),
+    onSpecialKill: (monster, hunter) => onSpecialKill(state, monster, hunter), codex: species => noteKill(state, species), heroDeposit: pack => heroDeposit(state, pack), heroKill: m => heroKill(state, m), heroGather: () => heroContractProgress(state, 'gather'), heroRescue: (id, kind) => heroRescue(state, id, kind), busy: id => isBusy(state, id), clinic: () => state.village?.clinic || 0, luck: () => hasPolicy(state, 'scavenger') ? 2 : 1, onRaidReach: monster => onRaidReach(state, monster),
     campLevel: () => state.frontier?.camp || 0,
     atHome: member => !isBusy(state, member.id), lodge: member => lodgeSpot(state, member),
     visitGuild: member => visitGuild(state, member), hallCap: () => 8 + hallSeats(state).total, hasBar: () => hallSeats(state).total > 0,
@@ -1789,7 +1792,7 @@ export function noteTreasure(state, id) {
 /** Counters the daily goals measure. */
 export function progressCounters(state) {
   const r = state.record || {};
-  return { jobs: r.jobs || 0, kills: state.world?.kills || 0, bought: state.trade?.stats?.bought || 0, hall: r.hall || 0, income: r.income || 0, joined: r.joined || 0, passed: r.passed || 0 };
+  return { jobs: r.jobs || 0, kills: state.world?.kills || 0, bought: state.trade?.stats?.bought || 0, hall: r.hall || 0, income: r.income || 0, joined: r.joined || 0, passed: r.passed || 0, heroGathered: state.hero?.stats?.gathered || 0 };
 }
 function startDailyGoals(state) {
   if (introActive(state)) return;
@@ -1828,6 +1831,112 @@ function openChest(state, payload) {
   }
   const rarity = CHEST_RARITIES[roll.rarity];
   return { ok: true, message: `${CHESTS[chest.tier].icon} ${CHESTS[chest.tier].name} · ${rarity.name}: +${roll.reward.gold} G${treasure ? ` และ${TREASURES[treasure].name}` : ''}`, chest: { ...chest, rarity: roll.rarity, reward: roll.reward, treasure } };
+}
+// ---- The guild master in the field: the pack, the golden contracts, rescues, and the master's own class, book and gear. ----
+/** The master's pack reaches the guild: coins and materials to the coffers and the storehouse, rare finds to the master's chest. */
+function heroDeposit(state, pack) {
+  const goods = { gold: pack.gold || 0, wood: pack.wood || 0, stone: pack.stone || 0, herb: pack.herb || 0 };
+  if (Object.values(goods).some(Boolean)) transact(state, goods, 'หัวหน้ากิลด์นำของกลับมา', 1);
+  const ctx = lifeContext(state);
+  for (const [id, n] of Object.entries(pack.parts || {})) if (n) ctx.storePart(id, n);
+}
+function heroKill(state, m) {
+  const hero = state.hero;
+  if (state.bounty?.monsterId === m.id) { const b = state.bounty; state.bounty = null; state.record.bounties = (state.record.bounties || 0) + 1; transact(state, { gold: b.reward }, `ค่าหัว ${b.title}`, 1); state.rep += b.rep; addLog(state, `หัวหน้ากิลด์ปราบ “${b.title}” ได้เอง! สมาคมจ่ายค่าหัว ${b.reward} G`, 'success'); }
+  // Raiders beaten by the master's own hand: the village sees it and breathes easier.
+  if (m.raid) { state.village.raidScar = Math.max(0, (state.village.raidScar || 0) - 1); state.rep += 1; }
+  for (const c of hero?.contracts || []) if (!c.done && c.kind === 'elite' && c.monsterId === m.id) { c.have = 1; finishContract(state, c); }
+}
+function heroRescue(state, id, kind) {
+  const who = kind === 'member' ? memberById(state, id) : state.world.free.find(f => f.id === id);
+  const l3 = state.hero?.tree?.l3 ? 2 : 1;
+  if (who) { if (kind === 'member') who.morale = clamp((who.morale || 0) + 6 * l3, 0, 100); else who.affinity = clamp((who.affinity || 0) + 10 * l3, 0, 100); }
+  state.rep += 2;
+  heroContractProgress(state, 'rescue');
+}
+function heroContractProgress(state, kind) {
+  const hero = state.hero; if (!hero) return;
+  for (const c of hero.contracts) if (!c.done && c.kind === kind && c.day === state.day) { c.have = kind === 'gather' ? Math.min(c.need, hero.gatherDay === state.day ? hero.gatheredToday : c.have + 1) : c.have + 1; if (c.have >= c.need) finishContract(state, c); }
+}
+function finishContract(state, c) {
+  const hero = state.hero, def = CONTRACT_KINDS[c.kind], r = def.reward; c.done = true; hero.stats.contracts += 1;
+  if (r.gold) transact(state, { gold: r.gold }, `สัญญาหัวหน้ากิลด์: ${def.name}`, 1);
+  if (r.rep) state.rep += r.rep;
+  if (r.chest) addChest(state.progress, r.chest, `สัญญาหัวหน้ากิลด์: ${def.name}`);
+  for (let i = 0; i < (r.rare || 0); i++) { const k = Object.keys(RARE_MATS)[Math.floor(worldRandom(state) * 3) % 3]; hero.mats[k] = (hero.mats[k] || 0) + 1; }
+  addLog(state, `📜 สัญญาหัวหน้ากิลด์สำเร็จ: ${def.icon} ${def.name}${r.chest ? ` · ได้${CHESTS[r.chest].name}` : ''}`, 'reward');
+}
+/** Two golden contracts each morning; a rare beast is really out there for the master to find. */
+function rollHeroContracts(state) {
+  const hero = state.hero; if (!hero || introActive(state)) return;
+  const w = state.world, ids = new Set(hero.contracts.filter(c => c.kind === 'elite' && !c.done).map(c => c.monsterId));
+  w.monsters = w.monsters.filter(m => !(m.contract && ids.has(m.id)));
+  hero.contractDay = state.day; hero.contracts = [];
+  const kinds = ['elite', 'gather', 'lead', 'rescue'], pick = [];
+  while (pick.length < 2) { const k = kinds[Math.floor(worldRandom(state) * kinds.length) % kinds.length]; if (!pick.includes(k)) pick.push(k); }
+  for (const kind of pick) {
+    const c = { id: `hc-${state.day}-${kind}`, kind, day: state.day, zone: null, have: 0, need: kind === 'gather' ? CONTRACT_KINDS.gather.need : 1, done: false, monsterId: null };
+    if (kind === 'elite') {
+      const open = Object.entries(HUNT_ZONES).filter(([, z]) => hasRank(state, z.rank) && (z.rank !== 'B' || (state.frontier?.camp || 0) > 0));
+      const [zoneId, zone] = open[Math.floor(worldRandom(state) * open.length) % open.length];
+      const species = zone.species[Math.floor(worldRandom(state) * zone.species.length) % zone.species.length], st = MONSTER_STATS[species];
+      const m = spawnMonster(w, species, zoneId, pointIn(w, zone, .7), { elite: true, contract: true, hp: st.hp * 3, maxHp: st.hp * 3, atk: Math.round(st.atk * 1.4), title: 'ตัวแรร์' });
+      w.monsters.push(m); c.zone = zoneId; c.monsterId = m.id;
+    }
+    hero.contracts.push(c);
+  }
+}
+export function heroContracts(state) {
+  return (state.hero?.contracts || []).filter(c => c.day === state.day).map(c => { const def = CONTRACT_KINDS[c.kind]; const target = c.monsterId && state.world.monsters.find(m => m.id === c.monsterId && !m.dead);
+    return { ...c, name: def.name, icon: def.icon, text: def.text(c.kind === 'elite' ? HUNT_ZONES[c.zone]?.name || '' : c.need), reward: def.reward, at: target ? { x: target.x, y: target.y } : c.zone ? { x: HUNT_ZONES[c.zone].x, y: HUNT_ZONES[c.zone].y } : null }; });
+}
+export function heroCraftStatus(state, id) {
+  const hero = state.hero, g = HERO_GEAR[id]; if (!g) return { ok: false, reason: 'ไม่พบของชิ้นนี้' };
+  if (hero.owned.includes(id)) return { ok: false, owned: true, reason: 'มีแล้ว' };
+  if (!state.facilities.some(f => f.type === 'workshop')) return { ok: false, reason: 'ต้องมีโต๊ะช่าง' };
+  const missing = [];
+  for (const [k, v] of Object.entries(g.cost)) {
+    if (k === 'parts') { for (const [pid, n] of Object.entries(v)) if ((state.trade.store[pid] || 0) < n) missing.push(`${PARTS[pid].name} ${state.trade.store[pid] || 0}/${n}`); }
+    else if (RARE_MATS[k]) { if ((hero.mats[k] || 0) < v) missing.push(`${RARE_MATS[k].name} ${hero.mats[k] || 0}/${v}`); }
+    else if ((state[k] || 0) < v) missing.push(`${{ gold: 'เงิน', wood: 'ไม้', stone: 'หิน', herb: 'สมุนไพร' }[k]} ${Math.floor(state[k] || 0)}/${v}`);
+  }
+  return { ok: !missing.length, reason: missing.length ? 'ยังขาด: ' + missing.join(' · ') : '' };
+}
+function heroCommand(state, type, payload) {
+  const hero = state.hero ??= createHero();
+  if (type === 'heroClass') {
+    const c = HERO_CLASSES[payload.cls]; if (!c) return failure('ไม่พบสายอาชีพนี้');
+    if (hero.cls === payload.cls && hero.classChosen) return failure('ใช้สายนี้อยู่แล้ว');
+    if (hero.active) return failure('กลับเข้ากิลด์ก่อนเปลี่ยนสายอาชีพ');
+    if (hero.classChosen) { if (!state.village?.dojo) return failure('ต้องมีโรงฝึกในหมู่บ้านก่อน ถึงจะเปลี่ยนสายได้'); if (state.gold < CLASS_CHANGE_FEE) return failure(`ค่าเรียนที่โรงฝึก ${CLASS_CHANGE_FEE} G`); transact(state, { gold: CLASS_CHANGE_FEE }, 'หัวหน้ากิลด์เปลี่ยนสายที่โรงฝึก'); }
+    hero.cls = payload.cls; hero.classChosen = true; hero.ult = 0; hero.s1Cd = 0; hero.s2Cd = 0; hero.maxHp = heroStats(hero).maxHp; hero.hp = hero.maxHp;
+    return success(`หัวหน้ากิลด์เป็น${c.name}แล้ว · ${c.s1.name} · ${c.s2.name} · ท่าไม้ตาย ${c.ult.name}`);
+  }
+  if (type === 'heroTree') {
+    const n = HERO_TREE[payload.node]; if (!n) return failure('ไม่พบทักษะนี้');
+    if (hero.tree[payload.node]) return failure('เรียนแล้ว');
+    if (n.needs && !hero.tree[n.needs]) return failure(`ต้องเรียน${HERO_TREE[n.needs].name}ก่อน`);
+    if (treePoints(hero) <= 0) return failure('แต้มทักษะไม่พอ เลเวลอัปเพื่อรับแต้มเพิ่ม');
+    hero.tree[payload.node] = true; hero.maxHp = heroStats(hero).maxHp; return success(`เรียน “${n.name}” แล้ว · ${n.text}`);
+  }
+  if (type === 'heroCraft') {
+    const st = heroCraftStatus(state, payload.gear); if (!st.ok) return failure(st.reason);
+    const g = HERO_GEAR[payload.gear];
+    for (const [k, v] of Object.entries(g.cost)) { if (k === 'parts') for (const [pid, n] of Object.entries(v)) { state.trade.store[pid] -= n; if (!state.trade.store[pid]) delete state.trade.store[pid]; } else if (RARE_MATS[k]) hero.mats[k] -= v; }
+    transact(state, Object.fromEntries(RESOURCE_KEYS.map(k => [k, g.cost[k] || 0])), `คราฟต์ของหัวหน้ากิลด์: ${g.name}`);
+    hero.owned.push(payload.gear); hero.gear[g.slot] = payload.gear; hero.maxHp = heroStats(hero).maxHp;
+    return success(`คราฟต์${g.name}แล้ว และสวมใส่ทันที`);
+  }
+  if (type === 'heroEquip') { const g = HERO_GEAR[payload.gear]; if (!g || !hero.owned.includes(payload.gear)) return failure('ยังไม่มีของชิ้นนี้'); hero.gear[g.slot] = payload.gear; hero.maxHp = heroStats(hero).maxHp; hero.hp = Math.min(hero.hp, hero.maxHp); return success(`สวม${g.name}แล้ว`); }
+  if (type === 'heroOrder') { if (!['follow', 'attack', 'hold'].includes(payload.order)) return failure('คำสั่งไม่ถูกต้อง'); hero.order = payload.order; return success({ follow: 'เพื่อนร่วมทาง: ตามมา', attack: 'เพื่อนร่วมทาง: บุก!', hold: 'เพื่อนร่วมทาง: รอตรงนี้' }[payload.order]); }
+  if (type === 'heroCompanions') {
+    const ids = [...new Set(Array.isArray(payload.ids) ? payload.ids : [])].slice(0, 2);
+    for (const id of ids) { const m = memberById(state, id); if (!m) return failure('ไม่พบนักผจญภัย'); if (!hero.companions.includes(id) && (isBusy(state, id) || m.energy < 40 || m.injury > 30)) return failure(`${m.name}ยังไม่ว่างหรือยังไม่พร้อมออกไป`); }
+    hero.companions = ids;
+    if (hero.active) setHeroActive(state, lifeContext(state), true);
+    return success(ids.length ? `เพื่อนร่วมทาง: ${ids.map(id => memberById(state, id).name).join(' และ ')}` : 'ออกไปคนเดียว');
+  }
+  return failure('ไม่รู้จักคำสั่งนี้');
 }
 /** What is close: up to three small targets for the corner of the screen. */
 export function nearGoals(state) {
@@ -1950,6 +2059,7 @@ export function tick(state, seconds) {
     tickDirector(state, directorContext(state));
     tickTrade(state, tradeContext(state), step);
     checkDailyGoals(state);
+    if (state.hero && state.hero.contractDay !== state.day && !introActive(state)) rollHeroContracts(state);
     if (state.clock >= DAY_LENGTH - 0.00001) {
       state.clock = 0;
       state.day += 1;
@@ -2137,6 +2247,7 @@ function command(state, type, payload = {}) {
     case 'sellMaterial': return sellMaterial(state, payload);
     case 'collectIdle': return collectIdle(state, payload);
     case 'openChest': return openChest(state, payload);
+    case 'heroClass': case 'heroTree': case 'heroCraft': case 'heroEquip': case 'heroCompanions': case 'heroOrder': return heroCommand(state, type, payload);
     case 'choosePolicy': { const r = choosePolicy(state.progress, payload.policyId); if (r.ok) addLog(state, r.message, 'policy'); return r.ok ? success(r.message) : failure(r.message); }
     case 'chooseEvent': return chooseEvent(state, payload);
     case 'recallMission': {
@@ -2155,7 +2266,7 @@ function command(state, type, payload = {}) {
     case 'setBuyRate': if (!BUY_RATES[payload.rate]) return failure('ราคารับซื้อไม่ถูกต้อง'); state.trade.buyRate = payload.rate; return success(`ตั้งราคารับซื้อเป็น${BUY_RATES[payload.rate].name}`);
     case 'setAutoWholesale': state.trade.autoWholesale = Boolean(payload.on); return success(state.trade.autoWholesale ? 'โกดังใกล้เต็มจะขายส่งเอง' : 'เก็บของไว้ทั้งหมด ไม่ขายเอง');
     case 'toggleWorkshop': if (!VILLAGE_PROJECTS[payload.workshop] || !['tannery', 'apothecary', 'jeweler'].includes(payload.workshop)) return failure('ไม่พบโรงงานนี้'); state.trade.halt[payload.workshop] = !state.trade.halt[payload.workshop]; if (!state.trade.halt[payload.workshop]) delete state.trade.halt[payload.workshop]; return success(state.trade.halt[payload.workshop] ? `${VILLAGE_PROJECTS[payload.workshop].name}หยุดรับวัตถุดิบ` : `${VILLAGE_PROJECTS[payload.workshop].name}กลับมาทำงาน`);
-    case 'heroMode': { if (introActive(state)) return failure('รอให้บทนำจบก่อน'); const hero = setHeroActive(state, lifeContext(state), Boolean(payload.on)); return success(hero.active ? 'หัวหน้ากิลด์ออกไปข้างนอกเอง' : 'หัวหน้ากิลด์กลับมาประจำโต๊ะ'); }
+    case 'heroMode': { if (introActive(state)) return failure('รอให้บทนำจบก่อน'); const wait = Math.ceil((state.hero?.injuredUntil || 0) - state.elapsed); if (payload.on && wait > 0) return failure(`หัวหน้ากิลด์ยังพักรักษาตัว ออกไปได้อีกครั้งในอีก ${wait} วินาที`); const hero = setHeroActive(state, lifeContext(state), Boolean(payload.on)); return success(hero.active ? 'หัวหน้ากิลด์ออกไปข้างนอกเอง' : 'หัวหน้ากิลด์กลับมาประจำโต๊ะ'); }
     case 'moveVillageBuilding': return moveVillageBuilding(state, payload);
     case 'wholesale': return wholesale(state, tradeContext(state), payload);
     case 'sendCaravan': return sendCaravan(state, tradeContext(state), payload);

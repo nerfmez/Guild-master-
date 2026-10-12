@@ -63,6 +63,7 @@ export const DAILY_POOL = {
   income: { icon: '◈', text: n => `รายรับรวม ${n} G`, need: [250, 500, 900], counter: 'income' },
   joined: { icon: '🧑', text: n => `มีหน้าใหม่มาลงทะเบียน ${n} คน`, need: [1, 2, 3], counter: 'joined' },
   promote: { icon: '🎫', text: () => 'นักผจญภัยสอบผ่าน 1 คน', need: [1, 1, 1], counter: 'passed' },
+  heroGather: { icon: '🪓', text: n => `ออกไปเก็บของเอง ${n} จุด`, need: [3, 4, 5], counter: 'heroGathered' },
 };
 
 export function createProgress() {
@@ -142,7 +143,8 @@ export const hasPolicy = (state, id) => Boolean(state.progress?.policies?.includ
 
 /** Three goals for the new day; harder as the guild grows. `counters` is a snapshot at dawn. */
 export function newDailyGoals(p, day, counters, rankIdx, rand) {
-  const ids = Object.keys(DAILY_POOL).filter(id => id !== 'promote' || rankIdx >= 1);
+  // The master's own goal turns up only for players who have gone out by themselves before.
+  const ids = Object.keys(DAILY_POOL).filter(id => (id !== 'promote' || rankIdx >= 1) && (id !== 'heroGather' || counters.heroGathered > 0));
   const step = Math.min(2, Math.floor(rankIdx / 2)), list = [];
   while (list.length < 3 && ids.length) {
     const id = ids.splice(Math.floor(rand() * ids.length) % ids.length, 1)[0], def = DAILY_POOL[id];

@@ -7,6 +7,7 @@ import { pathTier, footprintOf, ROTATABLE, homeOf, villageBuildings, doorOf, pop
 const SHOT_COLORS={arrow:0xc9a06a,pierce:0xf3e2b0,magic:0xb7a6ff,bolt:0xf08a4b,fire:0xf08a4b,frostbolt:0x9fd3f0,frost:0x9fd3f0,spark:0xc9dcff,light:0xfff1c4,note:0xf2b8d8};
 import { QUESTS,REGIONS } from './content.js';
 import { WORLD_PATHS } from './site.js';
+import { GATHER_NODES } from './hero.js';
 import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
 import { SPECIES,makeMonster,questFoe } from './monsters.js';
 import { decorateFrontier } from './frontier-art.js';
@@ -45,7 +46,7 @@ export class GuildRenderer {
  checkScene(deep=true){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank(deep))return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R47',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R48',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -549,19 +550,46 @@ export class GuildRenderer {
   const p=gridPoint(at.x,at.y);this.wagon.setOrigin(this.wagonFoot.x/this.wagon.width,this.wagonFoot.y/this.wagon.height).setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y+2).setFlipX(!out).setVisible(at.x<60);}
  // ---- The guild master on foot: the player's own character in the world. ----
  slashArc(x,y,angle){const g=this.scene.add.graphics().setDepth(y+400).setPosition(x,y);g.lineStyle(3,0xfff8e7,.95);g.beginPath();g.arc(0,0,14,angle-1.1,angle+1.1);g.strokePath();g.lineStyle(1,0xffe08a,.9);g.beginPath();g.arc(0,0,10,angle-.9,angle+.9);g.strokePath();this.scene.tweens.add({targets:g,alpha:0,scale:1.3,duration:220,onComplete:()=>g.destroy()});}
+ /** Spots to gather by hand: a tree with a ribbon, a sparkling boulder, a flowering herb; stumps and rubble until they regrow. */
+ nodeArt(kind,ready){const key=`gnode-${kind}-${ready?1:0}`;if(this.scene.textures.exists(key))return key;const c=document.createElement('canvas');c.width=40;c.height=48;const x=c.getContext('2d');x.imageSmoothingEnabled=false;const R=(a,b,w,h,col)=>{x.fillStyle=col;x.fillRect(a,b,w,h);};
+  if(kind==='tree'){if(ready){const O=(cx,cy,rx,ry,col)=>{x.fillStyle=col;x.beginPath();x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);x.fill();};O(20,44,9,2.5,'#00000030');R(18,28,5,16,'#7a5434');R(19,28,2,16,'#9a6c44');O(20,19,13,11,'#3f6a3a');O(20,17,12,10,'#4f7a45');O(16,14,7,6,'#5f8a52');O(24,13,7,6,'#5f8a52');O(19,10,7,6,'#6f9a5e');O(15,12,3,2.5,'#8fbe72');O(23,9,3,2,'#8fbe72');R(17,33,7,3,'#e07a40');R(23,33,2,5,'#e07a40');}
+   else{R(15,38,11,6,'#7a5434');R(16,37,9,2,'#c49a6c');R(18,38,5,1,'#a87a52');R(10,43,3,1,'#c49a6c');R(28,42,4,1,'#c49a6c');}}
+  else if(kind==='rock'){if(ready){R(9,30,22,14,'#8a8a82');R(11,27,16,6,'#a5a59c');R(13,28,8,3,'#c4c4bb');R(9,40,22,4,'#6f6f68');R(26,30,3,3,'#e8f4ff');R(27,29,1,5,'#ffffff');R(25,31,5,1,'#ffffff');R(19,34,4,3,'#9fd3f0');}
+   else{for(const [a,b] of [[11,39],[18,41],[25,38],[15,36],[28,42]]){R(a,b,5,4,'#8a8a82');R(a,b,4,1,'#b5b5ac');}}}
+  else{if(ready){for(const [a,b,w,h,col] of [[10,32,20,10,'#5f8a52'],[12,29,16,6,'#6f9a5e'],[14,27,4,4,'#7fae68'],[22,28,4,4,'#7fae68']])R(a,b,w,h,col);for(const [a,b,col] of [[13,28,'#d7a8f0'],[20,26,'#ffffff'],[26,30,'#d7a8f0'],[16,33,'#ffe08a'],[24,34,'#ffffff']])R(a,b,3,3,col);}
+   else{for(const a of [12,16,20,24,28])R(a,38,2,6,'#7f9a64');R(10,43,22,2,'#6b8a55');}}
+  this.texture(key,c);return key;}
+ updateNodes(){
+  if(!this.scene)return;const h=this.state.hero,day=this.state.day||1;
+  if(!this.nodeImages||this.nodeScene!==this.scene){this.nodeScene=this.scene;this.nodeImages=new Map();for(const n of GATHER_NODES){const p=gridPoint(n.x,n.y),img=this.scene.add.image(p.x,p.y+4,this.nodeArt(n.kind,true)).setOrigin(.5,1).setDepth(p.y+2);this.nodeImages.set(n.id,{img,ready:true,n});}}
+  const t=this.realTime||0,near=h?.active;
+  for(const [id,o] of this.nodeImages){const ready=(h?.nodes?.[id]??-1)<day;if(ready!==o.ready){o.ready=ready;o.img.setTexture(this.nodeArt(o.n.kind,ready));}
+   // While the master is out, ready spots glint so they are easy to spot.
+   o.img.setAlpha(1);if(near&&ready&&!o.img.cameraFilter){const k=.85+Math.sin(t*4+o.n.x)*.15;o.img.setTint(Phaser.Display.Color.GetColor(255,Math.round(240*k+15),Math.round(200*k+55)));}else o.img.clearTint();}
+ }
+ /** The monster under a tap, for locking on. */
+ pickMonster(clientX,clientY){if(!this.camera)return null;const w=this.worldPoint(this.screenPoint({clientX,clientY}));let best=null,bd=40;for(const m of this.state.world?.monsters||[]){if(m.dead)continue;const q=gridPoint(m.x,m.y),d=Math.hypot(q.x-w.x,q.y-12-w.y);if(d<bd){bd=d;best=m.id;}}return best;}
  updateHero(dt){
   const h=this.state.hero,master=this.actors.get('master');
-  if(!h?.active){if(this.heroImage)this.heroImage.setVisible(false);this.heroCam=false;return;}
+  this.updateNodes();
+  if(!h?.active){if(this.heroImage)this.heroImage.setVisible(false);this.heroMarks?.clear();this.heroCam=false;return;}
   if(master)master.image.setVisible(false);
-  const p=this.state.profile||{masterName:'หัวหน้ากิลด์',hair:'#5b4637',outfit:'#6f8f6a',skin:'#f1c9a5',hairStyle:'short'},m={id:'master',name:p.masterName,class:'master',hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle};
-  if(!this.scene.textures.exists('actor-master-master-south-idle'))this.bakeActor(m);
-  this.heroImage??=this.scene.add.image(0,0,'actor-master-master-south-idle').setOrigin(.5,48/52);
+  const p=this.state.profile||{masterName:'หัวหน้ากิลด์',hair:'#5b4637',outfit:'#6f8f6a',skin:'#f1c9a5',hairStyle:'short'},cls=h.classChosen?h.cls:'master',m={id:'master',name:p.masterName,class:cls,hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle};
+  if(!this.scene.textures.exists(`actor-master-${cls}-south-idle`))this.bakeActor(m);
+  this.heroImage??=this.scene.add.image(0,0,`actor-master-${cls}-south-idle`).setOrigin(.5,48/52);
   const at=gridPoint(h.x,h.y),sx=h.fx-h.fy,sy=h.fx+h.fy,dir=Math.abs(sx)>Math.abs(sy)?(sx>0?'east':'west'):(sy>0?'south':'north');
   const pose=h.down>0?'sleep':h.swing>0?(h.swing>.12?'train0':'train1'):h.moving?'walk'+(Math.floor((this.realTime||0)*10)%4):Math.floor((this.realTime||0)*1.5)%2?'breath':'idle';
-  this.placeBody(this.heroImage,'actor-master-master',{mode:h.down>0?'down':'hunt'},at,pose,dir,at.y+1);
+  this.placeBody(this.heroImage,`actor-master-${cls}`,{mode:h.down>0?'down':'hunt'},at,pose,dir,at.y+1);
   this.heroImage.setVisible(true).setAlpha(h.dash>0?.6:1);
   // Health and a little name tag above the master's head.
   const ratio=h.hp/Math.max(1,h.maxHp);this.hpBars.fillStyle(0x3b302a,.85).fillRect(Math.round(at.x-11),Math.round(at.y-40),22,4);this.hpBars.fillStyle(ratio<.35?0xe0a050:0x7fd18b,1).fillRect(Math.round(at.x-10),Math.round(at.y-39),Math.round(20*ratio),2);
+  // Marks for the master: the locked foe, traps, a lead ring around nearby friends, and who can be helped up.
+  const g=this.heroMarks??=this.scene.add.graphics().setDepth(4);g.clear();
+  const lock=h.lock&&(this.state.world?.monsters||[]).find(o=>o.id===h.lock&&!o.dead);if(lock){const q=gridPoint(lock.x,lock.y);g.lineStyle(2,0xffd36a,.95).strokeEllipse(q.x,q.y,34,17);g.lineStyle(1,0xff8a5a,.8).strokeEllipse(q.x,q.y,40,20);}
+  for(const t of h.traps||[]){const q=gridPoint(t.x,t.y);g.fillStyle(0x6b4a32,.9).fillEllipse(q.x,q.y,16,8);g.lineStyle(1,0xd9c39a,1).strokeEllipse(q.x,q.y,16,8);}
+  g.lineStyle(1,0xffe9a8,.25).strokeEllipse(at.x,at.y,8*CELL_W,4*CELL_W);
+  for(const hn of this.state.world?.hunters||[]){if(hn.mode!=='down'||hn.carriedBy==='hero')continue;const q=gridPoint(hn.x,hn.y);if(Math.hypot(hn.x-h.x,hn.y-h.y)<8){const pulse=.5+Math.sin((this.realTime||0)*6)*.3;g.lineStyle(2,0xff6a5a,pulse).strokeEllipse(q.x,q.y,30,15);}}
+  for(const c of h.contracts||[]){if(c.done||!c.monsterId||c.day!==this.state.day)continue;const mm=(this.state.world?.monsters||[]).find(o=>o.id===c.monsterId&&!o.dead);if(!mm)continue;const q=gridPoint(mm.x,mm.y);g.fillStyle(0xffd36a,1).fillTriangle(q.x-5,q.y-52,q.x+5,q.y-52,q.x,q.y-44);}
   // The camera stays with the master.
   if(!this.heroCam){this.heroCam=true;this.stopFollow?.();this.zoomTarget=Math.max(.3,Math.min(2.4,2.1/(this.baseZoom||1)));}
   const k=1-Math.pow(.004,Math.min(dt,.1));this.focusX+=(at.x-this.focusX)*k;this.focusY+=(at.y-10-this.focusY)*k;this.userPanned=true;
@@ -754,7 +782,7 @@ export class GuildRenderer {
   const view=this.camera?.worldView,near=p=>!view||(p.x>view.x-80&&p.x<view.right+80&&p.y>view.y-80&&p.y<view.bottom+80);
   for(const e of events){
    const p=gridPoint(e.x,e.y);if(!near(p))continue;this.onFx?.(e);
-   if(e.type==='hit'){const s=this.lifeSprites?.get(e.id);if(s)s.flash=.12;this.floatText(p.x,p.y-28,String(e.amount),e.crit?'#ffd36a':'#ffffff',e.crit?11:9);const col=SHOT_COLORS[e.kind];if(col){const f=gridPoint(e.fx,e.fy);this.shot(f,p,col,e.kind);}else if(e.kind==='holy')this.ring(p.x,p.y-8,0xfff1c4,10);}
+   if(e.type==='hit'){const s=this.lifeSprites?.get(e.id);if(s)s.flash=.12;if(e.from==='hero'&&!e.quiet)this.camera?.shake?.(e.crit?90:50,e.crit?.004:.0022);this.floatText(p.x,p.y-28,String(e.amount),e.crit?'#ffd36a':'#ffffff',e.crit?11:9);const col=SHOT_COLORS[e.kind];if(col){const f=gridPoint(e.fx,e.fy);this.shot(f,p,col,e.kind);}else if(e.kind==='holy')this.ring(p.x,p.y-8,0xfff1c4,10);}
    else if(e.type==='hurt'){this.floatText(p.x,p.y-(e.wagon?56:34),String(e.amount),e.wagon?'#ffcf7a':'#ff8a7a',9);const ms=this.lifeSprites?.get(e.by);if(ms)ms.atk=.3;}
    else if(e.type==='spit'){const f=gridPoint(e.x,e.y),q=gridPoint(e.tx,e.ty);this.shot({x:f.x,y:f.y-6},q,/ember|magma|Dragon|stone/.test(e.species)?0xf08a4b:/mist|wisp|ghost/.test(e.species)?0x9fd6d0:0x9fd06a,'bolt');}
    else if(e.type==='charge'){this.dustPuff(e.x-.5,e.y-.5,1,1);this.floatText(p.x,p.y-40,'พุ่งชน!','#ffcf7a',9);}
@@ -777,9 +805,18 @@ export class GuildRenderer {
    else if(e.type==='skill'){this.floatText(p.x,p.y-44,e.name,'#fff1c4',8);if(e.skill==='fireball'){const q=gridPoint(e.tx,e.ty);this.ring(q.x,q.y,0xf08a4b,22);}else this.ring(p.x,p.y,e.skill==='guard'?0x8eb6e0:e.skill==='blessing'?0x9fe08a:0xe8cd8c,e.skill==='blessing'?28:16);}
    else if(e.type==='ko')this.floatText(p.x,p.y-30,'สลบ!','#ffb0a0',10);
    else if(e.type==='kill')this.dustPuff(e.x-.4,e.y-.4,.8,.8);
-   else if(e.type==='swing'){const f=gridPoint(e.x+e.fx*.8,e.y+e.fy*.8);this.slashArc(f.x,f.y-12,Math.atan2(f.y-p.y,f.x-p.x));}
+   else if(e.type==='swing'){const f=gridPoint(e.x+e.fx*.8,e.y+e.fy*.8);if(e.cls==='archer'||e.cls==='mage')continue;this.slashArc(f.x,f.y-12,Math.atan2(f.y-p.y,f.x-p.x));if(e.step===2){this.slashArc(f.x,f.y-12,Math.atan2(f.y-p.y,f.x-p.x)+.6);this.camera?.shake?.(90,.004);}}
    else if(e.type==='dash')this.dustPuff(e.x-.3,e.y-.3,.6,.6);
    else if(e.type==='dodge')this.floatText(p.x,p.y-38,'หลบ!','#bfe3ff',9);
+   else if(e.type==='perfect'){this.floatText(p.x,p.y-46,'หลบสวย!','#ffe08a',12);this.ring(p.x,p.y-10,0xffe08a,22);this.camera?.flash?.(80,255,240,200);}
+   else if(e.type==='aoe'){const col={slash:0xfff1c4,slam:0xd9b26f,rain:0xc9a06a,meteor:0xff8a3a,frost:0x9fd3f0,ward:0xfff1c4,revive:0x9fe08a}[e.kind]||0xffffff,r=e.r*CELL_W*1.4;const g=this.scene.add.graphics().setDepth(p.y+300).setPosition(p.x,p.y);g.lineStyle(3,col,.95).strokeEllipse(0,0,r*2,r);g.fillStyle(col,.18).fillEllipse(0,0,r*2,r);this.scene.tweens.add({targets:g,alpha:0,scale:1.15,duration:420,onComplete:()=>g.destroy()});if(e.kind==='meteor'||e.kind==='slam')this.camera?.shake?.(180,.006);if(e.kind==='meteor')this.dustPuff(e.x-1,e.y-1,2,2);}
+   else if(e.type==='trapSnap'){this.ring(p.x,p.y,0xd9c39a,16);this.floatText(p.x,p.y-30,'ติดกับ!','#ffcf7a',9);}
+   else if(e.type==='blink'){this.ring(p.x,p.y-10,0xb7a6ff,18);this.dustPuff(e.x-.3,e.y-.3,.6,.6);}
+   else if(e.type==='heroGather'){const name={wood:'ไม้',stone:'หิน',herb:'สมุนไพร'}[e.res];this.floatText(p.x,p.y-34,`+${e.amount} ${name}`,'#bff0a0',10);if(e.rare)this.scene.time.delayedCall(250,()=>this.floatText(p.x,p.y-48,'✨ '+({heartwood:'แก่นไม้เก่า',ore:'แร่ผลึก',glowHerb:'สมุนไพรเรืองแสง'}[e.rare]),'#ffd36a',11));this.dustPuff(e.x-.3,e.y-.3,.6,.6);}
+   else if(e.type==='firstKill')this.floatText(p.x,p.y-56,'ปราบด้วยมือครั้งแรก! ✨','#ffd36a',10);
+   else if(e.type==='deposit'){if(e.gold)this.floatText(p.x,p.y-50,`นำของเข้ากิลด์ +${e.gold} G`,'#ffe08a',10);else this.floatText(p.x,p.y-50,'นำของเข้ากิลด์','#ffe08a',10);}
+   else if(e.type==='pickup')this.floatText(p.x,p.y-46,'แบกขึ้นหลัง!','#ffcf7a',10);
+   else if(e.type==='rescued'){this.floatText(p.x,p.y-50,'พากลับถึงกิลด์แล้ว','#9fe08a',11);this.ring(p.x,p.y,0x9fe08a,30);}
    else if(e.type==='level'){this.floatText(p.x,p.y-48,'LEVEL UP! Lv.'+e.level,'#ffe08a',11);this.ring(p.x,p.y,0xffe08a,26);}
    else if(e.type==='revive')this.floatText(p.x,p.y-40,'ฟื้นแล้ว','#9fe08a',9);
    else if(e.type==='sell')this.floatText(p.x,p.y-40,`ขายของ ${e.amount} ชิ้น`,'#ffe08a',9);
@@ -925,7 +962,7 @@ export class GuildRenderer {
   if(!this.ready)return;const playing=!this.frozen&&!document.hidden&&!this.state.settings?.paused&&!document.getElementById('confirm-dialog').open&&!document.getElementById('settings-dialog').open;
   const elapsed=playing?dt*(this.state.settings?.speed||1):0;this.elapsed+=elapsed;this.realTime=(this.realTime||0)+dt;
   for(const a of this.actors.values()){
-   if(a.away){a.emote?.setVisible(false);const hunter=this.state.world?.hunters?.find(h=>h.id===a.member.id);if(a.member.errand)this.updateErrand(a,playing);else if(hunter)this.updateHunter(a,hunter,playing);else this.updateTraveler(a,playing);continue;}
+   if(a.away){a.emote?.setVisible(false);const hunter=this.state.world?.hunters?.find(h=>h.id===a.member.id);if(a.member.errand&&a.member.errand.kind!=='companion')this.updateErrand(a,playing);else if(hunter)this.updateHunter(a,hunter,playing);else this.updateTraveler(a,playing);continue;}
    // At home in town: their room at the inn (out of sight), the market and the streets, or a visit inside the guild hall.
    const tw=a.member.town;
    if(tw&&tw.at!=='guild'){a.bed=null;a.inTown=true;if(tw.at==='lodge'){a.image.setVisible(false);a.emote?.setVisible(false);continue;}

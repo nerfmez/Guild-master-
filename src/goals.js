@@ -139,14 +139,35 @@ export const GOAL_CHAPTERS = [
     { id: 'dragon', title: 'ราชันมังกรเพลิง (จบบทที่สอง)', action: 'quest:dragon', reward: { gold: 1000 },
       why: 'บทสุดท้ายของชายแดน ราชันมังกรพ่นไฟเป็นวงกว้าง ต้องมีคนรักษาและแทงค์', how: ['ทีมที่แข็งที่สุดในเมืองจะหยิบใบนี้เมื่อพร้อม', 'ให้ร้านค้ามียาและอาหารขาย คนจะพกไปเอง', 'รักษาบาดแผลและอารมณ์ให้ดี ประสิทธิภาพสูงขึ้นทีมยิ่งกล้ารับงาน'], check: s => n(s.completedQuests.dragon ? 1 : 0, 1) },
   ] },
+  { id: 'field', optional: true, name: 'บทเสริม · หัวหน้ากิลด์ลงสนาม', goals: [
+    { id: 'heroGather', title: 'ออกไปเก็บของเอง 5 จุด', action: 'hero', reward: { gold: 60 },
+      why: 'ต้นไม้ หิน และกอสมุนไพรที่มีประกายบนแผนที่ เก็บได้จุดละวันละครั้ง ได้ไม้ หิน สมุนไพร และบางครั้งได้วัสดุหายาก ของในกระเป๋าเข้ากิลด์เมื่อกลับถึงประตู',
+      how: ['กดปุ่ม ⚔ มุมจอ', 'เดินไปที่จุดที่มีประกาย แล้วกดปุ่มมือ (E)', 'ดูจุดที่ยังเก็บได้บนแผนที่เล็กมุมขวาบน'], check: s => n(s.hero?.stats?.gathered || 0, 5) },
+    { id: 'heroClass', title: 'เลือกสายอาชีพของหัวหน้ากิลด์', action: 'tab:fieldmaster', reward: { gold: 60 },
+      why: 'นักรบ นักธนู นักเวท หรือนักบวช แต่ละสายมีท่าโจมตี สกิล 2 ท่า และท่าไม้ตายของตัวเอง ครั้งแรกเลือกฟรี เปลี่ยนภายหลังได้ที่โรงฝึก',
+      how: ['เมนู “กิลด์” → หัวหน้ากิลด์ลงสนาม', 'แตะการ์ดสายอาชีพ'], check: s => n(s.hero?.classChosen ? 1 : 0, 1) },
+    { id: 'heroGear', title: 'คราฟต์อุปกรณ์ของหัวหน้ากิลด์', action: 'tab:fieldmaster', reward: { wood: 10 },
+      why: 'อาวุธ เกราะ และเครื่องราง ทำได้ที่โต๊ะช่าง ขั้นสูงต้องใช้วัสดุหายากที่หัวหน้ากิลด์เก็บเองและชิ้นส่วนมอนในโกดัง',
+      how: ['ต้องมีโต๊ะช่าง', 'เมนู “กิลด์” → หัวหน้ากิลด์ลงสนาม → อุปกรณ์'], check: s => n((s.hero?.owned || []).length, 1) },
+    { id: 'heroRescue', title: 'แบกนักผจญภัยที่สลบกลับกิลด์', action: 'hero', reward: { gold: 100 },
+      why: 'คนที่หัวหน้ากิลด์แบกกลับมาเองบาดเจ็บน้อยกว่าคนที่รอเปล และอารมณ์ดีขึ้น',
+      how: ['บนแผนที่เล็ก จุดสีแดงคือคนที่สลบ', 'เดินไปหา แล้วกดปุ่มมือ', 'พากลับถึงประตูกิลด์'], check: s => n(s.hero?.stats?.rescued || 0, 1) },
+    { id: 'heroContract', title: 'ทำสัญญาเฉพาะหัวหน้ากิลด์สำเร็จ', action: 'quests', reward: { gold: 120 },
+      why: 'ทุกเช้ามีใบงานสีทอง 2 ใบที่หัวหน้ากิลด์ทำได้คนเดียว เช่น ล่าตัวแรร์ เก็บเสบียงพิเศษ นำทีม หรือช่วยคน รางวัลเป็นหีบ วัสดุหายาก และชื่อเสียง',
+      how: ['ดูใบสีทองที่กระดานคำร้อง', 'ทำให้เสร็จภายในวันนั้น'], check: s => n(s.hero?.stats?.contracts || 0, 1) },
+    { id: 'heroParty', title: 'ออกไปพร้อมเพื่อนร่วมทาง', action: 'tab:fieldmaster', reward: { gold: 100 },
+      why: 'ชวนขาประจำที่ว่างไปด้วยได้ 2 คน สั่งได้ว่า ตามมา บุก หรือรอตรงนี้ พวกเขาได้ XP จากศัตรูที่หัวหน้ากิลด์ปราบ',
+      how: ['เมนู “กิลด์” → หัวหน้ากิลด์ลงสนาม → เพื่อนร่วมทาง', 'เลือก 2 คน แล้วกด ⚔'], check: s => n((s.hero?.companions || []).length ? 1 : 0, 1) },
+  ] },
 ];
-export const GOAL_LIST = GOAL_CHAPTERS.flatMap(ch => ch.goals.map(g => ({ ...g, chapter: ch.id, chapterName: ch.name })));
+export const GOAL_LIST = GOAL_CHAPTERS.flatMap(ch => ch.goals.map(g => ({ ...g, chapter: ch.id, chapterName: ch.name, optional: Boolean(ch.optional) })));
 
 /** Every objective with its progress; the first unclaimed one is "current". */
 export function goalBoard(state, villageLevel = 1) {
   const view = { ...state, villageLevel }, claimed = state.mastery?.claimed || {};
   const list = GOAL_LIST.map(g => { const p = g.check(view); return { ...g, have: p.have, need: p.need, done: p.have >= p.need, claimed: Boolean(claimed[g.id]) }; });
-  const current = list.find(g => !g.claimed) || null;
+  // The optional chapter never holds up the main path: it is only "current" once everything else is done.
+  const current = list.find(g => !g.claimed && !g.optional) || list.find(g => !g.claimed) || null;
   return { list, current, claimable: list.filter(g => g.done && !g.claimed) };
 }
 export function claimGoal(state, id, villageLevel = 1) {
