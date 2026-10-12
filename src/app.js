@@ -526,16 +526,26 @@ heroPress('hero-attack',on=>{heroAttackHeld=on;});for(const [id,key] of [['hero-
 document.addEventListener('click',e=>{const b=e.target.closest('[data-hero-order]');if(b)dispatch('heroOrder',{order:b.dataset.heroOrder});});
 // Tap a monster to lock on (anywhere but the controls).
 $('guild-world').addEventListener('pointerup',e=>{if(document.body.classList.contains('scene-only')||!heroOn()||!renderer?.pickMonster)return;const id=renderer.pickMonster(e.clientX,e.clientY);if(id&&state.hero){state.hero.lock=state.hero.lock===id?null:id;}});
-{const stick=$('hero-stick'),knob=stick.querySelector('i');const move=e=>{const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=r.width/2;let x=(e.clientX-cx)/max,y=(e.clientY-cy)/max;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l;}heroStick.x=x;heroStick.y=y;knob.style.transform=`translate(${x*max*.6}px,${y*max*.6}px)`;};
- stick.addEventListener('pointerdown',e=>{e.preventDefault();heroStick.id=e.pointerId;stick.setPointerCapture(e.pointerId);move(e);});stick.addEventListener('pointermove',e=>{if(heroStick.id===e.pointerId)move(e);});
- for(const ev of ['pointerup','pointercancel'])stick.addEventListener(ev,()=>{heroStick.id=null;heroStick.x=0;heroStick.y=0;knob.style.transform='';});}
+{const stick=$('hero-stick'),knob=stick.querySelector('i'),world=$('world-wrap');let originX=0,originY=0;const isTouch=e=>e.pointerType==='touch'||e.pointerType==='pen';const allowed=e=>heroOn()&&document.body.classList.contains('compact-ui')&&!document.querySelector('dialog[open]')&&!document.body.classList.contains('scene-only')&&isTouch(e)&&e.clientX<window.innerWidth*.5&&!e.target.closest('button,a,input,select,textarea,[role="button"],.quick-drawer,.world-actions,.hero-buttons,.hero-status,.hero-map,.screen-bottom,.topbar,.resources');
+ const move=e=>{const max=stick.offsetWidth/2||45;let x=(e.clientX-originX)/max,y=(e.clientY-originY)/max;const len=Math.hypot(x,y);if(len>1){x/=len;y/=len;}heroStick.x=x;heroStick.y=y;knob.style.transform=`translate(${x*max*.6}px,${y*max*.6}px)`;};
+ const stop=e=>{if(heroStick.id!==e.pointerId)return;heroStick.id=null;heroStick.x=heroStick.y=0;knob.style.transform='';stick.classList.remove('floating');stick.style.removeProperty('--float-x');stick.style.removeProperty('--float-y');};
+ const startStick=(e,floating)=>{if(heroStick.id!==null)return;e.preventDefault();heroStick.id=e.pointerId;const rect=stick.getBoundingClientRect();originX=floating?e.clientX:rect.left+rect.width/2;originY=floating?e.clientY:rect.top+rect.height/2;if(floating){stick.style.setProperty('--float-x',e.clientX+'px');stick.style.setProperty('--float-y',e.clientY+'px');stick.classList.add('floating');}move(e);};
+ stick.addEventListener('pointerdown',e=>{if(heroStick.id!==null)return;startStick(e,false);stick.setPointerCapture(e.pointerId);});
+ stick.addEventListener('pointermove',e=>{if(heroStick.id===e.pointerId)move(e);});
+ for(const ev of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(ev,stop);
+ // Capture the initiating pointer on the world, so camera gestures and hero attacks remain independent.
+ world.addEventListener('pointerdown',e=>{if(!allowed(e)||heroStick.id!==null)return;startStick(e,true);world.setPointerCapture(e.pointerId);},true);
+ world.addEventListener('pointermove',e=>{if(heroStick.id===e.pointerId)move(e);},true);
+ for(const ev of ['pointerup','pointercancel','lostpointercapture'])world.addEventListener(ev,stop,true);
+ window.addEventListener('blur',()=>{if(heroStick.id!==null){stop({pointerId:heroStick.id});}});
+}
 window.addEventListener('keydown',e=>{if(document.body.classList.contains('scene-only')||!heroOn()||e.target.matches?.('input,select,textarea')||document.querySelector('dialog[open]'))return;const k=e.code;
  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyJ','Space'].includes(k)){heroKeys.add(k);e.preventDefault();e.stopImmediatePropagation();}
  else{const key={KeyK:'s1',KeyL:'s2',KeyU:'ult',KeyE:'act',ShiftLeft:'dash',ShiftRight:'dash'}[k];if(key){heroTap(key);e.preventDefault();e.stopImmediatePropagation();}}},true);
 window.addEventListener('keyup',e=>{heroKeys.delete(e.code);});
 window.addEventListener('blur',()=>{heroKeys.clear();heroAttackHeld=false;});
 // Hero encounters pause the world while the player reads or chooses.
-function clearHeroInput(){heroKeys.clear();heroAttackHeld=false;heroStick.x=heroStick.y=0;heroStick.id=null;if(state.hero)state.hero.input={};$('hero-stick').querySelector('i').style.transform='';}
+function clearHeroInput(){heroKeys.clear();heroAttackHeld=false;heroStick.x=heroStick.y=0;heroStick.id=null;if(state.hero)state.hero.input={};$('hero-stick').querySelector('i').style.transform='';$('hero-stick').classList.remove('floating');$('hero-stick').style.removeProperty('--float-x');$('hero-stick').style.removeProperty('--float-y');}
 function syncHeroEncounterHud(){
  const view=heroEncounterView(state),el=$('hero-encounter-hud'),c=view?.challenge;
  $('hero-buffs').textContent=(view?.buffs||[]).map(b=>`${b.name} · ${Math.ceil(b.left)} วิ`).join(' · ');
