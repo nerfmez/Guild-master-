@@ -23,6 +23,13 @@ function cube(c,x,y,w,h,z,height,color=C.wood,light=C.light,dark=C.edge){
  top(c,x,y,w,h,z+height,light,C.ink);
 }
 
+/** A cube with a soft wooden edge instead of the dark ink line: thin chair parts stay light instead of turning into black lines. */
+function softCube(c,x,y,w,h,z,height,color,light,dark,edge='#b8936a'){
+ const r=projection?.r||0,yy=r===1||r===2?y:y+h,xx=r===2||r===3?x:x+w;
+ face(c,[[x,yy,z],[x+w,yy,z],[x+w,yy,z+height],[x,yy,z+height]],color,edge);
+ face(c,[[xx,y,z],[xx,y+h,z],[xx,y+h,z+height],[xx,y,z+height]],dark,edge);
+ top(c,x,y,w,h,z+height,light,edge);
+}
 function stroke(c,a,b,color,width=1){L(c,...q(...a),...q(...b),color,width);}
 function stamp(width,height,footX,footY,paint){const canvas=createCanvas(width,height),c=canvas.getContext('2d');c.translate(footX,footY);paint(c);return{canvas,width,height,footX,footY};}
 function object(paint,width=112,height=104,footX=54,footY=52){return stamp(width,height,footX,footY,paint);}
@@ -93,7 +100,7 @@ export function makeRoom(f){
    for(const x of [1.55,1.85,2.15]){const[mx,my]=q(x,.95,16);R(c,mx-2,my-5,4,5,'#e8d29a');R(c,mx-2,my-6,4,1,'#fff7ea');R(c,mx+2,my-4,1,2,'#c9b077');}
    {const[wx,wy]=q(.35,.98,16);R(c,wx-3,wy-1,6,2,'#f4f1ea');R(c,wx-3,wy,6,1,'#d9584a');}
    // Four stools along the front for the customers.
-   for(let i=0;i<4;i++){const x=.35+i*.6,y=1.35;for(const [dx,dy] of [[-.09,-.09],[.05,-.09],[-.09,.05],[.05,.05]])cube(c,x+dx,y+dy,.04,.04,0,10,'#7a5236','#b98a5e','#5f3f2a');cube(c,x-.08,y-.08,.16,.16,4,1,'#8f6a4c','#c9a074','#6b4a32');const[sx,sy]=q(x,y,10);E(c,sx,sy+1,8,4,'#6b4a32');E(c,sx,sy,8,4,'#b84a3a');E(c,sx-2,sy-1,3,1,'#d9786a');}
+   for(let i=0;i<4;i++){const x=.35+i*.6,y=1.35;for(const [dx,dy] of [[-.09,-.09],[.05,-.09],[-.09,.05],[.05,.05]])softCube(c,x+dx,y+dy,.04,.04,0,10,'#c49a6c','#ecd0a2','#a37c55');softCube(c,x-.08,y-.08,.16,.16,4,1,'#c9a074','#f0d6a8','#a8805a');const[sx,sy]=q(x,y,10);E(c,sx,sy+1,8,4,'#6b4a32');E(c,sx,sy,8,4,'#b84a3a');E(c,sx-2,sy-1,3,1,'#d9786a');}
    // A hanging lantern over the counter.
    {const[lx,ly]=q(1.25,.5,44);R(c,lx,ly-12,1,12,'#5a4a3a');R(c,lx-3,ly,7,6,'#5a4a3a');R(c,lx-2,ly+1,5,4,'#ffe08a');}}
   else if(f.type==='dining'){
@@ -110,9 +117,9 @@ export function makeRoom(f){
     {const[jx,jy]=q(cx+.16,cy-.16,z+3);R(c,jx-2,jy-6,4,6,'#8fb3c9');R(c,jx-2,jy-7,4,1,'#c8e4ef');R(c,jx+2,jy-5,1,3,'#8fb3c9');}};
    const chair=(cx,cy,back)=>{const s2=.15,legs=[[cx-s2,cy-s2],[cx+s2-.04,cy-s2],[cx-s2,cy+s2-.04],[cx+s2-.04,cy+s2-.04]];
     const backArt=()=>{const posts=back==='n'?[[cx-s2,cy-s2],[cx+s2-.04,cy-s2]]:back==='s'?[[cx-s2,cy+s2-.04],[cx+s2-.04,cy+s2-.04]]:back==='w'?[[cx-s2,cy-s2],[cx-s2,cy+s2-.04]]:[[cx+s2-.04,cy-s2],[cx+s2-.04,cy+s2-.04]];
-     for(const [x,y] of posts)cube(c,x,y,.04,.04,7,5,'#c49a6c','#ecd0a2','#a37c55');
-     const rail=back==='n'||back==='s'?[cx-s2,posts[0][1],s2*2,.04]:[posts[0][0],cy-s2,.04,s2*2];cube(c,rail[0],rail[1],rail[2],rail[3],10.5,2,'#c9a074','#f0d6a8','#a8805a');};
-    const seatArt=()=>{for(const [x,y] of legs)cube(c,x,y,.04,.04,0,5.5,'#c49a6c','#ecd0a2','#a37c55');cube(c,cx-s2,cy-s2,s2*2,s2*2,5.5,1.5,'#c9a074','#f0d6a8','#a8805a');top(c,cx-s2+.04,cy-s2+.04,s2*2-.08,s2*2-.08,7.1,'#e07a68');};
+     for(const [x,y] of posts)softCube(c,x,y,.04,.04,7,5,'#c49a6c','#ecd0a2','#a37c55');
+     const rail=back==='n'||back==='s'?[cx-s2,posts[0][1],s2*2,.04]:[posts[0][0],cy-s2,.04,s2*2];softCube(c,rail[0],rail[1],rail[2],rail[3],10.5,2,'#c9a074','#f0d6a8','#a8805a');};
+    const seatArt=()=>{for(const [x,y] of legs)softCube(c,x,y,.04,.04,0,5.5,'#c49a6c','#ecd0a2','#a37c55');softCube(c,cx-s2,cy-s2,s2*2,s2*2,5.5,1.5,'#c9a074','#f0d6a8','#a8805a');top(c,cx-s2+.04,cy-s2+.04,s2*2-.08,s2*2-.08,7.1,'#e07a68');};
     if(back==='n'||back==='w'){backArt();seatArt();}else{seatArt();backArt();}};
    chair(.875,.13,'n');chair(.13,.875,'w');tableArt();chair(1.62,.875,'e');chair(.875,1.62,'s');}
   else if(f.type==='appraisal'){
