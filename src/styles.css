@@ -788,3 +788,7 @@ body .toast.clickable{pointer-events:auto}
 .board-preview-art canvas{display:block;width:100%;height:auto;max-height:180px;object-fit:cover}.board-preview-body{padding:15px;display:grid;gap:10px}.board-preview-body h3{margin:0;font-size:18px}.board-preview-body p{font-size:12px;line-height:1.65;margin:0}.board-preview-meta{display:grid;gap:7px;font-size:12px;color:#78664b}.board-preview-empty{padding:18px}
 @media(max-width:1150px){.board-workspace{grid-template-columns:minmax(0,1fr) 290px}.board-workspace .board-list{grid-template-columns:minmax(0,1fr)!important}}
 @media(max-width:790px){.board-workspace{grid-template-columns:minmax(0,1fr)}.board-workspace .board-list{grid-template-columns:minmax(0,1fr)!important}.board-detail-sidebar{position:static}.board-workspace .board-card .qart{width:32%}}
+
+/* Distinct HUD entry points: news and quests, with quest availability badge. */
+.hud-inbox{display:flex;gap:6px;align-items:center}.hud-inbox button{position:relative;min-width:55px}.hud-inbox button span{display:inline-flex;min-width:17px;justify-content:center}.hud-inbox button span[hidden]{display:none}.hud-inbox .urgent{border-color:#d7a65d;background:#fff1d1}.hud-inbox .urgent span{background:#c85e4f;color:#fff;border-radius:9px;padding:0 5px}
+@media(max-width:700px){.hud-inbox{gap:4px}.hud-inbox button{min-width:48px;padding:7px 8px}}
