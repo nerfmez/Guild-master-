@@ -1397,6 +1397,21 @@ function postBounty(state) {
   state.bounty = { monsterId: m.id, species, zone: zoneId, title, reward, rep: 6 + rankIndex(zone.rank) * 4, day: state.day };
   addLog(state, `ใบประกาศจับ: “${title}” ${monsterName(species)} ที่${zone.name} ค่าหัว ${reward} G`, 'event');
 }
+/** Raise the price on the bounty: the strongest adventurers in town who can handle that ground set off for it right away. */
+export function bountyBoostCost(state) { const b = state.bounty; return b ? Math.round(b.reward * .5) : 0; }
+function boostBounty(state) {
+  const b = state.bounty; if (!b) return failure('ตอนนี้ไม่มีใบประกาศจับ');
+  if ((b.boosts || 0) >= 2) return failure('เพิ่มค่าหัวได้ไม่เกิน 2 ครั้งต่อใบ');
+  const cost = bountyBoostCost(state); if (state.gold < cost) return failure(`ต้องมีเงิน ${cost} G`);
+  const zone = HUNT_ZONES[b.zone], need = Math.max(0, ADVENTURER_RANKS.indexOf(zone.rank) - 1);
+  const fit = state.members.filter(m => !isBusy(state, m.id) && m.injury <= 30 && m.energy >= 50 && ADVENTURER_RANKS.indexOf(m.rank || 'F') >= need)
+    .sort((a, c) => getMemberStats(state, c).basePower - getMemberStats(state, a).basePower).slice(0, 3);
+  transact(state, { gold: cost }, `เพิ่มค่าหัว ${b.title}`);
+  b.reward += cost; b.boosts = (b.boosts || 0) + 1;
+  if (fit.length) { const ids = new Set(fit.map(m => m.id)); rallyToBoss(state, lifeContext(state), b.zone, m => ids.has(m.id)); }
+  addLog(state, `เพิ่มค่าหัว “${b.title}” เป็น ${b.reward} G${fit.length ? ` · ${fit.map(m => m.name).join(' · ')} ออกไปล่าทันที` : ' · ตอนนี้ยังไม่มีใครว่างที่เก่งพอ คนที่กลับมาจะสนใจใบนี้ก่อน'}`, 'event');
+  return success(fit.length ? `${fit.length} คนออกไปล่า “${b.title}” แล้ว` : `ค่าหัวขึ้นเป็น ${b.reward} G`);
+}
 function claimBounty(state, hunter) {
   const b = state.bounty; state.bounty = null;
   const member = hunter?.kind === 'member' ? memberById(state, hunter.id) : null;
@@ -2237,6 +2252,7 @@ function command(state, type, payload = {}) {
     case 'sendMission': return sendMission(state, { ...payload, auto: false });
     case 'acceptPetition': case 'declinePetition': case 'setPetition': case 'boostPetition': return petitionCommand(state, type, payload);
     case 'rally': return rally(state);
+    case 'boostBounty': return boostBounty(state);
     case 'hireStaff': return hireStaff(state, payload.role);
     case 'fireStaff': return fireStaff(state, payload.role);
     case 'setPayoutPlan': if (!PAYOUT_PLANS[payload.plan]) return failure('แผนค่าตอบแทนไม่ถูกต้อง'); state.payoutPlan = payload.plan; return success(`ตั้งค่าตอบแทนเริ่มต้นเป็น${PAYOUT_PLANS[payload.plan].name}`);

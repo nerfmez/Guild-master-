@@ -638,3 +638,5 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
 .contract-list{display:grid;gap:6px;margin-bottom:8px}.contract-card{display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:center;padding:8px 10px;border-radius:9px;border:1px solid #d9b25a;background:linear-gradient(135deg,#fff6d8,#f9e7b4)}.contract-card>span{font-size:22px}.contract-card b{font-size:12.5px}.contract-card small{display:block;font-size:10.5px;color:#7a6040}.contract-card small.reward{color:#8a6420}.contract-card em{font-size:10.5px;font-style:normal;color:#5f7d4c;font-weight:700}.contract-card.done{opacity:.7;background:#f2f6ea;border-color:#b9c7a6}.contract-card button{font-size:11px;padding:6px 10px}
 .hero-order[hidden],.hero-jobs[hidden]{display:none!important}
 .fm-gear small.fm-warn{color:#b0674f}
+.bounty-actions{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}.bounty-actions button{font-size:11.5px;padding:6px 10px}.rally-card .bounty-actions{margin-top:6px}
+.bounty-card .bounty-actions,.rally-card .bounty-actions{display:flex}

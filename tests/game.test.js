@@ -1520,3 +1520,24 @@ test('master jobs: golden contracts every morning, rescuing the fallen, leading 
   act(state, 'heroMode', { on: false }); tick(state, 60);
   assert.ok(!state.world.hunters.some(h => h.escort), 'they go home with the master');
 });
+
+test('bounties and world bosses: raise the price and the strongest set off at once, or go out and take it yourself', async () => {
+  const { bountyBoostCost } = await import('../src/game.js');
+  const state = createGame(404);
+  state.rank = 'D'; state.gold = 5000; state.members.forEach(m => { m.rank = 'D'; m.energy = 100; m.injury = 0; });
+  tick(state, 1);
+  for (let d = 0; d < 4 && !state.bounty; d++) tick(state, DAY_LENGTH);
+  assert.ok(state.bounty, 'the association posts a bounty');
+  const reward = state.bounty.reward, cost = bountyBoostCost(state);
+  const r = act(state, 'boostBounty', {});
+  assert.ok(r.ok, r.message);
+  assert.equal(state.bounty.reward, reward + cost);
+  assert.ok(state.world.hunters.some(h => h.zone === state.bounty.zone && h.kind === 'member'), 'adventurers set off for the bounty ground');
+  act(state, 'boostBounty', {});
+  assert.equal(act(state, 'boostBounty', {}).ok, false, 'at most twice per bounty');
+  // The master takes it by hand: the whole reward goes to the guild.
+  const b = state.bounty, m = state.world.monsters.find(x => x.id === b.monsterId), gold = state.gold;
+  act(state, 'heroMode', { on: true }); Object.assign(state.hero, { x: m.x - .8, y: m.y, fx: 1, fy: 0 }); m.hp = 1;
+  state.hero.input = { attack: true }; tick(state, .3);
+  assert.equal(state.bounty, null); assert.ok(state.gold >= gold + b.reward);
+});
