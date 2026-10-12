@@ -1,8 +1,8 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
-import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,TOWN_CAPS,STAFF,STAFF_MAX_LEVEL,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
+import { BUILDING_FOOTPRINTS, FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,TOWN_CAPS,STAFF,STAFF_MAX_LEVEL,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
-import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, stageHeroCall, releaseCallFallen, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, addHeroXp, heroNearby, heroStats, startExpedition, recallExpedition } from './life.js';
+import { INN, tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, stageHeroCall, releaseCallFallen, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, addHeroXp, heroNearby, heroStats, startExpedition, recallExpedition } from './life.js';
 import { tickHeroEncounters, resolveHeroEncounter, abandonHeroChallenge, cancelHeroEncounters, sanitizeHeroEncounters } from './hero-events.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
@@ -1547,10 +1547,26 @@ function startErrand(state, member, kind, duration, data = {}) {
 }
 export function lessonFee(state) { return 10 + (state.village?.dojo || 0) * 8; }
 /** Festivals (festivals.js): the guild master sets the prizes; the village and the guild feel the effects. */
+/** Where a village venue stands (its lot, turned the way the player set it), for the live shows. */
+function venueRect(state, key) {
+  const b = villageBuildings(state).find(x => x.key === key);
+  if (b) return b;
+  const lot = state.village?.lots?.[key] || VILLAGE_LOTS[key], [w, h] = BUILDING_FOOTPRINTS[key] || [4, 3];
+  return { key, kind: key, x: lot.x, y: lot.y, w, h, rot: 0 };
+}
+/** The middle of a venue, for the camera. */
+export function venueCenter(state, key) { const r = venueRect(state, key); return { x: r.x + r.w / 2, y: r.y + r.h / 2 }; }
+function showPlaces(state) {
+  return { venue: key => venueRect(state, key), door: () => guildDoor(state), inn: () => INN,
+    release: (id, x, y) => { const m = memberById(state, id); if (m && !m.errand) m.town = { x, y, tx: x, ty: y, wait: 1.5, at: 'street', goal: 'town' }; const f = state.world?.free?.find(o => o.id === id); if (f && f.mode === 'town') Object.assign(f, { x, y, tx: x, ty: y, wait: 2 }); },
+    homes: () => villageBuildings(state).filter(b => b.kind === 'house').map(doorOf) };
+}
 function festivalContext(state) {
   const home = () => state.members.filter(m => !isBusy(state, m.id));
   const memberPower = m => { const st = getMemberStats(state, m); return Math.round(st.basePower + st.health * 0.08); };
   return {
+    ...showPlaces(state),
+    audience: (n, end) => home().filter(m => m.energy >= 15 && m.injury <= 50).sort((a, b) => a.morale - b.morale).slice(0, n).map(m => { m.errand = { kind: 'festival', start: state.elapsed, end }; m.task = 'rest'; return m.id; }),
     building: id => state.village?.[id] || 0, buildingName: id => VILLAGE_PROJECTS[id]?.name || id, villageLevel: () => getVillageInfo(state).level,
     random: () => petitionRandom(state), power: memberPower,
     guildPower: () => state.members.length ? state.members.reduce((s, m) => s + memberPower(m), 0) / state.members.length : 30,
@@ -1609,6 +1625,7 @@ function upgradeCamp(state) {
 /** Exams run in rounds at the arena (exams.js); members sign up and pay before a round starts. */
 function examContext(state) {
   return {
+    ...showPlaces(state), arenaBusy: () => state.festivals?.live?.kind === 'tournament',
     arena: () => state.village?.arena || 0, passed: () => { state.record.passed = (state.record.passed || 0) + 1; }, rankInfo: member => getAdventurerRank(state, member),
     payFee: (member, fee, reason) => payFee(state, member, fee, reason), log: (text, type) => addLog(state, text, type),
     random: () => petitionRandom(state), busy: member => isBusy(state, member.id), chance: (member, rule) => examChance(state, member, rule),
@@ -2189,8 +2206,8 @@ export function tick(state, seconds) {
     if (state.today && Math.floor(state.elapsed / 10) !== Math.floor((state.elapsed - step) / 10) && state.members.length) { state.today.effSum += avgEff(state); state.today.effN += 1; }
     tickPetitions(state, step);
     tickApplicants(state, step);
-    tickExams(state, examContext(state));
-    if (state.festivals?.live) tickFestivals(state, festivalContext(state));
+    tickExams(state, examContext(state), step);
+    if (state.festivals?.live) tickFestivals(state, festivalContext(state), step);
     tickErrands(state);
     tickVillage(state, step);
     tickLife(state, lifeContext(state), step);
@@ -2544,7 +2561,7 @@ export function deserializeGame(source) {
     const t = member.town;
     normalized.town = t && ['street', 'guild', 'lodge'].includes(t.at) && ['x', 'y', 'tx', 'ty', 'wait'].every(k => finiteNumber(t[k]) && Math.abs(t[k]) < 1000) ? { x: t.x, y: t.y, tx: t.tx, ty: t.ty, wait: t.wait, at: t.at, ...(['guild', 'lodge', 'town'].includes(t.goal) ? { goal: t.goal } : {}) } : null;
     const e = member.errand;
-    normalized.errand = e && ['lesson', 'exam', 'classTrial', 'festival'].includes(e.kind) && finiteNumber(e.start) && finiteNumber(e.end) && e.end - e.start <= 120
+    normalized.errand = e && ['lesson', 'exam', 'classTrial', 'festival'].includes(e.kind) && finiteNumber(e.start) && finiteNumber(e.end) && e.end - e.start <= (e.kind === 'festival' ? 900 : 120)
       && (e.kind !== 'exam' || ADVENTURER_RANK_RULES[e.rank]) && (e.kind !== 'classTrial' || JOBS[e.classId]?.parent === normalized.class) ? { ...e } : null;
     return normalized;
   });
@@ -2661,6 +2678,11 @@ export function deserializeGame(source) {
   const bty = data.bounty;
   state.bounty = bty && typeof bty.monsterId === 'string' && MONSTER_STATS_KEYS.has(bty.species) && HUNT_ZONES[bty.zone] && finiteNumber(bty.reward) && state.world.monsters.some(m => m.id === bty.monsterId) ? { monsterId: bty.monsterId, species: bty.species, zone: bty.zone, title: String(bty.title || ''), reward: bty.reward, rep: finiteNumber(bty.rep) ? bty.rep : 0, day: bty.day | 0 } : null;
   state.festivals = sanitizeFestivals(data.festivals, new Set(state.members.map(m => m.id)));
+  // A festival saved before the shows went live cannot be picked up mid-way: the purse comes back and the entrants go home.
+  if (data.festivals?.live && !state.festivals.live && finiteNumber(data.festivals.live.gold)) {
+    state.gold += Math.max(0, Math.min(1e6, data.festivals.live.gold));
+    for (const m of state.members) if (m.errand?.kind === 'festival') m.errand = null;
+  }
   state.hero = sanitizeHero(data.hero);
   state.heroCall = sanitizeHeroCall(data.heroCall, state);
   state.hero.encounters = sanitizeHeroEncounters(data.hero?.encounters, state.hero, state.world.monsters);

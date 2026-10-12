@@ -484,7 +484,6 @@ body.on-title .hero-hud{display:none}
 .fest-history{display:grid;gap:2px;padding:8px 10px;margin:6px 0;border-left:3px solid #d9a441;background:#fffaf0;border-radius:6px}.fest-history small{color:#7a6a52}
 .exam-ticket{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;padding:10px 12px;margin:8px 0;border:2px dashed #b85a4a;border-radius:12px;background:#fff4ea}
 .exam-ticket small{grid-column:1;color:#8a5a3a}.exam-ticket button{grid-row:1/3;grid-column:2}
-.show-dialog{background:#1f1914}
 @media(max-width:620px){.fest-kinds{grid-template-columns:1fr 1fr 1fr;gap:4px}.fest-kind{padding:8px 2px}.fest-kind b{font-size:12px}.fest-live{flex-direction:column;align-items:stretch}}
 
 /* R39: quest scenarios */
@@ -674,3 +673,23 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
 .hero-encounter-hud{right:70px;top:calc(max(20px,env(safe-area-inset-top)) + 240px)}
 @media(max-width:620px){.hero-encounter-hud{right:14px;top:calc(max(15px,env(safe-area-inset-top)) + 240px);width:min(205px,max(155px,calc(100vw - 220px)))}}
 @media(max-height:500px) and (min-width:621px){.hero-encounter-hud{right:310px;top:95px}}
+/* Live shows in the village: a compact panel that follows the exam round or the festival */
+.show-panel{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 96px);width:min(420px,calc(100% - 660px));min-width:320px;z-index:6;display:grid;gap:5px;padding:9px 11px;background:#2c241eeb;color:#fbeed2;border:1px solid #c79b55;border-radius:10px;box-shadow:0 6px 16px #0006;font-size:12px}
+.show-panel[hidden]{display:none}
+.sp-head{display:flex;align-items:center;gap:6px}.sp-head b{flex:1;font-size:13px}
+.sp-go,.sp-x{padding:3px 8px!important;font-size:11px!important;border-radius:7px;background:#fbeed2!important;color:#3d2c22!important;border:1px solid #b98a3e!important;min-height:0!important}
+.sp-x{padding:2px 7px!important;font-size:13px!important}
+.sp-stage{font-size:12.5px;font-weight:700;color:#ffe08a;display:flex;gap:8px;align-items:baseline}.sp-stage small{margin-left:auto;font-weight:400;color:#f3e3c0}
+.sp-hp{display:block;height:6px;border-radius:4px;background:#5a4a3c;overflow:hidden}.sp-hp u{display:block;height:100%;background:#8fd17a;transition:width .2s}.sp-hp.time u{background:#ffd36a}
+.sp-table{display:grid;gap:2px;max-height:190px;overflow:auto}
+.sp-row{display:grid;grid-template-columns:minmax(0,1fr) 30px 30px 30px 54px;gap:4px;align-items:center;padding:2px 4px;border-radius:5px}
+.sp-row b{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sp-row b small{margin-left:4px;font-weight:400;color:#cbb994}
+.sp-row span{text-align:center;font-weight:700;color:#f3e3c0}.sp-row span.on{color:#ffe08a}.sp-row em{font-style:normal;font-size:10.5px;color:#cbb994;text-align:right}
+.sp-row.head{color:#cbb994;font-size:10.5px}.sp-row.head b{font-size:10.5px;font-weight:400}.sp-row.mine{background:#3f6a8a55}
+.sp-bout{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}.sp-bout>i{font-style:normal;font-weight:800;color:#ffb35a}
+.sp-fighter{display:grid;gap:3px}.sp-fighter b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sp-fighter.mine b{color:#bfe3ff}.sp-fighter.win b::after{content:' ✓';color:#9fe08a}.sp-fighter.lose{opacity:.55}
+.sp-draw,.sp-farms{display:flex;flex-wrap:wrap;gap:4px}.sp-draw span,.sp-farms span{font-size:10.5px;padding:2px 7px;border-radius:99px;background:#4a3c30}.sp-draw span.mine{background:#3f6a8a}.sp-draw span.out{opacity:.4;text-decoration:line-through}.sp-draw span.champ,.sp-farms span.champ{background:#b98a3e;color:#fff}
+.sp-farms span b{color:#ffe08a;margin-left:3px}
+.sp-note{font-size:10.5px;color:#cbb994}
+@media(max-width:1100px){.show-panel{width:min(420px,calc(100% - 24px))}}
+@media(max-width:620px){.show-panel{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 84px);min-width:0;width:calc(100% - 20px);padding:7px 9px;font-size:11px}.sp-table{max-height:120px}}

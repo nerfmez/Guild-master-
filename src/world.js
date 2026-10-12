@@ -46,7 +46,7 @@ export class GuildRenderer {
  checkScene(deep=true){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank(deep))return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R49',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R50',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -360,6 +360,7 @@ export class GuildRenderer {
  }
  // A member on an errand walks out along the road to the dojo or arena, stays a while, and walks back.
  updateErrand(a,playing){
+  if(this.showIds?.has(a.member.id)){a.image.setVisible(false);return;}
   const e=a.member.errand,lot=this.villageLot(e.kind==='exam'||e.kind==='festival'?'arena':'dojo'),b=buildingRect(this.state),door={x:b.x+b.w/2,y:b.y+b.h+.4};
   const site=e.kind==='exam'||e.kind==='festival'?{x:lot.x+2+((hash(a.member.id)%3)-1)*.5,y:lot.y+1.5}:{x:lot.x+1.3,y:lot.y+2.9};
   const route=[door,{x:door.x,y:17.5},{x:site.x,y:17.5},site],total=route.slice(1).reduce((s,p,k)=>s+Math.hypot(p.x-route[k].x,p.y-route[k].y),0);
@@ -617,15 +618,98 @@ export class GuildRenderer {
     for(const kind of ['bunting','balloon','lantern','confetti'])for(let f=0;f<2;f++){const k=`fest-${kind}-${f}`;if(!this.scene.textures.exists(k))this.texture(k,makeFestivalDecor(kind,f).canvas);}
     const spots=[[-.6,h+.4,'bunting'],[w+.2,h+.2,'bunting'],[-.8,-.2,'balloon'],[w+.6,-.4,'balloon'],[w/2,h+1.2,'confetti']];
     for(const [dx,dy,kind] of spots){const sp=makeFestivalDecor(kind,0),p=gridPoint(lot.x+dx,lot.y+dy);this.festDecor.push({kind,image:this.scene.add.image(p.x-sp.footX,p.y-sp.footY,`fest-${kind}-0`).setOrigin(0).setDepth(p.y+2),x:p.x,y:p.y});}
-    if(live.kind==='lantern')for(let i=0;i<14;i++){const p=gridPoint(lot.x+w/2+(i%5-2)*2.2,lot.y+h/2+Math.floor(i/5)*1.6),sp=makeFestivalDecor('lantern',0);this.festDecor.push({kind:'sky',image:this.scene.add.image(p.x,p.y,'fest-lantern-0').setOrigin(.5,1).setBlendMode(Phaser.BlendModes.ADD),x:p.x,y:p.y,phase:i*1.7,foot:sp.footY});}}}
+    if(false)for(let i=0;i<14;i++){const p=gridPoint(lot.x+w/2+(i%5-2)*2.2,lot.y+h/2+Math.floor(i/5)*1.6),sp=makeFestivalDecor('lantern',0);this.festDecor.push({kind:'sky',image:this.scene.add.image(p.x,p.y,'fest-lantern-0').setOrigin(.5,1).setBlendMode(Phaser.BlendModes.ADD),x:p.x,y:p.y,phase:i*1.7,foot:sp.footY});}}}
   for(const d of this.festDecor||[]){if(d.kind==='sky'){const open=this.state.elapsed>=live.open,k=open?((t*.12+d.phase*.07)%1):0;d.image.setTexture('fest-lantern-'+(Math.floor(t*2+d.phase)%2)).setPosition(Math.round(d.x+Math.sin(t+d.phase)*6),Math.round(d.y-k*260)).setAlpha(open?1-k*.7:0).setDepth(d.y+900);}
-   else d.image.setTexture(`fest-${d.kind}-${Math.floor(t*2+d.x)%2}`);}
+   else d.image.setTexture(`fest-${d.kind}-${(Math.floor(t*2+d.x)%2+2)%2}`);}
  }
+ // ---- Live shows: festivals and exam rounds play out in the village itself, with a crowd around them. ----
+ showActors(){const out=[],live=this.state.festivals?.live,s=this.state.exams?.session;if(live?.actors)out.push(...live.actors);if(s){out.push(...s.examinees);if(s.examiners)out.push(...s.examiners);}return out;}
+ showLook(a){
+  if(a.kind==='member'){const m=this.state.members.find(x=>x.id===a.id);if(m)return m;}
+  if(a.kind==='free'){const f=this.state.world?.free?.find(x=>x.id===a.id);if(f)return{id:f.id,name:f.name,class:f.class,hair:f.hair};}
+  if(a.kind==='farmer'||a.kind==='judge'||a.kind==='musician')return a.kind==='judge'?villagerLook({home:'elder',client:a.name}):villagerLook({seed:a.seed||hash(a.id),client:a.name});
+  const HAIR=['#5b4637','#8b5a3c','#d9b26f','#a66c59','#6f6a8f','#e9e2d0','#73818d','#c79894'];
+  return{id:'show-'+hash(a.name+a.id),name:a.name,class:JOBS[a.cls]?a.cls:'warrior',hair:HAIR[hash(a.name)%HAIR.length]};
+ }
+ rockTexture(stage){const key='show-rock-'+stage;if(this.scene.textures.exists(key))return key;const c=document.createElement('canvas');c.width=24;c.height=20;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+  const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};px(3,17,18,3,'rgba(60,50,40,.25)');px(4,6,16,12,'#8f8a80');px(6,3,12,4,'#a39d92');px(5,5,3,3,'#b8b2a6');px(16,8,3,8,'#77726a');px(4,15,16,3,'#6f6a62');
+  if(stage>0){px(11,4,1,6,'#4f4a44');px(12,9,2,1,'#4f4a44');px(13,10,1,4,'#4f4a44');}if(stage>1){px(7,8,4,1,'#4f4a44');px(6,9,1,4,'#4f4a44');px(15,12,3,1,'#4f4a44');px(17,13,1,3,'#4f4a44');}
+  this.texture(key,c);return key;}
+ updateShows(dt,playing){
+  const t=this.realTime||0,acts=this.showActors(),ids=new Set();this.showSprites??=new Map();const seen=new Set();
+  const spr=(id,make)=>{let s=this.showSprites.get(id);if(!s){s=make();this.showSprites.set(id,s);}seen.add(id);return s;};
+  const bar=(x,y,ratio,color,w=16)=>{this.hpBars.fillStyle(0x3b302a,.85).fillRect(Math.round(x-w/2),Math.round(y),w,3);this.hpBars.fillStyle(color,1).fillRect(Math.round(x-w/2+1),Math.round(y)+1,Math.max(1,Math.round((w-2)*Math.max(0,Math.min(1,ratio)))),1);};
+  const label=(s,text,p,color='#fff5d9')=>{s.label??=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'8px',fontStyle:'bold',color,stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);if(s.label.text!==text)s.label.setText(text);s.label.setPosition(Math.round(p.x),Math.round(p.y-38)).setDepth(p.y+3).setVisible(true);};
+  const live=this.state.festivals?.live,sess=this.state.exams?.session,bout=live?.kind==='tournament'&&live.show&&live.matches?.[live.show.match];
+  const PROPS={pumpkin:'🎃',cabbage:'🥬',wheat:'🌾',melon:'🍈',corn:'🌽',lute:'🪕',drum:'🥁',flute:'🎶'};
+  for(const a of acts){
+   ids.add(a.id);const look=this.showLook(a),key=this.actorKey(look),s=spr('a-'+a.id,()=>({image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52),dir:'south'}));
+   if(s.key!==key){s.key=key;}
+   const p=gridPoint(a.x,a.y),dx=p.x-(s.px??p.x),dy=p.y-(s.py??p.y),moved=Math.hypot(dx,dy)>.05&&playing;s.px=p.x;s.py=p.y;
+   if(moved)s.dir=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
+   else if(a.mode==='fight'||a.swing>0){const sx=(a.fx||0)-(a.fy||0),sy=(a.fx||0)+(a.fy||0);if(Math.abs(sx)+Math.abs(sy)>.1)s.dir=Math.abs(sx)>Math.abs(sy)?(sx>0?'east':'west'):(sy>0?'south':'north');}
+   const seed=hash(a.id)%5,down=a.mode==='down';
+   const pose=down?'sleep':moved?'walk'+(Math.floor(this.elapsed*8+seed)%4):a.swing>0?'train'+(a.swing>.15?1:0):a.mode==='dance'?'walk'+(Math.floor(t*3+seed)%4):a.mode==='play'||a.mode==='inspect'?'work'+(Math.floor(t*3+seed)%2):(Math.floor(t*1.5+seed)%2?'breath':'idle');
+   this.placeBody(s.image,key,down?{mode:'down'}:null,p,pose,a.mode==='cheer'&&!moved?'south':s.dir,Math.round(p.y)+.3);
+   if(a.mode==='cheer'&&!moved&&playing)s.image.y-=Math.abs(Math.sin(t*8+seed))*4;
+   const fighter=bout&&(live.fighters?.[bout.a]?.id===a.id||live.fighters?.[bout.b]?.id===a.id)&&['ready','fight','after'].includes(live.show.phase);
+   const examinee=sess&&a.rank;
+   if(fighter||examinee||a.kind==='examiner')label(s,a.name,p,a.kind==='member'?'#bfe3ff':a.kind==='examiner'?'#ffd6a0':'#fff5d9');else s.label?.setVisible(false);
+   if((fighter||(examinee&&sess&&this.state.elapsed>=sess.open+16)||a.kind==='examiner'&&a.foe)&&!down)bar(p.x,p.y-34,a.hp/(a.maxHp||100),a.kind==='member'?0x6fb2d6:a.kind==='examiner'?0xe0a24a:0x7fae6f);
+   const prop=a.carry&&a.mode!=='cheer'?PROPS[a.carry]:a.instrument?PROPS[a.instrument]:a.kind==='judge'?'📋':null;
+   if(prop){s.prop??=this.scene.add.text(0,0,prop,{fontSize:'11px'}).setOrigin(.5,1);s.prop.setText(prop).setPosition(Math.round(p.x+(a.instrument?7:0)),Math.round(p.y-(a.instrument?16:30))).setDepth(p.y+2).setVisible(true);}else s.prop?.setVisible(false);
+   if(a.kind==='musician'&&a.mode==='play'&&playing&&Math.random()<dt*1.6)this.floatText(p.x+(Math.random()-.5)*10,p.y-34,Math.random()<.5?'♪':'♫',['#ffd36a','#f2b8d8','#bfe3ff'][Math.floor(Math.random()*3)],10);
+   if(examinee&&a.rock&&sess&&this.state.elapsed>=sess.open&&this.state.elapsed<sess.open+16){const r=spr('rock-'+a.id,()=>({image:this.scene.add.image(0,0,this.rockTexture(0)).setOrigin(.5,.85)})),q=gridPoint(a.rock.x,a.rock.y),k=a.rock.hp/100;
+    if(a.rock.hp>0){r.image.setTexture(this.rockTexture(k>.66?0:k>.33?1:2)).setPosition(Math.round(q.x),Math.round(q.y)).setDepth(q.y).setVisible(true);bar(q.x,q.y-22,k,0xb8b2a6,18);}else r.image.setVisible(false);}
+  }
+  // The judging golem of the second trial.
+  if(sess&&this.state.elapsed>=sess.open+16&&this.state.elapsed<sess.open+32&&sess.golem){const gm=sess.golem,src=makeMonster('marbleGolem',0),s=spr('golem',()=>({image:this.scene.add.image(0,0,this.monTex('marbleGolem',0)).setOrigin(src.footX/src.canvas.width,src.footY/src.canvas.height).setScale(1.3)})),p=gridPoint(gm.x,gm.y);
+   s.image.setTexture(this.monTex('marbleGolem',gm.swing>0?2:Math.floor(t*1.5)%2)).setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y).setVisible(true);label(s,'โกเลมกรรมการ',{x:p.x,y:p.y-14},'#ffd6a0');}
+  this.showIds=ids;
+  for(const [id,s] of this.showSprites)if(!seen.has(id)){s.image.destroy();s.label?.destroy();s.prop?.destroy();this.showSprites.delete(id);}
+  this.updateCrowd(dt,playing);
+  // Lanterns let go by the crowd drift up into the night.
+  for(const l of this.skyLanterns||[]){l.age+=dt;l.image.setPosition(Math.round(l.x+Math.sin(t+l.phase)*6),Math.round(l.y-l.age*28)).setAlpha(Math.max(0,1-l.age/11)).setTexture('fest-lantern-'+(Math.floor(t*2+l.phase)%2));}
+  if(this.skyLanterns?.length){this.skyLanterns=this.skyLanterns.filter(l=>{if(l.age<11)return true;l.image.destroy();return false;});}
+ }
+ /** Spectators: around the ring at the arena, among the stalls at the fair, in front of the stage on lantern night. */
+ updateCrowd(dt,playing){
+  const live=this.state.festivals?.live,sess=this.state.exams?.session,t=this.realTime||0;
+  const venue=live?{tournament:'arena',harvest:'fairground',lantern:'stage'}[live.kind]:sess?'arena':null;
+  const want=venue?Math.min(26,live?Math.round(live.visitors/2.5):8):0,key=venue?venue+(live?live.start:sess.start):null;
+  this.crowd??=[];
+  if(this.crowdKey!==key){for(const c of this.crowd)c.image.destroy();this.crowd=[];this.crowdKey=key;}
+  if(!venue)return;
+  const b=villageBuildings(this.state).find(x=>x.key===venue);if(!b)return;
+  const cx=b.x+b.w/2,cy=b.y+b.h/2,front=b.rot===1?{x:b.x+b.w+1.6,y:cy}:{x:cx,y:b.y+b.h+1.6};
+  while(this.crowd.length<want){const i=this.crowd.length,look=villagerLook({seed:700+i*5,client:'ผู้ชม'}),k=this.actorKey(look);let home;
+   if(venue==='stage'){const row=Math.floor(i/7),col=i%7;home=b.rot===1?{x:front.x+row*.75+(col%2)*.2,y:cy-2.1+col*.7}:{x:cx-2.1+col*.7,y:front.y+row*.75+(col%2)*.2};}
+   else if(venue==='fairground')home={x:b.x+.6+Math.random()*(b.w-1.2),y:b.y+.6+Math.random()*(b.h-1.2)};
+   else{const a=-.35+i/Math.max(1,want-1)*(Math.PI+.7),rx=b.w/2+.75,ry=b.h/2+.65;home={x:cx+Math.cos(a)*rx,y:cy+Math.sin(a)*ry};}
+   const started=live?this.state.elapsed>live.open+4:this.state.elapsed>sess.open,start=started?home:{x:front.x+(Math.random()-.5)*3,y:front.y+1.5+Math.random()*2};this.crowd.push({key:k,home,x:start.x,y:start.y,seed:i,dir:'south',image:this.scene.add.image(0,0,k+'-south-idle').setOrigin(.5,48/52)});}
+  const step=playing?dt*(this.state.settings?.speed||1):0,cheer=(this.showCheer||0)>0;this.showCheer=Math.max(0,(this.showCheer||0)-dt);
+  for(const c of this.crowd){
+   // At the fair people wander from stall to stall; elsewhere they find their spot and stay.
+   if(venue==='fairground'&&(c.wait=(c.wait??Math.random()*4)-step)<=0&&Math.hypot(c.home.x-c.x,c.home.y-c.y)<.1){c.wait=3+Math.random()*6;c.home={x:b.x+.6+Math.random()*(b.w-1.2),y:b.y+.6+Math.random()*(b.h-1.2)};}
+   const d=Math.hypot(c.home.x-c.x,c.home.y-c.y),moving=d>.05;
+   if(moving){const s2=Math.min(d,step*1.3),ux=(c.home.x-c.x)/d,uy=(c.home.y-c.y)/d;c.x+=ux*s2;c.y+=uy*s2;const sx=ux-uy,sy=ux+uy;c.dir=Math.abs(sx)>Math.abs(sy)?(sx>0?'east':'west'):(sy>0?'south':'north');}
+   else{const sx=(cx-c.x)-(cy-c.y),sy=(cx-c.x)+(cy-c.y);c.dir=venue==='fairground'?c.dir:Math.abs(sx)>Math.abs(sy)?(sx>0?'east':'west'):(sy>0?'south':'north');}
+   const p=gridPoint(c.x,c.y),dance=venue==='stage'&&live&&this.state.elapsed>=live.open;
+   const pose=moving&&playing?'walk'+(Math.floor(this.elapsed*8+c.seed)%4):dance?'walk'+(Math.floor(t*2.5+c.seed)%4):(Math.floor(t*1.4+c.seed)%2?'breath':'idle');
+   this.placeBody(c.image,c.key,null,p,pose,c.dir,Math.round(p.y)+.2);
+   if(!moving&&(cheer||dance)&&playing)c.image.y-=Math.abs(Math.sin(t*(cheer?9:4)+c.seed))*(cheer?4:2);
+  }
+ }
+ showAnnounce(x,y,text,small){const p=gridPoint(x,y);if(!this.scene)return;
+  if(small){this.floatText(p.x,p.y-50,text,'#ffe08a',10);return;}
+  this.announce?.destroy();const tx=this.scene.add.text(Math.round(p.x),Math.round(p.y-70),text,{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'12px',fontStyle:'bold',color:'#ffe9b0',stroke:'#3b302a',strokeThickness:4,backgroundColor:'#3b302acc',padding:{x:6,y:3}}).setOrigin(.5,1).setResolution(2).setDepth(99980);
+  this.announce=tx;this.scene.tweens.add({targets:tx,y:tx.y-12,duration:400,ease:'Quad.out'});this.scene.time.delayedCall(2600,()=>{if(this.announce===tx){this.scene.tweens.add({targets:tx,alpha:0,duration:400,onComplete:()=>tx.destroy()});}else tx.destroy();});}
  updateLife(dt,playing){
   this.updateCaravan();
   this.updateFestival(dt);
   const w=this.state.world;if(!w||!this.scene)return;const t=this.realTime||0;
   this.lifeSprites??=new Map();this.hpBars??=this.scene.add.graphics().setDepth(99990);this.hpBars.clear();
+  this.updateShows(dt,playing);
   const seen=new Set(),hunters=new Map(w.hunters.map(h=>[h.id,h]));
   const bar=(x,y,ratio,color)=>{if(ratio>=1)return;this.hpBars.fillStyle(0x3b302a,.8).fillRect(Math.round(x-8),Math.round(y),16,3);this.hpBars.fillStyle(color,1).fillRect(Math.round(x-7),Math.round(y)+1,Math.max(1,Math.round(14*Math.max(0,ratio))),1);};
   const sprite=(id,make)=>{let s=this.lifeSprites.get(id);if(!s){s=make();this.lifeSprites.set(id,s);}seen.add(id);return s;};
@@ -646,6 +730,7 @@ export class GuildRenderer {
   }
   // Free adventurers: in town, out hunting, or carried home.
   for(const f of w.free){
+   if(this.showIds?.has(f.id))continue;
    const look={id:f.id,name:f.name,class:f.class,hair:f.hair},key=this.actorKey(look),h=f.mode==='out'?hunters.get(f.id):null;
    const s=sprite(f.id,()=>({image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52),x:f.x,y:f.y,dir:'south'}));
    const gx=h?h.x:f.x,gy=h?h.y:f.y,p=gridPoint(gx,gy),dx=p.x-(s.px??p.x),dy=p.y-(s.py??p.y),moved=Math.hypot(dx,dy)>.05&&playing;s.px=p.x;s.py=p.y;
@@ -756,8 +841,8 @@ export class GuildRenderer {
   for(const o of this.cityProps||[])if(o.kind==='lamp'){o.image.setTexture(dark>.15?'city-lamp1':'city-lamp0');o.glow.setVisible(dark>.15).setAlpha(Math.min(1,dark*2)*(.85+Math.sin(t*3+o.image.x)*.08));}
   this.updateFolk(dt,playing,dark);
   // A town that just grew throws a party: fireworks over the rooftops for a few seconds.
-  const at=this.state.village?.celebrateAt;if(at!==undefined&&at!==this.celebrated){if(this.celebrated!==undefined&&this.state.elapsed-at<30)this.fireworks=8;this.celebrated=at;}
-  if(this.fireworks>0&&playing){this.fireworks-=dt;this.fwClock=(this.fwClock||0)-dt;if(this.fwClock<=0){this.fwClock=.35;const p=gridPoint(4+Math.random()*24,10+Math.random()*10),col=[0xffd36a,0xf08a4b,0x9fd6d0,0xd9b8ff,0x9fe08a][Math.floor(Math.random()*5)];this.ring(p.x,p.y-120,col,22+Math.random()*16);this.ring(p.x,p.y-120,0xfff8e7,10);if(Math.random()<.3)this.floatText(p.x,p.y-90,'🎉','#ffe08a',14);}}
+  const at=this.state.village?.celebrateAt;if(at!==undefined&&at!==this.celebrated){if(this.celebrated!==undefined&&this.state.elapsed-at<30){this.fireworks=8;this.fwAt=null;}this.celebrated=at;}
+  if(this.fireworks>0&&playing){this.fireworks-=dt;this.fwClock=(this.fwClock||0)-dt;if(this.fwClock<=0){this.fwClock=.35;const p=this.fwAt?gridPoint(this.fwAt.x+(Math.random()-.5)*5,this.fwAt.y+(Math.random()-.5)*4):gridPoint(4+Math.random()*24,10+Math.random()*10),col=[0xffd36a,0xf08a4b,0x9fd6d0,0xd9b8ff,0x9fe08a][Math.floor(Math.random()*5)];this.ring(p.x,p.y-120,col,22+Math.random()*16);this.ring(p.x,p.y-120,0xfff8e7,10);if(Math.random()<.3)this.floatText(p.x,p.y-90,'🎉','#ffe08a',14);}}
  }
  updateFolk(dt,playing,dark){
   // Townsfolk: about one walker for every few people, between their homes and the shops; home at night, running home in a raid.
@@ -808,6 +893,14 @@ export class GuildRenderer {
    else if(e.type==='dive'){this.ring(p.x,p.y,0xd9c8a0,40);this.dustPuff(e.x-.9,e.y-.9,1.8,1.8);this.floatText(p.x,p.y-40,'โฉบลงมา!','#ffcf7a',11);}
    else if(e.type==='windup'){this.floatText(p.x,p.y-52,'❗ เตรียมพุ่งชน','#ff8a6a',11);const ms=this.lifeSprites?.get(e.id);if(ms)ms.flash=.5;}
    else if(e.type==='whiff'){this.dustPuff(e.x-.5,e.y-.5,1,1);this.floatText(p.x,p.y-44,'พุ่งพลาด! ตีเลย','#bfe3ff',10);}
+   else if(e.type==='announce'){this.showAnnounce(e.x,e.y,e.text,e.small);if(e.cheer)this.showCheer=2;}
+   else if(e.type==='champion'){this.showAnnounce(e.x,e.y,e.text);this.showCheer=4;this.fireworks=4;this.fwAt={x:e.x,y:e.y};this.ring(p.x,p.y,0xffd36a,40);}
+   else if(e.type==='rockHit'){const col=SHOT_COLORS[e.kind];if(col&&(e.kind==='arrow'||e.kind==='fire')){const f=gridPoint(e.fx,e.fy);this.shot(f,p,col,e.kind);}this.floatText(p.x,p.y-20,String(e.amount),'#ffffff',8);}
+   else if(e.type==='rockBreak'){this.dustPuff(e.x-.4,e.y-.4,.8,.8);this.ring(p.x,p.y,0xb8b2a6,22);this.floatText(p.x,p.y-30,'แตก!','#ffe08a',11);this.showCheer=1.2;}
+   else if(e.type==='inspect')this.floatText(p.x,p.y-40,'🔍 ชิม…','#fff5d9',9);
+   else if(e.type==='score'){this.floatText(p.x,p.y-46,e.text,e.good?'#ffe08a':'#ffffff',e.good?13:11);if(e.good)this.showCheer=1.5;}
+   else if(e.type==='lanternUp'){if(!this.scene.textures.exists('fest-lantern-0'))for(let f=0;f<2;f++)this.texture(`fest-lantern-${f}`,makeFestivalDecor('lantern',f).canvas);this.skyLanterns??=[];if(this.skyLanterns.length<70)this.skyLanterns.push({x:p.x,y:p.y-20,age:0,phase:Math.random()*6,image:this.scene.add.image(p.x,p.y-20,'fest-lantern-0').setOrigin(.5,1).setBlendMode(this.darkness()>.25?Phaser.BlendModes.ADD:Phaser.BlendModes.NORMAL).setDepth(99900)});}
+   else if(e.type==='examResults'){for(const r of e.results||[]){if(!Number.isFinite(r.x))continue;const q=gridPoint(r.x,r.y);this.floatText(q.x,q.y-44,r.pass?`ผ่าน ✓ ${r.total}`:`ไม่ผ่าน ${r.total}`,r.pass?'#9fe08a':'#ffb0a0',11);}this.showCheer=2;}
    else if(e.type==='miss')this.floatText(p.x,p.y-60,'ฟันไม่ถึง!','#bfe3ff',8);
    else if(e.type==='munch')this.floatText(p.x,p.y-24,'งั่ม!','#f4b860',8);
    else if(e.type==='gather'){this.floatText(p.x,p.y-20,e.done?'เสร็จ!':'+','#bff0a0',e.done?10:9);}
