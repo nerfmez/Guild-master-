@@ -21,7 +21,6 @@ export function initMobileUI({ beforeOpen = () => {}, afterClose = () => {}, bef
   $('notifications-close').addEventListener('click', () => dialog.close());
   $('quest-alert-button').addEventListener('click', () => { beforeOpen(); dialog.close(); document.querySelector('#menu-button')?.click(); document.querySelector('[data-tab="quests"]')?.click(); });
   dialog.addEventListener('close', afterClose);
-  $('notification-hud').addEventListener('click',event=>{if(event.target.closest('button'))dialog.close();},true);
   dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();});
   $('view-controls-toggle').addEventListener('click', () => { const el = $('view-controls-toggle'), expanded = el.getAttribute('aria-expanded') !== 'true'; el.setAttribute('aria-expanded', String(expanded)); document.querySelector('.world-actions').classList.toggle('expanded', expanded); });
   $('hero-details-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('hero-details-open');$('hero-details-toggle').setAttribute('aria-expanded',String(on));});
