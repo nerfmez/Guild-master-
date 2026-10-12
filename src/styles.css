@@ -135,6 +135,8 @@ body.on-title .topbar,body.on-title .screen-bottom,body.on-title .world-actions,
 .pill.on{background:var(--sage);border-color:var(--sage);color:#fff}
 .guild-sign{display:grid;justify-items:center;gap:2px;margin:10px auto 14px;padding:14px 20px 12px;max-width:300px;background:#eee0c6;border:3px solid #b8955e;border-radius:8px;box-shadow:0 4px 0 #b8955e;color:var(--ink);text-align:center}
 .guild-sign img{width:34px;height:34px}.guild-sign b{font-size:21px}.guild-sign small{font-size:11px;opacity:.85}
+.guild-flag-preview{display:grid;place-items:center;width:54px;height:58px;padding:5px 0 14px;margin:0 0 5px;background:var(--flag-color,#ad8175);color:#fff4dc;border:2px solid #715844;clip-path:polygon(0 0,100% 0,100% 70%,50% 100%,0 70%);}
+.setup-emblem-pick{display:grid;gap:5px;margin:9px 0}.setup-emblem-pick>span{font-size:11.5px;color:#9b7a4a;font-weight:600}.setup-emblem-pick>div{display:flex;flex-wrap:wrap;align-items:center;gap:7px}.setup-emblem-pick .swatch{width:31px;height:31px}.emblem-choice{min-width:60px;min-height:55px;padding:4px 7px;display:grid;place-items:center;gap:3px;color:#6d5848;background:#fffdf6}.emblem-choice small{font:10px 'Noto Sans Thai',Tahoma,sans-serif;color:var(--muted)}.emblem-choice.on{background:#eaf0df;border-color:#819f7b;box-shadow:0 0 0 2px #819f7b}
 .name-ideas{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 @media(max-width:620px){.setup-master{flex-direction:column;align-items:stretch}.setup-stage{flex-direction:row;justify-content:center}.setup-stage canvas{width:104px;height:104px}}
 .management-dialog{z-index:30;bottom:calc(max(21px,env(safe-area-inset-bottom)) + 74px)}
@@ -746,3 +748,5 @@ body.compact-ui #scene-only-button{order:3}
 body.scene-only .world-area>:not(#world-wrap):not(#restore-ui),body.scene-only .toasts{display:none!important}
 body.scene-only #restore-ui{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:35;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;font-size:22px;background:#fff3dcc9;border:1px solid #b8955e;opacity:.5}
 body.scene-only #restore-ui:hover,body.scene-only #restore-ui:focus-visible{opacity:1}
+
+.guild-flag-preview svg{width:30px;height:30px;display:block}.emblem-choice svg{width:25px;height:25px;display:block}.emblem-choice.on{color:#496745}.emblem-choice svg,.guild-flag-preview svg{pointer-events:none}

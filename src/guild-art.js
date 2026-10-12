@@ -1,6 +1,7 @@
 import { buildingRect,siteRoads,siteDecorations,partitionRect,partitionDoor } from './site.js';
 import { FACILITIES,ROOM_TYPES,VILLAGE_LEVELS } from './content.js';
 import { pathTier } from './town.js';
+import { drawGuildEmblem } from './guild-emblems.js';
 
 // Original pixel artwork. Every floor and object uses the same 2:1 projection.
 const {rect:R,poly:P,line:L,ellipse:E,rng,createCanvas,shade:ArtShade}=window.ArtCore;
@@ -451,7 +452,7 @@ export function makeSmithyShop(seed=31,frame=0){
  });
  out.smoke=base.smoke&&{...base.smoke};return out;
 }
-export function makeOutdoor(type){
+export function makeOutdoor(type,guild={}){
  return object(c=>{
   if(type==='well'){
    cube(c,0,0,1,1,0,10,'#b9b9a4','#e2d9bb','#999f8f');top(c,.18,.18,.64,.64,10.1,'#6b8d88',C.ink);
@@ -460,7 +461,7 @@ export function makeOutdoor(type){
   }else if(type==='table'){table(c,1.4,.8);top(c,.22,.18,.6,.4,17.2,'#f0e2bd');plant(c);}
   else if(type==='planter'){cube(c,0,0,1.25,.5,0,5,'#b4906a','#d7bb8c','#937653');for(let i=0;i<5;i++){const[x,y]=q(.15+i*.23,.23,7);E(c,x,y-3,4,4,'#91aa81');R(c,x-1,y-6,3,3,i%2?'#e8c59f':'#d8aaa3');}}
   else if(type==='banner'){
-   const[x,y]=q(.2,.2);cube(c,0,0,.45,.45,0,4);R(c,x,y-51,2,50,C.edge);R(c,x-15,y-50,31,2,C.edge);P(c,[[x-13,y-48],[x+13,y-48],[x+13,y-25],[x,y-18],[x-13,y-25]],'#ad8175');R(c,x-10,y-45,20,1,'#e0b6a1');R(c,x-1,y-41,3,14,C.cream);R(c,x-6,y-35,13,3,C.cream);R(c,x-3,y-25,7,2,'#e1bc8c');
+   const[x,y]=q(.2,.2),color=guild.bannerColor||'#ad8175';cube(c,0,0,.45,.45,0,4);R(c,x,y-51,2,50,C.edge);R(c,x-15,y-50,31,2,C.edge);P(c,[[x-13,y-48],[x+13,y-48],[x+13,y-25],[x,y-18],[x-13,y-25]],color);R(c,x-10,y-45,20,1,'#e0b6a1');drawGuildEmblem(c,guild.bannerSymbol,x-9,y-44,18,C.cream);R(c,x-3,y-25,7,2,'#e1bc8c');
   }else if(type==='crates'){cube(c,0,0,.6,.6,0,13);cube(c,.72,.15,.45,.45,0,10);stroke(c,[0,.6,2],[.6,.6,11],C.edge);stroke(c,[0,.6,11],[.6,.6,2],C.edge);}
   else plant(c,true);
  });

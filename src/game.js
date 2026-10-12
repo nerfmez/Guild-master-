@@ -1,4 +1,5 @@
 import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,partitionSize,partitionRect,containsRect,pointInRect,partitionDoor,canCrossPartition,partitionWallBlocks } from './site.js';
+import { GUILD_SYMBOLS } from './guild-emblems.js';
 import { BUILDING_FOOTPRINTS, FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,TOWN_CAPS,STAFF,STAFF_MAX_LEVEL,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
@@ -133,13 +134,21 @@ export const PROFILE_LOOKS = {
   skin: ['#f7d4ae', '#e8b88c', '#b9805a'],
   hairStyle: ['short', 'long'],
 };
-export const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ดาวเหนือ', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short' };
+export const GUILD_BANNER_COLORS = [
+  { id: '#ad8175', name: 'ดินเผา' }, { id: '#6689a5', name: 'ฟ้าคราม' }, { id: '#68896b', name: 'เขียวใบไม้' },
+  { id: '#8975a7', name: 'ม่วงลาเวนเดอร์' }, { id: '#c29246', name: 'ทองอำพัน' }, { id: '#598c8c', name: 'เขียวน้ำทะเล' },
+  { id: '#b65f69', name: 'แดงกุหลาบ' },
+];
+export const GUILD_EMBLEMS = GUILD_SYMBOLS.map(({ id, name }) => ({ id, name }));
+export const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ดาวเหนือ', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short', bannerColor: GUILD_BANNER_COLORS[0].id, bannerSymbol: 'leaf' };
 /** Clean player-entered names and look choices; unknown values fall back to defaults. */
 export function normalizeProfile(input = {}) {
   const text = (value, fallback) => { const clean = String(value ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20); return clean || fallback; };
   const pick = (key, value) => PROFILE_LOOKS[key].includes(value) ? value : DEFAULT_PROFILE[key];
+  const bannerColor = GUILD_BANNER_COLORS.some(color => color.id === input.bannerColor) ? input.bannerColor : DEFAULT_PROFILE.bannerColor;
+  const bannerSymbol = GUILD_EMBLEMS.some(symbol => symbol.id === input.bannerSymbol) ? input.bannerSymbol : DEFAULT_PROFILE.bannerSymbol;
   return { masterName: text(input.masterName, DEFAULT_PROFILE.masterName), guildName: text(input.guildName, DEFAULT_PROFILE.guildName),
-    hair: pick('hair', input.hair), outfit: pick('outfit', input.outfit), skin: pick('skin', input.skin), hairStyle: pick('hairStyle', input.hairStyle) };
+    hair: pick('hair', input.hair), outfit: pick('outfit', input.outfit), skin: pick('skin', input.skin), hairStyle: pick('hairStyle', input.hairStyle), bannerColor, bannerSymbol };
 }
 
 export const INTRO_STEPS = ['reception', 'board', 'training', 'patrol', 'wait', 'visit', 'done'];
