@@ -2,7 +2,7 @@ import { START_BUILDING,buildingRect,protectedAreas,intersects,isInsideBuilding,
 import { FACILITIES, MEMBERS, QUESTS, EQUIPMENT, JOBS, RANKS, RANK_REQUIREMENTS, MERIT_LABELS, GUILD_EVENTS, MISSION_POLICIES,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,FEE_MULTIPLIER,VILLAGER_NAMES,GUILD_UPGRADES,VILLAGE_LEVELS,VILLAGE_PROJECTS,VILLAGE_LOTS,TRAIT_NAMES,ROOKIE_NAMES,ROOKIE_LINES,HAIR_COLORS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,ADVENTURER_RANK_RULES,TOWN_CAPS,STAFF,STAFF_MAX_LEVEL,RANK_POWER,CLASS_TIERS,MONSTER_STATS,HUNT_ZONES,VILLAGE_BUSINESSES,PARTS,MONSTER_PART,BUY_RATES,TREASURES } from './content.js';
 const MONSTER_STATS_KEYS = new Set(Object.keys(MONSTER_STATS));
 
-import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, heroNearby, heroStats, startExpedition, recallExpedition } from './life.js';
+import { tickLife, createWorld, rallyDefenders, recallHunters, addFree, freeStats, freeLevelRank, rallyToBoss, stageHeroCall, releaseCallFallen, spawnMonster, pointIn, worldRandom, createHero, setHeroActive, sanitizeHero, heroNearby, heroStats, startExpedition, recallExpedition } from './life.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
 import { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf } from './town.js';
@@ -110,7 +110,7 @@ export function createGame(seed = 123, options = {}) {
     story: { chapter: 1, finished: false }, frontier: { camp: 0 }, bounty: null, mastery: { claimed: {} }, exams: createExams(), festivals: createFestivals(), eventCooldowns: {}, daily: { missionCounts: {}, work: {}, lessons: {}, garden: false },
     bankruptcyDays: 0, today: newDay(1), history: [],
     policy: { memberHunting: true, autoPetitions: true, registration: true }, world: createWorld(seed), director: createDirector(), applicants: [], applicantClock: 90, petitions: [], petitionClock: 20, petitionRng: (((seed >>> 0) || 123) ^ 0x5bd1e995) >>> 0 || 7, payoutPlan: 'standard',
-    record: { jobs: 0, bounties: 0, income: 0, hall: 0, joined: 0, passed: 0 }, progress: createProgress(), market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, occupancy: 1, raidScar: 0, grown: 1, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), idleBank: 0,
+    record: { jobs: 0, bounties: 0, income: 0, hall: 0, joined: 0, passed: 0 }, progress: createProgress(), market: { ...MARKET_START }, shops: { ration: 0, potion: 0, gear: {} }, staff: {}, upgrades: { signboard: 0, contracts: 0, storehouse: 0, trophyHall: 0, coffer: 0 }, village: { prosperity: 0, houses: 3, occupancy: 1, raidScar: 0, grown: 1, inn: 0, clinic: 0, shop: 0, market: 0, smithy: 0, dojo: 0, arena: 0, tannery: 0, apothecary: 0, jeweler: 0, caravan: 0, auction: 0, fairground: 0, stage: 0, monument: 0, trade: 0, paths: {}, homes: {} }, trade: createTrade(), hero: createHero(), heroCall: null, idleBank: 0,
   };
   if (options.opening) {
     // Opening chapter: an empty hall, then adventurers arrive one step at a time.
@@ -1953,9 +1953,113 @@ function heroCommand(state, type, payload) {
   }
   return failure('ไม่รู้จักคำสั่งนี้');
 }
+// ---- The master's first call: a beast the adventurers cannot handle, so the guild master steps out. ----
+export const HERO_CALL = { zone: 'meadow', species: 'fluffBoar', title: 'เขี้ยวตัน', hp: 760, atk: 16, minions: ['leafSlime', 'hornHare', 'leafSlime'], wait: 180, reward: { gold: 150, rep: 10 } };
+const CALL_STEPS = ['call', 'walk', 'pack', 'beast', 'carry', 'done'];
+const callFree = state => state.members.filter(m => !isBusy(state, m.id) && (m.injury || 0) <= 30);
+function postHeroCall(state) {
+  if (state.heroCall || introActive(state)) return;
+  const hero = state.hero;
+  // A master who has already fought outside does not need the lesson.
+  if ((hero?.kills || 0) >= 3) { state.heroCall = { step: 'done', skipped: true }; return; }
+  // After the guild's first real job, once the adventurers have started to rely on it.
+  if (state.day < 2 || !state.completedQuests.patrol || state.members.length < 3 || hero?.active || state.director?.pending) return;
+  if (state.world.monsters.some(m => !m.dead && (m.raid || m.boss))) return;
+  const fallen = callFree(state).sort((a, b) => b.level - a.level).slice(0, 2);
+  if (!fallen.length) return;
+  // At the quiet edge of the meadow by the windmill, away from where the adventurers usually hunt.
+  const zone = HUNT_ZONES[HERO_CALL.zone], at = { x: zone.x - 7, y: zone.y - 6 };
+  for (const m of fallen) m.task = 'rest';
+  const staged = stageHeroCall(state, lifeContext(state), { ...HERO_CALL, ...at, fallen });
+  state.heroCall = { step: 'call', posted: state.elapsed, day: state.day, at, ...staged, names: fallen.map(m => m.name), falls: 0, idleSince: state.elapsed, seen: false, fetched: false };
+  addLog(state, `🚨 ${HERO_CALL.title} หมูป่าเจ้าถิ่นอาละวาดที่${zone.name}! ${staged.fallenIds.length ? fallen.map(m => m.name).join('และ') + 'สลบอยู่ที่นั่น ' : ''}นักผจญภัยไม่มีใครสู้ไหว`, 'warning');
+}
+function finishHeroCall(state) {
+  const c = state.heroCall, r = HERO_CALL.reward;
+  c.step = 'done'; c.doneAt = state.elapsed; c.report = true;
+  transact(state, { gold: r.gold }, `ปราบ${HERO_CALL.title}`, 1); state.rep += r.rep;
+  addChest(state.progress, 'silver', `หัวหน้ากิลด์ออกโรงครั้งแรก: ปราบ${HERO_CALL.title}`);
+  addLog(state, `⚔ หัวหน้ากิลด์ออกโรงเองและปราบ “${HERO_CALL.title}” ได้! ชาวเมืองพูดถึงกันทั้งวัน (+${r.gold} G · ชื่อเสียง +${r.rep} · หีบเงิน)`, 'success');
+}
+function tickHeroCall(state) {
+  postHeroCall(state);
+  const c = state.heroCall; if (!c || c.step === 'done') return;
+  const w = state.world, hero = state.hero, ctx = lifeContext(state);
+  const alive = id => w.monsters.some(m => m.id === id && !m.dead);
+  const out = Boolean(hero?.active), down = out && hero.down > 0;
+  // The master stays a little hurt between tries, never long while the call is still open.
+  if (hero && !out && (hero.injuredUntil || 0) > state.elapsed + 25) hero.injuredUntil = state.elapsed + 25;
+  if (down && !c.downSeen) { c.downSeen = true; c.falls += 1; } else if (!down) c.downSeen = false;
+  if (out) c.idleSince = state.elapsed;
+  // Stepping out by any door answers the call.
+  if (c.step === 'call' && out) { c.step = 'walk'; c.seen = true; }
+  // Left alone for three days, the adventurers band together and drive the beast off; the lesson waits for another day.
+  if (c.step === 'call' && state.day >= (c.day || 0) + 3) {
+    for (const id of c.fallenIds) releaseCallFallen(state, ctx, id, false);
+    w.monsters = w.monsters.filter(m => !(m.call && (m.id === c.beastId || c.minionIds.includes(m.id))));
+    state.heroCall = { step: 'done', skipped: true };
+    addLog(state, `นักผจญภัยรวมตัวกันไล่ “${HERO_CALL.title}” ออกไปจาก${HUNT_ZONES[HERO_CALL.zone].name}ได้ในที่สุด`, 'event');
+    return;
+  }
+  // Nobody comes for them for too long: the villagers carry the fallen home themselves.
+  if (!c.fetched && c.fallenIds.length && state.elapsed - c.idleSince > HERO_CALL.wait) {
+    c.fetched = true; for (const id of c.fallenIds) releaseCallFallen(state, ctx, id, false);
+    addLog(state, `ชาวบ้านช่วยกันหาม${c.names.join('และ')}กลับมาเอง แต่ “${HERO_CALL.title}” ยังอยู่ที่${HUNT_ZONES[HERO_CALL.zone].name}`, 'warning');
+  }
+  const beast = w.monsters.find(m => m.id === c.beastId && !m.dead);
+  if (c.step === 'walk' && out && !down && Math.hypot(hero.x - c.at.x, hero.y - c.at.y) < 8) c.step = 'pack';
+  if ((c.step === 'walk' || c.step === 'pack') && !c.minionIds.some(alive)) {
+    c.step = 'beast';
+    if (beast) { beast.dormant = false; beast.dashCd = 2.5; }
+    addLog(state, `“${HERO_CALL.title}” ลุกขึ้นมาแล้ว! ระวังท่าพุ่งชน`, 'warning');
+  }
+  if (c.step === 'beast' && !beast) {
+    // One friend comes round by the time the beast falls; the other needs carrying home.
+    const lying = c.fallenIds.filter(id => w.hunters.some(h => h.id === id && h.call && h.mode === 'down'));
+    if (lying.length > 1) releaseCallFallen(state, ctx, lying[1], true);
+    c.carryId = lying[0] || null; c.step = c.carryId ? 'carry' : 'done';
+    if (c.step === 'done') finishHeroCall(state);
+  }
+  if (c.step === 'carry') {
+    const h = w.hunters.find(o => o.id === c.carryId);
+    if (!h || !['down', 'carried'].includes(h.mode)) finishHeroCall(state);
+    else if (!h.call && h.carriedBy !== 'hero' && !out) finishHeroCall(state);
+  }
+}
+/** What the call asks of the master right now, for the board, the HUD and the corner of the screen. */
+export function heroCallInfo(state) {
+  const c = state.heroCall; if (!c || c.step === 'done' && !c.report) return null;
+  const w = state.world, beast = w?.monsters.find(m => m.id === c.beastId && !m.dead), carry = c.carryId && w?.hunters.find(h => h.id === c.carryId);
+  const pack = (c.minionIds || []).filter(id => w.monsters.some(m => m.id === id && !m.dead)).length;
+  const target = c.step === 'carry' ? (carry ? { x: carry.x, y: carry.y } : null) : c.step === 'beast' && beast ? { x: beast.x, y: beast.y } : c.at;
+  return { step: c.step, index: CALL_STEPS.indexOf(c.step), title: HERO_CALL.title, zone: HUNT_ZONES[HERO_CALL.zone].name, names: c.names || [], fallen: (c.fallenIds || []).length, fetched: c.fetched, falls: c.falls || 0,
+    pack, packTotal: (c.minionIds || []).length, beastHp: beast ? beast.hp / beast.maxHp : 0, target, reward: HERO_CALL.reward, seen: c.seen, report: c.report };
+}
+function heroCallGo(state, payload) {
+  const c = state.heroCall; if (!c || c.step === 'done') return failure('ตอนนี้ไม่มีเหตุด่วน');
+  if (introActive(state)) return failure('รอให้บทนำจบก่อน');
+  const wait = Math.ceil((state.hero?.injuredUntil || 0) - state.elapsed); if (wait > 0) return failure(`หัวหน้ากิลด์ยังพักรักษาตัว ออกไปได้อีกครั้งในอีก ${wait} วินาที`);
+  const hero = state.hero ??= createHero();
+  if (payload?.cls && HERO_CLASSES[payload.cls] && !hero.classChosen) heroCommand(state, 'heroClass', { cls: payload.cls });
+  c.seen = true;
+  if (c.step === 'call') c.step = 'walk';
+  setHeroActive(state, lifeContext(state), true);
+  return success(`หัวหน้ากิลด์ออกโรง! มุ่งหน้าไป${HUNT_ZONES[HERO_CALL.zone].name}`);
+}
+function sanitizeHeroCall(data, state) {
+  if (!data || typeof data !== 'object' || !CALL_STEPS.includes(data.step)) return null;
+  if (data.step === 'done') return { step: 'done', skipped: data.skipped === true, report: data.report === true };
+  const ids = v => (Array.isArray(v) ? v : []).filter(id => typeof id === 'string').slice(0, 4), num = v => finiteNumber(v) ? v : 0;
+  const at = data.at && finiteNumber(data.at.x) && finiteNumber(data.at.y) ? { x: data.at.x, y: data.at.y } : { x: HUNT_ZONES[HERO_CALL.zone].x, y: HUNT_ZONES[HERO_CALL.zone].y };
+  return { step: data.step, posted: num(data.posted), day: num(data.day), at, beastId: typeof data.beastId === 'string' ? data.beastId : '', minionIds: ids(data.minionIds), fallenIds: ids(data.fallenIds), names: (Array.isArray(data.names) ? data.names : []).filter(n => typeof n === 'string').map(n => n.slice(0, 20)).slice(0, 2),
+    zoneName: HUNT_ZONES[HERO_CALL.zone].name, hp: num(data.hp), falls: num(data.falls), idleSince: Math.min(num(data.idleSince), state.elapsed), seen: data.seen === true, fetched: data.fetched === true, carryId: typeof data.carryId === 'string' ? data.carryId : null };
+}
 /** What is close: up to three small targets for the corner of the screen. */
 export function nearGoals(state) {
   const out = [];
+  // An open call comes first: the adventurers are waiting on the master.
+  const call = heroCallInfo(state);
+  if (call && call.step !== 'done') out.push({ icon: '🚨', text: call.step === 'call' ? `เหตุด่วน: ออกโรงปราบ${call.title}` : `เหตุด่วน: ${['', 'เดินไป' + call.zone, 'ปราบลูกสมุน', 'ปราบ' + call.title, 'แบกเพื่อนกลับกิลด์'][call.index]}`, have: call.index, need: 5, action: 'call' });
   const daily = getDailyGoals(state).filter(g => !g.done).sort((a, b) => b.have / b.need - a.have / a.need)[0];
   if (daily) out.push({ icon: daily.icon, text: `วันนี้: ${daily.text}`, have: daily.have, need: daily.need, action: 'tab:goals' });
   // The cheapest upgrade still out of reach, or one that is ready now.
@@ -2075,6 +2179,7 @@ export function tick(state, seconds) {
     tickTrade(state, tradeContext(state), step);
     checkDailyGoals(state);
     if (state.hero && state.hero.contractDay !== state.day && !introActive(state)) rollHeroContracts(state);
+    tickHeroCall(state);
     if (state.clock >= DAY_LENGTH - 0.00001) {
       state.clock = 0;
       state.day += 1;
@@ -2253,6 +2358,9 @@ function command(state, type, payload = {}) {
     case 'acceptPetition': case 'declinePetition': case 'setPetition': case 'boostPetition': return petitionCommand(state, type, payload);
     case 'rally': return rally(state);
     case 'boostBounty': return boostBounty(state);
+    case 'heroCallGo': return heroCallGo(state, payload);
+    case 'heroCallSeen': { if (state.heroCall) state.heroCall.seen = true; return success('ไว้ทีหลัง · ใบเหตุด่วนอยู่ที่กระดานคำร้อง'); }
+    case 'heroCallClose': { if (state.heroCall?.step === 'done') state.heroCall.report = false; return success('ปุ่ม ⚔ มุมจอใช้ออกไปเองได้ทุกเมื่อ'); }
     case 'hireStaff': return hireStaff(state, payload.role);
     case 'fireStaff': return fireStaff(state, payload.role);
     case 'setPayoutPlan': if (!PAYOUT_PLANS[payload.plan]) return failure('แผนค่าตอบแทนไม่ถูกต้อง'); state.payoutPlan = payload.plan; return success(`ตั้งค่าตอบแทนเริ่มต้นเป็น${PAYOUT_PLANS[payload.plan].name}`);
@@ -2532,6 +2640,7 @@ export function deserializeGame(source) {
   state.bounty = bty && typeof bty.monsterId === 'string' && MONSTER_STATS_KEYS.has(bty.species) && HUNT_ZONES[bty.zone] && finiteNumber(bty.reward) && state.world.monsters.some(m => m.id === bty.monsterId) ? { monsterId: bty.monsterId, species: bty.species, zone: bty.zone, title: String(bty.title || ''), reward: bty.reward, rep: finiteNumber(bty.rep) ? bty.rep : 0, day: bty.day | 0 } : null;
   state.festivals = sanitizeFestivals(data.festivals, new Set(state.members.map(m => m.id)));
   state.hero = sanitizeHero(data.hero);
+  state.heroCall = sanitizeHeroCall(data.heroCall, state);
   // A quest party that lost its walkers sets out again from the door.
   for (const m of state.missions) if (m.status === 'active' && m.rt && !state.world.hunters.some(h => h.party === m.id)) delete m.rt;
   state.applicantClock = finiteNumber(data.applicantClock) ? clamp(data.applicantClock, 0, 1000) : 90;

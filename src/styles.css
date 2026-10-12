@@ -647,3 +647,19 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
 .menu-grid button>span{width:34px;height:34px}
 .qrewards i:has(.drawn-icon){display:inline-block;width:20px;height:20px}
 @media(max-width:620px){.resource-icon{min-width:17px;width:20px;height:22px}.menu-grid button>span{width:25px;height:25px}}
+/* The master's first call: the urgent card, the dialog and the step banner in the field */
+.call-card{border-color:#d9584a}
+.call-dialog .call-runner{font-size:14px;line-height:1.9;color:#5a3a2a;background:#fff3e6;border-left:3px solid #d9584a;padding:8px 10px;border-radius:6px}
+.call-classes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.call-class{display:grid;justify-items:center;gap:1px;padding:8px 4px;border:1px solid var(--line);border-radius:8px;background:#fffdf5}.call-class span{font-size:22px}.call-class b{font-size:12px}.call-class small{font-size:9px;color:var(--muted);text-align:center;line-height:1.35}
+.call-class.active{border-color:#b98a3e;background:#fbeed2;box-shadow:0 0 0 2px #f3d58e}
+.call-learn{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}.call-learn span{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;padding:3px 9px;border-radius:99px;background:#f2ead8;color:#5a4a38}.call-learn i{font-style:normal}
+.call-next{margin:4px 0 8px;padding-left:18px;font-size:12.5px;line-height:1.9;color:#5a4a38}
+.hero-call{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(20px,env(safe-area-inset-top)) + 78px);width:min(420px,calc(100% - 640px));min-width:300px;display:grid;gap:2px;padding:8px 12px;background:#3a1f1ae8;color:#fbeed2;border:1px solid #d9584a;border-radius:9px;box-shadow:0 4px 14px #0006;pointer-events:none!important;text-align:center}
+.hero-call[hidden]{display:none}
+.hero-call small{font-size:10.5px;color:#ffb3a5;display:flex;align-items:center;justify-content:center;gap:4px}
+.hero-call small i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b4a40}.hero-call small i.done{background:#9fe08a}.hero-call small i.on{background:#ffd36a;box-shadow:0 0 6px #ffd36a}
+.hero-call b{font-size:15px}.hero-call b em{font-style:normal;color:#ffd36a;margin-left:6px;font-size:14px}
+.hero-call span{font-size:11.5px;color:#f3e3c0;line-height:1.5}
+@media(max-width:620px){.hero-call{left:10px;right:58px;transform:none;width:auto;min-width:0;top:calc(max(15px,env(safe-area-inset-top)) + 106px);padding:6px 9px}.hero-call b{font-size:13px}.hero-call span{font-size:10.5px}
+ body.hero-calling .hero-status,body.hero-calling .hero-map{margin-top:78px}}

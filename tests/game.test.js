@@ -114,7 +114,7 @@ test('equipment transfers preserve inventory and enforce class and busy restrict
 
 test('bankrupt guild remains playable, charges modest upkeep, and limits daily workshop chores', () => {
   const state = createGame();
-  state.gold = 0;
+  state.gold = 0; state.heroCall = { step: 'done', skipped: true };
   tick(state, 240);
   assert.ok(state.gold < 20, 'only the small market fees of free adventurers come in');
   assert.equal(state.day, 2);
@@ -1540,4 +1540,71 @@ test('bounties and world bosses: raise the price and the strongest set off at on
   act(state, 'heroMode', { on: true }); Object.assign(state.hero, { x: m.x - .8, y: m.y, fx: 1, fy: 0 }); m.hp = 1;
   state.hero.input = { attack: true }; tick(state, .3);
   assert.equal(state.bounty, null); assert.ok(state.gold >= gold + b.reward);
+});
+
+test('first call: a beast the adventurers cannot handle teaches the master to walk, fight, dodge and carry a friend home', async () => {
+  const { heroCallInfo, guildDoor } = await import('../src/game.js');
+  const state = createLivingGame(3);
+  state.completedQuests.patrol = 1;
+  for (let t = 0; t < 1200 && !state.heroCall; t += 2) tick(state, 2);
+  let info = heroCallInfo(state);
+  assert.equal(info?.step, 'call', 'after the first job the adventurers come running to the master');
+  const c = state.heroCall, w = state.world, beast = () => w.monsters.find(m => m.id === c.beastId);
+  assert.ok(beast().dormant && beast().call, 'the beast waits at the edge of the meadow');
+  assert.ok(c.fallenIds.length >= 1 && c.fallenIds.every(id => w.hunters.find(h => h.id === id)?.mode === 'down'), 'a friend lies where they fell');
+  tick(state, 5);
+  assert.ok(!w.porters.some(p => c.fallenIds.includes(p.target)), 'nobody else is sent for them while the master is called');
+  assert.equal(deserializeGame(serializeGame(state)).heroCall.step, 'call', 'the call survives a save');
+
+  assert.ok(act(state, 'heroCallGo', { cls: 'archer' }).ok);
+  assert.equal(state.hero.cls, 'archer'); assert.ok(state.hero.classChosen && state.hero.active);
+  assert.equal(heroCallInfo(state).step, 'walk');
+  Object.assign(state.hero, { x: c.at.x + 6, y: c.at.y + .5 }); tick(state, .2);
+  assert.equal(heroCallInfo(state).step, 'pack', 'the pack comes first');
+  for (const m of w.monsters) if (c.minionIds.includes(m.id)) m.dead = true;
+  tick(state, .2);
+  assert.equal(heroCallInfo(state).step, 'beast'); assert.equal(beast().dormant, false, 'with its pack beaten the beast rises');
+
+  // The charge is shown before it lands: step out of the red mark and it misses.
+  const b = beast(); Object.assign(state.hero, { x: b.x + 3, y: b.y, hp: state.hero.maxHp }); b.dashCd = .01; b.cd = 5;
+  for (let i = 0; i < 20 && !(b.windup > 0); i++) tick(state, .05);
+  assert.ok(b.windup > 0, 'the beast winds up its charge');
+  state.hero.y += 2.5; const hp = state.hero.hp;
+  for (let i = 0; i < 25 && b.windup > 0; i++) tick(state, .05);
+  assert.equal(state.hero.hp >= hp - 1e-6, true, 'out of the mark, the charge misses'); assert.ok(b.stun > 0, 'and the beast is left reeling');
+
+  b.hp = 0; b.dead = true; tick(state, .2);
+  info = heroCallInfo(state);
+  assert.equal(info.step, 'carry', 'one friend still needs carrying home');
+  const friend = w.hunters.find(h => h.id === c.carryId);
+  Object.assign(state.hero, { x: friend.x + .3, y: friend.y }); state.hero.input = { act: true }; tick(state, .1);
+  assert.equal(state.hero.carry, friend.id);
+  const gold = state.gold, door = guildDoor(state); Object.assign(state.hero, { x: door.x, y: door.y }); tick(state, .2);
+  assert.equal(heroCallInfo(state).step, 'done'); assert.ok(state.heroCall.report);
+  assert.ok(state.gold >= gold + 150, 'the guild is paid for the beast'); assert.equal(state.hero.stats.rescued, 1);
+  assert.ok(state.progress.chests.some(ch => ch.tier === 'silver'));
+  assert.ok(act(state, 'heroCallClose', {}).ok); assert.equal(heroCallInfo(state), null);
+  for (let t = 0; t < 600; t += 5) tick(state, 5);
+  assert.equal(state.heroCall.step, 'done', 'the call comes only once');
+});
+
+test('first call: left alone, the villagers fetch the fallen and the adventurers drive the beast off in the end', () => {
+  const state = createLivingGame(9);
+  state.completedQuests.patrol = 1;
+  for (let t = 0; t < 1200 && !state.heroCall; t += 2) tick(state, 2);
+  const c = state.heroCall; assert.ok(c);
+  for (let t = 0; t < 200; t += 5) tick(state, 5);
+  assert.ok(state.heroCall.fetched, 'with nobody coming, the villagers carry the fallen home');
+  for (let d = 0; d < 4; d++) tick(state, DAY_LENGTH);
+  assert.equal(state.heroCall.step, 'done'); assert.ok(state.heroCall.skipped);
+  assert.ok(!state.world.monsters.some(m => m.call), 'the beast and its pack are gone');
+  assert.ok(!state.world.hunters.some(h => h.call));
+});
+
+test('first call: a master who already fights outside is not called', () => {
+  const state = createLivingGame(3);
+  state.completedQuests.patrol = 1; state.hero.kills = 5;
+  tick(state, 300);
+  assert.equal(state.heroCall?.step, 'done');
+  assert.ok(!state.world.monsters.some(m => m.call));
 });

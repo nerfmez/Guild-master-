@@ -39,7 +39,7 @@ function stockZones(state, ctx, step) {
   const w = state.world;
   for (const [zoneId, zone] of Object.entries(HUNT_ZONES)) {
     if (!ctx.zoneOpen(zone)) continue;
-    const living = w.monsters.filter(m => m.zone === zoneId && !m.raid && !m.boss && !m.elite);
+    const living = w.monsters.filter(m => m.zone === zoneId && !m.raid && !m.boss && !m.elite && !m.call);
     for (const m of living) if (m.dead) { m.respawn -= step; if (m.respawn <= 0) { const p = pointIn(w, zone); Object.assign(m, { dead: false, hp: m.maxHp, x: p.x, y: p.y, hx: p.x, hy: p.y, target: null }); } }
     for (let i = living.length; i < zone.count; i++) w.monsters.push(spawnMonster(w, pick(w, zone.species), zoneId, pointIn(w, zone)));
   }
@@ -268,7 +268,7 @@ function useSkill(state, ctx, h, m, near, party, cc) {
 function fight(state, ctx, h, dt) {
   const w = state.world, cc = combatOf(h), party = w.hunters.filter(o => o.party === h.party && o.mode !== 'down' && o.mode !== 'carried');
   h.atkCd -= dt; h.skillCd -= dt; h.guard = Math.max(0, h.guard - dt); h.buff = Math.max(0, (h.buff || 0) - dt);
-  const near = w.monsters.filter(m => !m.dead && (h.escort ? !m.quest && dist(m, h.anchor || h) < (h.leash || 5) : (h.zone === m.zone || m.raid || m.boss) && dist(h, m) < (m.raid ? 14 : 11)));
+  const near = w.monsters.filter(m => !m.dead && !m.call && (h.escort ? !m.quest && dist(m, h.anchor || h) < (h.leash || 5) : (h.zone === m.zone || m.raid || m.boss) && dist(h, m) < (m.raid ? 14 : 11)));
   const support = HEALERS.has(h.job) || HEALERS.has(h.cls) || h.cls === 'healer';
   // Healers mend the most hurt friend first, and save their big skill for when several are hurt.
   if (support) {
@@ -357,8 +357,10 @@ function monsterAct(state, ctx, m, dt) {
   if (m.air > 0) return;
   if (trait === 'regen' && m.calm > 3) m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .015 * dt);
   // Quest parties only meet their own quest's foes; wild monsters leave them be.
-  const targets = w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend', 'escort'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
+  const targets = m.call ? [] : w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend', 'escort'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
   const hero = state.hero;
+  if (m.windup > 0) { m.windup -= dt; if (m.windup <= 0) callCharge(state, ctx, m); return; }
+  if (m.dormant) { m.target = null; m.fighting = false; m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .05 * dt); return; }
   if (hero?.active && !(hero.down > 0)) targets.push(hero);
   const goal = m.quest ? goalOf(state, m) : null;
   let t = targets.find(h => h.id === m.target);
@@ -388,6 +390,8 @@ function monsterAct(state, ctx, m, dt) {
     moveTo(m, { x: m.tx, y: m.ty }, s.speed * .5, dt); m.hp = Math.min(m.maxHp, m.hp + m.maxHp * (m.boss ? .002 : .02) * dt); return;
   }
   const atk = m.atk || s.atk, d = dist(t, m);
+  // The beast of the master's first call shows its charge first: a red mark, then the rush.
+  if (m.callBoss && t === hero && m.dashCd <= 0 && d > 1.2 && d < 5) { m.dashCd = 5.5; m.windup = .9; m.aim = { x: t.x, y: t.y }; emit({ type: 'windup', id: m.id, x: m.x, y: m.y }); emit({ type: 'telegraph', id: m.id, x: t.x, y: t.y, r: 1 }); return; }
   // Signature moves first: a charge from range, a burrow, a fire breath.
   if (trait === 'charge' && m.dashCd <= 0 && d > 1.4 && d < 4.5) { m.dashCd = 6; emit({ type: 'charge', id: m.id, x: m.x, y: m.y, tx: t.x, ty: t.y }); m.x = t.x + (m.x > t.x ? .7 : -.7); m.y = t.y; strike(state, ctx, m, t, atk * 1.5, 'charge'); m.cd = s.rate; return; }
   if (trait === 'burrow' && m.skillCd <= 0) { m.skillCd = 9; m.under = 1.8; m.target = null; emit({ type: 'burrow', id: m.id, x: m.x, y: m.y }); return; }
@@ -409,6 +413,39 @@ function monsterAct(state, ctx, m, dt) {
   if (trait === 'slam' && m.hits % 3 === 0) { emit({ type: 'slam', id: m.id, x: t.x, y: t.y }); for (const h of targets) if (h !== t && dist(h, t) < 1.7) strike(state, ctx, m, h, atk * .8, 'slam'); }
   strike(state, ctx, m, t, atk, trait === 'ranged' ? 'spit' : 'bite');
 }
+function callCharge(state, ctx, m) {
+  const hero = state.hero, a = m.aim || hero; m.aim = null;
+  emit({ type: 'charge', id: m.id, x: m.x, y: m.y, tx: a.x, ty: a.y });
+  const d = Math.hypot(a.x - m.x, a.y - m.y) || 1; m.x = a.x - (a.x - m.x) / d * .5; m.y = a.y - (a.y - m.y) / d * .5;
+  if (hero?.active && !(hero.down > 0) && Math.hypot(hero.x - a.x, hero.y - a.y) < 1.1) heroHurt(state, ctx, m, (m.atk || statsOf(m.species).atk) * 2.6);
+  else if (hero?.active) { m.stun = 1.2; emit({ type: 'whiff', id: m.id, x: m.x, y: m.y }); }
+  m.cd = statsOf(m.species).rate;
+}
+/** The master's first call: a beast too strong for the adventurers, its pack, and the friends who fell trying. */
+export function stageHeroCall(state, ctx, plan) {
+  const w = state.world, zone = HUNT_ZONES[plan.zone], at = { x: plan.x, y: plan.y };
+  const st = statsOf(plan.species);
+  const beast = spawnMonster(w, plan.species, plan.zone, at, { call: true, callBoss: true, elite: true, hp: plan.hp, maxHp: plan.hp, atk: plan.atk, title: plan.title });
+  w.monsters.push(beast);
+  // The pack waits on the road in, so the master meets it first; the beast stays put until its pack is beaten.
+  beast.dormant = true;
+  const spots = [[3.4, .4], [3.9, -1], [2.9, 1.5], [4.4, .9]];
+  const pack = plan.minions.map((sp, i) => { const [dx, dy] = spots[i % spots.length]; const m = spawnMonster(w, sp, plan.zone, { x: at.x + dx, y: at.y + dy }, { call: true }); w.monsters.push(m); return m; });
+  const fallen = [];
+  for (const [i, who] of plan.fallen.entries()) {
+    const h = makeHunter(state, ctx, who, 'member', plan.zone, 'pt-call', at);
+    Object.assign(h, { mode: 'down', hp: 0, call: true, path: [], x: at.x + (i ? 1.4 : -1.3), y: at.y + 1.1 + i * .3 });
+    w.hunters.push(h); fallen.push(h.id);
+  }
+  return { beastId: beast.id, minionIds: pack.map(m => m.id), fallenIds: fallen, zoneName: zone?.name || '', hp: st.hp };
+}
+/** A friend from the call comes round and limps home, or (wake = false) is left to the porters from the guild. */
+export function releaseCallFallen(state, ctx, id, wake) {
+  const h = state.world.hunters.find(o => o.id === id && o.call); if (!h) return false;
+  delete h.call;
+  if (wake && h.mode === 'down' && !h.carriedBy) { h.hp = Math.round(h.maxHp * .35); h.mode = 'return'; h.path = homeRoute(h, ctx); emit({ type: 'revive', id: h.id, x: h.x, y: h.y }); }
+  return true;
+}
 function knockOut(state, ctx, h) {
   const w = state.world;
   // A carrier who falls drops the friend they carried; both wait for help.
@@ -424,7 +461,7 @@ function knockOut(state, ctx, h) {
 /** A conscious friend picks up the fallen; with nobody left, porters set out from the guild. */
 function arrangeCarry(state, ctx) {
   const w = state.world;
-  for (const down of w.hunters.filter(h => h.mode === 'down' && !h.carriedBy)) {
+  for (const down of w.hunters.filter(h => h.mode === 'down' && !h.carriedBy && !h.call)) {
     const friend = w.hunters.filter(o => o.party === down.party && (down.mission ? ['return'] : ['return', 'hunt', 'go', 'defend']).includes(o.mode) && !o.carrying && o.hp > 0).sort((a, b) => dist(a, down) - dist(b, down))[0];
     if (friend) { friend.carrying = down.id; friend.mode = 'carry'; friend.path = [{ x: down.x, y: down.y }, ...homeRoute(friend, ctx)]; down.carriedBy = friend.id; down.mode = 'carried'; continue; }
     if (down.kind === 'member' && !w.porters.some(p => p.target === down.id)) {
@@ -522,7 +559,7 @@ export function tickLife(state, ctx, step) {
     tickHero(state, ctx, dt);
     tickExpeditions(state, ctx, dt);
     for (const m of w.monsters) if (!m.dead) monsterAct(state, ctx, m, dt);
-    w.monsters = w.monsters.filter(m => !(m.dead && (m.raid || m.boss || m.swarm || m.quest || m.elite)));
+    w.monsters = w.monsters.filter(m => !(m.dead && (m.raid || m.boss || m.swarm || m.quest || m.elite || m.call)));
     arrangeCarry(state, ctx);
     tickPorters(state, ctx, dt);
   }
