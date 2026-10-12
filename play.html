@@ -1880,6 +1880,68 @@ if(typeof Image!=='undefined')for(const url of [...Object.values(ICONS),...Objec
 
 return {illustratedIcon,drawIllustratedIcon,drawIllustratedRegion};
 })();
+const NightLighting=(()=>{
+/* Bake small warm light layers once; the renderer only fades/moves them at dusk. */
+function nightAmount(clock = 0) {
+  const t = ((clock % 240) + 240) % 240 / 240;
+  return t < .2 ? 1 : t < .25 ? (.25 - t) / .05 : t < .72 ? 0 : t < .8 ? (t - .72) / .08 : 1;
+}
+
+// Pixel anchors for the existing farm and frontier sprites, relative to their feet.
+function sceneryNightLights(key,sprite) {
+  const at=(x,y,kind='lamp',radius=36)=>({kind,x:x-sprite.footX,y:y-sprite.footY,radius});
+  const pane=(points,colors)=>({points:points.map(([x,y])=>[x-sprite.footX,y-sprite.footY]),colors});
+  if(key==='lm-lamp')return[at(10,14,'lamp',30),at(7,40,'spill',36)];
+  if(key==='barn')return[pane([[28,95],[43,95],[43,110],[28,110]],['#687b77','#b4bda0','#4e625d']),at(79,105),at(66,132,'spill',42)];
+  if(key==='windmill')return[pane([[29,57],[35,57],[35,64],[29,64]],['#9fc0c8','#d8eef0']),at(42,86),at(32,111,'spill',36)];
+  if(key==='lm-post-0')return[at(54,38,'lamp',30)];
+  if(key==='lm-fire-0')return[at(22,27,'spill',44)];
+  if(key.startsWith('lm-frontier-camp'))return[{kind:'spill',x:-31.2,y:4.8,radius:46}];
+  return [];
+}
+
+function makeNightLight(sprite) {
+  const pad = 48, width = sprite.canvas.width + pad * 2, height = sprite.canvas.height + pad * 2;
+  const canvas = () => { const c = document.createElement('canvas'); c.width = width; c.height = height; return c; };
+  const panes = canvas(), glow = canvas(), p = panes.getContext('2d'), g = glow.getContext('2d');
+  const ox = sprite.footX + pad, oy = sprite.footY + pad;
+  const polygon = (ctx, points) => { ctx.beginPath(); points.forEach(([x,y], i) => i ? ctx.lineTo(ox+x,oy+y) : ctx.moveTo(ox+x,oy+y)); ctx.closePath(); ctx.fill(); };
+  const colors = new Set();
+  for (const light of sprite.nightLights || []) {
+    if (light.points) {
+      p.fillStyle = '#ffda95'; polygon(p, light.points);
+      for (const color of light.colors || []) colors.add(color.toLowerCase());
+    }
+  }
+  // Illuminate the glass, retaining mullions, shutters and anything in front of it.
+  const pixels = p.getImageData(pad,pad,sprite.canvas.width,sprite.canvas.height);
+  const original = sprite.canvas.getContext('2d').getImageData(0,0,sprite.canvas.width,sprite.canvas.height).data;
+  for (let i=0; i<pixels.data.length; i+=4) if (pixels.data[i+3]) {
+    const color = '#'+[original[i],original[i+1],original[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+    if (!colors.has(color)) pixels.data[i+3]=0;
+  }
+  p.putImageData(pixels,pad,pad);
+  for (const light of sprite.nightLights || []) {
+    const points = light.points;
+    const x = ox + (points ? points.reduce((s,a)=>s+a[0],0)/points.length : light.x);
+    const y = oy + (points ? points.reduce((s,a)=>s+a[1],0)/points.length : light.y);
+    if (light.kind === 'lamp') {
+      p.fillStyle='#795338'; p.fillRect(Math.round(x)-3,Math.round(y)-4,6,8);
+      p.fillStyle='#ffd17e'; p.fillRect(Math.round(x)-2,Math.round(y)-3,4,6);
+      p.fillStyle='#fff0c3'; p.fillRect(Math.round(x)-1,Math.round(y)-2,2,4);
+    }
+    const radius = light.radius || (points ? 22 : 36), sy = light.kind === 'spill' ? .5 : .8;
+    g.save(); g.translate(x,y); g.scale(1,sy);
+    const halo=g.createRadialGradient(0,0,0,0,0,radius);
+    halo.addColorStop(0,light.kind==='spill'?'rgba(255,154,65,.3)':'rgba(255,172,76,.38)');
+    halo.addColorStop(.4,'rgba(255,158,64,.13)'); halo.addColorStop(1,'rgba(255,150,50,0)');
+    g.fillStyle=halo;g.fillRect(-radius,-radius,radius*2,radius*2);g.restore();
+  }
+  return {panes,glow,pad};
+}
+
+return {nightAmount,sceneryNightLights,makeNightLight};
+})();
 const Fullscreen=(()=>{
 /* Native fullscreen where available; focus mode keeps unsupported mobile browsers playable. */
 function initFullscreen(button, { notify = () => {}, resize = () => {} } = {}) {
@@ -10353,6 +10415,12 @@ function makeBuilding(state){
  for(let x=0;x<w;x++)if(Math.abs(x+.5-w/2)>.75)add('cut-x-'+x,x,h,object(c=>wall(c,'x',1,6)),6);
  for(let y=0;y<h;y++)add('cut-y-'+y,w,y,object(c=>wall(c,'y',1,6)),6);
  add('entrance',w/2-.75,h,object(c=>{cube(c,0,0,1.5,.38,-3,3,'#ae9e82','#dac49e','#8f8b76');cube(c,0,.38,1.5,.34,-6,3,'#a99b7f','#d6c09c','#908c76');}),8);
+ for(const part of layers){
+  const axis=part.name.startsWith('back-x-')?'x':part.name.startsWith('back-y-')?'y':null,index=Number(part.name.split('-').at(-1));
+  if(axis&&index%3===1){const at=(t,z)=>axis==='x'?[t,0,z]:[0,t,z];part.sprite.nightLights=[{points:[at(.18,8),at(.78,8),at(.78,22),at(.18,22)].map(v=>q(...v)),colors:['#adbbb0','#e6ebd4']}];}
+  if(part.name==='entrance')part.sprite.nightLights=[{kind:'lamp',x:q(.05,0,12)[0],y:q(.05,0,12)[1]},{kind:'spill',x:q(.75,-.4,0)[0],y:q(.75,-.4,0)[1],radius:44}];
+  if(part.name==='floor')part.sprite.nightLights=[{kind:'spill',x:q(w/2,h/2,0)[0],y:q(w/2,h/2,0)[1],radius:48}];
+ }
  return{layers};
 }
 function makePartition(room,state){
@@ -10507,7 +10575,7 @@ function makeStall(seed=1,variant=0){
 }
 function makeHome(name,seed=1){
  const s=HOME_STYLES[name]||HOME_STYLES.thatch,{w,h,z,ridge,storeys=1}=s,pitch=s.pitch||(ridge==='y'?w:h)*11,o=.16,[r0,r1,rl,rk]=ROOFS[s.roof],[w0,w1]=WALLS[s.wall],r=rng(seed),peak=z+pitch;
- let smoke=null;const footX=Math.ceil(h*24)+30,footY=peak+40,result=stamp(Math.ceil((w+h)*24)+60+(s.forge?40:0),footY+Math.ceil((w+h)*12)+30,footX,footY,c=>{
+ let smoke=null;const nightLights=[];const footX=Math.ceil(h*24)+30,footY=peak+40,result=stamp(Math.ceil((w+h)*24)+60+(s.forge?40:0),footY+Math.ceil((w+h)*12)+30,footX,footY,c=>{
   const F=(u,zz)=>[u,h,zz],S=(u,zz)=>[w,u,zz],quad=(at,u0,u1,z0,z1,color,edge)=>face(c,[at(u0,z0),at(u1,z0),at(u1,z1),at(u0,z1)],color,edge);
   top(c,-.1,.1,w+.45,h+.4,0,'#5f705040');
   if(s.porch)plank(c,ridge==='x'?.2:.2,h,ridge==='x'?w-.4:w-.4,.55,0);
@@ -10526,6 +10594,7 @@ function makeHome(name,seed=1){
   }
   // Windows, door, shutters and flower boxes.
   const win=(at,u,zb,ww,wh,lit)=>{
+   nightLights.push({points:[at(u+.05,zb+2),at(u+ww-.05,zb+2),at(u+ww-.05,zb+wh-2),at(u+.05,zb+wh-2)].map(v=>q(...v)),colors:['#a5c0b8','#f0d79a','#e6f2ee']});
    if(s.shutters){quad(at,u-.16,u,zb,zb+wh,s.shutters,C.ink);quad(at,u+ww,u+ww+.16,zb,zb+wh,s.shutters,C.ink);}
    quad(at,u,u+ww,zb,zb+wh,'#7a5f4a');quad(at,u+.05,u+ww-.05,zb+2,zb+wh-2,lit?'#f0d79a':'#a5c0b8');stroke(c,at(u+ww/2,zb+2),at(u+ww/2,zb+wh-2),C.light);stroke(c,at(u+.05,zb+wh/2),at(u+ww-.05,zb+wh/2),C.light);
    if(!lit)stroke(c,at(u+.1,zb+wh-4),at(u+.2,zb+wh-3),'#e6f2ee');
@@ -10549,16 +10618,16 @@ function makeHome(name,seed=1){
    for(let y=.1;y<h+o;y+=thatch?.17:.3){stroke(c,[-o+.05,y,z+1],[w/2,y,peak],thatch?rl:rk);stroke(c,[w/2,y,peak],[w+o-.05,y,z+1],rk);}
    for(let k=1;k<4;k++){const f=k/4;stroke(c,[-o+(w/2+o)*f,-o,z+pitch*f],[-o+(w/2+o)*f,h+o,z+pitch*f],rl);}
    face(c,[F(0,z),[w/2,h+.01,peak-3],F(w,z)].map(p=>[p[0],h+o+.01,p[2]]),w0,C.ink);stroke(c,[-o,h+o,z],[w/2,h+o,peak],C.ink,3);stroke(c,[w/2,h+o,peak],[w+o,h+o,z],C.ink,3);stroke(c,[-o,h+o+.02,z+1],[w/2,h+o+.02,peak+1],rl,1);
-   if(storeys===1||true){const zb=z+pitch*.3;quad((u,zz)=>[u,h+o+.02,zz],w/2-.2,w/2+.2,zb,zb+9,'#7a5f4a');quad((u,zz)=>[u,h+o+.02,zz],w/2-.15,w/2+.15,zb+1,zb+8,'#a5c0b8');}
+   if(storeys===1||true){const zb=z+pitch*.3;quad((u,zz)=>[u,h+o+.02,zz],w/2-.2,w/2+.2,zb,zb+9,'#7a5f4a');quad((u,zz)=>[u,h+o+.02,zz],w/2-.15,w/2+.15,zb+1,zb+8,'#a5c0b8');nightLights.push({points:[[w/2-.15,h+o+.02,zb+1],[w/2+.15,h+o+.02,zb+1],[w/2+.15,h+o+.02,zb+8],[w/2-.15,h+o+.02,zb+8]].map(v=>q(...v)),colors:['#a5c0b8']});}
    stroke(c,[w/2,-o,peak],[w/2,h+o,peak],C.ink,3);
   }else{
    face(c,[[-o,-o,z],[w+o,-o,z],[w+o,h/2,peak],[-o,h/2,peak]],r1,C.ink);face(c,[[-o,h/2,peak],[w+o,h/2,peak],[w+o,h+o,z],[-o,h+o,z]],r0,C.ink);
    for(let x=.1;x<w+o;x+=thatch?.17:.3)stroke(c,[x,h/2,peak],[x,h+o-.05,z+1],thatch?rl:rk);
    for(let k=1;k<4;k++){const f=k/4;stroke(c,[-o,h+o-(h/2+o)*f,z+pitch*f],[w+o,h+o-(h/2+o)*f,z+pitch*f],rl);}
    face(c,[[w+o+.01,0,z],[w+o+.01,h/2,peak-3],[w+o+.01,h,z]],w1,C.ink);stroke(c,[w+o,-o,z],[w+o,h/2,peak],C.ink,3);stroke(c,[w+o,h/2,peak],[w+o,h+o,z],C.ink,3);
-   {const zb=z+pitch*.3;quad((u,zz)=>[w+o+.02,u,zz],h/2-.18,h/2+.18,zb,zb+8,'#7a5f4a');quad((u,zz)=>[w+o+.02,u,zz],h/2-.13,h/2+.13,zb+1,zb+7,'#a5c0b8');}
+   {const zb=z+pitch*.3;quad((u,zz)=>[w+o+.02,u,zz],h/2-.18,h/2+.18,zb,zb+8,'#7a5f4a');quad((u,zz)=>[w+o+.02,u,zz],h/2-.13,h/2+.13,zb+1,zb+7,'#a5c0b8');nightLights.push({points:[[w+o+.02,h/2-.13,zb+1],[w+o+.02,h/2+.13,zb+1],[w+o+.02,h/2+.13,zb+7],[w+o+.02,h/2-.13,zb+7]].map(v=>q(...v)),colors:['#a5c0b8']});}
    stroke(c,[-o,h/2,peak],[w+o,h/2,peak],C.ink,3);
-   if(s.dormer){const u=w*.35,zz=z+pitch*.35;cube(c,u,h*.6,.6,.35,zz-6,12,w0,r0,w1);face(c,[[u-.06,h*.6+.37,zz+6],[u+.3,h*.6+.37,zz+14],[u+.66,h*.6+.37,zz+6]],r1,C.ink);quad((uu,z2)=>[uu,h*.6+.36,z2],u+.15,u+.45,zz-3,zz+5,'#a5c0b8',C.ink);}
+   if(s.dormer){const u=w*.35,zz=z+pitch*.35;cube(c,u,h*.6,.6,.35,zz-6,12,w0,r0,w1);face(c,[[u-.06,h*.6+.37,zz+6],[u+.3,h*.6+.37,zz+14],[u+.66,h*.6+.37,zz+6]],r1,C.ink);quad((uu,z2)=>[uu,h*.6+.36,z2],u+.15,u+.45,zz-3,zz+5,'#a5c0b8',C.ink);nightLights.push({points:[[u+.15,h*.6+.36,zz-3],[u+.45,h*.6+.36,zz-3],[u+.45,h*.6+.36,zz+5],[u+.15,h*.6+.36,zz+5]].map(v=>q(...v)),colors:['#a5c0b8']});}
   }
   if(thatch){const eave=ridge==='x'?[[-o,h+o],[w+o,h+o]]:[[-o,h+o],[-o,-o]];for(let k=0;k<=24;k++){const f=k/24,[x,y]=q(eave[0][0]+(eave[1][0]-eave[0][0])*f,eave[0][1]+(eave[1][1]-eave[0][1])*f,z);R(c,x,y,1,2+(k%3),k%2?rk:r0);}}
   // Chimney, then the special touches.
@@ -10569,12 +10638,14 @@ function makeHome(name,seed=1){
   if(s.lantern){const [lx,ly]=q(...F(.15,z/2-4));R(c,lx-2,ly-6,5,6,'#5a463f');R(c,lx-1,ly-5,3,4,'#f4d48a');R(c,lx,ly-8,1,2,'#5a463f');}
   if(s.woodpile){for(let k=0;k<3;k++)for(let m=0;m<3-k;m++){const [lx,ly]=q(w+.18,.3+m*.28+k*.14,3+k*5);E(c,lx,ly,2.6,2.6,'#8a6446');E(c,lx,ly,1.4,1.4,'#d9b083');}}
  });
+ const [lx,ly]=q(.15,h,z/2-1),[dx,dy]=q(w*.62+.25,h+.35,0);
+ result.nightLights=[...nightLights,{kind:'lamp',x:lx,y:ly},{kind:'spill',x:dx,y:dy,radius:42}];
  if(smoke)result.smoke={x:smoke[0],y:smoke[1],dark:s.smoke==='dark'};
  return result;
 }
 /** The village dojo: a low hall under a two-tier roof, sliding doors open onto a sand yard with practice dummies. Footprint 3.6×3. */
 function makeDojo(seed=149){
- return stamp(220,190,96,118,c=>{
+ const out=stamp(220,190,96,118,c=>{
   const quad=(pts,col,edge)=>face(c,pts,col,edge),sand='#dccb9c';
   top(c,-.1,-.1,3.9,3.3,0,'#5f705040');
   // Sand yard with rake lines in front of the hall.
@@ -10609,9 +10680,11 @@ function makeDojo(seed=149){
   for(const [x,y] of [[.6,2.6],[2.7,2.55]]){const [px,py]=q(x,y,0);R(c,px-1,py-20,3,20,'#6b4f3a');R(c,px-7,py-15,15,2,'#6b4f3a');E(c,px,py-13,4,6,'#d9c08a');E(c,px,py-22,3,3,'#e6cf8e');R(c,px-3,py-12,6,1,'#a3824a');}
   {const [px,py]=q(3.3,.9,0);R(c,px-6,py-18,14,2,'#6b4f3a');R(c,px-6,py-8,14,2,'#6b4f3a');R(c,px-6,py-18,2,18,'#5a3f30');R(c,px+6,py-18,2,18,'#5a3f30');L(c,px-3,py-22,px-3,py-2,'#c4ccd0');L(c,px+1,py-24,px+1,py-2,'#a77a55');L(c,px+4,py-21,px+4,py-2,'#c4ccd0');}
  });
+ out.nightLights=[...[[.35,2,17],[2.65,2,17]].map(v=>{const[x,y]=q(...v);return{kind:'lamp',x,y};}),{points:[[.05,2,7],[.55,2,7],[.55,2,28],[.05,2,28]].map(v=>q(...v)),colors:['#efe6d2']},{kind:'spill',x:q(1.5,2.4,0)[0],y:q(1.5,2.4,0)[1],radius:42}];
+ return out;
 }
 /** Draw on top of a home sprite: same foot, extra margin around it for things set out front. */
-function dressHome(base,pad,paint){return stamp(base.canvas.width+pad*2,base.canvas.height+pad,base.footX+pad,base.footY,c=>{c.drawImage(base.canvas,-base.footX,-base.footY);paint(c);});}
+function dressHome(base,pad,paint){const out=stamp(base.canvas.width+pad*2,base.canvas.height+pad,base.footX+pad,base.footY,c=>{c.drawImage(base.canvas,-base.footX,-base.footY);paint(c);});out.nightLights=base.nightLights;return out;}
 /** General store: a goods-filled window, a table of wares, barrels, sacks and a chalkboard out front. */
 function makeShop(seed=131){
  const base=makeHome('store',seed),{w,h}=HOME_STYLES.store;
@@ -12635,6 +12708,7 @@ const SHOT_COLORS={arrow:0xc9a06a,pierce:0xf3e2b0,magic:0xb7a6ff,bolt:0xf08a4b,f
 const { QUESTS,REGIONS }=Content;
 const { WORLD_PATHS }=Site;
 const { GATHER_NODES }=HeroData;
+const { nightAmount,makeNightLight,sceneryNightLights }=NightLighting;
 const { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog }=Overworld;
 const { SPECIES,makeMonster,questFoe }=Bestiary;
 const { decorateFrontier }=FrontierArt;
@@ -12703,7 +12777,25 @@ class GuildRenderer {
  }
  // Baked canvases are registered as plain image sources: a CanvasTexture would read every pixel back with getImageData, which stalls GPU-backed canvases.
  texture(key,canvas){const t=this.scene.textures;if(t.exists(key))t.remove(key);t.addImage(key,canvas).setFilter(Phaser.Textures.FilterMode.NEAREST);return key;}
- put(key,sprite,x,y,depth=y){if(!this.scene.textures.exists(key))this.texture(key,sprite.canvas);return this.scene.add.image(x-sprite.footX,y-sprite.footY,key).setOrigin(0).setDepth(depth);}
+ put(key,sprite,x,y,depth=y){if(!this.scene.textures.exists(key))this.texture(key,sprite.canvas);const image=this.scene.add.image(x-sprite.footX,y-sprite.footY,key).setOrigin(0).setDepth(depth);this.registerNightLights(image,sprite,key);return image;}
+ registerNightLights(image,sprite,key){
+  if(!sprite.nightLights?.length)return;
+  const signature=hash(JSON.stringify([sprite.canvas.width,sprite.canvas.height,sprite.nightLights]));
+  const textureKey=`night-${key}-${signature}`,cached=this.nightTextures??=new Map();let light=cached.get(textureKey);
+  if(!light||!this.scene.textures.exists(textureKey+'-panes')){light=makeNightLight(sprite);cached.set(textureKey,{pad:light.pad});this.texture(textureKey+'-panes',light.panes);this.texture(textureKey+'-glow',light.glow);}
+  const panes=this.scene.add.image(0,0,textureKey+'-panes').setOrigin(0).setDepth(99976).setVisible(false);
+  const glow=this.scene.add.image(0,0,textureKey+'-glow').setOrigin(0).setDepth(99975).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+  panes.noCull=glow.noCull=true;
+  (this.buildingLights??=new Map()).set(image,{panes,glow,pad:light.pad});
+ }
+ updateBuildingLights(strength,time){
+  for(const [source,light] of this.buildingLights||[]){
+   if(source.scene!==this.scene||!source.active){light.panes.destroy();light.glow.destroy();this.buildingLights.delete(source);continue;}
+   const visible=strength>.01&&source.visible&&!source.cameraFilter;
+   for(const image of [light.panes,light.glow])image.setPosition(source.x-light.pad*source.scaleX,source.y-light.pad*source.scaleY).setScale(source.scaleX,source.scaleY).setFlipX(source.flipX).setVisible(visible);
+   light.panes.setAlpha(strength*.96);light.glow.setAlpha(strength*(.94+Math.sin(time*1.4+source.x)*.035));
+  }
+ }
  setup(){
   this.ready=true;this.camera=this.scene.cameras.main;this.camera.roundPixels=true;
   this.width=this.game.scale.width;this.height=this.game.scale.height;
@@ -12776,8 +12868,8 @@ class GuildRenderer {
   const st=style==='dojo'?{w:3.6,h:3}:HOME_STYLES[style],key='home-'+style,p=gridPoint(x,y),dw=st.w,dh=style==='dojo'?4:st.h,c=rot?gridPoint(x+dh/2,y+dw/2):gridPoint(x+dw/2,y+dh/2);let s=this.homeSprites?.get(key);
   if(!s||!this.scene.textures.exists(key)){s=style==='dojo'?makeDojo(seed):style==='store'?makeShop(seed):style==='smithy'?makeSmithyShop(seed):makeHome(style,seed);(this.homeSprites??=new Map()).set(key,s);this.texture(key,s.canvas);}
   if(s.smoke)(this.chimneys??=[]).push({x:p.x+(rot?-s.smoke.x:s.smoke.x),y:p.y+s.smoke.y,dark:s.smoke.dark,clock:Math.random()});
-  if(rot)return this.scene.add.image(p.x-(s.canvas.width-s.footX),p.y-s.footY,key).setOrigin(0).setFlipX(true).setDepth(c.y+4);
-  return this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(c.y+4);
+  const image=this.scene.add.image(p.x-(rot?s.canvas.width-s.footX:s.footX),p.y-s.footY,key).setOrigin(0).setFlipX(Boolean(rot)).setDepth(c.y+4);
+  this.registerNightLights(image,s,key);return image;
  }
  // World ground is painted lazily in crisp chunks around the view, a few rows per frame.
  initGround(){
@@ -12808,7 +12900,7 @@ class GuildRenderer {
  }
  decorateWorld(){
   const N=window.VillageNature,V=window.VillageProps,B=window.VillageBuildings;this.worldProps=[];this.initGround();this.cullClock=0;
-  const meta=this.propMeta??=new Map();const place=(key,make,x,y,depth)=>{const p=gridPoint(x,y);let s=meta.get(key);if(!s||!this.scene.textures.exists(key)){s=make();meta.set(key,s);this.texture(key,s.canvas);}const image=this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(depth??p.y);this.worldProps.push(image);return image;};
+  const meta=this.propMeta??=new Map();const place=(key,make,x,y,depth)=>{const p=gridPoint(x,y);let s=meta.get(key);if(!s||!this.scene.textures.exists(key)){s=make();meta.set(key,s);this.texture(key,s.canvas);}const image=this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(depth??p.y);s.nightLights??=sceneryNightLights(key,s);this.registerNightLights(image,s,key);this.worldProps.push(image);return image;};
   const flat=(key,s,depth)=>{this.texture(key,s.canvas);const image=this.scene.add.image(s.x,s.y,key).setOrigin(0).setDepth(depth);this.worldProps.push(image);return image;};
   const bake=(key,make)=>{if(!this.scene.textures.exists(key))this.texture(key,make().canvas);return key;};
   const bridge=makeBridge();flat('world-bridge',bridge,bridge.depthY);const foot=makeBridge(FOOTBRIDGE,'y');flat('foot-bridge',foot,foot.depthY);
@@ -13062,13 +13154,15 @@ class GuildRenderer {
   for(const id of VILLAGE_BUSINESSES){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:id==='fairground'||id==='stage'?{key:id,fest:id,level:v[id],x:at.x,y:at.y}:id==='monument'?{key:id,monument:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y,rot:at.rot||0});}
   const sig=JSON.stringify(want);if(sig===this.villageSig)return;const first=this.villageSig===null;this.villageSig=sig;
   const old=this.villageProps,next=new Map();
+const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])=>{const p=gridPoint(x,y),ground=gridPoint(x,y+.3);return[{kind:'lamp',x:p.x-ORIGIN_X,y:p.y-ORIGIN_Y-z},{kind:'spill',x:ground.x-ORIGIN_X,y:ground.y-ORIGIN_Y,radius:38}];});this.registerNightLights(image,sp,key);};
+
   for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.fest?w.fest+w.level:w.monument?'monument'+w.monument:w.style)+':'+w.x+','+w.y+','+(w.rot||0);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
    const images=[],before=(this.chimneys||[]).length;
    if(w.lot){const s=makeSignpost('ที่ดินว่าง');if(!this.scene.textures.exists('lot-sign'))this.texture('lot-sign',s.canvas);const p=gridPoint(w.x,w.y);images.push(this.scene.add.image(p.x-s.footX,p.y-s.footY,'lot-sign').setOrigin(0).setDepth(p.y).setAlpha(.9));}
-   else if(w.market){for(let k=0;k<w.market;k++){const key='stall-'+k,sp=makeStall(w.seed+k,k);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const at=[[0,0],[2.1,.3],[.9,2.1]][k],p=gridPoint(w.x+at[0],w.y+at[1]),c=gridPoint(w.x+at[0]+.8,w.y+at[1]+.6);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+4));}}
-   else if(w.arena){const key='arena-'+w.arena,sp=makeArena(w.arena);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+2,w.y+1.5);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y-20));}
-   else if(w.monument){const key='monument-'+w.monument,sp=makeMonument(w.monument);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+1,w.y+1);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+6));}
-   else if(w.fest){const make=w.fest==='stage'?makeStage:makeFairground,[fw,fh]=w.fest==='stage'?[3.4,2.8]:[5,4];for(let f=0;f<2;f++){const k=`${w.fest}-${w.level}-${f}`;if(!this.scene.textures.exists(k))this.texture(k,make(w.level,f).canvas);}const sp=make(w.level,0),p=gridPoint(w.x,w.y),c=gridPoint(w.x+fw/2,w.y+fh/2),img=this.scene.add.image(p.x-sp.footX,p.y-sp.footY,`${w.fest}-${w.level}-0`).setOrigin(0).setDepth(c.y-20);img.festKey=`${w.fest}-${w.level}`;images.push(img);}
+   else if(w.market){for(let k=0;k<w.market;k++){const key='stall-'+k,sp=makeStall(w.seed+k,k);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const at=[[0,0],[2.1,.3],[.9,2.1]][k],p=gridPoint(w.x+at[0],w.y+at[1]),c=gridPoint(w.x+at[0]+.8,w.y+at[1]+.6);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+4));lightVenue(images.at(-1),sp,key,[[.08,1.2,23]]);}}
+   else if(w.arena){const key='arena-'+w.arena,sp=makeArena(w.arena);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+2,w.y+1.5);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y-20));lightVenue(images.at(-1),sp,key,[[.2,3.45,22],[1.2,3.45,22]]);}
+   else if(w.monument){const key='monument-'+w.monument,sp=makeMonument(w.monument);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+1,w.y+1);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+6));lightVenue(images.at(-1),sp,key,[[.1,1.9,9],[1.9,1.9,9]]);}
+   else if(w.fest){const make=w.fest==='stage'?makeStage:makeFairground,[fw,fh]=w.fest==='stage'?[3.4,2.8]:[5,4];for(let f=0;f<2;f++){const k=`${w.fest}-${w.level}-${f}`;if(!this.scene.textures.exists(k))this.texture(k,make(w.level,f).canvas);}const sp=make(w.level,0),p=gridPoint(w.x,w.y),c=gridPoint(w.x+fw/2,w.y+fh/2),img=this.scene.add.image(p.x-sp.footX,p.y-sp.footY,`${w.fest}-${w.level}-0`).setOrigin(0).setDepth(c.y-20);img.festKey=`${w.fest}-${w.level}`;images.push(img);lightVenue(img,sp,`${w.fest}-${w.level}`,[[.2,fh-.1,24],[fw-.2,fh-.1,24]]);}
    else images.push(this.addHome(w.style,w.seed,w.x,w.y,w.rot));
    const chimneys=(this.chimneys||[]).slice(before);
    for(const image of images){this.worldProps.push(image);if(!first&&!w.lot){const y=image.y;image.y=y-18;this.scene.tweens.add({targets:image,y,duration:420,ease:'Bounce.easeOut'});}}
@@ -13324,17 +13418,18 @@ class GuildRenderer {
  }
  // ---- A town that lives: day and night, lamps and a gate as it grows, townsfolk about their day, a party when it levels up. ----
  cityCanvas(kind,lit){const c=document.createElement('canvas'),g=c.getContext('2d');g.imageSmoothingEnabled=false;const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
-  if(kind==='lamp'){c.width=12;c.height=36;px(5,8,2,27,'#4f4540');px(3,33,6,3,'#4f4540');px(2,2,8,7,'#4f4540');px(3,3,6,5,lit?'#ffe08a':'#d8cfae');px(4,0,4,2,'#4f4540');}
+  if(kind==='lamp'){c.width=12;c.height=36;px(5,8,2,27,'#4f4540');px(3,33,6,3,'#4f4540');px(2,2,8,7,'#4f4540');px(3,3,6,5,lit?'#ffd08a':'#d8cfae');px(4,0,4,2,'#4f4540');}
   else if(kind==='banner'){c.width=14;c.height=40;px(6,0,2,38,'#6f5240');px(3,36,8,4,'#6f5240');px(8,4,6,14,'#c9584a');px(8,18,3,3,'#c9584a');px(11,18,3,3,'#c9584a');px(9,7,3,3,'#ffe08a');}
   else if(kind==='gate'){c.width=64;c.height=58;px(4,14,10,44,'#9a8f80');px(50,14,10,44,'#9a8f80');px(2,10,14,6,'#7f7466');px(48,10,14,6,'#7f7466');px(4,4,56,8,'#8a6446');px(6,6,52,4,'#b98a60');px(22,0,20,6,'#8a6446');px(26,1,12,3,'#ffe08a');for(let y=18;y<56;y+=8){px(5,y,8,1,'#7f7466');px(51,y,8,1,'#7f7466');}}
-  else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,214,120,.55)');r.addColorStop(1,'rgba(255,214,120,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
+  else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,173,78,.48)');r.addColorStop(1,'rgba(255,173,78,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
   return c;}
- // Morning comes at the start of each day; dusk, night and a short dawn close it.
- darkness(){const t=(this.state.clock||0)/240;return t<.2?.5:t<.25?.5*(.25-t)/.05:t<.72?0:t<.8?.5*(t-.72)/.08:.5;}
+ // A full night spans midnight; dawn and dusk fade continuously.
+ darkness(){return nightAmount(this.state.clock||0)*.5;}
 /** A soft colour grade over the whole view: warm sunlight from above, a gentle vignette, gold at dusk, blue at night. */
  atmosphereColors(t){
-  const K=[[0,[255,205,150,.2],[150,130,150,.04],.18],[.1,[255,238,196,.12],[150,140,130,.02],.15],[.56,[255,236,190,.1],[150,140,130,.02],.15],[.68,[255,160,80,.3],[205,112,132,.16],.24],
-   [.78,[126,92,172,.2],[44,52,112,.18],.3],[.88,[44,62,142,.16],[22,26,62,.2],.38],[.97,[232,152,172,.18],[92,102,172,.1],.24],[1,[255,205,150,.2],[150,130,150,.04],.18]];
+  const K=[[0,[80,102,142,.09],[38,52,82,.08],.18],[.2,[80,102,142,.09],[38,52,82,.08],.18],
+   [.25,[255,228,185,.12],[150,140,130,.02],.15],[.56,[255,236,190,.1],[150,140,130,.02],.15],
+   [.68,[255,160,80,.24],[205,112,132,.1],.2],[.8,[80,102,142,.09],[38,52,82,.08],.18],[1,[80,102,142,.09],[38,52,82,.08],.18]];
   let i=0;while(i<K.length-2&&t>=K[i+1][0])i++;const a=K[i],b=K[i+1],f=(t-a[0])/((b[0]-a[0])||1),mix=(p,q)=>p.map((v,k)=>v+(q[k]-v)*f);
   return{top:mix(a[1],b[1]),bottom:mix(a[2],b[2]),vignette:a[3]+(b[3]-a[3])*f};
  }
@@ -13382,15 +13477,16 @@ class GuildRenderer {
   if(!this.scene)return;const level=getVillageInfo(this.state).level,dark=this.darkness(),t=this.realTime||0;
   for(const k of ['lamp0','lamp1','banner','gate','glow'])if(!this.scene.textures.exists('city-'+k))this.texture('city-'+k,this.cityCanvas(k.replace(/[01]$/,''),k==='lamp1'));
   // Night falls over everything except the lamps and the interface.
-  if(!this.night?.scene){this.night=this.scene.add.rectangle(0,0,10,10,0x101a3a).setOrigin(0).setScrollFactor(0).setDepth(99970);}
-  const cam=this.camera;if(cam){const z=cam.zoom||1;this.night.setPosition(-cam.width/z,-cam.height/z).setSize(cam.width*3/z,cam.height*3/z);}this.night.setAlpha(dark*.9).setVisible(dark>0.01);
+  if(!this.night?.scene){this.night=this.scene.add.rectangle(0,0,10,10,0x18283e).setOrigin(0).setScrollFactor(0).setDepth(99970);}
+  const cam=this.camera;if(cam){const z=cam.zoom||1;this.night.setPosition(-cam.width/z,-cam.height/z).setSize(cam.width*3/z,cam.height*3/z);}this.night.setAlpha(dark*1.04).setVisible(dark>0.01);
   // Street furniture by stage: lamps from the third level, a gate from the fourth, banners at the fifth.
   const key=level+'';if(this.cityKey!==key){this.cityKey=key;for(const o of this.cityProps||[])o.image.destroy(),o.glow?.destroy();this.cityProps=[];
    const lamps=[[-7.5,16.3],[-1.5,16.3],[4.5,16.3],[17.5,16.3],[23.5,16.3],[29.5,16.3],[35.5,16.3]];
    if(level>=3)for(const [x,y] of lamps){const p=gridPoint(x,y);this.cityProps.push({kind:'lamp',image:this.scene.add.image(p.x,p.y,'city-lamp0').setOrigin(.5,1).setDepth(p.y),glow:this.scene.add.image(p.x,p.y-30,'city-glow').setDepth(99975).setBlendMode(Phaser.BlendModes.ADD)});}
    if(level>=4)for(const [x,y] of [[-13.5,17.2],[41,17.2]]){const p=gridPoint(x,y);this.cityProps.push({kind:'gate',image:this.scene.add.image(p.x,p.y,'city-gate').setOrigin(.5,1).setDepth(p.y+1)});}
    if(level>=5)for(const [x,y] of lamps.filter((_,i)=>i%2===0)){const p=gridPoint(x+.6,y-.3);this.cityProps.push({kind:'banner',image:this.scene.add.image(p.x,p.y,'city-banner').setOrigin(.5,1).setDepth(p.y)});}}
-  for(const o of this.cityProps||[])if(o.kind==='lamp'){o.image.setTexture(dark>.15?'city-lamp1':'city-lamp0');o.glow.setVisible(dark>.15).setAlpha(Math.min(1,dark*2)*(.85+Math.sin(t*3+o.image.x)*.08));}
+  for(const o of this.cityProps||[])if(o.kind==='lamp'){o.image.setTexture(dark>.15?'city-lamp1':'city-lamp0');o.glow.setVisible(dark>.01).setScale(1.4).setAlpha(Math.min(1,dark*2)*(.92+Math.sin(t*1.4+o.image.x)*.035));}
+  this.updateBuildingLights(dark*2,t);
   this.updateFolk(dt,playing,dark);
   // A town that just grew throws a party: fireworks over the rooftops for a few seconds.
   const at=this.state.village?.celebrateAt;if(at!==undefined&&at!==this.celebrated){if(this.celebrated!==undefined&&this.state.elapsed-at<30)this.fireworks=8;this.celebrated=at;}
