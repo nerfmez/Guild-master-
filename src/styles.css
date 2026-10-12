@@ -792,3 +792,17 @@ body .toast.clickable{pointer-events:auto}
 /* Distinct HUD entry points: news and quests, with quest availability badge. */
 .hud-inbox{display:flex;gap:6px;align-items:center}.hud-inbox button{position:relative;min-width:55px}.hud-inbox button span{display:inline-flex;min-width:17px;justify-content:center}.hud-inbox button span[hidden]{display:none}.hud-inbox .urgent{border-color:#d7a65d;background:#fff1d1}.hud-inbox .urgent span{background:#c85e4f;color:#fff;border-radius:9px;padding:0 5px}
 @media(max-width:700px){.hud-inbox{gap:4px}.hud-inbox button{min-width:48px;padding:7px 8px}}
+
+/* Tablet landscape HUD: keep quest/news shortcuts independent of the goal drawer. */
+body.compact-ui .corner-stack{display:none!important}
+body.compact-ui .world-actions{display:flex;align-items:center;justify-content:flex-start;gap:7px;left:16px;right:auto;width:auto;max-width:calc(100vw - 32px);z-index:8}
+body.compact-ui .world-actions .hud-inbox{display:flex;flex:none;gap:7px;margin-right:8px}
+body.compact-ui .world-actions .hud-inbox button{display:flex;align-items:center;justify-content:center;gap:4px;width:auto;min-width:64px;height:40px;padding:5px 10px;font-size:16px}
+body.compact-ui .world-actions #notifications-button{margin-right:0;min-width:64px}
+body.compact-ui .world-actions #quest-alert-button{min-width:64px}
+body.compact-ui .world-actions #quest-alert-count[hidden]{display:none}
+body.compact-ui .city-stats{display:none!important}
+body.compact-ui .world-actions #view-controls-toggle{margin-left:0}
+@media(min-width:901px) and (max-height:500px){
+ body.compact-ui .world-actions{top:calc(max(10px,env(safe-area-inset-top)) + 84px)}
+}
