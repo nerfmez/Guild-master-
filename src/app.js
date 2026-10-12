@@ -6,6 +6,7 @@ import {STAFF,FACILITIES,MEMBERS,QUESTS,EQUIPMENT,JOBS,RANKS,REGIONS,GUILD_EVENT
 import {storeUsed,storeCapacity,wholesalePrice,goodValue,caravanLoad,caravanCapacity} from './trade.js';
 import {ROTATABLE,homeStatus,homeOf,villageBuildings,housingCapacity} from './town.js';
 import { illustratedIcon } from './illustrated-art.js';
+import { heroEncounterView } from './hero-events.js';
 import {drawPortrait,drawItemIcon,drawBattleScene,drawQuestArt,villagerLook,applicantLook} from './render.js';
 import {GuildRenderer} from './world.js';
 import {drawDungeonScene,missionStage,buildDungeon} from './dungeon.js';
@@ -461,11 +462,11 @@ $('pause-button').addEventListener('click',()=>{ui.paused=!ui.paused;syncHUD();}
 // ---- Guild master on foot: the player's own character with a stick (or WASD) and action buttons. ----
 const heroKeys=new Set(),heroStick={x:0,y:0,id:null};let heroAttackHeld=false,heroSpeedBefore=null;
 function heroOn(){return Boolean(state.hero?.active);}
-function syncHeroMode(){const on=heroOn();$('hero-hud').hidden=!on;document.body.classList.toggle('hero-mode',on);$('hero-toggle').classList.toggle('active',on);
+function syncHeroMode(){const on=heroOn();if(!on){clearHeroInput();if($('hero-event-dialog').open)$('hero-event-dialog').close();}$('hero-hud').hidden=!on;document.body.classList.toggle('hero-mode',on);$('hero-toggle').classList.toggle('active',on);
  if(on&&heroSpeedBefore===null){heroSpeedBefore=ui.speed;ui.speed=1;state.settings.speed=1;}else if(!on&&heroSpeedBefore!==null){ui.speed=heroSpeedBefore;state.settings.speed=heroSpeedBefore;heroSpeedBefore=null;}
  // Reports of finished jobs wait while the master is out fighting, and open on the way back in.
  if(!on&&reportQueue.length&&!$('report-dialog').open)setTimeout(()=>{if(!heroOn()&&reportQueue.length&&!$('report-dialog').open)showReport();},400);}
-function heroInput(){const h=state.hero;if(!h?.active)return;let sx=heroStick.x,sy=heroStick.y;
+function heroInput(){const h=state.hero;if(!h?.active)return;if($('hero-event-dialog').open){h.input={};return;}let sx=heroStick.x,sy=heroStick.y;
  if(heroKeys.has('KeyD')||heroKeys.has('ArrowRight'))sx+=1;if(heroKeys.has('KeyA')||heroKeys.has('ArrowLeft'))sx-=1;if(heroKeys.has('KeyS')||heroKeys.has('ArrowDown'))sy+=1;if(heroKeys.has('KeyW')||heroKeys.has('ArrowUp'))sy-=1;
  // Screen directions turn into the isometric grid: right is +x−y, down is +x+y.
  const len=Math.min(1,Math.hypot(sx,sy)),gx=sx+sy,gy=sy-sx,gl=Math.hypot(gx,gy)||1;
@@ -481,7 +482,7 @@ function syncHeroHud(){const hero=state.hero;syncCallHud();if(!hero?.active)retu
  const pack=items.length?`🎒 ${items.map(([i,v])=>`${i}${n(v)}`).join(' ')}`:'🎒 กระเป๋าว่าง',jobs=heroContracts(state).map(c=>`<span class="${c.done?'done':''}">${c.icon} ${h(c.name)} ${c.done?'✔':c.need>1?`${c.have}/${c.need}`:''}</span>`).join('');
  if($('hero-pack').__h!==pack){$('hero-pack').textContent=pack;$('hero-pack').__h=pack;}if($('hero-jobs').__h!==jobs){$('hero-jobs').innerHTML=jobs;$('hero-jobs').__h=jobs;}
  $('hero-order').hidden=!(hero.companions||[]).length;document.querySelectorAll('[data-hero-order]').forEach(b=>b.classList.toggle('active',b.dataset.heroOrder===(hero.order||'follow')));
- drawHeroMap();}
+ drawHeroMap();syncHeroEncounterHud();}
 /** The minimap: the land around the master, roads, hunting grounds, spots to gather, the fallen, and today's quarry. */
 let heroMapAt=0;
 function drawHeroMap(){const now=performance.now();if(now-heroMapAt<120)return;heroMapAt=now;const cv=$('hero-map'),c=cv.getContext('2d'),h=state.hero,W=cv.width,H=cv.height,s=2.4;
@@ -514,6 +515,36 @@ window.addEventListener('keydown',e=>{if(!heroOn()||e.target.matches?.('input,se
  else{const key={KeyK:'s1',KeyL:'s2',KeyU:'ult',KeyE:'act',ShiftLeft:'dash',ShiftRight:'dash'}[k];if(key){heroTap(key);e.preventDefault();e.stopImmediatePropagation();}}},true);
 window.addEventListener('keyup',e=>{heroKeys.delete(e.code);});
 window.addEventListener('blur',()=>{heroKeys.clear();heroAttackHeld=false;});
+// Hero encounters pause the world while the player reads or chooses.
+function clearHeroInput(){heroKeys.clear();heroAttackHeld=false;heroStick.x=heroStick.y=0;heroStick.id=null;if(state.hero)state.hero.input={};$('hero-stick').querySelector('i').style.transform='';}
+function syncHeroEncounterHud(){
+ const view=heroEncounterView(state),el=$('hero-encounter-hud'),c=view?.challenge;
+ $('hero-buffs').textContent=(view?.buffs||[]).map(b=>`${b.name} · ${Math.ceil(b.left)} วิ`).join(' · ');
+ el.hidden=!c&&!view?.pending&&!view?.notice;
+ if(c){let progress=`${c.have}/${c.need} ตัว`;
+  if(c.goal){const dx=c.goal.x-state.hero.x,dy=c.goal.y-state.hero.y,angle=Math.atan2(dx+dy,2*(dx-dy));const arrows=['→','↘','↓','↙','←','↖','↑','↗'];progress=`${arrows[(Math.round(angle/(Math.PI/4))+8)%8]} ห่าง ${Math.ceil(c.distance)} ช่อง`;}
+  setHTML(el,`<small>${h(c.icon)} ${h(c.title)}</small><b>${h(c.objective)}</b><span>${h(progress)} · เหลือ ${Math.ceil(c.left)} วิ</span><button type="button" data-hero-abandon>ถอนตัว · ไม่มีค่าปรับ</button>`);
+ }else if(view?.pending)setHTML(el,`<b>${h(view.pending.title)}</b><button type="button" data-hero-open-event>เลือกว่าจะทำอะไร</button>`);
+ else if(view?.notice)setHTML(el,`<b>${view.notice.won?'สำเร็จ!':'ไว้ลองใหม่คราวหน้า'} · ${h(view.notice.title)}</b><small>${h(view.notice.outcome)}</small>`);
+}
+function showHeroEncounter(){
+ const view=heroEncounterView(state),ev=view?.pending,dialog=$('hero-event-dialog');
+ if(!ev||dialog.open||!$('title-screen').hidden||document.querySelector('dialog[open]'))return;
+ clearHeroInput();
+ $('hero-event-content').innerHTML=`<small class="report-kicker">HERO · ${h(ev.tone)}</small><h2 id="hero-event-title">${h(ev.icon)} ${h(ev.title)}</h2><p>${h(ev.text)}</p><div class="event-choices">${ev.choices.map(c=>`<button type="button" class="event-choice" data-hero-choice="${h(c.id)}" ${c.disabled?'disabled':''}><b>${h(c.label)}</b><small>${h(c.desc)}${c.disabled?' · เงินกิลด์ไม่พอ':''}</small></button>`).join('')}</div><p class="hero-event-note">เวลาหยุดระหว่างเลือก · กด Esc เพื่อเดินต่อ</p>`;
+ dialog.showModal();
+}
+$('hero-event-dialog').addEventListener('click',event=>{
+ const b=event.target.closest('[data-hero-choice],[data-hero-event-continue]');if(!b)return;
+ if(b.hasAttribute('data-hero-event-continue')){$('hero-event-dialog').close();return;}
+ const result=act(state,'resolveHeroEncounter',{choiceId:b.dataset.heroChoice});
+ if(!result.ok){toast(result.message,true);return;}
+ $('hero-event-content').innerHTML=`<small class="report-kicker">เรื่องเล่าระหว่างทาง</small><h2 id="hero-event-title">${state.hero.encounters.challenge?'ลุยกันเลย!':'แล้วเรื่องก็ลงเอยแบบนี้…'}</h2><p class="hero-event-outcome">${h(result.message)}</p><div class="dialog-actions"><button type="button" class="primary" data-hero-event-continue>${state.hero.encounters.challenge?'เริ่มภารกิจ':'เดินต่อ'}</button></div>`;
+ $('hero-event-content').querySelector('[data-hero-event-continue]').focus();renderer?.setState(state);syncHUD();syncHeroHud();save();
+});
+$('hero-event-dialog').addEventListener('cancel',event=>{event.preventDefault();if(state.hero.encounters?.pending)act(state,'resolveHeroEncounter',{choiceId:'leave'});$('hero-event-dialog').close();save();});
+$('hero-event-dialog').addEventListener('close',()=>{clearHeroInput();lastFrame=performance.now();});
+$('hero-encounter-hud').addEventListener('click',event=>{if(event.target.closest('[data-hero-open-event]'))showHeroEncounter();if(event.target.closest('[data-hero-abandon]')){dispatch('abandonHeroChallenge');syncHeroHud();}});
 $('zoom-in').addEventListener('click',()=>{ui.zoom=Math.min(2.4,(renderer?.zoom||1)+.15);renderer?.setZoom(ui.zoom);});$('zoom-out').addEventListener('click',()=>{ui.zoom=Math.max(.3,(renderer?.zoom||1)-.15);renderer?.setZoom(ui.zoom);});$('home-view').addEventListener('click',()=>{ui.zoom=1;renderer?.resetView?.();renderer?.setZoom(1);});
 document.addEventListener('input',event=>{const d=event.target.dataset;if(d.roomDimension){ui[d.roomDimension==='width'?'roomWidth':'roomHeight']=Number(event.target.value);if($('room-estimate'))$('room-estimate').textContent=moneyCost(getPartitionCost(ui.roomWidth,ui.roomHeight));}if(d.partitionSize)ui[d.partitionSize==='width'?'roomDraftW':'roomDraftH']=Number(event.target.value);});
 document.addEventListener('keydown',event=>{if(event.target.matches('input,select,textarea,button')||document.querySelector('dialog[open]'))return;if((event.key==='Enter'||event.key===' ')&&event.target.matches('[role="button"]')){event.preventDefault();event.target.click();return;}if(event.code==='KeyR'&&(ui.buildType||ui.moveId||ui.roomPlacement||ui.moveRoomId||ui.villagePlace)){event.preventDefault();if(ui.villagePlace)renderer?.rotateVillagePick();else renderer?.rotatePlacement();syncHUD();return;}if(event.code==='Space'){event.preventDefault();ui.paused=!ui.paused;syncHUD();}if(['1','2','4'].includes(event.key)){if(heroOn()&&event.key!=='1'){toast('ตอนออกไปเองใช้ได้แค่ความเร็ว ×1',true);return;}ui.speed=Number(event.key);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();}if(event.key==='Escape'){cancelBuild();closeMenu();}});
@@ -592,7 +623,7 @@ $('goal-card').addEventListener('click',()=>runGoal($('goal-card').dataset.goal)
 
 // The storyteller: a choice opens a small dialog once; big events show a banner with a watch button.
 let shownEvent=null;
-function showEvent(force=false){const ev=state.director?.pending;if(!ev||$('event-dialog').open)return;if(!force&&(shownEvent===ev.expires+ev.id||$('management-dialog').open||$('report-dialog').open||$('visitor-dialog').open||$('confirm-dialog').open))return;shownEvent=ev.expires+ev.id;
+function showEvent(force=false){const ev=state.director?.pending;if(!ev||document.querySelector('dialog[open]'))return;if(!force&&(shownEvent===ev.expires+ev.id||$('management-dialog').open||$('report-dialog').open||$('visitor-dialog').open||$('confirm-dialog').open))return;shownEvent=ev.expires+ev.id;
  const left=Math.max(0,Math.ceil((ev.expires-state.elapsed)/60));
  $('event-content').innerHTML=`<small class="report-kicker">${ev.kind==='major'?'เหตุการณ์ใหญ่':'เรื่องที่ต้องตัดสินใจ'}</small><h2 id="event-title"><span class="event-big-icon">${h(ev.icon)}</span>${h(ev.title)}</h2><p>${h(ev.text)}</p><div class="event-choices">${ev.choices.map(c=>`<button class="event-choice" data-event-choice="${h(c.id)}"><b>${h(c.label)}</b><small>${h(c.desc)}</small></button>`).join('')}</div><div class="dialog-actions"><button class="secondary" data-event-later>ไว้ทีหลัง (${left} นาที)</button></div>`;
  $('event-dialog').showModal();}
@@ -770,7 +801,7 @@ document.addEventListener('click',event=>{const b=event.target.closest('[data-au
 
 document.addEventListener('click',event=>{const b=event.target.closest('[data-watch-mission]');if(!b)return;closeMenu();renderer?.focusMission(b.dataset.watchMission);});
 let lastFrame=performance.now(),uiTimer=0,saveTimer=0,seenLog=state.log[0];
-function frame(now){state.settings.paused=ui.paused;const dt=Math.max(0,Math.min((now-lastFrame)/1000,.25));lastFrame=now;if(renderer?.ready&&!document.hidden&&!ui.paused&&!$('confirm-dialog').open&&!$('settings-dialog').open&&!$('report-dialog').open&&!$('event-dialog').open&&!$('visitor-dialog').open&&!$('story-dialog').open&&!$('setup-dialog').open&&!$('lesson-dialog').open&&!$('chest-dialog').open&&!$('celebrate-dialog').open&&!$('away-dialog').open&&$('title-screen').hidden){const before={rank:state.rank,levels:new Map(state.members.map(m=>[m.id,m.level]))};heroInput();tick(state,dt*(heroOn()?1:ui.speed));queueReports(before);if(state.intro?.step==='visit'&&!$('report-dialog').open&&!$('management-dialog').open)showVisitors();showEvent();syncEventBanner();renderer?.setState(state);uiTimer+=dt;saveTimer+=dt;if(state.log[0]!==seenLog){const fresh=[];for(const e of state.log){if(e===seenLog||fresh.length>=20)break;fresh.push(e);}fresh.reverse().forEach(noteLog);seenLog=state.log[0];}flushDigest(dt);syncHeroHud();if(uiTimer>.9){syncHUD();syncHeroMode();if(!document.activeElement?.matches('input,select,textarea')&&(ui.missionId||ui.questId||ui.tab==='journal'||ui.tab==='trade'||ui.tab==='market'||ui.tab==='festival'||ui.tab==='goals'||ui.tab==='codex'||ui.tab==='fieldmaster'||ui.tab==='town'||ui.tab==='efficiency'||ui.tab==='staff'||ui.tab==='members'||ui.tab==='build'||ui.tab==='workshop'||ui.tab==='village'))syncUI();uiTimer=0;}if(saveTimer>12){save();saveTimer=0;}}if(ui.missionId||$('dungeon-dialog').open)drawMissionScene();if($('show-dialog').open)drawShow(now);syncMusic(dt);requestAnimationFrame(frame);}
+function frame(now){state.settings.paused=ui.paused;const dt=Math.max(0,Math.min((now-lastFrame)/1000,.25));lastFrame=now;if(renderer?.ready&&!document.hidden&&!ui.paused&&!$('confirm-dialog').open&&!$('settings-dialog').open&&!$('report-dialog').open&&!$('event-dialog').open&&!$('hero-event-dialog').open&&!$('visitor-dialog').open&&!$('story-dialog').open&&!$('setup-dialog').open&&!$('lesson-dialog').open&&!$('chest-dialog').open&&!$('celebrate-dialog').open&&!$('away-dialog').open&&$('title-screen').hidden){const before={rank:state.rank,levels:new Map(state.members.map(m=>[m.id,m.level]))};heroInput();tick(state,dt*(heroOn()?1:ui.speed));queueReports(before);if(state.intro?.step==='visit'&&!$('report-dialog').open&&!$('management-dialog').open)showVisitors();showHeroEncounter();showEvent();syncEventBanner();renderer?.setState(state);uiTimer+=dt;saveTimer+=dt;if(state.log[0]!==seenLog){const fresh=[];for(const e of state.log){if(e===seenLog||fresh.length>=20)break;fresh.push(e);}fresh.reverse().forEach(noteLog);seenLog=state.log[0];}flushDigest(dt);syncHeroHud();if(uiTimer>.9){syncHUD();syncHeroMode();if(!document.activeElement?.matches('input,select,textarea')&&(ui.missionId||ui.questId||ui.tab==='journal'||ui.tab==='trade'||ui.tab==='market'||ui.tab==='festival'||ui.tab==='goals'||ui.tab==='codex'||ui.tab==='fieldmaster'||ui.tab==='town'||ui.tab==='efficiency'||ui.tab==='staff'||ui.tab==='members'||ui.tab==='build'||ui.tab==='workshop'||ui.tab==='village'))syncUI();uiTimer=0;}if(saveTimer>12){save();saveTimer=0;}}if(ui.missionId||$('dungeon-dialog').open)drawMissionScene();if($('show-dialog').open)drawShow(now);syncMusic(dt);requestAnimationFrame(frame);}
 function drawMissionScene(){const big=$('dungeon-dialog').open,id=big?ui.bigMission:ui.missionId,canvas=big?$('dungeon-big'):$('mission-scene');if(!canvas||!id)return;const mission=state.missions.find(m=>m.id===id);const quest=QUESTS.find(q=>q.id===mission?.questId);if(mission&&quest)drawDungeonScene(canvas,mission,quest,state,{paused:ui.paused||document.hidden||(!big&&!$('management-dialog').open),time:performance.now()/1000,eventPending:missionEventPending(mission)});}
 // A full-screen window into the dungeon: watch the fight like an online game.
 document.addEventListener('click',event=>{const b=event.target.closest('[data-dungeon-full],[data-dungeon-close]');if(!b)return;if(b.dataset.dungeonFull){const m=state.missions.find(x=>x.id===b.dataset.dungeonFull),q=QUESTS.find(x=>x.id===m?.questId);ui.bigMission=b.dataset.dungeonFull;$('dd-title').textContent=`${q?.name||''} · ${(m?.memberIds||[]).map(id=>state.members.find(x=>x.id===id)?.name).filter(Boolean).join(' · ')}`;$('dungeon-dialog').showModal();}else $('dungeon-dialog').close();});

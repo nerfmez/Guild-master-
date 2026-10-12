@@ -423,6 +423,12 @@ body.on-title .event-banner{visibility:hidden}
 body.hero-mode .screen-bottom,body.hero-mode .corner-stack,body.hero-mode #follow-chip,body.hero-mode .city-stats{display:none!important}
 @media(max-width:620px){.hero-help{display:none}.hero-status{top:calc(max(15px,env(safe-area-inset-top)) + 112px)}}
 body.on-title .hero-hud{display:none}
+.hero-encounter-hud{position:absolute;right:24px;top:145px;width:250px;display:grid;gap:6px;padding:12px 14px;background:#fff8e9f2;border:1px solid #b8a27a;border-radius:9px;box-shadow:0 3px 16px #41352425;color:#5c503d;font-size:12px;line-height:1.6}
+.hero-encounter-hud b{font-size:13px}.hero-encounter-hud small{font-size:11px;color:#82745b}.hero-encounter-hud button{font-size:11px;min-height:32px;padding:5px 9px}
+#hero-buffs:empty{display:none}#hero-buffs{color:#c7e6b6}
+.hero-event-dialog{width:min(520px,calc(100vw - 28px));max-height:calc(100dvh - 36px);overflow:auto;padding:24px}.hero-event-dialog h2{font-size:22px;line-height:1.5}.hero-event-dialog p{font-size:13px}.hero-event-dialog .event-choice{width:100%;text-align:left;padding:12px 14px;min-height:58px;margin:7px 0;display:grid;gap:5px}.hero-event-dialog .event-choice b{font-size:13px}.hero-event-dialog .event-choice small{font-size:11px;line-height:1.6}.hero-event-dialog .hero-event-note{font-size:10px;color:#8a7b60}.hero-event-dialog .hero-event-outcome{line-height:2}
+@media(max-width:620px){.hero-encounter-hud{top:calc(max(15px,env(safe-area-inset-top)) + 276px);right:14px;width:min(260px,calc(100vw - 28px));padding:10px 12px;font-size:11px}.hero-event-dialog{padding:20px}.hero-event-dialog h2{font-size:19px}}
+@media(max-height:500px) and (min-width:621px){.hero-encounter-hud{top:95px;right:70px;width:220px;max-height:140px;overflow:auto}}
 /* Seven dock buttons still fit a phone */
 @media(max-width:620px){.dock{gap:2px;padding:4px}.dock-btn{width:52px;font-size:11px}.dock-btn .dock-icon{width:32px;height:32px}}
 /* Live quest panel */
@@ -663,3 +669,8 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
 .hero-call span{font-size:11.5px;color:#f3e3c0;line-height:1.5}
 @media(max-width:620px){.hero-call{left:10px;right:58px;transform:none;width:auto;min-width:0;top:calc(max(15px,env(safe-area-inset-top)) + 106px);padding:6px 9px}.hero-call b{font-size:13px}.hero-call span{font-size:10.5px}
  body.hero-calling .hero-status,body.hero-calling .hero-map{margin-top:78px}}
+
+/* R48 minimap stays above the encounter card. */
+.hero-encounter-hud{right:70px;top:calc(max(20px,env(safe-area-inset-top)) + 240px)}
+@media(max-width:620px){.hero-encounter-hud{right:14px;top:calc(max(15px,env(safe-area-inset-top)) + 240px);width:min(205px,max(155px,calc(100vw - 220px)))}}
+@media(max-height:500px) and (min-width:621px){.hero-encounter-hud{right:310px;top:95px}}
