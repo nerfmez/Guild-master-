@@ -25,7 +25,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run export
-      - run: mkdir site && cp play.html site/index.html && touch site/.nojekyll
+      - run: mkdir -p site && cp play.html site/index.html && touch site/.nojekyll
+      # Isolated PR #23 preview. Never replace the production homepage.
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/quest-news-tablet-promotion-20261012
+          path: preview-src
+      - run: npm ci && npm run export
+        working-directory: preview-src
+      - run: mkdir -p site/preview/pr-23 && cp preview-src/play.html site/preview/pr-23/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
