@@ -756,3 +756,10 @@ body.scene-only #restore-ui:hover,body.scene-only #restore-ui:focus-visible{opac
 .save-slot{display:grid;grid-template-columns:43px minmax(0,1fr);column-gap:8px;padding:8px 10px;text-align:left;background:#fff9ec}
 .save-slot>span{grid-row:1/3;align-self:center;font-size:11px;color:#887254}.save-slot>b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.save-slot>small{font-size:10px;color:#8a7a64;line-height:1.5}.save-slot.selected{border-color:#819f7b;box-shadow:0 0 0 2px #819f7b;background:#edf1e4}
 @media(max-height:500px) and (min-width:621px){.title-card{width:min(650px,100%);padding:14px 20px;gap:4px}.title-card img{width:30px;height:30px}.title-card h1{font-size:26px}.title-card>p{margin:0 0 4px}.save-slots{grid-template-columns:repeat(3,minmax(0,1fr));margin:2px 0 5px}.save-slot{grid-template-columns:1fr;gap:2px}.save-slot>span{grid-row:auto}.title-actions{grid-template-columns:1fr 1fr}.title-actions button{min-height:48px;font-size:14px}}
+
+/* Compact, non-blocking notices across tablets, phones and desktop. */
+body .toasts,body.compact-ui .toasts{position:fixed;top:auto;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 57px);left:auto;right:max(10px,env(safe-area-inset-right));transform:none;width:min(310px,calc(100vw - 24px));max-width:none;align-items:stretch;z-index:50;pointer-events:none}
+body .toast,body.compact-ui .toast{font-size:11px;line-height:1.45;padding:7px 11px;max-height:58px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;box-shadow:0 3px 12px #24311626}
+body .toast:not(:last-child),body.compact-ui .toast:not(:last-child){display:none}
+body .toast.clickable{pointer-events:auto}
+@media(max-width:650px){body .toasts,body.compact-ui .toasts{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 58px);right:8px;width:min(245px,calc(100vw - 16px))}}
