@@ -4121,9 +4121,8 @@ function venueGeometry(rect) {
   return { rect, rot, center: { x: cx, y: cy }, front, ring: { x: cx, y: cy + .1, r: Math.min(rect.w, rect.h) * .36 } };
 }
 const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-{ clamp };
 
-return {SHOW_DT,dist,SHOW_STYLE,rootClass,fx,showActor,walkTo,goTo,stepActor,stepAll,duelStep,duelAtk,venueGeometry,lerp};
+return {SHOW_DT,clamp,dist,SHOW_STYLE,rootClass,fx,showActor,walkTo,goTo,stepActor,stepAll,duelStep,duelAtk,venueGeometry,lerp};
 })();
 const Storyteller=(()=>{
 /* The storyteller: small happenings, choices to make and big events, paced so they never pile up.

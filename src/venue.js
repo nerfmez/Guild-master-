@@ -5,7 +5,7 @@ import { JOBS } from './content.js';
 import { emitFx } from './life.js';
 
 export const SHOW_DT = 0.1;
-const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+export const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
 export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 /** How each line of work fights in a show: reach, swing time, the hit's look and its signature move. */
 export const SHOW_STYLE = {
@@ -87,4 +87,3 @@ export function venueGeometry(rect) {
   return { rect, rot, center: { x: cx, y: cy }, front, ring: { x: cx, y: cy + .1, r: Math.min(rect.w, rect.h) * .36 } };
 }
 export const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-export { clamp };
