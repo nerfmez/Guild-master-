@@ -1,7 +1,7 @@
 /* Keep the world's corners clear on phones; the original controls live in a drawer. */
 export function initMobileUI({ beforeOpen = () => {}, afterClose = () => {} } = {}) {
   const $ = id => document.getElementById(id), button = $('notifications-button'), dialog = $('notifications-dialog');
-  const media = matchMedia('(max-width:900px), (max-height:500px)'), records = [];
+  const media = matchMedia('(max-width:900px), (max-height:500px), (pointer:coarse) and (max-width:1400px)'), records = [];
   const nodes = [document.querySelector('.corner-stack'), $('city-stats'),$('event-banner')];
   const anchors = nodes.map(node => { const anchor = document.createComment('HUD home'); node.before(anchor); return anchor; });
   const sync = () => { const goals = $('near-goals').querySelectorAll('button').length + 1 + Number(!$('event-banner').hidden), unread = records.filter(r => !r.read).length;

@@ -16,7 +16,7 @@ try{
  const lessons=Object.fromEntries(getGoals(state).list.map(g=>[g.id,true]));
  const cases=[['portrait',390,844],['landscape',844,390],['wide-phone',1280,460],['desktop',1365,900],['standalone',390,844]];
  for(const [label,width,height] of cases.filter(c=>!process.argv.includes('--standalone-only')||c[0]==='standalone')){
-  const page=await browser.newPage({viewport:{width,height},colorScheme:'dark'});page.on('pageerror',e=>errors.push(label+': '+e.message));
+  const page=await browser.newPage({viewport:{width,height},colorScheme:'dark',hasTouch:label!=='desktop'});page.on('pageerror',e=>errors.push(label+': '+e.message));
   await page.addInitScript(({save,lessons})=>{localStorage.setItem('little-leaf-guild:v1',save);localStorage.setItem('guild-master:lessons',JSON.stringify(lessons))},{save:serializeGame(state),lessons});
   if(label==='standalone')await page.route(/^https?:/,r=>{if(r.request().isNavigationRequest())return r.continue();errors.push('Standalone network: '+r.request().url());return r.abort()});
   await page.goto('http://localhost:5197/'+(label==='standalone'?'play.html':'index.html')+'?still',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.guildDebug?.getRendererInfo()?.ready,null,{timeout:60000});await page.locator('#title-continue').click();await page.waitForTimeout(250);
@@ -33,7 +33,7 @@ try{
    await page.locator('#notifications-button').click();await page.locator('[data-open-chest]').click();assert.equal(await page.locator('#notifications-dialog').evaluate(e=>e.open),false);assert.equal(await page.locator('#chest-dialog').evaluate(e=>e.open),true);await page.locator('[data-chest-later]').click();
    await page.locator('#view-controls-toggle').click();assert.equal(await page.locator('#zoom-in').isVisible(),true);await page.locator('#view-controls-toggle').click();
    await page.locator('#fullscreen-button').click();await page.waitForTimeout(150);
-   const full=await page.evaluate(()=>Boolean(document.fullscreenElement)||document.body.classList.contains('play-focus'));assert.equal(full,true);
+   const full=await page.evaluate(()=>Boolean(document.fullscreenElement)||document.body.classList.contains('play-focus'));assert.equal(full,true);assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('compact-ui')),true,'touch layout remains compact in fullscreen');
    await page.locator('#fullscreen-button').click();await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>Boolean(document.fullscreenElement)||document.body.classList.contains('play-focus')),false);
   }
   console.log(label+' passed');await page.close();

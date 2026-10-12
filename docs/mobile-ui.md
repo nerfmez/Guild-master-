@@ -1,6 +1,6 @@
 # Mobile HUD, fullscreen and lantern timing
 
-Phone layouts (viewport width ≤900px or height ≤500px) move the existing goal card, near goals, chests, city figures and event banner into a news drawer. Its button shows the number of available items and unread news. Normal toasts are retained in the drawer; errors can show one short toast. Opening an actionable item closes the drawer before opening its destination. Time pauses while reading the drawer.
+Phone layouts (viewport width ≤900px, height ≤500px, or a touch screen up to 1400px wide) move the existing goal card, near goals, chests, city figures and event banner into a news drawer. Its button shows the number of available items and unread news. Normal toasts are retained in the drawer; errors can show one short toast. Opening an actionable item closes the drawer before opening its destination. Time pauses while reading the drawer.
 
 The resource strip and eight dock buttons are compact. Zoom/home controls open under the view menu; Hero details and minimap can be expanded separately. All original action handlers remain on their existing DOM nodes.
 
