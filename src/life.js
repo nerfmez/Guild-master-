@@ -2,7 +2,8 @@
    fight monsters in real time, carry fallen friends home, and sell their loot in the village.
    Pure simulation: game.js calls tickLife with a small context of its own helpers. */
 import { siteQuestRoute, SITE_QUEST_SITES, FRONTIER_CAMP } from './site.js';
-import { HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES, JOB_COMBAT } from './content.js';
+import { HERO, HERO_BOUNDS, HERO_CLASSES, HERO_TREE, HERO_GEAR, GATHER_NODES, NODE_KINDS, CONTRACT_KINDS, gatherYield, computeHeroStats, heroXpNeeded } from './hero.js';
+import { PARTS, HUNT_ZONES, MONSTER_STATS, CLASS_COMBAT, HUNT_ECONOMY, ADVENTURER_RANKS, JOBS, ROOKIE_NAMES, TRAIT_NAMES, HAIR_COLORS, ROOKIE_LINES, MONSTER_PART, TREASURES, TRADE_RULES, JOB_COMBAT } from './content.js';
 
 const SUB = 0.25;          // seconds per combat step
 const WALK = 1.7;          // tiles per second
@@ -180,7 +181,8 @@ function walkPath(h, speed, dt) { while (h.path.length && moveTo(h, h.path[0], s
 function homeRoute(h, ctx) {
   if (h.party.startsWith('pt-defend')) return [h.kind === 'member' ? ctx.door() : { ...INN }];
   if (h.via) return [...h.via].reverse().map(([x, y]) => ({ x, y })).concat([ctx.door()]);
-  const zone = HUNT_ZONES[h.zone], back = [...zone.via].reverse().map(([x, y]) => ({ x, y }));
+  const zone = HUNT_ZONES[h.zone]; if (!zone) return [h.kind === 'member' ? ctx.door() : { ...INN }];
+  const back = [...zone.via].reverse().map(([x, y]) => ({ x, y }));
   return [...back, h.kind === 'member' ? ctx.door() : { ...INN }];
 }
 const viaOf = h => h.via || HUNT_ZONES[h.zone]?.via || [];
@@ -189,6 +191,9 @@ function startReturn(state, ctx, partyId) {
 }
 function hitMonster(state, ctx, h, m, dmg, kind) {
   if (m.under > 0 || m.dead) return;
+  // Fighting beside the guild master: everyone hits harder, and a quest party the master stays with is "led".
+  const hero = state.hero;
+  if (hero?.active && !(hero.down > 0)) { const st = heroStats(hero); if (dist(h, hero) < st.leadReach) { dmg *= 1 + st.lead; if (h.mission) { const ms = missionOf(state, h.mission); if (ms) ms.led = true; } } }
   if (m.air > 0 && ['slash', 'holy'].includes(kind)) { emit({ type: 'miss', id: m.id, x: m.x, y: m.y }); return; }
   if (statsOf(m.species).trait === 'armor') dmg *= .7;
   m.hp -= dmg; m.target ??= h.id; m.calm = 0;
@@ -263,7 +268,7 @@ function useSkill(state, ctx, h, m, near, party, cc) {
 function fight(state, ctx, h, dt) {
   const w = state.world, cc = combatOf(h), party = w.hunters.filter(o => o.party === h.party && o.mode !== 'down' && o.mode !== 'carried');
   h.atkCd -= dt; h.skillCd -= dt; h.guard = Math.max(0, h.guard - dt); h.buff = Math.max(0, (h.buff || 0) - dt);
-  const near = w.monsters.filter(m => !m.dead && (h.zone === m.zone || m.raid || m.boss) && dist(h, m) < (m.raid ? 14 : 11));
+  const near = w.monsters.filter(m => !m.dead && (h.escort ? !m.quest && dist(m, h.anchor || h) < (h.leash || 5) : (h.zone === m.zone || m.raid || m.boss) && dist(h, m) < (m.raid ? 14 : 11)));
   const support = HEALERS.has(h.job) || HEALERS.has(h.cls) || h.cls === 'healer';
   // Healers mend the most hurt friend first, and save their big skill for when several are hurt.
   if (support) {
@@ -280,7 +285,7 @@ function fight(state, ctx, h, dt) {
     m = near.filter(x => taken(x.id) < 2).sort((a, b) => dist(h, a) - dist(h, b))[0];
     h.target = m?.id || null;
   }
-  if (!m) { if (h.mode === 'defend') return; if (h.mission) { missionIdle(state, h, dt); return; } if (!h.wander || dist(h, h.wander) < .2) h.wander = pointIn(w, HUNT_ZONES[h.zone] || { x: h.x, y: h.y, r: 2 }, .7); moveTo(h, h.wander, WALK * .6, dt); return; }
+  if (!m) { if (h.escort) return; if (h.mode === 'defend') return; if (h.mission) { missionIdle(state, h, dt); return; } if (!h.wander || dist(h, h.wander) < .2) h.wander = pointIn(w, HUNT_ZONES[h.zone] || { x: h.x, y: h.y, r: 2 }, .7); moveTo(h, h.wander, WALK * .6, dt); return; }
   if (dist(h, m) > cc.reach) { moveTo(h, { x: m.x + (h.x > m.x ? .4 : -.4), y: m.y }, WALK, dt); return; }
   if (h.skillCd <= 0 && !support) {
     h.skillCd = cc.cd;
@@ -337,6 +342,7 @@ function strike(state, ctx, m, t, dmg, kind) {
 }
 function monsterAct(state, ctx, m, dt) {
   const w = state.world, s = statsOf(m.species), trait = s.trait;
+  if (m.stun > 0) { m.stun -= dt; return; }
   if (m.slow > 0) { m.slow -= dt; dt *= .5; }
   m.calm = (m.calm || 0) + dt; m.dashCd = (m.dashCd || 4) - dt; m.skillCd = (m.skillCd ?? 5) - dt;
   // Burrowers vanish under the sand, then burst up beside someone.
@@ -351,7 +357,7 @@ function monsterAct(state, ctx, m, dt) {
   if (m.air > 0) return;
   if (trait === 'regen' && m.calm > 3) m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .015 * dt);
   // Quest parties only meet their own quest's foes; wild monsters leave them be.
-  const targets = w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
+  const targets = w.hunters.filter(h => ['hunt', 'go', 'return', 'carry', 'defend', 'escort'].includes(h.mode) && (h.mission ? m.quest === h.mission : !m.quest));
   const hero = state.hero;
   if (hero?.active && !(hero.down > 0)) targets.push(hero);
   const goal = m.quest ? goalOf(state, m) : null;
@@ -457,7 +463,7 @@ function arriveHome(state, ctx, h) {
       who.points = (who.points || 0) + Math.round(bag.merit);
       if (bag.kills) ctx.renown?.(h.zone, bag.kills);
       who.energy = clamp(who.energy - 8, 0, 100);
-      if (h.mode === 'carried' || h.hp <= 0) { who.injury = clamp((who.injury || 0) + 30, 0, 100); who.morale = clamp(who.morale - 6, 0, 100); ctx.log(`${who.name}ถูกหามกลับถึงกิลด์ ต้องพักรักษาตัว`, 'warning'); }
+      if (h.mode === 'carried' || h.hp <= 0) { who.injury = clamp((who.injury || 0) + (h.rescued ? 12 : 30), 0, 100); who.morale = clamp(who.morale - (h.rescued ? 0 : 6), 0, 100); ctx.log(h.rescued ? `หัวหน้ากิลด์แบก${who.name}กลับถึงกิลด์ทันเวลา แผลไม่หนัก` : `${who.name}ถูกหามกลับถึงกิลด์ ต้องพักรักษาตัว`, h.rescued ? 'success' : 'warning'); }
       else if (bag.kills && !h.mission) ctx.log(`${who.name}กลับจาก${HUNT_ZONES[h.zone].name} ล่าได้ ${bag.kills} ตัว ได้เงิน ${income} G (กิลด์ได้ ${guild} G)${sale.sold ? ` · ขายของให้กิลด์ ${sale.sold} ชิ้น` : ''}`, 'hunt');
     } else {
       who.mode = 'town'; who.x = INN.x; who.y = INN.y; who.tx = INN.x; who.ty = INN.y; who.wait = 6;
@@ -467,6 +473,7 @@ function arriveHome(state, ctx, h) {
     }
   }
   if (h.carrying) { const c = w.hunters.find(o => o.id === h.carrying); if (c) { c.x = h.x; c.y = h.y; arriveHome(state, ctx, c); } }
+  if (h.party === 'pt-hero' && who?.errand?.kind === 'companion') who.errand = null;
   w.hunters = w.hunters.filter(o => o.id !== h.id);
 }
 function stepHunters(state, ctx, dt) {
@@ -475,8 +482,9 @@ function stepHunters(state, ctx, dt) {
     if (!w.hunters.includes(h)) continue;
     const who = h.kind === 'member' ? state.members.find(m => m.id === h.id) : w.free.find(f => f.id === h.id);
     if (!who) { w.hunters = w.hunters.filter(o => o !== h); continue; }
-    if (h.mode === 'down' || h.mode === 'carried') { if (h.carriedBy) { const c = w.hunters.find(o => o.id === h.carriedBy) || w.porters.find(o => o.id === h.carriedBy); if (c) { h.x = c.x; h.y = c.y - .05; } } continue; }
+    if (h.mode === 'down' || h.mode === 'carried') { if (h.carriedBy) { const c = h.carriedBy === 'hero' ? state.hero : w.hunters.find(o => o.id === h.carriedBy) || w.porters.find(o => o.id === h.carriedBy); if (c) { h.x = c.x; h.y = c.y - .05; } } continue; }
     who.energy = clamp(who.energy - 0.05 * dt, 0, 100);
+    if (h.mode === 'escort') { escortStep(state, ctx, h, dt); continue; }
     if (h.mode === 'go') {
       // Ambushed on the way in: stand and fight.
       const ambush = !h.mission && w.monsters.some(m => !m.dead && m.target === h.id && dist(m, h) < 2.5);
@@ -538,95 +546,280 @@ export function addFree(state, ctx, affinity = null) {
 }
 export function worldRandom(state) { return rand(state.world); }
 
-// ---- The guild master, played by the player: walk the world, swing, spin and dodge. ----
-export const HERO = { speed: 3.2, dashSpeed: 9, dashTime: 0.18, dashCd: 1.2, atkCd: 0.45, reach: 1.5, skillCd: 5, skillReach: 2.3, downTime: 4 };
-export const heroXpNeeded = level => 40 + level * 30;
-export function heroStats(level) { return { power: 16 + level * 4, maxHp: 140 + level * 20 }; }
-export function createHero() { return { active: false, x: 0, y: 0, hp: 160, maxHp: 160, level: 1, xp: 0, atkCd: 0, skillCd: 0, dashCd: 0, dash: 0, down: 0, fx: 0, fy: 1, kills: 0, id: 'hero', mode: 'hunt', guard: 0 }; }
+// ---- The guild master, played by the player: four classes, combos, skills, a finisher, gathering, rescues and companions. ----
+export function heroStats(heroOrLevel) { return typeof heroOrLevel === 'number' ? computeHeroStats({ level: heroOrLevel }) : computeHeroStats(heroOrLevel); }
+const PACK = () => ({ gold: 0, wood: 0, stone: 0, herb: 0, heartwood: 0, ore: 0, glowHerb: 0, parts: {} });
+export function createHero() {
+  const hp = computeHeroStats({ level: 1, cls: 'warrior' }).maxHp;
+  return { active: false, x: 0, y: 0, hp, maxHp: hp, level: 1, xp: 0, atkCd: 0, s1Cd: 0, s2Cd: 0, dashCd: 0, dash: 0, dashT: 0, iframe: 0, down: 0, fx: 0, fy: 1, kills: 0, id: 'hero', mode: 'hunt', guard: 0,
+    cls: 'warrior', classChosen: false, tree: {}, gear: {}, owned: [], mats: { heartwood: 0, ore: 0, glowHerb: 0 }, pack: PACK(), ult: 0, combo: 0, comboT: 0, lock: null, carry: null,
+    companions: [], order: 'follow', injuredUntil: 0, nodes: {}, contracts: [], contractDay: 0, selfKills: {}, traps: [], focus: 0, gatherCd: 0, gatherDay: 0, gatheredToday: 0,
+    stats: { gathered: 0, rescued: 0, contracts: 0, led: 0 } };
+}
+const heroBoundsX = (ctx) => (ctx.guildRankIndex?.() ?? 0) >= 4 ? HERO_BOUNDS.x1 : HERO_BOUNDS.westOnly;
 function heroHurt(state, ctx, m, dmg) {
   const hero = state.hero;
-  if (hero.dash > 0) { emit({ type: 'dodge', id: 'hero', x: hero.x, y: hero.y }); return; }
-  hero.hp -= dmg; emit({ type: 'hurt', id: 'hero', by: m.id, x: hero.x, y: hero.y, amount: Math.round(dmg) });
+  if (hero.dash > 0 || hero.iframe > 0) {
+    // Dodged at the last moment: a perfect dodge fills the finisher and sharpens the next blows.
+    if (hero.dash > 0 && hero.dashT < HERO.perfect && !hero.perfectUsed) { hero.perfectUsed = true; hero.ult = Math.min(100, hero.ult + 25 * heroStats(hero).ultGain); hero.focus = 1.5; emit({ type: 'perfect', id: 'hero', x: hero.x, y: hero.y }); }
+    else emit({ type: 'dodge', id: 'hero', x: hero.x, y: hero.y });
+    return;
+  }
+  const st = heroStats(hero);
+  dmg *= (1 - st.def) * (hero.guard > 0 ? .4 : 1);
+  hero.hp -= dmg; hero.ult = Math.min(100, hero.ult + 3 * st.ultGain); emit({ type: 'hurt', id: 'hero', by: m.id, x: hero.x, y: hero.y, amount: Math.round(dmg) });
   if (hero.hp > 0) return;
   hero.hp = 0; hero.down = HERO.downTime; emit({ type: 'ko', id: 'hero', x: hero.x, y: hero.y });
   for (const o of state.world.monsters) if (o.target === 'hero') o.target = null;
-  ctx.log('หัวหน้ากิลด์สลบ! ชาวบ้านช่วยกันหามกลับกิลด์', 'warning');
+  dropCarry(state);
+  // What the master carried is half lost in the scramble, unless the skill book says otherwise.
+  if (!hero.tree?.v3) { const p = hero.pack; for (const k of Object.keys(p)) if (k === 'parts') { for (const id of Object.keys(p.parts)) p.parts[id] = Math.floor(p.parts[id] / 2); } else p[k] = Math.floor(p[k] / 2); }
+  ctx.log(`หัวหน้ากิลด์สลบ! ชาวบ้านช่วยกันหามกลับกิลด์${hero.tree?.v3 ? '' : ' ของที่เก็บมาหายไปครึ่งหนึ่ง'}`, 'warning');
 }
-function heroStrike(state, ctx, m, dmg, kind) {
-  const hero = state.hero, w = state.world;
+function dropCarry(state) {
+  const hero = state.hero; if (!hero.carry) return;
+  const h = state.world.hunters.find(o => o.id === hero.carry); if (h) { h.carriedBy = null; h.mode = 'down'; h.x = hero.x; h.y = hero.y; }
+  hero.carry = null;
+}
+function heroStrike(state, ctx, m, dmg, kind, quiet = false) {
+  const hero = state.hero, w = state.world, st = heroStats(hero);
+  if (m.dead) return false;
   m.hp -= dmg; m.target = 'hero';
-  emit({ type: 'hit', id: m.id, from: 'hero', x: m.x, y: m.y, fx: hero.x, fy: hero.y, amount: Math.round(dmg), kind, crit: dmg > heroStats(hero.level).power * 1.4 });
-  if (m.hp > 0) return;
+  if (st.burn && kind !== 'burn') { m.burn = 3; m.burnDmg = st.power * .12; }
+  if (!quiet) emit({ type: 'hit', id: m.id, from: 'hero', x: m.x, y: m.y, fx: hero.x, fy: hero.y, amount: Math.round(dmg), kind, crit: dmg > st.power * 1.4 });
+  if (m.hp > 0) return true;
   m.dead = true; m.respawn = 30 + rand(w) * 20; w.kills++; hero.kills++;
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
   ctx.codex?.(m.species);
-  const s = statsOf(m.species);
-  // What the master takes goes straight to the guild: coins to the coffers, parts to the storehouse.
-  const gold = s.gold[0] + Math.floor(rand(w) * (s.gold[1] - s.gold[0] + 1));
-  ctx.income(gold, 'หัวหน้ากิลด์ออกล่าเอง');
+  const s = statsOf(m.species), pack = hero.pack;
+  // What the master takes is carried home: coins and parts go into the pack until the guild door.
+  pack.gold += s.gold[0] + Math.floor(rand(w) * (s.gold[1] - s.gold[0] + 1));
   const part = MONSTER_PART[m.species];
-  if (part && rand(w) < TRADE_RULES.partChance) ctx.storePart?.(part, s.boss ? 5 : 1);
+  if (part && rand(w) < TRADE_RULES.partChance) pack.parts[part] = (pack.parts[part] || 0) + (s.boss ? 5 : 1);
+  // The first of each kind the master beats by hand is worth a keepsake.
+  if (!hero.selfKills[m.species]) { const rare = ['heartwood', 'ore', 'glowHerb'][Math.floor(rand(w) * 3) % 3]; pack[rare] += 1; emit({ type: 'firstKill', id: 'hero', x: m.x, y: m.y, rare }); }
+  hero.selfKills[m.species] = (hero.selfKills[m.species] || 0) + 1;
+  // Companions learn from the fight beside the master.
+  for (const id of hero.companions) { const who = state.members.find(x => x.id === id); if (who) ctx.addXp?.(who, Math.round(s.xp * .4)); }
   hero.xp += s.xp;
   while (hero.xp >= heroXpNeeded(hero.level)) {
     hero.xp -= heroXpNeeded(hero.level); hero.level += 1;
-    const st = heroStats(hero.level); hero.maxHp = st.maxHp; hero.hp = st.maxHp;
+    const ns = heroStats(hero); hero.maxHp = ns.maxHp; hero.hp = ns.maxHp;
     emit({ type: 'level', id: 'hero', x: hero.x, y: hero.y, level: hero.level });
-    ctx.log(`⭐ หัวหน้ากิลด์เลเวลอัปเป็น Lv.${hero.level}!`, 'success');
+    ctx.log(`⭐ หัวหน้ากิลด์เลเวลอัปเป็น Lv.${hero.level}! ได้แต้มทักษะ 1 แต้ม`, 'success');
   }
+  ctx.heroKill?.(m);
   if (m.raid || m.boss) ctx.onSpecialKill?.(m, hero);
+  return true;
 }
-function tickHero(state, ctx, dt) {
-  const hero = state.hero; if (!hero?.active) return;
-  const input = hero.input || {}, w = state.world;
-  hero.atkCd = Math.max(0, hero.atkCd - dt); hero.skillCd = Math.max(0, hero.skillCd - dt); hero.dashCd = Math.max(0, hero.dashCd - dt); hero.dash = Math.max(0, hero.dash - dt);
-  if (hero.down > 0) {
-    hero.down -= dt;
-    if (hero.down <= 0) { const door = ctx.door(); Object.assign(hero, { x: door.x, y: door.y, down: 0, hp: Math.round(hero.maxHp * 0.4) }); emit({ type: 'revive', id: 'hero', x: hero.x, y: hero.y }); }
+/** The foe the master means: the locked one, else the nearest ahead, else the nearest close by. */
+function heroTarget(state, living, range) {
+  const hero = state.hero;
+  const lock = hero.lock && living.find(m => m.id === hero.lock);
+  if (lock && dist(lock, hero) < range + 1.5) return lock;
+  if (hero.lock && !lock) hero.lock = null;
+  let best = null, bd = 1e9;
+  for (const m of living) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy); if (d > range + .3) continue; const ahead = d < .3 || (dx * hero.fx + dy * hero.fy) / d > .35; const score = d + (ahead ? 0 : 2.5); if (score < bd) { bd = score; best = m; } }
+  return best || living.filter(m => dist(m, hero) < HERO.assist).sort((a, b) => dist(a, hero) - dist(b, hero))[0] || null;
+}
+function face(hero, m) { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy); if (d > .05) { hero.fx = dx / d; hero.fy = dy / d; } }
+function aimPoint(state, living, reach) { const hero = state.hero, t = heroTarget(state, living, reach); if (t) { face(hero, t); return { x: t.x, y: t.y }; } return { x: hero.x + hero.fx * 3, y: hero.y + hero.fy * 3 }; }
+function useHeroSkill(state, ctx, which, living) {
+  const hero = state.hero, w = state.world, cls = HERO_CLASSES[hero.cls] || HERO_CLASSES.warrior, sk = cls[which], st = heroStats(hero), p = st.power;
+  const roll = () => .9 + rand(w) * .2;
+  const area = (x, y, r) => living.filter(m => Math.hypot(m.x - x, m.y - y) < r);
+  emit({ type: 'skill', id: 'hero', x: hero.x, y: hero.y, skill: sk.id, name: sk.name, hero: true });
+  hero.swing = .35;
+  switch (sk.id) {
+    case 'spin': for (const m of area(hero.x, hero.y, sk.radius)) heroStrike(state, ctx, m, p * sk.mult * roll(), 'slash'); emit({ type: 'aoe', x: hero.x, y: hero.y, r: sk.radius, kind: 'slash' }); break;
+    case 'shield': hero.guard = sk.guard; for (const m of area(hero.x, hero.y, sk.taunt)) m.target = 'hero'; break;
+    case 'quake': for (const m of area(hero.x, hero.y, sk.radius)) { heroStrike(state, ctx, m, p * sk.mult * roll(), 'slam'); m.stun = sk.stun; } emit({ type: 'aoe', x: hero.x, y: hero.y, r: sk.radius, kind: 'slam' }); break;
+    case 'volley': { const hits = living.filter(m => { const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy); return d < sk.reach && (d < .3 || (dx * hero.fx + dy * hero.fy) / d > 1 - sk.cone); }).sort((a, b) => dist(a, hero) - dist(b, hero)).slice(0, sk.targets);
+      for (const m of hits) heroStrike(state, ctx, m, p * sk.mult * roll(), 'arrow'); break; }
+    case 'trap': hero.traps.push({ x: hero.x, y: hero.y, life: sk.life }); hero.traps = hero.traps.slice(-3); emit({ type: 'trap', x: hero.x, y: hero.y }); break;
+    case 'rain': case 'meteor': { const at = aimPoint(state, living, sk.reach); for (const m of area(at.x, at.y, sk.radius)) { heroStrike(state, ctx, m, p * sk.mult * roll(), sk.id === 'rain' ? 'arrow' : 'fire'); if (sk.slow) m.slow = sk.slow; } emit({ type: 'aoe', x: at.x, y: at.y, r: sk.radius, kind: sk.id }); break; }
+    case 'frost': for (const m of area(hero.x, hero.y, sk.radius)) { heroStrike(state, ctx, m, p * sk.mult * roll(), 'frost'); m.slow = sk.slow; } emit({ type: 'aoe', x: hero.x, y: hero.y, r: sk.radius, kind: 'frost' }); break;
+    case 'blink': { const b = HERO_BOUNDS, x1 = heroBoundsX(ctx); hero.x = clamp(hero.x + hero.fx * sk.dist, b.x0, x1); hero.y = clamp(hero.y + hero.fy * sk.dist, b.y0, b.y1); hero.iframe = .3; emit({ type: 'blink', id: 'hero', x: hero.x, y: hero.y }); break; }
+    case 'heal': { hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp * sk.amount); emit({ type: 'heal', x: hero.x, y: hero.y, amount: Math.round(hero.maxHp * sk.amount) });
+      for (const h of w.hunters) if (h.hp > 0 && !['down', 'carried'].includes(h.mode) && dist(h, hero) < sk.radius) { h.hp = Math.min(h.maxHp, h.hp + h.maxHp * sk.amount); emit({ type: 'heal', x: h.x, y: h.y, amount: Math.round(h.maxHp * sk.amount) }); } break; }
+    case 'ward': hero.guard = sk.guard; for (const h of w.hunters) if (dist(h, hero) < sk.radius) h.guard = Math.max(h.guard || 0, sk.guard - .5); emit({ type: 'aoe', x: hero.x, y: hero.y, r: sk.radius, kind: 'ward' }); break;
+    case 'revive': {
+      for (const h of w.hunters.filter(o => o.mode === 'down' && !o.carriedBy && dist(o, hero) < sk.radius)) {
+        h.hp = Math.round(h.maxHp * .4); h.mode = h.escort ? 'escort' : h.mission ? 'hunt' : 'return'; if (h.mode === 'return') h.path = homeRoute(h, ctx);
+        w.porters = w.porters.filter(o => o.target !== h.id); emit({ type: 'revive', id: h.id, x: h.x, y: h.y });
+      }
+      hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp * sk.amount);
+      for (const h of w.hunters) if (h.hp > 0 && dist(h, hero) < sk.radius) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * sk.amount);
+      emit({ type: 'aoe', x: hero.x, y: hero.y, r: sk.radius, kind: 'revive' }); break;
+    }
+  }
+}
+/** What the action button would do right here: rescue someone who fell, or gather from a spot that is ready. */
+export function heroNearby(state) {
+  const hero = state.hero; if (!hero?.active || hero.down > 0) return null;
+  if (hero.carry) return { kind: 'carrying', id: hero.carry, label: 'กำลังแบกกลับกิลด์' };
+  const fallen = (state.world?.hunters || []).filter(h => h.mode === 'down' && h.carriedBy !== 'hero' && dist(h, hero) < HERO.interact).sort((a, b) => dist(a, hero) - dist(b, hero))[0];
+  if (fallen) return { kind: 'rescue', id: fallen.id, label: 'แบกกลับกิลด์' };
+  const node = GATHER_NODES.filter(n => (hero.nodes[n.id] ?? -1) < (state.day || 1) && Math.hypot(n.x - hero.x, n.y - hero.y) < HERO.interact).sort((a, b) => Math.hypot(a.x - hero.x, a.y - hero.y) - Math.hypot(b.x - hero.x, b.y - hero.y))[0];
+  if (node) return { kind: 'gather', id: node.id, label: NODE_KINDS[node.kind].verb, node };
+  return null;
+}
+function heroInteract(state, ctx) {
+  const hero = state.hero, w = state.world, near = heroNearby(state);
+  if (!near || near.kind === 'carrying') return;
+  if (near.kind === 'rescue') {
+    const h = w.hunters.find(o => o.id === near.id); if (!h) return;
+    w.porters = w.porters.filter(o => o.target !== h.id);
+    h.carriedBy = 'hero'; h.mode = 'carried'; hero.carry = h.id; hero.lock = null;
+    emit({ type: 'pickup', id: 'hero', x: hero.x, y: hero.y });
     return;
   }
-  hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp * 0.01 * dt);
+  if (near.kind === 'gather' && hero.gatherCd <= 0) {
+    const node = near.node, y = gatherYield(node, hero.cls, hero.gear, () => rand(w));
+    hero.pack[y.res] += y.amount; if (y.rare) hero.pack[y.rare] += 1;
+    hero.nodes[node.id] = state.day || 1; hero.gatherCd = HERO.gatherCd; hero.swing = .3; hero.stats.gathered += 1;
+    if (hero.gatherDay !== state.day) { hero.gatherDay = state.day; hero.gatheredToday = 0; }
+    hero.gatheredToday += 1;
+    emit({ type: 'heroGather', id: 'hero', x: node.x, y: node.y, node: node.id, res: y.res, amount: y.amount, rare: y.rare });
+    ctx.heroGather?.(node, y);
+  }
+}
+/** Home with the pack: everything goes into the guild's stores. */
+function depositPack(state, ctx) {
+  const hero = state.hero, p = hero.pack, any = Object.entries(p).some(([k, v]) => k === 'parts' ? Object.values(v).some(Boolean) : v > 0);
+  if (!any) return;
+  ctx.heroDeposit?.(p);
+  for (const k of ['heartwood', 'ore', 'glowHerb']) hero.mats[k] = (hero.mats[k] || 0) + p[k];
+  emit({ type: 'deposit', id: 'hero', x: hero.x, y: hero.y, gold: p.gold });
+  hero.pack = PACK();
+}
+/** Companions walk out with the master as a little party of their own. */
+function syncCompanions(state, ctx) {
+  const hero = state.hero, w = state.world;
+  const mine = w.hunters.filter(h => h.escort);
+  for (const h of mine) if (!hero.active || hero.down > 0 || !hero.companions.includes(h.id)) { if (h.mode === 'escort') { h.mode = 'return'; h.path = [ctx.door()]; } h.escort = false; }
+  if (!hero.active || hero.down > 0) return;
+  const st = heroStats(hero);
+  for (const id of hero.companions) {
+    if (w.hunters.some(h => h.id === id)) continue;
+    const who = state.members.find(m => m.id === id); if (!who || ctx.busy?.(id) || who.energy < 30 || who.injury > 40) continue;
+    who.errand = { kind: 'companion', start: state.elapsed, end: state.elapsed + 3600 };
+    const stats = ctx.stats(who), door = ctx.door();
+    w.hunters.push({ id: who.id, kind: 'member', zone: null, party: 'pt-hero', mode: 'escort', escort: true, x: door.x + (rand(w) - .5), y: door.y + .5, path: [], hp: stats.health, maxHp: stats.health,
+      power: (stats.power ?? stats.basePower) * st.ally, pace: 1, cls: rootOf(who.class), job: who.class, atkCd: rand(w), skillCd: 3, guard: 0, target: null, carrying: null, carriedBy: null,
+      bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 999 });
+  }
+}
+/** A companion: keep near the master, or stand where told, and fight what comes close. */
+function escortStep(state, ctx, h, dt) {
+  const hero = state.hero, w = state.world;
+  if (!hero?.active || hero.down > 0) { h.mode = 'return'; h.path = [ctx.door()]; h.escort = false; return; }
+  const order = hero.order || 'follow';
+  if (order === 'hold') h.hold ??= { x: h.x, y: h.y }; else h.hold = null;
+  h.anchor = order === 'hold' ? h.hold : hero; h.leash = order === 'attack' ? 7 : order === 'hold' ? 4 : 4.5;
+  const foe = w.monsters.some(m => !m.dead && !m.quest && dist(m, h.anchor) < h.leash);
+  if (!foe) { const k = state.world.hunters.filter(o => o.escort).indexOf(h), spot = order === 'hold' ? h.hold : { x: hero.x - hero.fx * 1.2 + (k ? .7 : -.7), y: hero.y - hero.fy * 1.2 + .3 }; if (dist(h, spot) > .5) moveTo(h, spot, WALK * 1.6, dt); h.target = null; return; }
+  fight(state, ctx, h, dt);
+}
+function tickHero(state, ctx, dt) {
+  const hero = state.hero; if (!hero) return;
+  syncCompanions(state, ctx);
+  if (!hero.active) return;
+  const input = hero.input || {}, w = state.world, st = heroStats(hero), cls = HERO_CLASSES[hero.cls] || HERO_CLASSES.warrior;
+  for (const k of ['atkCd', 's1Cd', 's2Cd', 'dashCd', 'dash', 'iframe', 'guard', 'focus', 'gatherCd']) hero[k] = Math.max(0, (hero[k] || 0) - dt);
+  hero.comboT = Math.max(0, (hero.comboT || 0) - dt); if (!hero.comboT) hero.combo = 0;
+  if (hero.dash > 0) hero.dashT += dt;
+  if (hero.down > 0) {
+    hero.down -= dt;
+    // Carried home: what is left in the pack is put away, and the master must rest before going out again.
+    if (hero.down <= 0) { const door = ctx.door(); Object.assign(hero, { x: door.x, y: door.y, down: 0, hp: Math.round(hero.maxHp * 0.5), active: false, input: null, lock: null }); depositPack(state, ctx);
+      hero.injuredUntil = state.elapsed + Math.max(30, HERO.injury * (hero.tree?.v3 ? .5 : 1) - (ctx.clinic?.() || 0) * 25); emit({ type: 'revive', id: 'hero', x: hero.x, y: hero.y });
+      ctx.log(`หัวหน้ากิลด์ต้องพักรักษาตัว ออกไปได้อีกครั้งในอีก ${Math.round(hero.injuredUntil - state.elapsed)} วินาที`, 'warning'); syncCompanions(state, ctx); }
+    return;
+  }
+  hero.maxHp = st.maxHp; hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp * st.regen * dt);
   const len = Math.hypot(input.dx || 0, input.dy || 0);
-  if (input.dash && hero.dashCd <= 0) { hero.dash = HERO.dashTime; hero.dashCd = HERO.dashCd; input.dash = false; emit({ type: 'dash', id: 'hero', x: hero.x, y: hero.y }); }
+  if (input.dash && hero.dashCd <= 0) { hero.dash = HERO.dashTime; hero.dashT = 0; hero.perfectUsed = false; hero.dashCd = HERO.dashCd; input.dash = false; emit({ type: 'dash', id: 'hero', x: hero.x, y: hero.y }); }
   if (len > 0.05) { hero.fx = input.dx / len; hero.fy = input.dy / len; }
-  const speed = hero.dash > 0 ? HERO.dashSpeed : len > 0.05 ? HERO.speed * Math.min(1, len) : 0;
-  if (speed) { hero.x = clamp(hero.x + hero.fx * speed * dt, -60, 80); hero.y = clamp(hero.y + hero.fy * speed * dt, -70, 45); }
+  const carrying = Boolean(hero.carry), speed = hero.dash > 0 ? HERO.dashSpeed : len > 0.05 ? HERO.speed * Math.min(1, len) * (carrying ? HERO.carrySpeed : 1) : 0;
+  if (speed) { const b = HERO_BOUNDS; hero.x = clamp(hero.x + hero.fx * speed * dt, b.x0, heroBoundsX(ctx)); hero.y = clamp(hero.y + hero.fy * speed * dt, b.y0, b.y1); }
   hero.moving = speed > 0;
-  const living = w.monsters.filter(m => !m.dead);
-  if (input.skill && hero.skillCd <= 0) {
-    hero.skillCd = HERO.skillCd; input.skill = false; hero.swing = 0.35;
-    emit({ type: 'skill', id: 'hero', x: hero.x, y: hero.y, skill: 'spin', name: 'ฟันหมุนรอบตัว' });
-    const power = heroStats(hero.level).power;
-    for (const m of living.filter(m => dist(m, hero) < HERO.skillReach)) heroStrike(state, ctx, m, power * 1.6 * (0.9 + rand(w) * 0.2), 'slash');
-  } else if (input.attack && hero.atkCd <= 0) {
-    hero.atkCd = HERO.atkCd; hero.swing = 0.25;
-    emit({ type: 'swing', id: 'hero', x: hero.x, y: hero.y, fx: hero.fx, fy: hero.fy });
-    const power = heroStats(hero.level).power;
-    // A swing hits whatever is in front, within reach.
-    for (const m of living) {
-      const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy);
-      if (d > HERO.reach || (d > 0.3 && (dx * hero.fx + dy * hero.fy) / d < -0.1)) continue;
-      const crit = rand(w) < 0.15;
-      heroStrike(state, ctx, m, power * (0.9 + rand(w) * 0.2) * (crit ? 1.7 : 1), 'slash');
+  const door = ctx.door(), atHome = Math.hypot(hero.x - door.x, hero.y - door.y) < 2.5;
+  // Home with someone on the back: they are put to bed, and the guild remembers who came for them.
+  if (carrying && atHome) { const h = w.hunters.find(o => o.id === hero.carry); hero.carry = null; if (h) { h.rescued = true; const kind = h.kind; arriveHome(state, ctx, h); hero.stats.rescued += 1; ctx.heroRescue?.(h.id, kind); emit({ type: 'rescued', id: 'hero', x: hero.x, y: hero.y }); } }
+  if (atHome) depositPack(state, ctx);
+  if (input.act) { input.act = false; heroInteract(state, ctx); }
+  const living = w.monsters.filter(m => !m.dead && !(m.under > 0));
+  // Burning foes keep losing life; traps snap shut on whoever steps in.
+  for (const m of living) if (m.burn > 0) { m.burn -= dt; heroStrike(state, ctx, m, m.burnDmg * dt, 'burn', true); }
+  for (const t of hero.traps) { t.life -= dt; const m = living.find(x => !x.dead && Math.hypot(x.x - t.x, x.y - t.y) < .8); if (m) { t.life = 0; m.stun = cls.s2.stun || 2.5; heroStrike(state, ctx, m, st.power * (cls.s2.mult || 1.5), 'pierce'); emit({ type: 'trapSnap', x: t.x, y: t.y }); } }
+  hero.traps = hero.traps.filter(t => t.life > 0);
+  if (!carrying) {
+    if (input.ult && hero.ult >= 100) { input.ult = false; hero.ult = 0; useHeroSkill(state, ctx, 'ult', living); hero.swing = .4; }
+    else if (input.s1 && hero.s1Cd <= 0) { input.s1 = false; hero.s1Cd = cls.s1.cd; useHeroSkill(state, ctx, 's1', living); }
+    else if (input.s2 && hero.s2Cd <= 0) { input.s2 = false; hero.s2Cd = cls.s2.cd; useHeroSkill(state, ctx, 's2', living); }
+    else if (input.attack && hero.atkCd <= 0) {
+      const a = cls.attack, roll = () => (.9 + rand(w) * .2) * (rand(w) < st.crit + (hero.focus > 0 ? .5 : 0) ? 1.7 : 1);
+      hero.atkCd = a.cd; hero.swing = .25;
+      let hit = false;
+      if (a.kind === 'melee') {
+        const t = heroTarget(state, living, a.reach); if (t) face(hero, t);
+        const step = a.combo ? hero.combo % a.combo.length : 0, mult = a.combo ? a.combo[step] : 1;
+        emit({ type: 'swing', id: 'hero', x: hero.x, y: hero.y, fx: hero.fx, fy: hero.fy, step, cls: hero.cls });
+        for (const m of living) {
+          const dx = m.x - hero.x, dy = m.y - hero.y, d = Math.hypot(dx, dy);
+          if (d > a.reach || (d > 0.3 && (dx * hero.fx + dy * hero.fy) / d < -0.1)) continue;
+          hit = heroStrike(state, ctx, m, st.power * mult * roll(), a.hit) || hit;
+          // The last blow of a combo knocks the foe back and leaves it reeling.
+          if (a.combo && step === a.combo.length - 1 && !m.dead) { m.x += dx / (d || 1) * .6; m.y += dy / (d || 1) * .6; m.stun = Math.max(m.stun || 0, .35); }
+        }
+        if (a.combo) { hero.combo = step + 1; hero.comboT = HERO.comboGap; }
+      } else {
+        const t = heroTarget(state, living, a.reach);
+        if (t) { face(hero, t); hit = heroStrike(state, ctx, t, st.power * roll(), a.hit);
+          if (a.splash) for (const m of living) if (m !== t && Math.hypot(m.x - t.x, m.y - t.y) < a.splash) heroStrike(state, ctx, m, st.power * .5 * roll(), a.hit); }
+        else emit({ type: 'swing', id: 'hero', x: hero.x, y: hero.y, fx: hero.fx, fy: hero.fy, cls: hero.cls });
+      }
+      if (hit) hero.ult = Math.min(100, hero.ult + 5 * st.ultGain);
     }
   }
   hero.swing = Math.max(0, (hero.swing || 0) - dt);
 }
-/** Step out of the guild as the master, or go back to the desk. */
+/** Step out of the guild as the master, or go back to the desk (the pack is put away either way). */
 export function setHeroActive(state, ctx, on) {
   state.hero ??= createHero();
   const hero = state.hero;
-  if (on) { const door = ctx.door(); Object.assign(hero, { active: true, x: door.x, y: door.y + 0.4, down: 0, dash: 0 }); if (hero.hp <= 0) hero.hp = hero.maxHp; }
-  else { hero.active = false; hero.input = null; for (const m of state.world.monsters) if (m.target === 'hero') m.target = null; }
+  if (on) { if ((hero.injuredUntil || 0) > state.elapsed) return hero; const door = ctx.door(); Object.assign(hero, { active: true, x: door.x, y: door.y + 0.4, down: 0, dash: 0, maxHp: heroStats(hero).maxHp }); if (hero.hp <= 0) hero.hp = hero.maxHp; }
+  else { dropCarry(state); depositPack(state, ctx); hero.active = false; hero.input = null; hero.lock = null; hero.traps = []; for (const m of state.world.monsters) if (m.target === 'hero') m.target = null; }
+  syncCompanions(state, ctx);
   return hero;
 }
 export function sanitizeHero(data) {
   const h = createHero(); if (!data || typeof data !== 'object') return h;
-  const num = (v, a, b) => typeof v === 'number' && Number.isFinite(v) && v >= a && v <= b;
-  h.level = Number.isInteger(data.level) && data.level >= 1 && data.level <= 99 ? data.level : 1;
-  const st = heroStats(h.level); h.maxHp = st.maxHp; h.hp = num(data.hp, 0, st.maxHp) ? data.hp : st.maxHp;
-  h.xp = num(data.xp, 0, 1e6) ? data.xp : 0; h.kills = Number.isInteger(data.kills) && data.kills >= 0 ? data.kills : 0;
-  h.active = Boolean(data.active) && num(data.x, -60, 80) && num(data.y, -70, 45); if (h.active) { h.x = data.x; h.y = data.y; }
+  const num = (v, a, b) => typeof v === 'number' && Number.isFinite(v) && v >= a && v <= b, int = (v, a, b) => Number.isInteger(v) && v >= a && v <= b;
+  h.level = int(data.level, 1, 99) ? data.level : 1;
+  if (HERO_CLASSES[data.cls]) h.cls = data.cls; h.classChosen = data.classChosen === true;
+  h.tree = Object.fromEntries(Object.entries(data.tree || {}).filter(([k, v]) => HERO_TREE[k] && v === true)).valueOf();
+  while (Object.keys(h.tree).length > h.level - 1) delete h.tree[Object.keys(h.tree).pop()];
+  h.owned = [...new Set((Array.isArray(data.owned) ? data.owned : []).filter(id => HERO_GEAR[id]))];
+  for (const slot of ['weapon', 'armor', 'charm']) { const id = data.gear?.[slot]; if (HERO_GEAR[id]?.slot === slot && h.owned.includes(id)) h.gear[slot] = id; }
+  for (const k of Object.keys(h.mats)) h.mats[k] = int(data.mats?.[k], 0, 1e6) ? data.mats[k] : 0;
+  for (const k of ['gold', 'wood', 'stone', 'herb', 'heartwood', 'ore', 'glowHerb']) h.pack[k] = int(data.pack?.[k], 0, 1e7) ? data.pack[k] : 0;
+  h.pack.parts = Object.fromEntries(Object.entries(data.pack?.parts || {}).filter(([k, v]) => PARTS[k] && int(v, 1, 1e5)));
+  const st = heroStats(h); h.maxHp = st.maxHp; h.hp = num(data.hp, 0, st.maxHp) ? data.hp : st.maxHp;
+  h.xp = num(data.xp, 0, 1e6) ? data.xp : 0; h.kills = int(data.kills, 0, 1e9) ? data.kills : 0; h.ult = num(data.ult, 0, 100) ? data.ult : 0;
+  h.active = Boolean(data.active) && num(data.x, HERO_BOUNDS.x0, HERO_BOUNDS.x1) && num(data.y, HERO_BOUNDS.y0, HERO_BOUNDS.y1); if (h.active) { h.x = data.x; h.y = data.y; }
   if (num(data.fx, -1, 1) && num(data.fy, -1, 1)) { h.fx = data.fx; h.fy = data.fy; }
+  h.companions = [...new Set((Array.isArray(data.companions) ? data.companions : []).filter(id => typeof id === 'string'))].slice(0, 2);
+  if (['follow', 'attack', 'hold'].includes(data.order)) h.order = data.order;
+  h.injuredUntil = num(data.injuredUntil, 0, 1e12) ? data.injuredUntil : 0;
+  h.nodes = Object.fromEntries(Object.entries(data.nodes || {}).filter(([k, v]) => GATHER_NODES.some(n => n.id === k) && int(v, 0, 1e7)));
+  h.selfKills = Object.fromEntries(Object.entries(data.selfKills || {}).filter(([k, v]) => MONSTER_STATS[k] && int(v, 1, 1e9)));
+  for (const k of Object.keys(h.stats)) h.stats[k] = int(data.stats?.[k], 0, 1e9) ? data.stats[k] : 0;
+  h.gatherDay = int(data.gatherDay, 0, 1e7) ? data.gatherDay : 0; h.gatheredToday = int(data.gatheredToday, 0, 1e5) ? data.gatheredToday : 0;
+  h.contractDay = int(data.contractDay, 0, 1e7) ? data.contractDay : 0;
+  h.contracts = (Array.isArray(data.contracts) ? data.contracts : []).filter(c => c && CONTRACT_KINDS[c.kind] && typeof c.id === 'string').slice(0, 4)
+    .map(c => ({ id: c.id.slice(0, 30), kind: c.kind, day: int(c.day, 0, 1e7) ? c.day : 0, zone: HUNT_ZONES[c.zone] ? c.zone : null, have: int(c.have, 0, 1e5) ? c.have : 0, need: int(c.need, 1, 1e5) ? c.need : 1, done: c.done === true, monsterId: typeof c.monsterId === 'string' ? c.monsterId.slice(0, 30) : null }));
   return h;
 }
 

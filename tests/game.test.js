@@ -1056,7 +1056,7 @@ test('homes grow by themselves when what families need is nearby; village levels
   assert.equal(back.village.homes.h0.tier, 1);
 });
 
-test('the guild master can step out, walk, fight monsters, dodge, get knocked out and wake at the guild', () => {
+test('the guild master can step out, walk, fight monsters, dodge, get knocked out and rest at the guild', () => {
   const state = createGame(131);
   assert.equal(act(state, 'heroMode', { on: true }).ok, true);
   const hero = state.hero;
@@ -1066,7 +1066,7 @@ test('the guild master can step out, walk, fight monsters, dodge, get knocked ou
   hero.input = { dx: -1, dy: 0 };
   tick(state, 2);
   assert.ok(hero.x < start - 5, 'the master walks');
-  // Stand next to a monster and swing until it falls: the guild gets coins, the master gets experience.
+  // Stand next to a monster and swing until it falls: coins go into the master's pack, the master gets experience.
   tick(state, 1);
   const m = state.world.monsters.find(x => !x.dead && x.zone === 'meadow');
   Object.assign(hero, { x: m.x - 0.8, y: m.y, fx: 1, fy: 0 });
@@ -1074,12 +1074,12 @@ test('the guild master can step out, walk, fight monsters, dodge, get knocked ou
   const gold = state.gold, xp = hero.xp;
   for (let i = 0; i < 40 && !m.dead; i++) { hero.x = m.x - 0.8; hero.y = m.y; tick(state, 0.25); }
   assert.ok(m.dead, 'the swing kills the monster');
-  assert.ok(state.gold > gold && (hero.xp > xp || hero.level > 1), 'coins for the guild, experience for the master');
+  assert.ok(hero.pack.gold > 0 && (hero.xp > xp || hero.level > 1), 'coins in the pack, experience for the master');
   // A dodge makes the master untouchable for a moment.
   hero.input = { dash: true, dx: 1, dy: 0 };
   tick(state, 0.05);
   assert.ok(hero.dash > 0 && hero.dashCd > 0);
-  // Knocked out, then carried home and back on their feet at the guild door.
+  // Knocked out, then carried home to rest at the guild.
   hero.input = {}; hero.hp = 1; hero.dash = 0;
   const foe = state.world.monsters.find(x => !x.dead && x.zone === 'meadow');
   Object.assign(foe, { x: hero.x + 0.3, y: hero.y, hx: hero.x, hy: hero.y, target: 'hero', cd: 0 });
@@ -1087,10 +1087,12 @@ test('the guild master can step out, walk, fight monsters, dodge, get knocked ou
   assert.ok(hero.down > 0, 'knocked out');
   tick(state, 5);
   assert.equal(hero.down, 0); assert.ok(hero.hp > 0 && Math.abs(hero.y - 11) < 6, 'back at the guild');
+  assert.equal(hero.active, false, 'resting, not out in the field');
+  assert.ok(hero.injuredUntil > state.elapsed);
   const back = deserializeGame(serializeGame(state));
-  assert.equal(back.hero.active, true); assert.equal(back.hero.level, hero.level);
-  assert.equal(act(state, 'heroMode', { on: false }).ok, true);
-  assert.equal(state.hero.active, false);
+  assert.equal(back.hero.level, hero.level); assert.equal(back.hero.injuredUntil, hero.injuredUntil);
+  state.elapsed = hero.injuredUntil + 1;
+  assert.equal(act(state, 'heroMode', { on: true }).ok, true, 'out again once healed');
 });
 
 test('quests play out in real time: the party walks to the site, fights waves and a boss, and a wiped party is carried home as a failure', () => {
@@ -1438,4 +1440,104 @@ test('tournament: adventurers sign up by themselves, the strongest first, more o
   assert.deepEqual(state.festivals.live.members, many, 'the guild master does not pick the fighters');
   const fighter = id => state.festivals.live.fighters.find(f => f.id === id).power;
   assert.ok(many.every((id, i) => i === 0 || fighter(id) <= fighter(many[i - 1])), 'the strongest sign up first');
+});
+
+test('the guild master in the field: gather by hand, fight with a class, carry the pack home, and lose half of it when knocked out', async () => {
+  const { GATHER_NODES, HERO_CLASSES } = await import('../src/hero.js');
+  const { heroNearby } = await import('../src/life.js');
+  const state = createGame(401);
+  tick(state, 1);
+  assert.ok(act(state, 'heroMode', { on: true }).ok);
+  // A spot to gather: wood goes into the pack, and the spot is spent until tomorrow.
+  const node = GATHER_NODES.find(n => n.kind === 'tree'); state.hero.x = node.x + .3; state.hero.y = node.y;
+  assert.equal(heroNearby(state).kind, 'gather');
+  state.hero.input = { act: true }; tick(state, .3);
+  assert.ok(state.hero.pack.wood >= 3, 'wood in the pack');
+  assert.notEqual(heroNearby(state)?.id, node.id, 'the spot is spent for today');
+  // Each class has its own skills and finisher; a perfect hit run fills the gauge.
+  for (const cls of Object.keys(HERO_CLASSES)) {
+    state.hero.cls = cls; state.hero.s1Cd = 0; state.hero.s2Cd = 0; state.hero.ult = 100;
+    const m = state.world.monsters.find(x => !x.dead); m.x = state.hero.x + 1; m.y = state.hero.y; m.hp = m.maxHp;
+    state.hero.input = { ult: true }; tick(state, .3); assert.equal(state.hero.ult < 100, true, `${cls} uses the finisher`);
+    state.hero.input = { s1: true }; tick(state, .3); assert.ok(state.hero.s1Cd > 0, `${cls} skill 1`);
+    state.hero.input = { s2: true }; tick(state, .3); assert.ok(state.hero.s2Cd > 0, `${cls} skill 2`);
+  }
+  // Home: the pack is put away.
+  const wood = state.wood, carried = state.hero.pack.wood;
+  assert.ok(act(state, 'heroMode', { on: false }).ok);
+  assert.equal(state.wood, wood + carried); assert.equal(state.hero.pack.wood, 0);
+  // Out again and knocked out: half the pack is lost and the master must rest.
+  act(state, 'heroMode', { on: true }); state.hero.x += 12; state.hero.pack.wood = 10; state.hero.hp = 1;
+  const m = state.world.monsters.find(x => !x.dead); m.x = state.hero.x + .5; m.y = state.hero.y; m.target = 'hero'; m.cd = 0;
+  for (let i = 0; i < 40 && !(state.hero.down > 0); i++) tick(state, .25);
+  assert.ok(state.hero.down > 0); assert.equal(state.hero.pack.wood, 5);
+  tick(state, 5);
+  assert.equal(state.hero.active, false);
+  assert.equal(act(state, 'heroMode', { on: true }).ok, false, 'resting after being carried home');
+  const back = deserializeGame(serializeGame(state));
+  assert.equal(back.hero.cls, state.hero.cls); assert.ok(back.hero.injuredUntil > 0); assert.deepEqual(back.hero.nodes, state.hero.nodes);
+});
+
+test('the master’s class, skill book and gear: first class is free, a change needs the dojo, crafting takes rare finds', async () => {
+  const state = createGame(402);
+  assert.ok(act(state, 'heroClass', { cls: 'archer' }).ok, 'the first choice is free');
+  assert.equal(act(state, 'heroClass', { cls: 'mage' }).ok, false, 'changing needs a dojo');
+  state.village.dojo = 1; const gold = state.gold;
+  assert.ok(act(state, 'heroClass', { cls: 'mage' }).ok); assert.ok(state.gold < gold, 'the dojo charges for the lesson');
+  assert.equal(act(state, 'heroTree', { node: 'p1' }).ok, false, 'no points at level 1');
+  state.hero.level = 3;
+  assert.equal(act(state, 'heroTree', { node: 'p2' }).ok, false, 'steps come in order');
+  const { heroStats } = await import('../src/life.js'), before = heroStats(state.hero).power;
+  assert.ok(act(state, 'heroTree', { node: 'p1' }).ok); assert.ok(heroStats(state.hero).power > before);
+  assert.equal(act(state, 'heroCraft', { gear: 'w2' }).ok, false, 'steel needs ore the master found');
+  state.hero.mats.ore = 2; state.stone = 50; state.gold = 2000;
+  assert.ok(act(state, 'heroCraft', { gear: 'w2' }).ok); assert.equal(state.hero.gear.weapon, 'w2'); assert.equal(state.hero.mats.ore, 0);
+});
+
+test('master jobs: golden contracts every morning, rescuing the fallen, leading a team, and companions at the master’s side', () => {
+  const state = createGame(403);
+  tick(state, 1);
+  assert.equal(state.hero.contracts.length, 2, 'two golden contracts');
+  // Rescue: a fallen adventurer is carried home by the master and gets off lightly.
+  act(state, 'heroMode', { on: true });
+  const door = { x: state.hero.x, y: state.hero.y }; state.hero.x += 12;
+  const member = state.members[0];
+  state.world.hunters.push({ id: member.id, kind: 'member', zone: 'meadow', party: 'pt-x', mode: 'down', x: state.hero.x + .5, y: state.hero.y, path: [], hp: 0, maxHp: 100, power: 10, cls: 'warrior', job: 'warrior', atkCd: 0, skillCd: 0, guard: 0, target: null, carrying: null, carriedBy: null, bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 5 });
+  const injury = member.injury;
+  state.hero.input = { act: true }; tick(state, .3);
+  assert.equal(state.hero.carry, member.id);
+  state.hero.x = door.x; state.hero.y = door.y; tick(state, .3);
+  assert.equal(state.hero.carry, null, 'at the guild door: delivered');
+  assert.equal(state.hero.stats.rescued, 1);
+  assert.ok(member.injury - injury <= 12, 'lighter wounds than waiting for the stretcher');
+  // Companions walk out beside the master and are busy meanwhile.
+  act(state, 'heroMode', { on: false });
+  const ids = state.members.filter(m => m.id !== member.id).slice(0, 2).map(m => m.id);
+  assert.ok(act(state, 'heroCompanions', { ids }).ok);
+  act(state, 'heroMode', { on: true }); tick(state, .5);
+  assert.deepEqual(state.world.hunters.filter(h => h.escort).map(h => h.id).sort(), [...ids].sort());
+  assert.ok(ids.every(id => state.members.find(m => m.id === id).errand?.kind === 'companion'));
+  act(state, 'heroMode', { on: false }); tick(state, 60);
+  assert.ok(!state.world.hunters.some(h => h.escort), 'they go home with the master');
+});
+
+test('bounties and world bosses: raise the price and the strongest set off at once, or go out and take it yourself', async () => {
+  const { bountyBoostCost } = await import('../src/game.js');
+  const state = createGame(404);
+  state.rank = 'D'; state.gold = 5000; state.members.forEach(m => { m.rank = 'D'; m.energy = 100; m.injury = 0; });
+  tick(state, 1);
+  for (let d = 0; d < 4 && !state.bounty; d++) tick(state, DAY_LENGTH);
+  assert.ok(state.bounty, 'the association posts a bounty');
+  const reward = state.bounty.reward, cost = bountyBoostCost(state);
+  const r = act(state, 'boostBounty', {});
+  assert.ok(r.ok, r.message);
+  assert.equal(state.bounty.reward, reward + cost);
+  assert.ok(state.world.hunters.some(h => h.zone === state.bounty.zone && h.kind === 'member'), 'adventurers set off for the bounty ground');
+  act(state, 'boostBounty', {});
+  assert.equal(act(state, 'boostBounty', {}).ok, false, 'at most twice per bounty');
+  // The master takes it by hand: the whole reward goes to the guild.
+  const b = state.bounty, m = state.world.monsters.find(x => x.id === b.monsterId), gold = state.gold;
+  act(state, 'heroMode', { on: true }); Object.assign(state.hero, { x: m.x - .8, y: m.y, fx: 1, fy: 0 }); m.hp = 1;
+  state.hero.input = { attack: true }; tick(state, .3);
+  assert.equal(state.bounty, null); assert.ok(state.gold >= gold + b.reward);
 });
