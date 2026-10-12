@@ -46,7 +46,7 @@ export class GuildRenderer {
  checkScene(deep=true){
   if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank(deep))return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R48',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R49',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -795,6 +795,8 @@ export class GuildRenderer {
    else if(e.type==='telegraph'){const r=e.r*CELL_W*1.4,g=this.scene.add.graphics().setDepth(p.y-2).setPosition(p.x,p.y);g.fillStyle(0xd9584a,.22).fillEllipse(0,0,r*2,r);g.lineStyle(2,0xff5a3a,.9).strokeEllipse(0,0,r*2,r);this.scene.tweens.add({targets:g,alpha:{from:.4,to:1},yoyo:true,repeat:2,duration:230,onComplete:()=>g.destroy()});}
    else if(e.type==='firering'){for(let k=0;k<10;k++){const a=k/10*Math.PI*2,q=gridPoint(e.x+Math.cos(a)*e.r*.8,e.y+Math.sin(a)*e.r*.8);this.ring(q.x,q.y,k%2?0xf08a4b:0xffd36a,14);}this.camera?.shake?.(220,.006);}
    else if(e.type==='dive'){this.ring(p.x,p.y,0xd9c8a0,40);this.dustPuff(e.x-.9,e.y-.9,1.8,1.8);this.floatText(p.x,p.y-40,'โฉบลงมา!','#ffcf7a',11);}
+   else if(e.type==='windup'){this.floatText(p.x,p.y-52,'❗ เตรียมพุ่งชน','#ff8a6a',11);const ms=this.lifeSprites?.get(e.id);if(ms)ms.flash=.5;}
+   else if(e.type==='whiff'){this.dustPuff(e.x-.5,e.y-.5,1,1);this.floatText(p.x,p.y-44,'พุ่งพลาด! ตีเลย','#bfe3ff',10);}
    else if(e.type==='miss')this.floatText(p.x,p.y-60,'ฟันไม่ถึง!','#bfe3ff',8);
    else if(e.type==='munch')this.floatText(p.x,p.y-24,'งั่ม!','#f4b860',8);
    else if(e.type==='gather'){this.floatText(p.x,p.y-20,e.done?'เสร็จ!':'+','#bff0a0',e.done?10:9);}
