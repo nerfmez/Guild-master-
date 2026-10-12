@@ -777,3 +777,14 @@ body .toast.clickable{pointer-events:auto}
 .board-navigation{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}.board-navigation button{flex:1 1 180px;padding:10px}
 .promotion-next{padding:12px;background:#f3ead3;border:1px solid #d7c39a;border-radius:9px;display:grid;gap:8px}.promotion-next p{margin:0;font-size:12px;line-height:1.6}.promotion-next button{white-space:normal}
 @media(max-width:650px){#panel-content .board-list{grid-template-columns:minmax(0,1fr)}#panel-content .board-card{grid-template-columns:minmax(0,32%) minmax(0,1fr)}#panel-content .board-card .qart canvas{min-height:155px}#panel-content .board-card .qbody{padding:9px}}
+
+/* Two-pane petition board, modeled after the approved tablet mockup. */
+.board-workspace{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(275px,1fr);gap:14px;align-items:start}
+.board-main{min-width:0}.board-workspace .board-list{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px}
+.board-workspace .board-card{display:flex!important;flex-direction:row;min-width:0;overflow:hidden}
+.board-workspace .board-card .qart{width:33%;min-width:90px;flex:none}.board-workspace .board-card .qart canvas{min-height:100%;object-fit:cover}
+.board-workspace .board-card .qbody{flex:1;min-width:0}.board-workspace .board-actions button{font-size:10px;flex-basis:55px}
+.board-detail-sidebar{position:sticky;top:0;background:#fff9e9;border:1px solid #d8c5a2;border-radius:12px;overflow:hidden;box-shadow:0 3px 0 #d8c7a2}
+.board-preview-art canvas{display:block;width:100%;height:auto;max-height:180px;object-fit:cover}.board-preview-body{padding:15px;display:grid;gap:10px}.board-preview-body h3{margin:0;font-size:18px}.board-preview-body p{font-size:12px;line-height:1.65;margin:0}.board-preview-meta{display:grid;gap:7px;font-size:12px;color:#78664b}.board-preview-empty{padding:18px}
+@media(max-width:1150px){.board-workspace{grid-template-columns:minmax(0,1fr) 290px}.board-workspace .board-list{grid-template-columns:minmax(0,1fr)!important}}
+@media(max-width:790px){.board-workspace{grid-template-columns:minmax(0,1fr)}.board-workspace .board-list{grid-template-columns:minmax(0,1fr)!important}.board-detail-sidebar{position:static}.board-workspace .board-card .qart{width:32%}}
