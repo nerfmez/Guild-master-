@@ -3,7 +3,7 @@ import { STAFF,FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
 import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { drainFx } from './life.js';
-import { pathTier, footprintOf, ROTATABLE, homeOf, villageBuildings, doorOf, population } from './town.js';
+import { pathTier, footprintOf, ROTATABLE, homeOf, villageBuildings, doorOf, population, guildExpansionReserve, villagePlacementBlockers, villagePlacementProblem } from './town.js';
 const SHOT_COLORS={arrow:0xc9a06a,pierce:0xf3e2b0,magic:0xb7a6ff,bolt:0xf08a4b,fire:0xf08a4b,frostbolt:0x9fd3f0,frost:0x9fd3f0,spark:0xc9dcff,light:0xfff1c4,note:0xf2b8d8};
 import { QUESTS,REGIONS } from './content.js';
 import { WORLD_PATHS } from './site.js';
@@ -72,7 +72,7 @@ export class GuildRenderer {
   const canvas=this.canvas.cloneNode(false);this.canvas.replaceWith(canvas);
   // A failed boot has no next frame to process Phaser's deferred destruction.
   if(this.game){this.game.destroy(false);this.game.runDestroy();}
-  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.villageGhost=null;this.pointers.clear();this.drag=null;this.pinch=null;
+  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.villageGhost=null;this.villageReserve=null;this.pointers.clear();this.drag=null;this.pinch=null;
   this.start(Phaser.CANVAS);
  }
  // Baked canvases are registered as plain image sources: a CanvasTexture would read every pixel back with getImageData, which stalls GPU-backed canvases.
@@ -419,22 +419,22 @@ export class GuildRenderer {
   return out;}
  underBuilding(x,y){return (this.villageRects()||[]).some(r=>x>r.x-.6&&x<r.x+r.w+.6&&y>r.y-.6&&y<r.y+r.h+.6);}
  // ---- Choosing where a village building goes: tap the map, see green or red, then confirm. ----
- villageBlockers(key){const g=this.state.grid||{width:20,height:16},b=buildingRect(this.state);
-  return[{x:-.5,y:-.5,w:g.width+1,h:g.height+1},{x:b.x-1,y:b.y-1,w:b.w+2,h:b.h+3},...siteRoads(this.state),...SITE_COTTAGES.map(c=>({x:c.x-.3,y:c.y-.3,w:c.w+.6,h:c.h+.6})),...SITE_TREES.map(([x,y])=>({x:x-.5,y:y-.5,w:1,h:1})),...this.villageRects(key).map(r=>({x:r.x-.4,y:r.y-.4,w:r.w+.8,h:r.h+.8}))];}
+ villageBlockers(key){return villagePlacementBlockers(this.state,key);}
  startVillagePlacement(key,kind,moving=false){
-  const lot=this.villageLot(key),rot=moving&&lot?.rot===1?1:0,[w,h]=footprintOf(kind,rot),blockers=this.villageBlockers(key),ok=(x,y)=>!villageSpotProblem(x,y,w,h,blockers);
+  const lot=this.villageLot(key),rot=moving&&lot?.rot===1?1:0,[w,h]=footprintOf(kind,rot),blockers=this.villageBlockers(key),ok=(x,y)=>!villagePlacementProblem(this.state,key,kind,x,y,rot)&&!villageSpotProblem(x,y,w,h,blockers);
   let start=lot||{x:8,y:21};
   if(!ok(start.x,start.y))search:for(let r=1;r<30;r+=1)for(let a=0;a<Math.PI*2;a+=.35){const x=Math.round((start.x+Math.cos(a)*r)*4)/4,y=Math.round((start.y+Math.sin(a)*r*.8)*4)/4;if(ok(x,y)){start={x,y};break search;}}
   this.villagePick={key,kind,w,h,rot,x:start.x,y:start.y,blockers};this.stopFollow?.();
   const p=gridPoint(start.x+w/2,start.y+h/2);this.focusX=p.x;this.focusY=p.y;this.userPanned=true;this.zoom=Math.max(this.zoom,1);this.applyView();this.updateVillagePick();}
- updateVillagePick(){const v=this.villagePick;if(!v)return;v.problem=villageSpotProblem(v.x,v.y,v.w,v.h,v.blockers);
-  const g=this.villageGhost??=this.scene.add.graphics().setDepth(9998);g.clear();const pts=gridPolygon(v.x,v.y,v.w,v.h),col=v.problem?0xd9584a:0x6fae5a;
+ updateVillagePick(){const v=this.villagePick;if(!v)return;v.problem=villagePlacementProblem(this.state,v.key,v.kind,v.x,v.y,v.rot)||villageSpotProblem(v.x,v.y,v.w,v.h,v.blockers);
+  const reserve=guildExpansionReserve(this.state),outline=this.villageReserve??=this.scene.add.graphics().setDepth(99977);outline.clear();outline.fillStyle(0xc39c50,.045);outline.fillPoints(gridPolygon(reserve.x,reserve.y,reserve.w,reserve.h),true);outline.lineStyle(2,0xc39c50,.8);outline.strokePoints(gridPolygon(reserve.x,reserve.y,reserve.w,reserve.h),true);outline.setVisible(true);
+  const g=this.villageGhost??=this.scene.add.graphics().setDepth(99978);g.clear();const pts=gridPolygon(v.x,v.y,v.w,v.h),col=v.problem?0xd9584a:0x6fae5a;
   g.fillStyle(col,.35);g.fillPoints(pts,true);g.lineStyle(2,col,.95);g.strokePoints(pts,true);g.setVisible(true);
   this.onVillagePick?.({ok:!v.problem,message:v.problem});}
  getVillagePick(){const v=this.villagePick;return v?{ok:!v.problem,message:v.problem,x:v.x,y:v.y,rot:v.rot}:null;}
  /** Turn the building being placed: its footprint swaps and the door faces the other way. */
  rotateVillagePick(){const v=this.villagePick;if(!v||!ROTATABLE(v.key))return false;v.rot=v.rot?0:1;[v.w,v.h]=footprintOf(v.kind,v.rot);this.updateVillagePick();return true;}
- stopVillagePlacement(){this.villagePick=null;this.villageGhost?.clear();}
+ stopVillagePlacement(){this.villagePick=null;this.villageGhost?.clear();this.villageReserve?.clear();}
  // Village footpaths grow by themselves: repaint the village ground and the world chunks they cross when they change.
  syncPaths(){const v=getVillageInfo(this.state),paths=this.state.village?.paths||{};
   const sig=JSON.stringify(Object.entries(paths).map(([k,p])=>[k,p.pts.length,p.pts[0],pathTier(p.wear,v.level)]));if(sig===this.pathSig)return;const first=this.pathSig===undefined;this.pathSig=sig;
