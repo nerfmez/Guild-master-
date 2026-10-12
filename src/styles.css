@@ -835,3 +835,7 @@ body.compact-ui .world-actions #scene-only-button,
 body.compact-ui .world-actions #fullscreen-button,
 body.compact-ui .world-actions #view-controls-toggle{flex-shrink:0!important}
 @media(max-height:500px){body.compact-ui .world-actions{top:calc(max(10px,env(safe-area-inset-top)) + 38px)!important}}
+
+/* Touch hero: floating joystick follows the first touch on the left half. */
+body.compact-ui.hero-mode .hero-stick.floating{position:fixed!important;left:calc(var(--float-x) - 42.5px)!important;top:calc(var(--float-y) - 42.5px)!important;bottom:auto!important;z-index:25;pointer-events:none;touch-action:none}
+body.compact-ui.hero-mode #guild-world{touch-action:none}
