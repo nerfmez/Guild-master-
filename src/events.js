@@ -19,7 +19,7 @@ const MINOR = [
   { id: 'lanterns', icon: '🏮', weight: 1, when: ctx => ctx.villageLevel() >= 2, run: ctx => { ctx.prosperity(30); ctx.moraleAll(3); return 'คืนโคมลอย ชาวบ้านจุดโคมริมถนน หมู่บ้านคึกคักขึ้น'; } },
   { id: 'shortage', icon: '📉', weight: 1, run: ctx => { ctx.market('herb', -999); return 'สมุนไพรขาดตลาด ราคาพุ่ง ใครมีสมุนไพรเก็บไว้ขายตอนนี้ได้ราคาดี'; } },
   { id: 'swarm', icon: '🐾', weight: 2, run: ctx => { const z = pick(ctx, ctx.openZones()); ctx.swarm(z, 4); return `ข่าวจากนักล่า: มอนที่${ctx.zoneName(z)}ชุกชุมกว่าปกติ`; } },
-  { id: 'stranger', icon: '🍺', weight: 2, run: ctx => { ctx.newFree(); return 'มีนักผจญภัยหน้าใหม่แวะมาพักที่โรงเตี๊ยม'; } },
+  { id: 'stranger', icon: '🍺', weight: 2, run: ctx => { return ctx.newFree() ? 'มีนักผจญภัยหน้าใหม่เดินทางมาลงทะเบียนกับกิลด์' : 'นักผจญภัยผ่านทางแวะดื่มที่โรงเตี๊ยม แต่ห้องพักเต็มเลยเดินทางต่อ'; } },
 ];
 
 /** Choices: each option says what it costs and what it brings. `data` is filled when the event starts. */
@@ -41,7 +41,7 @@ const DECISIONS = [
   { id: 'lostAdventurer', icon: '🔦', weight: 2, title: 'นักผจญภัยหลงทาง', when: ctx => ctx.freeList().length >= 1, text: d => `เพื่อนของ${d.name}มาบอกว่าเขาหายไปที่${d.zone}ตั้งแต่เมื่อคืน`,
     start: ctx => { const f = pick(ctx, ctx.freeList()); return { id: f.id, name: f.name, zone: ctx.zoneName(pick(ctx, ctx.openZones())) }; },
     choices: [
-      { id: 'search', label: 'ส่งคนออกตามหา', desc: 'เงิน −30 · ความประทับใจของเขาต่อกิลด์ +45', apply: (ctx, d) => { ctx.gold(-30, 'ค่าคนตามหานักผจญภัย'); ctx.affinity(d.id, 45); return `${d.name}กลับมาอย่างปลอดภัย และซึ้งใจกิลด์มาก`; } },
+      { id: 'search', label: 'ส่งคนออกตามหา', desc: 'เงิน −30 · ขวัญของเขา +15', apply: (ctx, d) => { ctx.gold(-30, 'ค่าคนตามหานักผจญภัย'); ctx.affinity(d.id, 45); return `${d.name}กลับมาอย่างปลอดภัย และซึ้งใจกิลด์มาก`; } },
       { id: 'wait', label: 'รอดูอีกสักวัน', desc: 'ไม่เสียอะไร', apply: (ctx, d) => `${d.name}เดินกลับมาเองในตอนเย็น เหนื่อยแต่ไม่เป็นไร` },
     ] },
   { id: 'treasureMap', icon: '🗺', weight: 2, title: 'พ่อค้าขายแผนที่ขุมทรัพย์', text: () => 'พ่อค้าแปลกหน้าบอกว่าแผนที่นี้พาไปถึงหีบโบราณ ราคา 150 G',
@@ -52,13 +52,13 @@ const DECISIONS = [
   { id: 'bridge', icon: '🌉', weight: 2, title: 'สะพานไม้ชำรุด', text: () => 'ผู้ใหญ่บ้านขอให้กิลด์ช่วยซ่อมสะพานข้ามลำธาร ไม่งั้นรถเสบียงผ่านไม่ได้',
     choices: [
       { id: 'fund', label: 'ออกค่าซ่อม', desc: 'เงิน −100 · ไม้ −10 · หมู่บ้านรุ่งเรือง +60 · ชื่อเสียง +6', when: ctx => ctx.has('wood', 10), apply: ctx => { ctx.gold(-100, 'ซ่อมสะพานหมู่บ้าน'); ctx.res('wood', -10); ctx.prosperity(60); ctx.rep(6); return 'ชาวบ้านช่วยกันตอกตะปูจนสะพานแข็งแรงกว่าเดิม'; } },
-      { id: 'members', label: 'ส่งสมาชิกไปช่วยแรง', desc: 'สมาชิกที่บ้านแรง −25 · หมู่บ้านรุ่งเรือง +30', apply: ctx => { for (const m of ctx.homeMembers()) ctx.energy(m.id, -25); ctx.prosperity(30); return 'ทุกคนเหนื่อย แต่ได้ข้าวกล่องจากชาวบ้านกลับมา'; } },
+      { id: 'members', label: 'ขอแรงนักผจญภัย', desc: 'นักผจญภัยที่อยู่ในเมืองแรง −25 · หมู่บ้านรุ่งเรือง +30', apply: ctx => { for (const m of ctx.homeMembers()) ctx.energy(m.id, -25); ctx.prosperity(30); return 'ทุกคนเหนื่อย แต่ได้ข้าวกล่องจากชาวบ้านกลับมา'; } },
       { id: 'no', label: 'ไม่ช่วย', desc: 'หมู่บ้านรุ่งเรือง −15', apply: ctx => { ctx.prosperity(-15); return 'รถเสบียงต้องอ้อมไกล ของในตลาดมาช้าลง'; } },
     ] },
   { id: 'apprentice', icon: '📖', weight: 2, title: 'เด็กหนุ่มขอเป็นศิษย์', when: ctx => ctx.homeMembers().some(m => m.level >= 3), text: d => `เด็กหนุ่มจากหมู่บ้านอยากเรียนวิชาจาก${d.name}`,
     start: ctx => { const m = ctx.homeMembers().filter(x => x.level >= 3).sort((a, b) => b.level - a.level)[0]; return { id: m.id, name: m.name }; },
     choices: [
-      { id: 'teach', label: 'รับสอน', desc: 'ครูแรง −30 · แต้มผลงาน +12 · มีนักผจญภัยหน้าใหม่ที่ชื่นชมกิลด์มาอยู่โรงเตี๊ยม', apply: (ctx, d) => { ctx.energy(d.id, -30); ctx.points(d.id, 12); ctx.newFree(50); return `${d.name}สอนจนค่ำ ศิษย์ใหม่ตั้งใจจะเข้ากิลด์สักวัน`; } },
+      { id: 'teach', label: 'รับสอน', desc: 'ครูแรง −30 · แต้มผลงาน +12 · มีนักผจญภัยหน้าใหม่ที่ชื่นชมกิลด์มาลงทะเบียน', apply: (ctx, d) => { ctx.energy(d.id, -30); ctx.points(d.id, 12); ctx.newFree(50); return `${d.name}สอนจนค่ำ ศิษย์ใหม่ตั้งใจจะเข้ากิลด์สักวัน`; } },
       { id: 'later', label: 'ไว้คราวหน้า', desc: 'ไม่เสียอะไร', apply: () => 'เด็กหนุ่มรับปากว่าจะกลับมาใหม่' },
     ] },
   { id: 'rival', icon: '⚔', weight: 1, title: 'กิลด์คู่แข่งมาเปิดสาขา', when: ctx => ctx.rankIndex() >= 1, text: () => 'กิลด์จากเมืองใหญ่มาตั้งโต๊ะรับงานกลางตลาด เสนอค่าจ้างถูกกว่าเรา',
@@ -131,12 +131,20 @@ export function tickDirector(state, ctx) {
   }
   // A choice left unanswered takes its last, gentlest option.
   if (d.pending && now > d.pending.expires) resolveDecision(state, ctx, d.pending.choices.at(-1).id, true);
-  if (now < d.calmUntil) return;
+  // The intel scout's warning runs out: the raid or the boss arrives as foretold.
+  if (d.incoming && now >= d.incoming.at) { const ev = MAJOR.find(e => e.id === d.incoming.id); delete d.incoming; if (ev && !d.active) startMajor(state, ctx, d, ev); return; }
+  if (now < d.calmUntil || d.incoming) return;
   if (!d.active && !d.pending && now >= d.nextMajor) {
     const ev = chooseWeighted(ctx, MAJOR, d.history);
     d.nextMajor = now + span(ctx, PACING.major); d.calmUntil = now + 60;
     d.nextMinor = Math.max(d.nextMinor, now + 90); d.nextDecision = Math.max(d.nextDecision, now + 240);
-    if (ev) startMajor(state, ctx, d, ev);
+    const scout = ctx.scout?.() || 0;
+    if (ev && scout && (ev.id === 'raid' || ev.id === 'boss')) {
+      d.incoming = { id: ev.id, at: now + scout * 25 };
+      if (ev.id === 'raid') ctx.recallHunters();
+      ctx.log(`🦅 หน่วยข่าวรายงาน: ${ev.id === 'raid' ? 'ฝูงมอนกำลังมุ่งหน้ามาที่หมู่บ้าน' : 'บอสโลกกำลังตื่น'} จะถึงในอีก ${scout * 25} วินาที${ev.id === 'raid' ? ' เรียกนักผจญภัยกลับมาเตรียมตัวแล้ว' : ''}`, 'rank');
+      ctx.alert({ icon: '🦅', title: 'หน่วยข่าวรายงาน', text: `${ev.id === 'raid' ? 'มอนบุก' : 'บอสโลก'}ในอีก ${scout * 25} วินาที`, watch: null });
+    } else if (ev) startMajor(state, ctx, d, ev);
     return;
   }
   if (!d.pending && now >= d.nextDecision) {
@@ -153,7 +161,7 @@ export function tickDirector(state, ctx) {
 }
 function startMajor(state, ctx, d, ev) {
   if (ev.id === 'raid') {
-    const species = RAID_SPECIES[Math.min(RAID_SPECIES.length - 1, ctx.rankIndex())], count = 5 + ctx.rankIndex() * 2;
+    const species = RAID_SPECIES[Math.min(RAID_SPECIES.length - 1, ctx.rankIndex())], count = 5 + ctx.rankIndex() * 2 + Math.floor((ctx.population?.() || 0) / 25);
     ctx.spawnRaid(species, count);
     d.active = { id: 'raid', until: ctx.elapsed() + 240, total: count, reached: 0 };
     ctx.rally();
@@ -178,7 +186,7 @@ function finishRaid(ctx, d, left) {
 export function raidReached(state, ctx) {
   const a = state.director?.active;
   if (a?.id === 'raid') a.reached += 1;
-  ctx.prosperity(-15); ctx.gold(-20, 'ความเสียหายจากมอนบุก');
+  ctx.prosperity(-15); ctx.gold(-20, 'ความเสียหายจากมอนบุก'); ctx.scar?.(4);
 }
 export function bossDefeated(state, ctx, name) {
   const d = state.director;
@@ -226,6 +234,7 @@ export function sanitizeDirector(data, elapsed = 0) {
   const a = data.active;
   if (a && ['raid', 'boss'].includes(a.id)) d.active = { id: a.id, until: num(a.until, elapsed + 120), total: num(a.total, 1), reached: num(a.reached, 0), zone: text(a.zone, 20) };
   if (data.alert && typeof data.alert === 'object') d.alert = { icon: text(data.alert.icon, 4), title: text(data.alert.title, 80), text: text(data.alert.text), watch: ['raid', 'boss'].includes(data.alert.watch) ? data.alert.watch : null, until: num(data.alert.until, 0) };
+  if (data.incoming && ['raid', 'boss'].includes(data.incoming.id)) d.incoming = { id: data.incoming.id, at: num(data.incoming.at, elapsed) };
   d.history = (Array.isArray(data.history) ? data.history : []).filter(h => h && EVENT_IDS.has(h.id)).slice(0, 14).map(h => ({ id: h.id, title: text(h.title), icon: text(h.icon, 4), day: num(h.day, 1), outcome: text(h.outcome, 120) }));
   return d;
 }

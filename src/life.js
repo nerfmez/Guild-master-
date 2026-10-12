@@ -76,6 +76,55 @@ function tickTown(state, ctx, step) {
   }
 }
 
+// ---- Residents: registered adventurers at home live in town — their room, the market, the guild hall. ----
+const GUILD_VISITORS = 8, STROLL = 1.1;
+function chooseErrand(state, ctx, m, inside) {
+  const w = state.world, t = m.town, r = rand(w);
+  const cap = ctx.hallCap?.() || GUILD_VISITORS, bar = ctx.hasBar?.();
+  if (m.energy < 50 || m.injury > 20) t.goal = bar && m.energy >= 30 && r < 0.3 && inside < cap ? 'guild' : 'lodge';
+  else if (r < (bar ? 0.4 : 0.3) && inside < cap) t.goal = 'guild';
+  else if (r < 0.85) t.goal = 'town';
+  else t.goal = 'lodge';
+  const shops = t.goal === 'town' && ctx.shopSpots ? ctx.shopSpots() : [];
+  const spot = shops.length && rand(w) < 0.6 ? (p => [p.x, p.y])(pick(w, shops)) : pick(w, TOWN_SPOTS);
+  const at = t.goal === 'guild' ? ctx.door() : t.goal === 'lodge' ? ctx.lodge(m) : { x: spot[0] + (rand(w) - .5) * 1.4, y: spot[1] + (rand(w) - .5) * .8 };
+  t.tx = at.x; t.ty = at.y; t.at = 'street';
+}
+function tickResidents(state, ctx, step) {
+  if (!ctx.atHome) return;
+  let inside = state.members.filter(m => m.town?.at === 'guild').length;
+  for (const m of state.members) {
+    if (!ctx.atHome(m)) { m.town = null; continue; }
+    // Back from a job, a team that won heads straight into the guild to celebrate at the bar.
+    if (!m.town) { const d = ctx.door(); m.town = { x: d.x, y: d.y, tx: d.x, ty: d.y, wait: 0, at: 'street', goal: m.celebrate && ctx.hasBar?.() ? 'guild' : 'town' }; if (m.celebrate && !ctx.hasBar?.()) m.celebrate = false; }
+    const t = m.town, indoors = ctx.indoors(m);
+    // Training, chores and treatment happen in the guild hall: walk there first.
+    if (indoors && t.at !== 'guild' && t.goal !== 'guild') { const d = ctx.door(); Object.assign(t, { at: 'street', goal: 'guild', tx: d.x, ty: d.y }); }
+    if (t.at === 'street') {
+      const d = Math.hypot(t.tx - t.x, t.ty - t.y);
+      if (d > .05) { const s = Math.min(d, step * STROLL * (0.55 + 0.45 * clamp(m.energy / 100, 0, 1))); t.x += (t.tx - t.x) / d * s; t.y += (t.ty - t.y) / d * s; continue; }
+      if (t.goal === 'guild' && (indoors || m.celebrate || inside < (ctx.hallCap?.() || GUILD_VISITORS))) { t.at = 'guild'; t.wait = (m.celebrate ? 20 : 8) + rand(state.world) * 14; inside += 1; if (!indoors) ctx.visitGuild?.(m); continue; }
+      if (t.goal === 'lodge') { t.at = 'lodge'; t.wait = 15 + rand(state.world) * 25; continue; }
+      if ((t.wait -= step) > 0) continue;
+      t.wait = 4 + rand(state.world) * 9; chooseErrand(state, ctx, m, inside);
+      continue;
+    }
+    if (indoors) continue;
+    // Resting in their room until fresh, or a short visit to the guild hall.
+    if ((t.wait -= step) > 0 || (t.at === 'lodge' && m.energy < 85 && t.wait > -90)) continue;
+    if (t.at === 'guild') inside -= 1;
+    const out = t.at === 'guild' ? ctx.door() : ctx.lodge(m);
+    Object.assign(t, { x: out.x, y: out.y, wait: 2 + rand(state.world) * 4 });
+    chooseErrand(state, ctx, m, inside);
+  }
+}
+/** The guild calls everyone fit to fight to a world boss's ground (the rally bounty). */
+export function rallyToBoss(state, ctx, zoneId, fit) {
+  const w = state.world, party = `pt-${w.nextId++}`, door = ctx.door(), out = [];
+  for (const m of state.members.filter(fit)) { m.task = 'rest'; w.hunters.push(makeHunter(state, ctx, m, 'member', zoneId, party, m.town ? { x: m.town.x, y: m.town.y } : door)); out.push(m); }
+  return out;
+}
+
 // ---- Departures ----
 function chooseZone(ctx, rank, power) {
   const zones = Object.entries(HUNT_ZONES).filter(([, z]) => ctx.zoneOpen(z) && rankIdx(z.rank) <= rankIdx(rank) + 1);
@@ -89,8 +138,10 @@ function chooseZone(ctx, rank, power) {
 function makeHunter(state, ctx, who, kind, zoneId, party, start) {
   const zone = HUNT_ZONES[zoneId], stats = kind === 'member' ? ctx.stats(who) : freeStats(who), w = state.world;
   const path = [...zone.via.map(([x, y]) => ({ x, y })), pointIn(w, zone, .6)];
-  return { id: who.id, kind, zone: zoneId, party, mode: 'go', x: start.x + (rand(w) - .5) * .4, y: start.y + (rand(w) - .5) * .4, path, hp: stats.health, maxHp: stats.health,
-    power: stats.basePower, cls: rootOf(who.class), job: who.class, atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
+  // Wounds keep their mark out in the field: a hurt adventurer sets out with less to give.
+  const hp = Math.round(stats.health * (1 - (who.injury || 0) / 200));
+  return { id: who.id, kind, zone: zoneId, party, mode: 'go', x: start.x + (rand(w) - .5) * .4, y: start.y + (rand(w) - .5) * .4, path, hp, maxHp: stats.health,
+    power: stats.power ?? stats.basePower, pace: 0.7 + 0.3 * clamp((who.energy ?? 100) / 100, 0, 1), cls: rootOf(who.class), job: who.class, atkCd: rand(w), skillCd: 3 + rand(w) * 4, guard: 0, target: null, carrying: null, carriedBy: null,
     bag: { gold: 0, herb: 0, wood: 0, stone: 0, kills: 0, merit: 0, parts: {}, treasures: [] }, quota: 7 + Math.floor(rand(w) * 4) };
 }
 export function freeStats(f) {
@@ -103,11 +154,12 @@ function departures(state, ctx) {
   const ready = state.members.filter(m => ctx.freeToHunt(m));
   while (ready.length) {
     const lead = ready.shift(), lp = ctx.stats(lead), zone = chooseZone(ctx, lead.rank, lp.basePower);
-    if (!zone || rand(w) > 0.45) continue;
+    if (!zone || rand(w) > 0.3) continue;
     const mates = ready.filter(m => chooseZone(ctx, m.rank, ctx.stats(m).basePower) === zone).sort((a, b) => ctx.bond(lead.id, b.id) - ctx.bond(lead.id, a.id)).slice(0, rand(w) < .35 ? 0 : 2);
     mates.forEach(m => ready.splice(ready.indexOf(m), 1));
     const party = `pt-${w.nextId++}`, door = ctx.door();
-    for (const m of [lead, ...mates]) { m.task = 'rest'; w.hunters.push(makeHunter(state, ctx, m, 'member', zone, party, door)); }
+    // They set off from wherever they are in town: the market, the inn, the guild steps.
+    for (const m of [lead, ...mates]) { m.task = 'rest'; m.autoTrain = false; w.hunters.push(makeHunter(state, ctx, m, 'member', zone, party, m.town ? { x: m.town.x, y: m.town.y } : door)); }
     ctx.log(`${[lead, ...mates].map(m => m.name).join(' · ')} ออกไปล่ามอนที่${HUNT_ZONES[zone].name}`, 'hunt');
   }
   // Free adventurers go alone or in pairs.
@@ -144,6 +196,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(state.world) * 20; state.world.kills++;
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
+  ctx.codex?.(m.species);
   const s = statsOf(m.species), party = state.world.hunters.filter(o => o.party === h.party && o.mode === 'hunt' && dist(o, m) < 9);
   if (m.quest) { h.bag.kills += 1; const qp = MONSTER_PART[m.species]; if (qp && (m.questBoss || rand(state.world) < .5)) { h.bag.parts ??= {}; h.bag.parts[qp] = (h.bag.parts[qp] || 0) + (m.questBoss ? 4 : 1); } return; }
   h.bag.gold += s.gold[0] + Math.floor(rand(state.world) * (s.gold[1] - s.gold[0] + 1));
@@ -153,7 +206,7 @@ function hitMonster(state, ctx, h, m, dmg, kind) {
   const part = MONSTER_PART[m.species];
   if (part && rand(state.world) < TRADE_RULES.partChance) { h.bag.parts ??= {}; h.bag.parts[part] = (h.bag.parts[part] || 0) + (s.boss ? 5 : 1); }
   const zoneRank = rankIdx(HUNT_ZONES[m.zone]?.rank || 'F');
-  if (s.boss || m.elite || rand(state.world) < TRADE_RULES.treasureChance * (1 + zoneRank * 0.5)) {
+  if (s.boss || m.elite || rand(state.world) < TRADE_RULES.treasureChance * (1 + zoneRank * 0.5) * (ctx.luck?.() || 1)) {
     const pool = Object.entries(TREASURES).filter(([, t]) => !t.boss && rankIdx(t.rank) <= zoneRank).map(([id]) => id);
     h.bag.treasures ??= [];
     if (s.boss) h.bag.treasures.push('rustCrown');
@@ -427,10 +480,10 @@ function stepHunters(state, ctx, dt) {
     if (h.mode === 'go') {
       // Ambushed on the way in: stand and fight.
       const ambush = !h.mission && w.monsters.some(m => !m.dead && m.target === h.id && dist(m, h) < 2.5);
-      if (ambush || walkPath(h, WALK, dt)) { h.mode = 'hunt'; h.path = []; }
+      if (ambush || walkPath(h, WALK * (h.pace || 1), dt)) { h.mode = 'hunt'; h.path = []; }
       continue;
     }
-    if (h.mode === 'return' || h.mode === 'carry') { if (walkPath(h, h.mode === 'carry' ? CARRY : WALK, dt)) arriveHome(state, ctx, h); continue; }
+    if (h.mode === 'return' || h.mode === 'carry') { if (walkPath(h, h.mode === 'carry' ? CARRY : WALK * (h.pace || 1), dt)) arriveHome(state, ctx, h); continue; }
     if (h.mode === 'defend' || h.mode === 'hunt') {
       // A potion when badly hurt; leave when the bag is full, tired, or still hurting with no potion.
       if (h.hp < h.maxHp * .35) {
@@ -454,6 +507,7 @@ export function tickLife(state, ctx, step) {
     const dt = Math.min(SUB, left); left -= dt;
     stockZones(state, ctx, dt);
     tickTown(state, ctx, dt);
+    tickResidents(state, ctx, dt);
     w.departClock -= dt;
     if (w.departClock <= 0) { w.departClock = 3; departures(state, ctx); }
     stepHunters(state, ctx, dt);
@@ -505,6 +559,7 @@ function heroStrike(state, ctx, m, dmg, kind) {
   if (m.hp > 0) return;
   m.dead = true; m.respawn = 30 + rand(w) * 20; w.kills++; hero.kills++;
   emit({ type: 'kill', id: m.id, x: m.x, y: m.y, species: m.species });
+  ctx.codex?.(m.species);
   const s = statsOf(m.species);
   // What the master takes goes straight to the guild: coins to the coffers, parts to the storehouse.
   const gold = s.gold[0] + Math.floor(rand(w) * (s.gold[1] - s.gold[0] + 1));

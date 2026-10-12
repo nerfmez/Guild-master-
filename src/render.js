@@ -217,6 +217,8 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
   const stride=walking?Math.sin(phase):0,step=walking?(stride>.3?1:stride<-.3?-1:0):0,hop=walking&&Math.abs(stride)>.6?-1:0;
   const breathe=pose==='breath'?1:0,sleep=pose==='sleep',blink=pose==='blink'||sleep;
   const train=pose==='train0'?0:pose==='train1'?1:-1,work=pose==='work0'?0:pose==='work1'?1:-1;
+  // Seated at a table or a bar stool: sit0 rests a hand on the table, sit1 lifts a mug or spoon to the mouth.
+  const sit=pose==='sit0'||pose==='sit1',sip=pose==='sit1';
   const dark=tone(color,-.3),light=tone(color,.35),hairLight=tone(hair,.3),pants=tone(color,-.5);
   c.save();c.translate(Math.round(x),Math.round(y));if(facing<0||direction==='west')c.scale(-1,1);
   if(pose==='bed'){
@@ -230,10 +232,14 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
     rect(c,-6,-9,12,2,OUTLINE);rect(c,-5,-9,10,1,P.cream);
     c.restore();return;
   }
+  if(sit){
+    // Lowered onto the seat, knees forward, feet dangling.
+    c.translate(0,3);rect(c,-4,-4,8,3,OUTLINE);rect(c,-3,-4,6,2,pants);rect(c,-3,-2,2,2,OUTLINE);rect(c,1,-2,2,2,OUTLINE);
+  }else{
   rect(c,-4,-1,8,2,'#3b382c30');
   // Feet: a pixel of lift alternates between the legs.
   rect(c,-3+(side?step:0),-3+(step>0?-1:0),2,3,OUTLINE);rect(c,1-(side?step:0),-3+(step<0?-1:0),2,3,OUTLINE);
-  rect(c,-3+(side?step:0),-3+(step>0?-1:0),2,1,pants);rect(c,1-(side?step:0),-3+(step<0?-1:0),2,1,pants);
+  rect(c,-3+(side?step:0),-3+(step>0?-1:0),2,1,pants);rect(c,1-(side?step:0),-3+(step<0?-1:0),2,1,pants);}
   c.translate(0,hop);
   if(archer&&back){rect(c,-3,-10,2,5,P.woodDark);rect(c,-3,-11,1,1,P.coralLight);}
   // Body: tunic or robe with a lit side and a shaded side.
@@ -246,12 +252,13 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
    else if(archer){rect(c,-2,-8+breathe,1,1,P.woodDark);rect(c,-1,-7+breathe,1,1,P.woodDark);rect(c,0,-6,1,1,P.woodDark);}}
   rect(c,-3,-5,6,1,'#8a6a4a');
   // Arms: a coloured pixel column outlined on the outside, hands in skin.
-  const swing=walking?step:0,raised=train===0||work===0,forward=train===1||work===1;
+  const swing=walking?step:0,raised=(train===0||work===0)&&!sit,forward=train===1||work===1||(sit&&!sip);
   rect(c,-6,-8-swing+breathe,2,4,OUTLINE);rect(c,-5,-8-swing+breathe,1,3,color);rect(c,-5,-5-swing+breathe,1,1,skin);
   if(raised){rect(c,4,-12,2,5,OUTLINE);rect(c,4,-12,1,4,color);rect(c,4,-13,1,1,skin);}
+  else if(sip){rect(c,4,-12,2,5,OUTLINE);rect(c,4,-11,1,4,color);rect(c,4,-12,1,1,skin);rect(c,5,-14,3,4,OUTLINE);rect(c,5,-13,2,2,'#e8d29a');rect(c,5,-14,2,1,'#fff7ea');}
   else if(forward){rect(c,4,-8,4,2,OUTLINE);rect(c,4,-8,3,1,color);rect(c,7,-8,1,1,skin);}
   else{rect(c,4,-8+swing+breathe,2,4,OUTLINE);rect(c,4,-8+swing+breathe,1,3,color);rect(c,4,-5+swing+breathe,1,1,skin);}
-  const hand=raised?{x:4,y:-13}:forward?{x:7,y:-8}:{x:4,y:-5+swing+breathe};
+  const hand=raised?{x:4,y:-13}:sip?{x:5,y:-13}:forward?{x:7,y:-8}:{x:4,y:-5+swing+breathe};
   // Big round head with hair cap, fringe and dot eyes.
   c.translate(0,breathe+(sleep?1:0));
   poly(c,[[-4,-19],[4,-19],[6,-17],[6,-11],[4,-9],[-4,-9],[-6,-11],[-6,-17]],OUTLINE);

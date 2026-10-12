@@ -110,10 +110,13 @@ export function homeStatus(state, key, villageLevel) {
   const missing = next.needs.filter(id => !met[id]);
   return { tier: home.tier, next, met, missing, levelOk: villageLevel >= next.level, progress: home.progress };
 }
-export function population(state) {
+/** Everyone the houses could hold, before anyone moves away. */
+export function housingCapacity(state) {
   let n = 0; for (let i = 0; i < Math.min(state.village?.houses || 0, VILLAGE_LOTS.houses.length); i++) n += HOUSE_TIERS[homeOf(state, 'h' + i).tier]?.residents || 0;
   return n;
 }
+/** People living in town: unhappy towns lose families, and rooms stand empty until it is worth living in again. */
+export function population(state) { return Math.round(housingCapacity(state) * (state.village?.occupancy ?? 1)); }
 const HOME_CLOCK = new WeakMap();
 /** Homes whose needs are met grow one tier at a time; nobody is ever moved back down. */
 function growHomes(state, step, villageLevel, log) {

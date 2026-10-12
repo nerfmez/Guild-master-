@@ -59,16 +59,18 @@ export const JOBS = {
 };
 export const FACILITIES = {
   reception: { id: 'reception', name: 'โต๊ะรับคำร้อง', description: 'รับคำร้อง เพิ่มชื่อเสียงจากภารกิจ 5% ต่อระดับ', w: 2, h: 1, cost: { gold: 180, wood: 8, stone: 4 }, unlockRank: 'F', color: '#dec6a1', maxLevel: 3 },
-  dorm: { id: 'dorm', name: 'เตียงพัก', description: 'เพิ่มพื้นที่พักให้สมาชิก 4 คนและรองรับการพัก 2 คนต่อระดับ', w: 1, h: 2, cost: { gold: 220, wood: 12, stone: 3 }, unlockRank: 'F', color: '#bbaac9', maxLevel: 3 },
   infirmary: { id: 'infirmary', name: 'เตียงรักษา', description: 'รักษาบาดเจ็บพร้อมกัน 2 คนต่อระดับ คนเจ็บมากได้เตียงก่อน', w: 1, h: 2, cost: { gold: 240, wood: 8, stone: 6, herb: 4 }, unlockRank: 'F', color: '#b9cfbf', maxLevel: 3 },
-  kitchen: { id: 'kitchen', name: 'เตาทำอาหาร', description: 'เพิ่มความสดชื่นและเร่งพักฟื้นสมาชิก', w: 1, h: 1, cost: { gold: 200, wood: 10, stone: 4 }, unlockRank: 'F', color: '#e6b799', maxLevel: 3 },
+  kitchen: { id: 'kitchen', name: 'เตาทำอาหาร', description: 'ทำอาหารส่งบาร์: รายได้บาร์ +25% ต่อระดับ คนที่แวะกินฟื้นแรงเร็วขึ้น · ความสบายในเมือง +4 ต่อระดับ', w: 1, h: 1, cost: { gold: 200, wood: 10, stone: 4 }, unlockRank: 'F', color: '#e6b799', maxLevel: 3 },
   training: { id: 'training', name: 'หุ่นฝึก', description: 'ฝึกได้พร้อมกัน 2 คนต่อระดับ สมาชิกผลัดกันใช้จุดฝึก', w: 1, h: 1, cost: { gold: 250, wood: 10, stone: 8 }, unlockRank: 'F', color: '#d1bd96', maxLevel: 3 },
   workshop: { id: 'workshop', name: 'โต๊ะช่าง', description: 'สร้างอาวุธและเครื่องรางจากวัตถุดิบ', w: 2, h: 1, cost: { gold: 260, wood: 12, stone: 8 }, unlockRank: 'F', color: '#aebec2', maxLevel: 3 },
   garden: { id: 'garden', name: 'แปลงสมุนไพร', description: 'เก็บสมุนไพรวันละครั้ง และช่วยให้กิลด์ร่มรื่น', w: 2, h: 2, cost: { gold: 180, wood: 8, stone: 2 }, unlockRank: 'E', color: '#aac3a0', maxLevel: 3 },
   library: { id: 'library', name: 'ชั้นตำรา', description: 'ฝึกได้เร็วขึ้นและรับมือภารกิจเวทได้ดี', w: 2, h: 0.75, cost: { gold: 420, wood: 18, stone: 8 }, unlockRank: 'D', color: '#acb8d0', maxLevel: 3 },
-  lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'เพิ่มขวัญกำลังใจ เปิดมื้อเลี้ยงกิลด์', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
-  board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยที่ว่างมาหยิบงานเอง ออกงานเองได้พร้อมกัน 1 ทีมต่อระดับ แยกจากทีมที่คุณส่ง', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
-  dispatch: { id: 'dispatch', name: 'โต๊ะวางแผน', description: 'เปิดทีมภารกิจที่สองเมื่อกิลด์ถึงระดับ E', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'E', color: '#9ebdb9', maxLevel: 3 },
+  lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'มุมนั่งคุยของนักผจญภัย · ความสบายในเมือง +6 ต่อระดับ อารมณ์ของทุกคนดีขึ้น', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
+  board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยมาเลือกงานและจับกลุ่มกันเอง รับงานพร้อมกันได้ 2 งานต่อระดับ', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
+  bar: { id: 'bar', name: 'บาร์', description: 'เคาน์เตอร์ ชั้นขวด และเก้าอี้บาร์ 4 ตัว บาร์เทนเดอร์ยืนหลังเคาน์เตอร์ นักผจญภัยนั่งดื่มและฉลองหลังทำงานสำเร็จ จ่ายเงินให้กิลด์ ฟื้นแรงและอารมณ์ดีขึ้น · ราคาและรายได้เพิ่มต่อระดับ', w: 2.5, h: 1.5, cost: { gold: 260, wood: 16, stone: 4 }, unlockRank: 'F', color: '#c9a07a', maxLevel: 3 },
+  dining: { id: 'dining', name: 'โต๊ะอาหาร', description: 'โต๊ะกับเก้าอี้ 4 ตัว นักผจญภัยนั่งกินอาหารจากครัว ฟื้นแรงมากกว่าดื่มอย่างเดียว · ต้องมีเตาทำอาหาร', w: 1.75, h: 1.75, cost: { gold: 150, wood: 12 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
+  appraisal: { id: 'appraisal', name: 'โต๊ะประเมินของ', description: 'ประเมินของที่รับซื้อจากนักผจญภัย กิลด์ได้ส่วนต่าง 5% ต่อระดับจากทุกชิ้น', w: 1.5, h: 1, cost: { gold: 240, wood: 8, stone: 6 }, unlockRank: 'F', color: '#b9a6c9', maxLevel: 3 },
+  dispatch: { id: 'dispatch', name: 'โต๊ะจับกลุ่มปาร์ตี้', description: 'ปาร์ตี้ที่จับกลุ่มในกิลด์วางแผนกันก่อนออกงาน พลังทีม +3% ต่อระดับ และรับงานพร้อมกันได้เพิ่ม 1 งานต่อระดับ', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'F', color: '#9ebdb9', maxLevel: 3 },
 };
 export const ROOM_TYPES={
  dorm:{name:'ห้องพัก',color:'#dac2a3'},infirmary:{name:'ห้องพยาบาล',color:'#cbd4b9'},
@@ -114,8 +116,8 @@ export const QUESTS = [
   { id: 'emberdig', scenario: 'gather', name: 'ขุดแร่ถ่านไฟในเหมืองเก่า', title: 'ถ่านที่ไม่เคยมอด', region: 'canyon', description: 'แร่ถ่านไฟทำอาวุธขั้นสูงได้ แต่ภูตถ่านไฟไม่ยอมให้ใครแตะ', duration: 124, rank: 'B', difficulty: 136, tags: ['tank', 'heal'], reward: { gold: 520, wood: 4, stone: 26, herb: 4, rep: 66, xp: 126 }, cost: { gold: 45 }, energy: 26, enemy: 'ภูตถ่านไฟ', requires: 'canyonroad' },
   { id: 'wyrm', scenario: 'explore', name: 'ปราบหนอนทรายยักษ์', title: 'ทรายที่หายใจได้', region: 'canyon', description: 'ทางเกวียนยุบหายเป็นหลุมทุกคืน มีบางอย่างใหญ่มากอยู่ใต้ทราย', duration: 150, rank: 'B', difficulty: 150, tags: ['tank', 'magic', 'heal'], reward: { gold: 820, wood: 10, stone: 20, herb: 10, rep: 110, xp: 165 }, cost: { gold: 70, herb: 3 }, energy: 28, enemy: 'หนอนทรายยักษ์', requires: 'canyonroad', story: true },
   { id: 'drakes', scenario: 'patrol', name: 'สำรวจรังมังกรหินน้อย', title: 'ไข่ที่อุ่นเกินไป', region: 'peak', description: 'ลาดตระเวนไหล่เขาไฟ นับรังมังกรหินน้อยและหาเส้นทางขึ้นยอด', duration: 140, rank: 'B', difficulty: 156, tags: ['scout', 'tank'], reward: { gold: 700, wood: 8, stone: 22, herb: 8, rep: 92, xp: 160 }, cost: { gold: 60, herb: 2 }, energy: 28, enemy: 'มังกรหินน้อย', requires: 'wyrm' },
-  { id: 'matriarch', scenario: 'explore', raid: true, name: 'ยอดแหลมของแม่พญาไวเวิร์น', title: 'สองทีม หนึ่งท้องฟ้า', region: 'peak', description: 'ภารกิจจู่โจม ส่งได้ถึง 6 คน แม่พญาไวเวิร์นเฝ้าทางขึ้นปล่องภูเขาไฟ', duration: 170, rank: 'B', difficulty: 230, tags: ['tank', 'magic', 'heal', 'scout'], reward: { gold: 1200, wood: 16, stone: 30, herb: 14, rep: 150, xp: 210 }, cost: { gold: 100, herb: 4 }, energy: 30, enemy: 'แม่พญาไวเวิร์น', requires: 'drakes', story: true },
-  { id: 'dragon', scenario: 'explore', raid: true, name: 'ราชันมังกรเพลิง', title: 'ปลุกหรือกล่อมให้หลับ', region: 'peak', description: 'ภารกิจจู่โจมบทสุดท้าย ส่งได้ถึง 6 คน ราชันมังกรเพลิงกำลังตื่นจากการหลับใหลร้อยปี', duration: 200, rank: 'B', difficulty: 300, tags: ['tank', 'magic', 'heal', 'scout'], reward: { gold: 2400, wood: 30, stone: 40, herb: 30, rep: 260, xp: 320 }, cost: { gold: 150, herb: 6 }, energy: 32, enemy: 'ราชันมังกรเพลิง', requires: 'matriarch', story: true, final: true },
+  { id: 'matriarch', scenario: 'explore', raid: true, name: 'ยอดแหลมของแม่พญาไวเวิร์น', title: 'สองทีม หนึ่งท้องฟ้า', region: 'peak', description: 'ภารกิจจู่โจม รับได้ถึง 6 คน แม่พญาไวเวิร์นเฝ้าทางขึ้นปล่องภูเขาไฟ', duration: 170, rank: 'B', difficulty: 230, tags: ['tank', 'magic', 'heal', 'scout'], reward: { gold: 1200, wood: 16, stone: 30, herb: 14, rep: 150, xp: 210 }, cost: { gold: 100, herb: 4 }, energy: 30, enemy: 'แม่พญาไวเวิร์น', requires: 'drakes', story: true },
+  { id: 'dragon', scenario: 'explore', raid: true, name: 'ราชันมังกรเพลิง', title: 'ปลุกหรือกล่อมให้หลับ', region: 'peak', description: 'ภารกิจจู่โจมบทสุดท้าย รับได้ถึง 6 คน ราชันมังกรเพลิงกำลังตื่นจากการหลับใหลร้อยปี', duration: 200, rank: 'B', difficulty: 300, tags: ['tank', 'magic', 'heal', 'scout'], reward: { gold: 2400, wood: 30, stone: 40, herb: 30, rep: 260, xp: 320 }, cost: { gold: 150, herb: 6 }, energy: 32, enemy: 'ราชันมังกรเพลิง', requires: 'matriarch', story: true, final: true },
 ];
 export const EQUIPMENT = [
   { id: 'oak-blade', name: 'ดาบไม้โอ๊ก', slot: 'weapon', classes: ['warrior'], power: 7, health: 8, cost: { gold: 85, wood: 6, stone: 2 }, unlockRank: 'F', workshopLevel: 1, color: '#c9a579', description: 'ดาบเริ่มต้นที่จับถนัดมือ' },
@@ -179,12 +181,12 @@ export const LOOT = {
 // ---- Petitions: villagers walk to the guild with requests; the guild posts them on the board. ----
 /** Share of the client's fee paid to the adventurers; the guild keeps the rest as commission. */
 export const PAYOUT_PLANS = {
-  generous: { name: 'ใจดี', share: 0.8, eager: 1.8, readiness: 0.85, morale: 6, description: 'นักผจญภัยได้ 80% รีบมาหยิบงาน ขวัญดีขึ้น' },
-  standard: { name: 'มาตรฐาน', share: 0.65, eager: 1, readiness: 0.95, morale: 0, description: 'นักผจญภัยได้ 65% กิลด์ได้ 35%' },
-  thrifty: { name: 'ประหยัด', share: 0.5, eager: 0.45, readiness: 1.1, morale: -6, description: 'กิลด์ได้ครึ่งหนึ่ง แต่ไม่ค่อยมีใครอยากหยิบงาน' },
+  generous: { name: 'ใจดี', share: 0.8, eager: 1.8, readiness: 0.9, morale: 6, description: 'นักผจญภัยได้ 80% รีบมาหยิบงาน ขวัญดีขึ้น' },
+  standard: { name: 'มาตรฐาน', share: 0.65, eager: 1, readiness: 1, morale: 0, description: 'นักผจญภัยได้ 65% กิลด์ได้ 35%' },
+  thrifty: { name: 'ประหยัด', share: 0.5, eager: 0.45, readiness: 1.15, morale: -6, description: 'กิลด์ได้ครึ่งหนึ่ง แต่ไม่ค่อยมีใครอยากหยิบงาน' },
 };
 /** Client fee as a multiple of the quest's listed gold. */
-export const FEE_MULTIPLIER = 2.8;
+export const FEE_MULTIPLIER = 2.1;
 export const VILLAGER_NAMES = ['ป้าบัว', 'ลุงมั่น', 'น้องข้าวปุ้น', 'คุณนายพลอย', 'ตาโต', 'ยายเย็น', 'พี่ต้นกล้า', 'ช่างหิน', 'แม่ค้าส้มจี๊ด', 'คนเลี้ยงแกะ', 'หนูน้ำผึ้ง', 'ลุงคนเฝ้าสะพาน', 'นักเดินทางผ่านทาง', 'คุณครูดาว'];
 export const PETITION_LINES = {
   patrol: 'ทางกลับบ้านมีเสียงแปลก ๆ ตอนเย็น ช่วยไปดูให้หน่อยได้ไหม',
@@ -209,22 +211,33 @@ export const PETITION_LINES = {
 };
 
 // ---- Idle guild upgrades: levels with growing cost, each a small permanent boost. ----
+/** Guild staff: hired by the guild master, paid each morning, better with every few days on the job, and seen at work in the hall. */
+export const STAFF = {
+  receptionist: { name: 'พนักงานต้อนรับ', icon: '🛎', needs: 'reception', hire: 150, salary: 14, desc: 'รับคำร้องขึ้นกระดานทันที ชาวบ้านมาส่งคำร้องถี่ขึ้น 8% ต่อเลเวล' },
+  registrar: { name: 'นายทะเบียน', icon: '📒', needs: 'reception', hire: 220, salary: 18, desc: 'นักผจญภัยหน้าใหม่มาลงทะเบียนเร็วขึ้น 15% ต่อเลเวล และมาพร้อมประสบการณ์มากขึ้น' },
+  appraiser: { name: 'นักประเมินราคา', icon: '🔍', needs: 'appraisal', hire: 260, salary: 20, desc: 'ได้ส่วนต่างเพิ่ม 4% ต่อเลเวลจากทุกของที่รับซื้อ' },
+  scout: { name: 'หน่วยข่าว', icon: '🦅', needs: 'dispatch', hire: 320, salary: 26, desc: 'รู้ข่าวมอนบุกและบอสโลกล่วงหน้า 25 วินาทีต่อเลเวล เรียกคนกลับมาเตรียมตัว ศัตรูอ่อนลง 6% ต่อเลเวล' },
+  bartender: { name: 'บาร์เทนเดอร์', icon: '🍺', needs: 'bar', hire: 180, salary: 15, desc: 'ยืนหลังเคาน์เตอร์ รินเครื่องดื่มให้คนที่นั่งบาร์ รายได้บาร์ +20% ต่อเลเวล และคนที่แวะอารมณ์ดีขึ้น' },
+  cook: { name: 'แม่ครัว', icon: '🍲', needs: 'kitchen', hire: 200, salary: 16, desc: 'ทำอาหารที่เตาแล้วยกไปเสิร์ฟที่โต๊ะอาหาร อาหารดีขึ้น: ราคาอาหาร +15% ต่อเลเวล และคนที่นั่งกินฟื้นแรงมากขึ้น' },
+};
+export const STAFF_MAX_LEVEL = 5;
 export const GUILD_UPGRADES = {
   signboard: { name: 'ป้ายประกาศกิลด์', icon: '📜', max: 10, base: { gold: 140, wood: 4 }, growth: 1.55, description: 'ชาวบ้านมาส่งคำร้องถี่ขึ้น 10% ต่อระดับ' },
   contracts: { name: 'สมุดสัญญา', icon: '✒', max: 10, base: { gold: 200, stone: 2 }, growth: 1.6, description: 'ค่านายหน้ากิลด์เพิ่ม 4% ของค่าจ้างต่อระดับ' },
-  clerk: { name: 'เสมียนต้อนรับ', icon: '🛎', max: 5, base: { gold: 260, wood: 6 }, growth: 1.8, description: 'รับคำร้องทั่วไปขึ้นกระดานทันทีที่ชาวบ้านมาถึง และชาวบ้านรอนานขึ้น' },
   storehouse: { name: 'โกดังกิลด์', icon: '📦', max: 8, base: { gold: 160, wood: 12 }, growth: 1.55, description: 'เก็บของที่รับซื้อจากนักผจญภัยได้เพิ่มอีก 40 ชิ้นต่อระดับ' },
   trophyHall: { name: 'หอเกียรติยศ', icon: '🏆', max: 5, base: { gold: 2400, stone: 30 }, growth: 1.7, description: 'จัดแสดงถ้วยรางวัลและชิ้นส่วนบอส ชื่อเสียงจากงานทุกชิ้น +6% ต่อระดับ และผู้มาชมจ่ายค่าเข้า 30 G ต่อระดับทุกวัน' },
   coffer: { name: 'กองทุนกิลด์', icon: '◈', max: 12, base: { gold: 180 }, growth: 1.6, description: 'ดอกผล 0.25 G ต่อวินาทีต่อระดับ เก็บต่อแม้ปิดเกม (สูงสุด 2 ชั่วโมง)' },
 };
 
 // ---- The village: homes and businesses that grow with prosperity. ----
+/** Most adventurers a town of each level draws in (also limited by lodging: the inn and rooms let in houses). */
+export const TOWN_CAPS = [15, 20, 25, 40, 60];
 export const VILLAGE_LEVELS = [
   { level: 1, prosperity: 0, population: 0, name: 'หมู่บ้านเล็ก ๆ' },
   { level: 2, prosperity: 250, population: 10, name: 'หมู่บ้านอบอุ่น' },
   { level: 3, prosperity: 900, population: 20, name: 'หมู่บ้านคึกคัก' },
   { level: 4, prosperity: 2600, population: 34, name: 'ตำบลริมทาง' },
-  { level: 5, prosperity: 8500, population: 55, name: 'เมืองใบอ่อน' },
+  { level: 5, prosperity: 16000, population: 60, name: 'เมืองใบอ่อน' },
 ];
 /** Homes grow by themselves when what their families need is close by. */
 export const HOUSE_TIERS = [
@@ -248,7 +261,9 @@ export const HOUSE_UPGRADES = [
   { needs: ['food', 'goods', 'road', 'safety', 'leisure'], level: 3, time: 380 },
 ];
 export const VILLAGE_PROJECTS = {
-  house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง' },
+  clinic: { name: 'คลินิก', icon: '🩹', max: 3, villageLevel: 1, base: { gold: 260, wood: 14, stone: 10 }, growth: 1.9, prosperity: 140, description: 'หมอรักษาบาดแผลให้นักผจญภัยที่อยู่ในเมือง แผลหายเร็วขึ้นต่อระดับ ไม่ต้องรอเตียงในกิลด์' },
+  inn: { name: 'โรงเตี๊ยม', icon: '🛏', max: 4, villageLevel: 1, base: { gold: 180, wood: 16, stone: 6 }, growth: 1.75, prosperity: 120, description: 'ต่อเติมห้องพักให้นักผจญภัยอีก 8 คนต่อระดับ คนมาอยู่เมืองได้มากขึ้น' },
+  house: { name: 'บ้านใหม่', icon: '🏠', max: 10, villageLevel: 1, base: { gold: 160, wood: 14, stone: 4 }, growth: 1.28, prosperity: 60, description: 'ครอบครัวใหม่ย้ายมา คำร้องมาถี่ขึ้น 12% ต่อหลัง และมีห้องเช่าให้นักผจญภัย 2 คน' },
   shop: { name: 'ร้านค้า', icon: '🛍', max: 3, villageLevel: 1, base: { gold: 240, wood: 14, stone: 6 }, growth: 1.9, prosperity: 140, description: 'ขายเสบียงและยาให้นักผจญภัยด้วยเงินของพวกเขาเอง (ใช้สมุนไพรจากตลาด) · ขนมช่วยขวัญ · กิลด์ได้ค่าเช่าวันละ 20 G ต่อระดับ' },
   market: { name: 'ตลาดนัด', icon: '🧺', max: 3, villageLevel: 2, base: { gold: 420, wood: 20, stone: 14 }, growth: 1.9, prosperity: 200, description: 'แผงค้าส่งไม้ หิน สมุนไพรให้กิลด์ทุกวัน และเก็บค่าแผง 0.15 G/วินาทีต่อระดับ' },
   dojo: { name: 'โรงฝึก', icon: '🥋', max: 3, villageLevel: 1, base: { gold: 280, wood: 20, stone: 8 }, growth: 2, prosperity: 160, description: 'นักผจญภัยจ่ายค่าเรียนเองเพื่อฝึกกับครู ได้ XP มาก (วันละ 1 คอร์สต่อระดับ) · พิธีเปลี่ยนคลาสขั้น 2 ระดับ 3 สำหรับคลาสขั้น 3 ในเกมเต็ม' },
@@ -290,15 +305,19 @@ export const VILLAGE_LOTS = {
   fairground: { x: 14, y: 28.6, seed: 197 },
   monument: { x: 15.5, y: 18.6, seed: 211 },
   stage: { x: -17, y: 25, seed: 199 },
+  clinic: { x: 21, y: 13, seed: 223, style: 'clinic' },
 };
 /** Footprints of village buildings on the world grid (width, depth). */
-export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4], auction: [2.6, 2.5], fairground: [5, 4], stage: [3.4, 2.8], monument: [2, 2] };
+export const BUILDING_FOOTPRINTS = { house: [2.6, 2.5], shop: [2.6, 2.3], smithy: [4, 2.4], dojo: [3.6, 3], market: [3.2, 3], arena: [4.2, 3.4], tannery: [2.6, 2.3], apothecary: [2.4, 2.3], jeweler: [2.4, 2.2], caravan: [2.8, 2.4], auction: [2.6, 2.5], fairground: [5, 4], stage: [3.4, 2.8], monument: [2, 2], clinic: [2.6, 2.4] };
 /** Every village business the player can build (houses aside). */
-export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan', 'auction', 'fairground', 'stage', 'monument'];
+export const VILLAGE_BUSINESSES = ['shop', 'market', 'smithy', 'dojo', 'arena', 'tannery', 'apothecary', 'jeweler', 'caravan', 'auction', 'fairground', 'stage', 'monument', 'clinic'];
 
 // ---- Applicants: fame draws newcomers to the door; famous adventurers come only when the guild suits them. ----
 export const TRAIT_NAMES = ['ใจเย็น', 'ช่างสังเกต', 'ใฝ่รู้', 'อ่อนโยน', 'รักอิสระ', 'ขยัน', 'ร่าเริง', 'รอบคอบ', 'กล้าหาญ', 'ช่างพูด', 'อดทน', 'สุขุม'];
-export const ROOKIE_NAMES = ['ปิ่น', 'ต้นข้าว', 'โอ๊ต', 'มะปราง', 'ภู', 'น้ำหวาน', 'กิ่ง', 'ตะวัน', 'ใบเตย', 'ก้อนหิน', 'ฝ้าย', 'เมฆ', 'แพรว', 'บุญมา', 'ขนุน', 'ดาวเรือง', 'สายลม', 'ปุยฝ้าย'];
+export const ROOKIE_NAMES = ['ปิ่น', 'ต้นข้าว', 'โอ๊ต', 'มะปราง', 'ภู', 'น้ำหวาน', 'กิ่ง', 'ตะวัน', 'ใบเตย', 'ก้อนหิน', 'ฝ้าย', 'เมฆ', 'แพรว', 'บุญมา', 'ขนุน', 'ดาวเรือง', 'สายลม', 'ปุยฝ้าย',
+  'ข้าวหอม', 'มะลิ', 'พายุ', 'ลำธาร', 'ส้มโอ', 'ไผ่', 'หมอก', 'ทองดี', 'เพชร', 'รุ้ง', 'ขิง', 'ตาล', 'นิล', 'แสงเดือน', 'ใบบัว', 'โกโก้', 'ทับทิม', 'ศิลา', 'วายุ', 'ชบา',
+  'มินท์', 'แก้ว', 'อัคนี', 'ดอกแก้ว', 'กระถิน', 'ปลายฟ้า', 'โบตั๋น', 'คีรี', 'ธารา', 'ฟ้าใส', 'น้ำค้าง', 'ลูกชิ้น', 'ทรายทอง', 'เกล็ด', 'จันทร์', 'สน', 'ลูกเกด', 'มะนาว', 'ภูผา', 'นที',
+  'ฟางข้าว', 'พริกไทย', 'ข้าวโพด', 'ดาวเหนือ', 'กาแฟ', 'ปลาทู', 'เมล็ด', 'ฝนพรำ', 'อำพัน', 'คราม', 'ปีกนก', 'ทานตะวัน', 'เทียน', 'ลูกหว้า'];
 export const ROOKIE_LINES = ['เด็กจากหมู่บ้านข้าง ๆ ที่อยากเห็นโลกกว้าง', 'เคยช่วยพ่อเฝ้าไร่ เลยไม่กลัวหมูป่า', 'อ่านนิทานนักผจญภัยจนจำได้ทุกเล่ม', 'ฝึกมาเองจากหนังสือเก่า ๆ ในห้องสมุด', 'มาตามคำบอกเล่าว่ากิลด์นี้ใจดี', 'อยากเก็บเงินซื้อดาบเล่มแรกของตัวเอง', 'ได้ยินชื่อกิลด์จากชาวบ้านที่เคยได้รับความช่วยเหลือ'];
 export const HAIR_COLORS = ['#5b4637', '#8b5a3c', '#d9b26f', '#a66c59', '#6f6a8f', '#e9e2d0', '#73818d', '#c79894', '#82976a'];
 

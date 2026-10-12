@@ -16,11 +16,11 @@ let projection=null;
 const q=(x,y,z=0)=>{if(projection){const p=projection;[x,y]=p.r===1?[p.h-y,x]:p.r===2?[p.w-x,p.h-y]:p.r===3?[y,p.w-x]:[x,y];}return[(x-y)*CELL_W,(x+y)*CELL_H-z];};
 function face(c,points,color,edge){const p=points.map(v=>q(...v));P(c,p,color);if(edge)for(let i=0;i<p.length;i++)L(c,...p[i],...p[(i+1)%p.length],edge);}
 function top(c,x,y,w,h,z,color,edge){face(c,[[x,y,z],[x+w,y,z],[x+w,y+h,z],[x,y+h,z]],color,edge);}
-function cube(c,x,y,w,h,z,height,color=C.wood,light=C.light,dark=C.edge){
+function cube(c,x,y,w,h,z,height,color=C.wood,light=C.light,dark=C.edge,ink=C.ink){
  const r=projection?.r||0,yy=r===1||r===2?y:y+h,xx=r===2||r===3?x:x+w;
- face(c,[[x,yy,z],[x+w,yy,z],[x+w,yy,z+height],[x,yy,z+height]],color,C.ink);
- face(c,[[xx,y,z],[xx,y+h,z],[xx,y+h,z+height],[xx,y,z+height]],dark,C.ink);
- top(c,x,y,w,h,z+height,light,C.ink);
+ face(c,[[x,yy,z],[x+w,yy,z],[x+w,yy,z+height],[x,yy,z+height]],color,ink);
+ face(c,[[xx,y,z],[xx,y+h,z],[xx,y+h,z+height],[xx,y,z+height]],dark,ink);
+ top(c,x,y,w,h,z+height,light,ink);
 }
 
 function stroke(c,a,b,color,width=1){L(c,...q(...a),...q(...b),color,width);}
@@ -82,6 +82,44 @@ export function makeRoom(f){
  const d=FACILITIES[f.type],w=d.w,h=d.h;
  const sprite=object(c=>{const previous=projection;projection={r:f.rotation||0,w,h};try{
   if(f.type==='reception'){table(c,1.95,.9);top(c,.35,.12,.7,.46,17.2,'#f6ead0',C.edge);stroke(c,[.43,.2,17.4],[.89,.2,17.4],'#bba787');cube(c,1.38,.22,.2,.2,17,5);}
+  else if(f.type==='bar'){
+   // Back wall: two shelves of bottles and a pair of kegs; the bartender works in the gap behind the counter.
+   cube(c,.05,0,2.4,.22,0,36,'#7a5a40','#a8805a','#5f4532');
+   for(const [z,row] of [[14,0],[25,1]]){top(c,.05,.02,2.4,.2,z,'#b98a60');for(let i=0;i<9;i++){const[x,y]=q(.18+i*.26,.1,z+1);const col=['#7fb0c8','#c98a72','#9fd06a','#e8c070','#b98ad1'][(i+row*2)%5];R(c,x-1,y-8,3,8,col);R(c,x,y-10,1,2,'#5a4a3a');R(c,x-1,y-5,3,1,'#fff7ea');}}
+   for(const x of [.25,2.05]){cube(c,x,.28,.32,.3,0,10,'#9a6a46','#c48a5a','#7a5034');const[kx,ky]=q(x+.16,.43,6);R(c,kx-6,ky-1,12,1,'#5a4a3a');}
+   // The counter: dark wood front, a light top with taps, mugs and a towel.
+   cube(c,.05,.78,2.4,.34,0,15,'#8a5f40','#c9965f','#6b4632');top(c,0,.74,2.5,.42,15,'#d8ab73',C.edge);top(c,0,.74,2.5,.06,15.2,'#e9c48c');
+   for(const x of [.7,1.1]){const[tx,ty]=q(x,.86,16);R(c,tx-1,ty-8,2,8,'#b8946a');R(c,tx-3,ty-9,6,2,'#d9b26f');R(c,tx-1,ty-10,2,1,'#fff7ea');}
+   for(const x of [1.55,1.85,2.15]){const[mx,my]=q(x,.95,16);R(c,mx-2,my-5,4,5,'#e8d29a');R(c,mx-2,my-6,4,1,'#fff7ea');R(c,mx+2,my-4,1,2,'#c9b077');}
+   {const[wx,wy]=q(.35,.98,16);R(c,wx-3,wy-1,6,2,'#f4f1ea');R(c,wx-3,wy,6,1,'#d9584a');}
+   // Four stools along the front for the customers.
+   for(let i=0;i<4;i++){const x=.35+i*.6,y=1.35;for(const [dx,dy] of [[-.09,-.09],[.05,-.09],[-.09,.05],[.05,.05]])cube(c,x+dx,y+dy,.05,.05,0,10,'#b88d60','#e2c08f','#9a7350',null);cube(c,x-.08,y-.08,.16,.16,4,1,'#c9a074','#f0d6a8','#a8805a','#9a7350');const[sx,sy]=q(x,y,10);E(c,sx,sy+1,8,4,'#6b4a32');E(c,sx,sy,8,4,'#b84a3a');E(c,sx-2,sy-1,3,1,'#d9786a');}
+   // A hanging lantern over the counter.
+   {const[lx,ly]=q(1.25,.5,44);R(c,lx,ly-12,1,12,'#5a4a3a');R(c,lx-3,ly,7,6,'#5a4a3a');R(c,lx-2,ly+1,5,4,'#ffe08a');}}
+  else if(f.type==='dining'){
+   // A real table on four turned legs with a cloth runner, plates, bread and a jug; four wooden chairs with backs.
+   // Painted back to front: the chairs behind the table first, then the table, then the chairs in front.
+   // A round table on a single turned pedestal: a ring of wood, a round cloth, four plates, bread and a jug.
+   const tableArt=()=>{const cx=.875,cy=.875,r=.48,z=12,ring=(rad,zz)=>Array.from({length:24},(_,k)=>{const a=k/24*Math.PI*2;return q(cx+Math.cos(a)*rad,cy+Math.sin(a)*rad,zz);});
+    P(c,ring(r*.75,0),'#8b80634a');
+    cube(c,cx-.05,cy-.05,.1,.1,1,z-1,'#b08458','#e2bb86','#8a6442');P(c,ring(.2,0),'#a87a52');P(c,ring(.16,1),'#c99a68');
+    const top0=ring(r,z),top1=ring(r,z+2);P(c,[...top0.slice(0,13),...top1.slice(0,13).reverse()],'#b88a5e');P(c,top1,'#e8c896');for(let k=0;k<24;k++)L(c,...top1[k],...top1[(k+1)%24],'#a87a52');
+    P(c,ring(r*.5,z+2.1),'#f6efdf');
+    for(const a of [0,Math.PI/2,Math.PI,Math.PI*1.5]){const[px,py]=q(cx+Math.cos(a)*r*.52,cy+Math.sin(a)*r*.52,z+2.3);E(c,px,py,4,2,'#fff7ea');E(c,px,py,2,1,'#e8d2b0');}
+    {const[bx,by]=q(cx,cy,z+3);E(c,bx,by-1,5,3,'#b8864a');R(c,bx-3,by-4,2,2,'#e8b46a');R(c,bx+1,by-4,2,2,'#e8b46a');}
+    {const[jx,jy]=q(cx+.16,cy-.16,z+3);R(c,jx-2,jy-6,4,6,'#8fb3c9');R(c,jx-2,jy-7,4,1,'#c8e4ef');R(c,jx+2,jy-5,1,3,'#8fb3c9');}};
+   const chair=(cx,cy,back)=>{const s2=.15,legs=[[cx-s2,cy-s2],[cx+s2-.06,cy-s2],[cx-s2,cy+s2-.06],[cx+s2-.06,cy+s2-.06]];
+    const backArt=()=>{const posts=back==='n'?[[cx-s2,cy-s2],[cx+s2-.06,cy-s2]]:back==='s'?[[cx-s2,cy+s2-.06],[cx+s2-.06,cy+s2-.06]]:back==='w'?[[cx-s2,cy-s2],[cx-s2,cy+s2-.06]]:[[cx+s2-.06,cy-s2],[cx+s2-.06,cy+s2-.06]];
+     for(const [x,y] of posts)cube(c,x,y,.06,.06,7,5,'#b88d60','#e2c08f','#9a7350',null);
+     const rail=back==='n'||back==='s'?[cx-s2,posts[0][1],s2*2,.06]:[posts[0][0],cy-s2,.06,s2*2];cube(c,rail[0],rail[1],rail[2],rail[3],10.5,2,'#c9a074','#f0d6a8','#a8805a','#9a7350');};
+    const seatArt=()=>{for(const [x,y] of legs)cube(c,x,y,.06,.06,0,5.5,'#b88d60','#e2c08f','#9a7350',null);cube(c,cx-s2,cy-s2,s2*2,s2*2,5.5,1.5,'#c9a074','#f0d6a8','#a8805a','#9a7350');top(c,cx-s2+.04,cy-s2+.04,s2*2-.08,s2*2-.08,7.1,'#e07a68');};
+    if(back==='n'||back==='w'){backArt();seatArt();}else{seatArt();backArt();}};
+   chair(.875,.13,'n');chair(.13,.875,'w');tableArt();chair(1.62,.875,'e');chair(.875,1.62,'s');}
+  else if(f.type==='appraisal'){
+   // A cloth-covered table with a balance scale, a loupe and a gem being weighed.
+   table(c,1.42,.9);top(c,.12,.12,1.18,.62,17.2,'#c9b6d9',C.edge);
+   const[x,y]=q(.45,.42,18);R(c,x,y-14,1,14,'#8a6446');L(c,x-8,y-13,x+8,y-13,'#8a6446',2);E(c,x-8,y-9,4,2,'#d9b26f');E(c,x+8,y-10,4,2,'#d9b26f');R(c,x+7,y-13,3,3,'#7fb6d6');
+   const[gx,gy]=q(1.05,.4,18);E(c,gx,gy-3,4,4,'#5f5a5a');E(c,gx,gy-3,3,3,'#bfe3f0');L(c,gx+3,gy,gx+7,gy+4,'#8a6446',2);}
   else if(f.type==='dorm')bed(c,'#b5adc9');
   else if(f.type==='infirmary')bed(c,'#a6bfae',true);
   else if(f.type==='kitchen'){furnace(c);cube(c,.67,.1,.3,.64,0,12,'#b99370','#e6c697','#94745a');const[x,y]=q(.35,.3,17);E(c,x,y,6,3,'#8d998f');E(c,x,y-2,4,2,'#d6c7a5');}
@@ -215,6 +253,7 @@ export const HOME_STYLES={
  jeweler:{w:2.4,h:2.2,z:36,ridge:'y',roof:'slate',wall:'stone',sign:'gem',shutters:'#6f8fb0',lantern:true},
  caravan:{w:2.8,h:2.4,z:30,ridge:'x',roof:'terra',wall:'timber',sign:'cart',porch:true,woodpile:true,lantern:true},
  auction:{w:2.6,h:2.5,z:56,ridge:'x',roof:'plum',wall:'stone',storeys:2,sign:'gem',lantern:true,porch:true,shutters:'#c98a72'},
+ clinic:{w:2.6,h:2.4,z:36,ridge:'x',roof:'slate',wall:'plaster',awning:['#f4f1ea','#d9584a'],sign:'cross',chimney:[2.1,.5],flowers:true,lantern:true},
  store:{w:2.6,h:2.3,z:32,ridge:'x',roof:'moss',wall:'timber',awning:['#7fa37a','#f4e5c9'],sign:'bag',chimney:[2.1,.5],flowers:true},
 };
 /** The arena where the guild association holds rank exams: a sand ring with a fence, banners and, as it grows, stands. */
@@ -321,7 +360,7 @@ export function makeHome(name,seed=1){
   if(s.chimney){const [cx,cy]=s.chimney,base=ridge==='y'?z+pitch*(1-Math.abs(cx+.18-w/2)/(w/2+o)):z+pitch*(1-Math.abs(cy+.18-h/2)/(h/2+o));cube(c,cx,cy,.36,.36,base-8,22,'#b8b0a0','#d6cfbe','#948c7d');top(c,cx+.06,cy+.06,.24,.24,base+14.2,'#4f4540');smoke=q(cx+.18,cy+.18,base+16);}
   if(s.forge){cube(c,w+.15,.3,.9,1.5,0,18,'#a59e8b','#8f877a','#857d70');face(c,[[w+.1,.2,24],[w+1.15,.2,16],[w+1.15,1.9,16],[w+.1,1.9,24]],r1,C.ink);quad((u,zz)=>[w+1.05,u,zz],.55,1.25,0,11,'#3f3530');quad((u,zz)=>[w+1.06,u,zz],.7,1.1,1,6,'#e8935a');quad((u,zz)=>[w+1.07,u,zz],.8,1,1,4,'#fff1c4');cube(c,w+1.3,1.55,.35,.22,0,6,'#5f5a5a','#8a8484','#4a4545');cube(c,w+1.22,1.5,.5,.32,6,3,'#5f5a5a','#9a9494','#4a4545');}
   if(s.sign){const at=ridge==='x'?F:S,u=ridge==='x'?w-.12:.12,[sx,sy]=q(...(at===F?F(w+.05,z-6):S(-.05,z-6)));R(c,sx,sy,9,1,C.ink);R(c,sx+2,sy+1,1,3,C.ink);R(c,sx+7,sy+1,1,3,C.ink);R(c,sx,sy+4,10,9,C.edge);R(c,sx+1,sy+5,8,7,'#e8c99a');
-   if(s.sign==='bread'){E(c,sx+5,sy+9,3,2,'#c98a4a');R(c,sx+3,sy+8,1,1,'#f0c890');R(c,sx+6,sy+8,1,1,'#f0c890');}else if(s.sign==='sword'){R(c,sx+5,sy+6,1,6,'#8f9a98');R(c,sx+3,sy+10,5,1,'#8a6446');R(c,sx+5,sy+11,1,2,'#8a6446');}else if(s.sign==='bag'){R(c,sx+3,sy+7,4,5,'#c9a06a');R(c,sx+4,sy+6,2,1,'#8a6446');R(c,sx+3,sy+8,4,1,'#e8c070');}else if(s.sign==='potion'){R(c,sx+4,sy+6,2,2,'#b8946a');E(c,sx+5,sy+10,3,2,'#7fb0c8');R(c,sx+4,sy+9,2,1,'#c8e4ef');}else if(s.sign==='hide'){R(c,sx+3,sy+7,5,5,'#a87650');R(c,sx+2,sy+7,1,2,'#a87650');R(c,sx+8,sy+7,1,2,'#a87650');R(c,sx+4,sy+8,3,1,'#c99a72');}else if(s.sign==='gem'){R(c,sx+4,sy+7,3,1,'#bfe3f0');R(c,sx+3,sy+8,5,2,'#7fb6d6');R(c,sx+4,sy+10,3,1,'#5a8fb0');R(c,sx+5,sy+11,1,1,'#5a8fb0');}else if(s.sign==='cart'){R(c,sx+2,sy+7,6,3,'#b0855a');E(c,sx+3,sy+11,1,1,'#5a4a3a');E(c,sx+7,sy+11,1,1,'#5a4a3a');}else if(s.sign==='anvil'){R(c,sx+2,sy+7,6,2,'#5f5a5a');R(c,sx+4,sy+9,2,2,'#5f5a5a');R(c,sx+3,sy+11,4,1,'#5f5a5a');}else{R(c,sx+3,sy+7,4,5,'#e8c070');R(c,sx+3,sy+6,4,1,'#fff7ea');R(c,sx+7,sy+8,1,3,'#b8946a');}}
+   if(s.sign==='bread'){E(c,sx+5,sy+9,3,2,'#c98a4a');R(c,sx+3,sy+8,1,1,'#f0c890');R(c,sx+6,sy+8,1,1,'#f0c890');}else if(s.sign==='sword'){R(c,sx+5,sy+6,1,6,'#8f9a98');R(c,sx+3,sy+10,5,1,'#8a6446');R(c,sx+5,sy+11,1,2,'#8a6446');}else if(s.sign==='bag'){R(c,sx+3,sy+7,4,5,'#c9a06a');R(c,sx+4,sy+6,2,1,'#8a6446');R(c,sx+3,sy+8,4,1,'#e8c070');}else if(s.sign==='potion'){R(c,sx+4,sy+6,2,2,'#b8946a');E(c,sx+5,sy+10,3,2,'#7fb0c8');R(c,sx+4,sy+9,2,1,'#c8e4ef');}else if(s.sign==='hide'){R(c,sx+3,sy+7,5,5,'#a87650');R(c,sx+2,sy+7,1,2,'#a87650');R(c,sx+8,sy+7,1,2,'#a87650');R(c,sx+4,sy+8,3,1,'#c99a72');}else if(s.sign==='gem'){R(c,sx+4,sy+7,3,1,'#bfe3f0');R(c,sx+3,sy+8,5,2,'#7fb6d6');R(c,sx+4,sy+10,3,1,'#5a8fb0');R(c,sx+5,sy+11,1,1,'#5a8fb0');}else if(s.sign==='cart'){R(c,sx+2,sy+7,6,3,'#b0855a');E(c,sx+3,sy+11,1,1,'#5a4a3a');E(c,sx+7,sy+11,1,1,'#5a4a3a');}else if(s.sign==='cross'){R(c,sx+2,sy+6,6,6,'#fff7ea');R(c,sx+4,sy+7,2,4,'#d9584a');R(c,sx+3,sy+8,4,2,'#d9584a');}else if(s.sign==='anvil'){R(c,sx+2,sy+7,6,2,'#5f5a5a');R(c,sx+4,sy+9,2,2,'#5f5a5a');R(c,sx+3,sy+11,4,1,'#5f5a5a');}else{R(c,sx+3,sy+7,4,5,'#e8c070');R(c,sx+3,sy+6,4,1,'#fff7ea');R(c,sx+7,sy+8,1,3,'#b8946a');}}
   if(s.lantern){const [lx,ly]=q(...F(.15,z/2-4));R(c,lx-2,ly-6,5,6,'#5a463f');R(c,lx-1,ly-5,3,4,'#f4d48a');R(c,lx,ly-8,1,2,'#5a463f');}
   if(s.woodpile){for(let k=0;k<3;k++)for(let m=0;m<3-k;m++){const [lx,ly]=q(w+.18,.3+m*.28+k*.14,3+k*5);E(c,lx,ly,2.6,2.6,'#8a6446');E(c,lx,ly,1.4,1.4,'#d9b083');}}
  });

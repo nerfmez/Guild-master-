@@ -1,9 +1,9 @@
 import { SITE_COTTAGES,SITE_TREES,SITE_BUSHES,siteDecorations,siteRoads,buildingRect,partitionSize,partitionRect,pointInRect } from './site.js';
-import { FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,MONSTER_STATS,JOBS,VILLAGE_BUSINESSES,JOB_COMBAT } from './content.js';
+import { STAFF,FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,MONSTER_STATS,JOBS,VILLAGE_BUSINESSES,JOB_COMBAT } from './content.js';
 import { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome } from './game.js';
 import { makeActorTexture,villagerLook,applicantLook } from './render.js';
 import { drainFx } from './life.js';
-import { pathTier, footprintOf, ROTATABLE, homeOf } from './town.js';
+import { pathTier, footprintOf, ROTATABLE, homeOf, villageBuildings, doorOf, population } from './town.js';
 const SHOT_COLORS={arrow:0xc9a06a,pierce:0xf3e2b0,magic:0xb7a6ff,bolt:0xf08a4b,fire:0xf08a4b,frostbolt:0x9fd3f0,frost:0x9fd3f0,spark:0xc9dcff,light:0xfff1c4,note:0xf2b8d8};
 import { QUESTS,REGIONS } from './content.js';
 import { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog } from './overworld.js';
@@ -27,23 +27,24 @@ export class GuildRenderer {
   if(location.protocol!=='content:'){try{context=canvas.getContext('webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true})||canvas.getContext('experimental-webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true});if(context?.isContextLost())context=null;}catch{}}
   this.start(context?Phaser.WEBGL:Phaser.CANVAS,context);
   // Mobile browsers may wipe canvases of a backgrounded tab; baked textures are then blank.
-  this.repairs=[];const check=()=>{if(!document.hidden)this.checkScene();};
-  setInterval(check,3000);document.addEventListener('visibilitychange',()=>setTimeout(check,400));window.addEventListener('pageshow',()=>setTimeout(check,400));
+  this.repairs=[];const check=deep=>{if(!document.hidden)this.checkScene(deep);};
+  // The cheap test runs every few seconds; reading the drawn frame back stalls the GPU, so that only runs when the page comes back to the front.
+  setInterval(()=>check(false),3000);document.addEventListener('visibilitychange',()=>setTimeout(()=>check(true),400));window.addEventListener('pageshow',()=>setTimeout(()=>check(true),400));
  }
- sceneBlank(){
+ sceneBlank(deep=true){
   // A wiped texture canvas reads as fully transparent, although it was painted opaque.
   if(this.grassCanvas){try{if(this.grassCanvas.getContext('2d').getImageData(0,0,1,1).data[3]===0)return true;}catch{}}
   // At the default view the hall is centred; a scene of only the clear colour drew nothing.
-  if(this.userPanned||this.zoom!==1||!this.canvas.width||!this.canvas.height)return false;
+  if(!deep||this.userPanned||this.zoom!==1||!this.canvas.width||!this.canvas.height)return false;
   try{const probe=this.probe||(this.probe=document.createElement('canvas'));probe.width=40;probe.height=24;const c=probe.getContext('2d',{willReadFrequently:true});c.imageSmoothingEnabled=false;
    const w=this.canvas.width,h=this.canvas.height;c.drawImage(this.canvas,w*.3,h*.3,w*.4,h*.4,0,0,40,24);
    const a=c.getImageData(0,0,40,24).data;let other=0;for(let i=0;i<a.length;i+=4)if(Math.abs(a[i]-156)+Math.abs(a[i+1]-172)+Math.abs(a[i+2]-125)>12)other++;
    return other<10;}catch{return false;}
  }
- checkScene(){
-  if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank())return;
+ checkScene(deep=true){
+  if(!this.ready||Date.now()-this.readyAt<1500||!this.sceneBlank(deep))return;
   const now=Date.now();this.repairs=this.repairs.filter(t=>now-t<60000);
-  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R40',null,()=>this.recoverCanvas(undefined,true));return;}
+  if(this.repairs.length>=3){window.guildBoot?.show('ฉากกิลด์ไม่แสดงภาพ · R46',null,()=>this.recoverCanvas(undefined,true));return;}
   this.repairs.push(now);console.warn('Guild scene blank; redrawing');window.guildBoot?.note('blank '+(this.renderType===Phaser.WEBGL?'webgl':'canvas')+' '+this.canvas.width+'x'+this.canvas.height);this.recoverCanvas(undefined,true);
  }
  showStatus(text,retry=false){const node=document.getElementById('scene-status');if(!node)return;node.hidden=false;node.querySelector('span').textContent=text;const button=node.querySelector('button');button.hidden=!retry;button.onclick=()=>this.recoverCanvas(undefined,true);}
@@ -79,14 +80,13 @@ export class GuildRenderer {
   this.width=this.game.scale.width;this.height=this.game.scale.height;
   const base=makeGround(this.state),grass=document.createElement('canvas');grass.width=128;grass.height=128;
   this.grassCanvas=grass;const gc=grass.getContext('2d');gc.fillStyle='#9cac7d';gc.fillRect(0,0,128,128);let grassSeed=3187;const randomGrass=()=>{grassSeed=(Math.imul(grassSeed,1664525)+1013904223)>>>0;return grassSeed/4294967296;};for(let i=0;i<280;i++){gc.fillStyle=['#97a776','#a8b586','#8fa477','#b9c68d'][i%4];gc.fillRect(Math.floor(randomGrass()*128),Math.floor(randomGrass()*128),1+Math.floor(randomGrass()*5),1);}this.texture('meadow',grass);
-  // A flat backdrop under the painted ground; a tiled sprite this size cost about a second to build on tablets.
-  this.scene.add.rectangle(-1700,-1200,5400,3000,0x9cac7d).setOrigin(0).setDepth(-10000);
+  // No backdrop object under the painted ground: the camera clears to the same grass colour, which saves a full-screen fill each frame.
   this.groundImage=this.scene.add.image(0,0,this.texture('ground',base.canvas)).setOrigin(0).setDepth(-9999);
   this.decorate();this.ghost=this.scene.add.graphics().setDepth(9999);this.bindInput();
   this.game.scale.on('resize',size=>{this.width=size.width;this.height=size.height;this.applyView();});
   this.center();this.rebuild();this.syncActors();this.canvas.dataset.renderer='Phaser '+(this.renderType===Phaser.WEBGL?'WebGL':'Canvas');
   clearTimeout(this.bootTimer);window.guildBoot?.ready();const status=document.getElementById('scene-status');if(status)status.hidden=true;
-  this.readyAt=Date.now();if(this.renderType===Phaser.CANVAS){this.canvas.addEventListener('contextlost',()=>window.guildBoot?.note('context lost'),{once:true});}if(this.renderType===Phaser.CANVAS)this.canvas.addEventListener('contextrestored',()=>this.recoverCanvas(undefined,true),{once:true});
+  this.readyAt=Date.now();for(const ms of [2000,6000])setTimeout(()=>{if(!document.hidden)this.checkScene(true);},ms);if(this.renderType===Phaser.CANVAS){this.canvas.addEventListener('contextlost',()=>window.guildBoot?.note('context lost'),{once:true});}if(this.renderType===Phaser.CANVAS)this.canvas.addEventListener('contextrestored',()=>this.recoverCanvas(undefined,true),{once:true});
   if(this.renderType===Phaser.WEBGL)this.canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();queueMicrotask(()=>this.recoverCanvas());},{once:true});
   this.refreshPlacement();this.canvas.dispatchEvent(new CustomEvent('guild-renderer-ready'));
  }
@@ -325,6 +325,11 @@ export class GuildRenderer {
   for(const fog of this.fogs||[])fog.image.setPosition(fog.x+Math.sin(t*.12+fog.phase)*40,fog.y+Math.cos(t*.09+fog.phase)*10).setAlpha(.4+Math.sin(t*.3+fog.phase)*.15);
   for(const a of this.animated||[])if(a.image.visible)a.image.setTexture(`${a.key}-${Math.floor(t*a.fps+a.phase)%a.frames}`);
   // Only draw world props near the view.
+  // Phaser submits every visible object, on screen or not: leave out whatever lies well outside the view.
+  // The camera filter hides an object from this camera without touching its own visibility, which the game logic owns.
+  {const cam=this.camera,v=cam?.worldView;if(v){const moved=Math.abs(v.x-(this.cullAt?.x??1e9))+Math.abs(v.y-(this.cullAt?.y??1e9))+Math.abs(v.width-(this.cullAt?.w??0))*2;this.viewClock=(this.viewClock||0)-dt;
+   if(this.viewClock<=0||moved>90){this.viewClock=.2;this.cullAt={x:v.x,y:v.y,w:v.width};const m=160,x0=v.x-m,x1=v.right+m,y0=v.y-m,y1=v.bottom+m,id=cam.id;
+    for(const o of this.scene.children.list){if(o.type==='Graphics'||o.type==='Container'||o.scrollFactorX!==1||o.noCull)continue;const w=o.displayWidth||0,h=o.displayHeight||0,l=o.x-(o.originX||0)*w,t=o.y-(o.originY||0)*h;o.cameraFilter=l>x1||l+w<x0||t>y1||t+h<y0?id:0;}}}}
   this.cullClock=(this.cullClock||0)-dt;if(this.cullClock<=0&&this.camera){this.cullClock=.25;const v=this.camera.worldView,m=220;for(const c of this.groundChunks||[])c.image?.setVisible(c.left<v.right+m&&c.left+c.size>v.x-m&&c.top<v.bottom+m&&c.top+c.size>v.y-m);for(const img of this.worldProps||[])img.setVisible(img.x+img.width>v.x-m&&img.x<v.right+m&&img.y+img.height>v.y-m&&img.y<v.bottom+m);for(const f of this.foes){const p=gridPoint(f.x,f.y),on=p.x>v.x-m&&p.x<v.right+m&&p.y>v.y-m&&p.y<v.bottom+m+60;f.image.setVisible(on);f.shadow.setVisible(on);}}
   // Mission foes, strike effects and the floating quest tag for each travelling team.
   const live=new Set();
@@ -405,8 +410,10 @@ export class GuildRenderer {
   const sig=JSON.stringify(Object.entries(paths).map(([k,p])=>[k,p.pts.length,p.pts[0],pathTier(p.wear,v.level)]));if(sig===this.pathSig)return;const first=this.pathSig===undefined;this.pathSig=sig;
   setVillagePaths(Object.values(paths).map(p=>p.pts));
   if(this.groundImage&&this.scene.textures.exists('ground')){const terrain=makeGround(this.state);this.groundImage.setTexture(this.texture('ground',terrain.canvas));}
-  if(first||!this.groundChunks)return;
-  const boxes=Object.values(paths).filter(p=>p.pts.length>1).map(p=>{const g=p.pts.map(([x,y])=>gridPoint(x,y));return{x0:Math.min(...g.map(q=>q.x))-60,x1:Math.max(...g.map(q=>q.x))+60,y0:Math.min(...g.map(q=>q.y))-40,y1:Math.max(...g.map(q=>q.y))+40};});
+  if(first||!this.groundChunks){this.pathParts=Object.fromEntries(Object.entries(paths).map(([k,p])=>[k,JSON.stringify([p.pts,pathTier(p.wear,v.level)])]));return;}
+  // Only the chunks a changed path crosses are repainted.
+  const prev=this.pathParts||{},now=this.pathParts=Object.fromEntries(Object.entries(paths).map(([k,p])=>[k,JSON.stringify([p.pts,pathTier(p.wear,v.level)])]));
+  const boxes=Object.entries(paths).filter(([k,p])=>p.pts.length>1&&prev[k]!==now[k]).map(([,p])=>{const g=p.pts.map(([x,y])=>gridPoint(x,y));return{x0:Math.min(...g.map(q=>q.x))-60,x1:Math.max(...g.map(q=>q.x))+60,y0:Math.min(...g.map(q=>q.y))-40,y1:Math.max(...g.map(q=>q.y))+40};});
   for(const c of this.groundChunks)if(boxes.some(b=>b.x1>c.left&&b.x0<c.left+c.size&&b.y1>c.top&&b.y0<c.top+c.size)){if(this.groundJob===c){this.groundJob=null;c.painter=null;}c.stale=true;}}
  syncVillage(){
   this.syncPaths();
@@ -435,7 +442,7 @@ export class GuildRenderer {
   for(let k=this.worldProps.length-1;k>=0;k--){const img=this.worldProps[k];if(img.flora&&this.underBuilding(img.flora.x,img.flora.y)){img.destroy();this.worldProps.splice(k,1);}}
  }
  // ---- Villagers bringing petitions: they walk from home along the road, in through the door, and wait at the desk. ----
- bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
+ bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath','work0','work1','sit0','sit1'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
   for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-villager-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
  villagerRoute(home){const h=petitionHome(home),b=buildingRect(this.state),door=b.x+b.w/2,road=17.5,path=Number.isInteger(home)&&this.state.village?.paths?.['h'+home]?.pts;
   // Villagers keep to the footpath their feet wore from home to the road.
@@ -625,8 +632,54 @@ export class GuildRenderer {
     const p=gridPoint(n.x,n.y),dx=p.x-(s.px??p.x),dy=p.y-(s.py??p.y),moved=Math.hypot(dx,dy)>.05&&playing;s.px=p.x;s.py=p.y;if(moved)s.dir=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
     this.placeBody(s.image,key,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):'idle',s.dir,Math.round(p.y)+.2);});
   }
+  this.updateStaff(dt,playing,sprite,t);
   for(const [id,s] of this.lifeSprites)if(!seen.has(id)){s.image.destroy();s.shadow?.destroy();s.crown?.destroy();s.label?.destroy();this.lifeSprites.delete(id);}
   this.playFx(dt);
+ }
+ // ---- A town that lives: day and night, lamps and a gate as it grows, townsfolk about their day, a party when it levels up. ----
+ cityCanvas(kind,lit){const c=document.createElement('canvas'),g=c.getContext('2d');g.imageSmoothingEnabled=false;const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
+  if(kind==='lamp'){c.width=12;c.height=36;px(5,8,2,27,'#4f4540');px(3,33,6,3,'#4f4540');px(2,2,8,7,'#4f4540');px(3,3,6,5,lit?'#ffe08a':'#d8cfae');px(4,0,4,2,'#4f4540');}
+  else if(kind==='banner'){c.width=14;c.height=40;px(6,0,2,38,'#6f5240');px(3,36,8,4,'#6f5240');px(8,4,6,14,'#c9584a');px(8,18,3,3,'#c9584a');px(11,18,3,3,'#c9584a');px(9,7,3,3,'#ffe08a');}
+  else if(kind==='gate'){c.width=64;c.height=58;px(4,14,10,44,'#9a8f80');px(50,14,10,44,'#9a8f80');px(2,10,14,6,'#7f7466');px(48,10,14,6,'#7f7466');px(4,4,56,8,'#8a6446');px(6,6,52,4,'#b98a60');px(22,0,20,6,'#8a6446');px(26,1,12,3,'#ffe08a');for(let y=18;y<56;y+=8){px(5,y,8,1,'#7f7466');px(51,y,8,1,'#7f7466');}}
+  else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,214,120,.55)');r.addColorStop(1,'rgba(255,214,120,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
+  return c;}
+ // Morning comes at the start of each day; dusk, night and a short dawn close it.
+ darkness(){const t=(this.state.clock||0)/240;return t<.72?0:t<.8?.5*(t-.72)/.08:t<.95?.5:.5*(1-(t-.95)/.05);}
+ updateCity(dt,playing){
+  if(!this.scene)return;const level=getVillageInfo(this.state).level,dark=this.darkness(),t=this.realTime||0;
+  for(const k of ['lamp0','lamp1','banner','gate','glow'])if(!this.scene.textures.exists('city-'+k))this.texture('city-'+k,this.cityCanvas(k.replace(/[01]$/,''),k==='lamp1'));
+  // Night falls over everything except the lamps and the interface.
+  if(!this.night){this.night=this.scene.add.rectangle(0,0,10,10,0x101a3a).setOrigin(0).setScrollFactor(0).setDepth(99970);}
+  const cam=this.camera;if(cam){const z=cam.zoom||1;this.night.setPosition(-cam.width/z,-cam.height/z).setSize(cam.width*3/z,cam.height*3/z);}this.night.setAlpha(dark*.9).setVisible(dark>0.01);
+  // Street furniture by stage: lamps from the third level, a gate from the fourth, banners at the fifth.
+  const key=level+'';if(this.cityKey!==key){this.cityKey=key;for(const o of this.cityProps||[])o.image.destroy(),o.glow?.destroy();this.cityProps=[];
+   const lamps=[[-7.5,16.3],[-1.5,16.3],[4.5,16.3],[17.5,16.3],[23.5,16.3],[29.5,16.3],[35.5,16.3]];
+   if(level>=3)for(const [x,y] of lamps){const p=gridPoint(x,y);this.cityProps.push({kind:'lamp',image:this.scene.add.image(p.x,p.y,'city-lamp0').setOrigin(.5,1).setDepth(p.y),glow:this.scene.add.image(p.x,p.y-30,'city-glow').setDepth(99975).setBlendMode(Phaser.BlendModes.ADD)});}
+   if(level>=4)for(const [x,y] of [[-13.5,17.2],[41,17.2]]){const p=gridPoint(x,y);this.cityProps.push({kind:'gate',image:this.scene.add.image(p.x,p.y,'city-gate').setOrigin(.5,1).setDepth(p.y+1)});}
+   if(level>=5)for(const [x,y] of lamps.filter((_,i)=>i%2===0)){const p=gridPoint(x+.6,y-.3);this.cityProps.push({kind:'banner',image:this.scene.add.image(p.x,p.y,'city-banner').setOrigin(.5,1).setDepth(p.y)});}}
+  for(const o of this.cityProps||[])if(o.kind==='lamp'){o.image.setTexture(dark>.15?'city-lamp1':'city-lamp0');o.glow.setVisible(dark>.15).setAlpha(Math.min(1,dark*2)*(.85+Math.sin(t*3+o.image.x)*.08));}
+  this.updateFolk(dt,playing,dark);
+  // A town that just grew throws a party: fireworks over the rooftops for a few seconds.
+  const at=this.state.village?.celebrateAt;if(at!==undefined&&at!==this.celebrated){if(this.celebrated!==undefined&&this.state.elapsed-at<30)this.fireworks=8;this.celebrated=at;}
+  if(this.fireworks>0&&playing){this.fireworks-=dt;this.fwClock=(this.fwClock||0)-dt;if(this.fwClock<=0){this.fwClock=.35;const p=gridPoint(4+Math.random()*24,10+Math.random()*10),col=[0xffd36a,0xf08a4b,0x9fd6d0,0xd9b8ff,0x9fe08a][Math.floor(Math.random()*5)];this.ring(p.x,p.y-120,col,22+Math.random()*16);this.ring(p.x,p.y-120,0xfff8e7,10);if(Math.random()<.3)this.floatText(p.x,p.y-90,'🎉','#ffe08a',14);}}
+ }
+ updateFolk(dt,playing,dark){
+  // Townsfolk: about one walker for every few people, between their homes and the shops; home at night, running home in a raid.
+  const pop=population(this.state),want=Math.min(24,Math.floor(pop/2.5)),homes=villageBuildings(this.state).filter(b=>b.kind==='house').map(doorOf),shops=villageBuildings(this.state).filter(b=>b.kind!=='house').map(doorOf);
+  this.folk??=[];if(!homes.length){for(const f of this.folk)f.image.destroy();this.folk=[];return;}
+  while(this.folk.length<want){const i=this.folk.length,look=villagerLook({seed:i*7+3,client:'ชาวเมือง'}),key=this.actorKey(look),home=homes[i%homes.length];this.folk.push({key,home,x:home.x,y:home.y,tx:home.x,ty:home.y,wait:Math.random()*8,dir:'south',image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52).setVisible(false),seed:i});}
+  while(this.folk.length>want)this.folk.pop().image.destroy();
+  const raid=(this.state.world?.monsters||[]).some(m=>m.raid&&!m.dead),night=dark>.3,step=playing?dt*(this.state.settings?.speed||1):0;
+  for(const f of this.folk){
+   if(raid||night){f.tx=f.home.x;f.ty=f.home.y;f.wait=2;}
+   const d=Math.hypot(f.tx-f.x,f.ty-f.y),speed=raid?2.4:.8;
+   if(d>.05){const s2=Math.min(d,step*speed);const dx=(f.tx-f.x)/d,dy=(f.ty-f.y)/d;f.x+=dx*s2;f.y+=dy*s2;const sx=dx-dy,sy=dx+dy;f.dir=Math.abs(sx)>Math.abs(sy)?(sx>0?'east':'west'):(sy>0?'south':'north');f.moving=true;}
+   else{f.moving=false;if((f.wait-=step)<=0&&!raid&&!night){f.wait=4+Math.random()*12;const goal=shops.length&&Math.random()<.65?shops[Math.floor(Math.random()*shops.length)]:homes[Math.floor(Math.random()*homes.length)];f.tx=goal.x+(Math.random()-.5)*1.2;f.ty=goal.y+(Math.random()-.5)*.6;}}
+   const atHome=!f.moving&&Math.hypot(f.x-f.home.x,f.y-f.home.y)<.2&&(raid||night);
+   if(atHome){f.image.setVisible(false);continue;}
+   const p=gridPoint(f.x,f.y);this.placeBody(f.image,f.key,null,p,f.moving?'walk'+(Math.floor(this.elapsed*8+f.seed)%4):'idle',f.dir,Math.round(p.y)+.1);
+   if(!f.moving||!f.image.scene)continue;
+  }
  }
  // Damage numbers, skill flashes and knock-outs.
  floatText(x,y,text,color,size=9){
@@ -676,8 +729,62 @@ export class GuildRenderer {
   }
   for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
  }
- roomFor(m){if(this.prepping?.has(m.id)){const board=this.state.facilities.find(f=>f.type==='board');if(board)return board;}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'dorm':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
-  if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','dorm'][hash(m.id)%4];
+ // A point given in a piece of furniture's own frame (before it is turned), as a grid point in the hall.
+ localPoint(f,lx,ly){const d=FACILITIES[f.type],r=f.rotation||0,[x,y]=r===1?[d.h-ly,lx]:r===2?[d.w-lx,d.h-ly]:r===3?[ly,d.w-lx]:[lx,ly];return{x:f.x+x,y:f.y+y};}
+ // Which way to face to look from one grid point at another, in the sprite's screen terms.
+ faceTo(from,to){const a=gridPoint(from.x,from.y),b=gridPoint(to.x,to.y),dx=b.x-a.x,dy=b.y-a.y;return Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}
+ // Stools at the bar and chairs at dining tables, each given to one adventurer who is eating or drinking now.
+ seatPlan(){
+  const key=(this.state.elapsed|0)+'|'+this.state.facilities.length;if(this.seatKey===key&&this.seatCache)return this.seatCache;
+  const seats={bar:[],dining:[]};
+  for(const f of this.state.facilities){
+   if(f.type==='bar')for(let i=0;i<4;i++){const p=this.localPoint(f,.35+i*.6,1.42),face=this.localPoint(f,.35+i*.6,.9);seats.bar.push({f,kind:'bar',...p,dir:this.faceTo(p,face)});}
+   if(f.type==='dining'&&this.state.facilities.some(k=>k.type==='kitchen')){const c=this.localPoint(f,.875,.875);for(const [x,y] of [[.875,.12],[.875,1.62],[.12,.875],[1.62,.875]]){const p=this.localPoint(f,x,y);seats.dining.push({f,kind:'dining',...p,dir:this.faceTo(p,c)});}}
+  }
+  const plan=new Map(),taken=new Set(),now=this.state.elapsed;
+  const guests=this.state.members.filter(m=>m.town?.at==='guild'&&m.atBar!==undefined&&now-m.atBar<45&&m.task==='rest').sort((a,b)=>a.atBar-b.atBar);
+  for(const m of guests){const list=[...(seats[m.seatKind]||[]),...seats[m.seatKind==='bar'?'dining':'bar']];const seat=list.find(x=>!taken.has(x));if(!seat)continue;taken.add(seat);plan.set(m.id,seat);}
+  this.seatKey=key;this.seatCache=plan;return plan;}
+ // Guild staff each doing their own job: the bartender serves the stools, the cook stirs and carries plates, the clerks write, the appraiser weighs, the scout reads the maps.
+ updateStaff(dt,playing,sprite,t){
+  const LOOK={receptionist:{outfit:'#7a9cc9',hair:'#5b4637',hairStyle:'long',hat:2},registrar:{outfit:'#6f8f6a',hair:'#8b5a3c',hairStyle:'short',hat:1},appraiser:{outfit:'#8a6aa8',hair:'#e9e2d0',hairStyle:'short',hat:1},scout:{outfit:'#5f7a5a',hair:'#3b302a',hairStyle:'short',hat:1},bartender:{outfit:'#4a4458',hair:'#a66c59',hairStyle:'short',hat:2},cook:{outfit:'#f1ece0',hair:'#d9b26f',hairStyle:'long',hat:0}};
+  const step=playing?dt*(this.state.settings?.speed||1):0,plan=this.seatPlan();this.staffBots??={};
+  for(const [role,st] of Object.entries(this.state.staff||{})){
+   const def=STAFF[role],f=def&&this.state.facilities.find(x=>x.type===def.needs);if(!f){this.staffBots[role]?.hide?.();continue;}
+   const look={id:'staff-'+role,name:def.name,class:'villager',skin:'#f1c9a5',...LOOK[role]},key=this.actorKey(look),sp=sprite('staff-'+role,()=>({image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52)}));
+   const b=this.staffBots[role]??={x:null,y:null,goal:null,wait:0,carry:false,work:null};
+   const d=getRoomSize(f.type,f.rotation||0),center={x:f.x+d.w/2,y:f.y+d.h/2},e=getFacilityEntry(f),behind={x:center.x+(center.x-e.x)*.85,y:center.y+(center.y-e.y)*.85};
+   // Where this role stands to work, and what it looks at while working.
+   let spot=behind,look2=e;
+   if(role==='bartender'){
+    // Behind the counter: step over to whoever sits on a stool and pour; with nobody there, wipe the counter end to end.
+    const sat=[0,1,2,3].filter(k=>[...plan.values()].some(x=>x.kind==='bar'&&x.f===f&&Math.hypot(x.x-this.localPoint(f,.35+k*.6,1.42).x,x.y-this.localPoint(f,.35+k*.6,1.42).y)<.05));
+    const k=sat.length?sat[Math.floor(t/5)%sat.length]:Math.floor(t/7)%4;spot=this.localPoint(f,.35+k*.6,.52);look2=this.localPoint(f,.35+k*.6,1.4);}
+   else if(role==='registrar'){spot={x:behind.x+(e.y!==center.y?.6:0),y:behind.y+(e.x!==center.x?.6:0)};}
+   else if(role==='receptionist'){spot={x:behind.x-(e.y!==center.y?.6:0),y:behind.y-(e.x!==center.x?.6:0)};}
+   else if(role==='cook'){
+    // Between stirring, the cook carries a plate out to whoever is waiting at a dining table.
+    const diners=[...plan.values()].filter(x=>x.kind==='dining');
+    if(b.carry&&b.target){spot=b.target;}
+    else if(diners.length&&b.wait<=0&&!b.carry){b.carry=true;b.target=diners[Math.floor(Math.random()*diners.length)];b.target={x:b.target.x+(center.x-b.target.x)*.15,y:b.target.y+(center.y-b.target.y)*.15};spot=b.target;}
+   }
+   else if(role==='scout'){const k=Math.floor(t/6)%3;spot=k===0?behind:{x:center.x+(k===1?.6:-.6),y:center.y+(center.y-e.y)*.6};}
+   if(b.x===null){b.x=spot.x;b.y=spot.y;}
+   const dx=spot.x-b.x,dy=spot.y-b.y,dist=Math.hypot(dx,dy),moving=dist>.04&&playing;
+   if(dist>.04){const s2=Math.min(dist,step*1.3);b.x+=dx/dist*s2;b.y+=dy/dist*s2;}
+   else if(role==='cook'){if(b.carry){b.carry=false;b.target=null;b.wait=6;}else b.wait-=step;}
+   const p=gridPoint(b.x,b.y),dir=moving?this.faceTo({x:b.x-dx,y:b.y-dy},spot):this.faceTo(spot,role==='cook'&&!b.carry?center:look2);
+   const pose=moving?'walk'+(Math.floor(this.elapsed*8)%4):role==='scout'&&Math.floor(t/6)%3?'idle':'work'+(Math.floor(t*(role==='bartender'?2.2:role==='cook'?2.6:1.6)+hash(role))%2);
+   this.placeBody(sp.image,key,null,p,pose,pose.startsWith('work')?'south':dir,Math.round(p.y)+.4);
+   // A plate on the cook's hands while serving; a little steam over the pot while cooking.
+   if(role==='cook'){sp.dish??=this.scene.add.image(0,0,this.emoteTexture('dish')).setOrigin(.5,1);sp.dish.setVisible(b.carry).setPosition(Math.round(p.x+5),Math.round(p.y-14)).setDepth(Math.round(p.y)+.5);}
+  }
+ }
+ roomFor(m){if(this.prepping?.has(m.id)){const board=this.state.facilities.find(f=>f.type==='board');if(board)return board;}
+  const seat=this.seatPlan().get(m.id);if(seat)return seat.f;
+  // Adventurers dropping in from town read the board, chat at the counter or eat at the kitchen.
+  if(m.town?.at==='guild'&&m.task==='rest'&&!(m.injury>15)){const bar=this.state.facilities.filter(f=>f.type==='bar');if(bar.length&&m.atBar&&this.state.elapsed-m.atBar<40)return bar[hash(m.id)%bar.length];const types=['board','reception','appraisal','lounge','board'];for(let i=0;i<types.length;i++){const f=this.state.facilities.find(f=>f.type===types[(hash(m.id)+i)%types.length]);if(f)return f;}}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'kitchen':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
+  if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','board'][hash(m.id)%4];
   // Sleepers and patients are spread over every bed, two to a bed, instead of crowding the first one.
   if(type==='dorm'||type==='infirmary'){const plan=this.bedPlan();const f=plan.get(m.id);if(f)return f;if(type==='dorm'&&this.wantsBed(m))return this.state.facilities.find(f=>f.type==='reception')||this.state.facilities[0];}
   return this.state.facilities.find(f=>f.type===type)||this.state.facilities[0];}
@@ -685,7 +792,7 @@ export class GuildRenderer {
  bedPlan(){
   const key=this.state.elapsed|0;if(this.bedPlanKey===key&&this.bedPlanCache)return this.bedPlanCache;
   const plan=new Map(),away=new Set((this.state.missions||[]).filter(x=>x.status==='active'||x.status==='decision').flatMap(x=>x.memberIds));
-  for(const type of ['infirmary','dorm']){const beds=this.state.facilities.filter(f=>f.type===type);let slot=0;
+  for(const type of ['infirmary']){const beds=this.state.facilities.filter(f=>f.type===type);let slot=0;
    for(const m of [...this.state.members].sort((a,b)=>a.id<b.id?-1:1)){if(plan.has(m.id)||away.has(m.id)||m.errand)continue;const wants=type==='infirmary'?m.injury>0:!m.injury&&m.task==='rest'&&m.energy<95&&!m.waitingReason;if(!wants)continue;
     if(slot>=beds.length*2)break;plan.set(m.id,beds[slot%beds.length]);slot++;}}
   this.bedPlanKey=key;this.bedPlanCache=plan;return plan;}
@@ -701,7 +808,8 @@ export class GuildRenderer {
    const entry=getFacilityEntry(room),hall=buildingRect(this.state),idle=m.energy>=95&&!m.injury&&m.task==='rest',index=this.state.members.findIndex(other=>other.id===m.id);
    // Spread people sharing a room point into a small cluster so nobody stands inside anybody else.
    const spread=[[0,0],[.5,0],[-.5,0],[.25,.45],[-.25,.45],[.75,.45],[-.75,.45],[0,.9]][slot%8],shift=roommates.length===2?-.25:0;
-   const logical=idle?this.idleSpots[index]:{x:entry.x+spread[0]+shift,y:entry.y+spread[1]};
+   const seat=this.seatPlan().get(m.id);
+   const logical=seat?{x:seat.x,y:seat.y}:idle?this.idleSpots[index]:{x:entry.x+spread[0]+shift,y:entry.y+spread[1]};
    const target=gridPoint(logical.x,logical.y);
    let a=this.actors.get(m.id);if(!a){
     this.bakeActor(m);
@@ -710,7 +818,9 @@ export class GuildRenderer {
     if(this.arrivals?.delete(m.id)&&!this.frozen){const door=hall.x+hall.w/2,start=gridPoint(door,hall.y+hall.h+3),inside=gridPoint(door,hall.y+hall.h-.5);a.x=start.x;a.y=start.y;a.image.setPosition(start.x,start.y);a.path=[inside,...this.pathBetween(inside.x,inside.y,target.x,target.y)];}
    }
    if(a.class!==m.class){this.bakeActor(m);a.class=m.class;}
-   if(a.roomId!==room.id||(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>3)){a.path=this.pathBetween(a.x,a.y,target.x,target.y);a.roomId=room.id;}
+   // Seats sit inside a table's footprint: walk to the nearest open floor, then the last step onto the chair.
+   if(a.roomId!==room.id||(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>(seat?1:3))){a.path=[...this.pathBetween(a.x,a.y,target.x,target.y),target];a.roomId=room.id;}
+   a.seat=seat||null;
    const anchor=room.x+','+room.y+','+room.rotation;if(a.roomAnchor&&a.roomAnchor!==anchor){a.x=target.x;a.y=target.y;a.path=[];}a.roomAnchor=anchor;
    a.member=m;a.home=target;a.logicalHome=logical;a.away=away.has(m.id);if(!a.away)a.image.setVisible(true);if(this.frozen){a.x=target.x;a.y=target.y;}
   }
@@ -721,7 +831,7 @@ export class GuildRenderer {
  assignBeds(){
   const pillow=(f,lx)=>{const d=FACILITIES[f.type],r=f.rotation||0,ly=.33,[x,y]=r===1?[d.h-ly,lx]:r===2?[d.w-lx,d.h-ly]:r===3?[ly,d.w-lx]:[lx,ly];const p=gridPoint(f.x+x,f.y+y),base=gridPoint(f.x,f.y);return{x:p.x,y:p.y-13,depth:base.y+(d.w+d.h)*6+1};};
   const used=new Map();
-  for(const a of this.actors.values()){a.bed=null;const m=a.member;if(!m||a.away||m.id==='master')continue;const f=this.state.facilities.find(f=>f.id===a.roomId);if(!f||!['dorm','infirmary'].includes(f.type))continue;
+  for(const a of this.actors.values()){a.bed=null;const m=a.member;if(!m||a.away||m.id==='master'||m.town)continue;const f=this.state.facilities.find(f=>f.id===a.roomId);if(!f||!['dorm','infirmary'].includes(f.type))continue;
    const wants=f.type==='dorm'?m.task==='rest'&&m.energy<95&&!m.injury&&!m.waitingReason:m.injury>0;if(!wants)continue;
    const k=used.get(f.id)||0;if(k>=2)continue;used.set(f.id,k+1);a.bed=pillow(f,k?.68:.3);}
  }
@@ -741,11 +851,15 @@ export class GuildRenderer {
  }
  arrive(ids){this.arrivals??=new Set();for(const id of ids)this.arrivals.add(id);}
  bakeActor(m){for(const direction of ['south','east','north','west']){
-  for(const pose of direction==='south'?['idle','breath','blink','sleep','train0','train1','work0','work1','bed']:['idle','breath','blink','sleep','train0','train1','work0','work1'])this.texture(`actor-${m.id}-${m.class}-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
+  for(const pose of direction==='south'?['idle','breath','blink','sleep','train0','train1','work0','work1','bed','sit0','sit1']:['idle','breath','blink','sleep','train0','train1','work0','work1','sit0','sit1'])this.texture(`actor-${m.id}-${m.class}-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
   for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
  emoteTexture(kind){const key='emote-'+kind;if(this.scene.textures.exists(key))return key;const c=document.createElement('canvas');c.width=14;c.height=12;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
   const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
   if(kind==='z'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(4,3,6,1,'#6f6a8f');px(8,4,2,1,'#6f6a8f');px(6,5,2,1,'#6f6a8f');px(4,6,2,1,'#6f6a8f');px(4,7,6,1,'#6f6a8f');}
+  else if(kind==='sad'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#e6ecf2');px(3,3,8,3,'#8f9db0');px(4,2,5,1,'#8f9db0');px(4,7,1,2,'#6fa8d8');px(7,7,1,2,'#6fa8d8');px(9,6,1,2,'#6fa8d8');}
+  else if(kind==='gear'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff1c4');px(3,8,2,1,'#8a6446');px(4,7,2,1,'#8f9a98');px(6,5,2,1,'#8f9a98');px(8,3,2,1,'#8f9a98');px(7,6,1,1,'#d9584a');px(6,4,1,1,'#d9584a');}
+  else if(kind==='dish'){px(0,6,14,3,'#4f4540');px(1,6,12,2,'#fff7ea');px(3,3,8,3,'#e8b46a');px(5,2,4,1,'#9fd06a');}
+  else if(kind==='bag'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(4,4,6,5,'#c9a06a');px(5,3,4,1,'#8a6446');px(6,6,2,1,'#d9584a');}
   else{px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(6,3,2,6,'#d98978');px(4,5,6,2,'#d98978');}
   this.texture(key,c);return key;}
  pathBetween(sx,sy,tx,ty){return findWalkPath(this.state,gridPosition(sx,sy),gridPosition(tx,ty)).map(p=>gridPoint(p.x,p.y));}
@@ -754,23 +868,37 @@ export class GuildRenderer {
   if(!this.ready)return;const playing=!this.frozen&&!document.hidden&&!this.state.settings?.paused&&!document.getElementById('confirm-dialog').open&&!document.getElementById('settings-dialog').open;
   const elapsed=playing?dt*(this.state.settings?.speed||1):0;this.elapsed+=elapsed;this.realTime=(this.realTime||0)+dt;
   for(const a of this.actors.values()){
-   if(a.away){a.emote?.setVisible(false);const hunter=this.state.world?.hunters?.find(h=>h.id===a.member.id);if(a.member.errand)this.updateErrand(a,playing);else if(hunter)this.updateHunter(a,hunter,playing);else this.updateTraveler(a,playing);continue;}a.image.setRotation(0);a.clock+=elapsed;
-   if(!a.path?.length&&a.clock>6){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
+   if(a.away){a.emote?.setVisible(false);const hunter=this.state.world?.hunters?.find(h=>h.id===a.member.id);if(a.member.errand)this.updateErrand(a,playing);else if(hunter)this.updateHunter(a,hunter,playing);else this.updateTraveler(a,playing);continue;}
+   // At home in town: their room at the inn (out of sight), the market and the streets, or a visit inside the guild hall.
+   const tw=a.member.town;
+   if(tw&&tw.at!=='guild'){a.bed=null;a.inTown=true;if(tw.at==='lodge'){a.image.setVisible(false);a.emote?.setVisible(false);continue;}
+    const p=gridPoint(tw.x,tw.y),dx=p.x-a.x,dy=p.y-a.y,moved=Math.hypot(dx,dy)>.05&&playing;if(moved)a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');a.x=p.x;a.y=p.y;
+    const tt=this.realTime+(hash(a.member.id)%97)/13;this.placeBody(a.image,`actor-${a.member.id}-${a.member.class}`,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):tt%4.3<.15?'blink':Math.floor(tt*1.5)%2?'breath':'idle',a.direction,Math.round(p.y)+.3);
+    // What troubles them shows over their head: a bandage, sleepiness, a rain cloud, a broken blade, an empty bag.
+    const mm=a.member,ek=mm.injury>20?'heal':mm.energy<35?'z':mm.morale<35?'sad':mm.equipment?.weapon&&(mm.wear?.weapon??100)<25?'gear':!(mm.pack?.ration>0)&&!(mm.pack?.potion>0)&&hash(mm.id)%3===0?'bag':null;
+    if(ek){if(!a.emote)a.emote=this.scene.add.image(0,0,this.emoteTexture(ek)).setOrigin(.5,1);if(a.emoteKind!==ek){a.emote.setTexture(this.emoteTexture(ek));a.emoteKind=ek;}a.emote.setVisible(true).setPosition(Math.round(p.x+7),Math.round(p.y-24+Math.sin(tt*2.2)*1.5)).setDepth(Math.round(p.y)+1).setAlpha(.9);}else a.emote?.setVisible(false);
+    continue;}
+   if(a.inTown){a.inTown=false;const hall=buildingRect(this.state),inside=gridPoint(hall.x+hall.w/2,hall.y+hall.h-.5);a.x=inside.x;a.y=inside.y;a.path=this.pathBetween(inside.x,inside.y,a.home.x,a.home.y);}
+   a.image.setRotation(0);a.clock+=elapsed;
+   if(!a.path?.length&&a.clock>6&&!a.seat){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
    const p=a.path?.[0];let walking=false;if(p){const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy);walking=d>1;
     if(d<=1)a.path.shift();else{const step=Math.min(d,elapsed*22);a.x+=dx/d*step;a.y+=dy/d*step;a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}}
    // Pose from activity: stride while walking, otherwise train / work / sleep at home, or breathe and blink.
    const m=a.member,home=!a.path?.length,t=this.realTime+(hash(m.id)%97)/13;let pose;
-   if(walking&&playing)pose='walk'+(Math.floor(this.elapsed*8)%4);
+   if(a.seat&&home&&!walking){pose=(Math.floor(t*.8+hash(m.id))%3===0)?'sit1':'sit0';a.direction=a.seat.dir;}
+   else if(walking&&playing)pose='walk'+(Math.floor(this.elapsed*8)%4);
    else if(home&&m.task==='train'&&!m.waitingReason)pose='train'+(Math.floor(t*2.4)%2);
    else if(home&&m.task==='work')pose='work'+(Math.floor(t*2.2)%2);
-   else if(home&&m.task==='rest'&&m.energy<95&&!m.waitingReason&&!m.injury)pose='sleep';
+   else if(home&&m.task==='rest'&&m.energy<95&&!m.waitingReason&&!m.injury&&!m.town)pose='sleep';
    else pose=t%4.3<.15?'blink':Math.floor(t*1.5)%2?'breath':'idle';
    const inBed=a.bed&&home&&!walking&&(pose==='sleep'||m.injury>0);if(inBed)pose='bed';else if(pose==='sleep')pose=Math.floor(t*1.2)%2?'breath':'idle';
-   const facing=pose.startsWith('walk')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
+   const facing=pose.startsWith('walk')||pose.startsWith('sit')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
    a.image.setTexture(`actor-${m.id}-${m.class}-${facing}-${pose}`);
    if(inBed)a.image.setPosition(Math.round(a.bed.x),Math.round(a.bed.y)).setDepth(a.bed.depth+(hash(m.id)%89)/1000);
+   // Seated on a stool or chair: lifted onto the seat and drawn over it.
+   else if(pose.startsWith('sit'))a.image.setPosition(Math.round(a.x),Math.round(a.y)-(a.seat?.kind==='bar'?7:6)).setDepth(Math.round(a.y)+2+(hash(m.id)%89)/100);
    else a.image.setPosition(Math.round(a.x),Math.round(a.y)).setDepth(Math.round(a.y)+(hash(m.id)%89)/100);
-   const emote=pose==='sleep'||(pose==='bed'&&!m.injury)?'z':home&&m.injury>0?'heal':null;
+   const emote=pose==='sleep'||(pose==='bed'&&!m.injury)?'z':home&&m.injury>20?'heal':null;
    if(emote){if(!a.emote)a.emote=this.scene.add.image(0,0,this.emoteTexture(emote)).setOrigin(.5,1);if(a.emoteKind!==emote){a.emote.setTexture(this.emoteTexture(emote));a.emoteKind=emote;}
     const float=Math.sin(t*2.2)*1.5;const ex=inBed?a.bed.x+5:a.x+7,ey=inBed?a.bed.y-12:a.y-24;a.emote.setVisible(true).setPosition(Math.round(ex),Math.round(ey+float)).setDepth((inBed?a.bed.depth:Math.round(a.y))+1).setAlpha(.75+Math.sin(t*2.2)*.25);}
    else a.emote?.setVisible(false);
@@ -779,6 +907,7 @@ export class GuildRenderer {
   this.updateWorld(dt,playing);
   this.updateVillagers(dt,playing);
   this.updateLife(dt,playing);
+  this.updateCity(dt,playing);
   this.updateHero(dt);
   // Follow a watched team until the player drags the view or the team is home.
   if(this.follow){
