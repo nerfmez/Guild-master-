@@ -606,8 +606,8 @@ const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])
   this.updateNodes();
   if(!h?.active){if(this.heroImage)this.heroImage.setVisible(false);this.heroMarks?.clear();this.heroCam=false;return;}
   if(master)master.image.setVisible(false);
-  const p=this.state.profile||{masterName:'หัวหน้ากิลด์',hair:'#5b4637',outfit:'#6f8f6a',skin:'#f1c9a5',hairStyle:'short'},cls=h.classChosen?h.cls:'master',m={id:'master',name:p.masterName,class:cls,hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle};
-  if(!this.scene.textures.exists(`actor-master-${cls}-south-idle`))this.bakeActor(m);
+  const p=this.state.profile||{masterName:'หัวหน้ากิลด์',hair:'#5b4637',outfit:'#6f8f6a',skin:'#f1c9a5',hairStyle:'short'},cls=h.classChosen?h.cls:'master',m={id:'master',name:p.masterName,class:cls,hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle,outfitStyle:p.outfitStyle};
+  const look=JSON.stringify([cls,p.hair,p.outfit,p.skin,p.hairStyle,p.outfitStyle]);if(this.heroLook!==look||!this.scene.textures.exists(`actor-master-${cls}-south-idle`)){this.bakeActor(m);this.heroLook=look;}
   this.heroImage??=this.scene.add.image(0,0,`actor-master-${cls}-south-idle`).setOrigin(.5,48/52);
   const at=gridPoint(h.x,h.y),sx=h.fx-h.fy,sy=h.fx+h.fy,dir=Math.abs(sx)>Math.abs(sy)?(sx>0?'east':'west'):(sy>0?'south':'north');
   const pose=h.down>0?'sleep':h.swing>0?(h.swing>.12?'train0':'train1'):h.moving?'walk'+(Math.floor((this.realTime||0)*10)%4):Math.floor((this.realTime||0)*1.5)%2?'breath':'idle';
@@ -1074,7 +1074,7 @@ const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])
   // The player's guild master keeps the reception desk, or waits by the door before it exists.
   const p=this.state.profile,old=this.actors.get('master');
   if(!p){if(old){old.image.destroy();this.actors.delete('master');}return;}
-  const m={id:'master',name:p.masterName,class:'master',hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle},look=[p.hair,p.outfit,p.skin,p.hairStyle].join();
+  const m={id:'master',name:p.masterName,class:'master',hair:p.hair,outfit:p.outfit,skin:p.skin,hairStyle:p.hairStyle,outfitStyle:p.outfitStyle},look=[p.hair,p.outfit,p.skin,p.hairStyle,p.outfitStyle].join();
   const desk=this.state.facilities.find(f=>f.type==='reception'),hall=buildingRect(this.state);
   // Behind the counter, on the far side from where visitors stand.
   const logical=desk?(()=>{const e=getFacilityEntry(desk),d=getRoomSize(desk.type,desk.rotation||0),cx=desk.x+d.w/2,cy=desk.y+d.h/2;return{x:cx+(cx-e.x)*.9,y:cy+(cy-e.y)*.9};})():{x:hall.x+hall.w/2,y:hall.y+hall.h-.8};

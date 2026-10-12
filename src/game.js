@@ -132,7 +132,12 @@ export const PROFILE_LOOKS = {
   hair: ['#5b4637', '#8b5a3c', '#d9b26f', '#a66c59', '#6f6a8f', '#e9e2d0'],
   outfit: ['#d98978', '#94b7c5', '#90b89c', '#b7aec9', '#e7bd74', '#8a7a68'],
   skin: ['#f7d4ae', '#e8b88c', '#b9805a'],
-  hairStyle: ['short', 'long'],
+  hairStyle: ['short', 'long', 'bob', 'ponytail', 'bun', 'spiky'],
+  outfitStyle: ['tunic', 'coat', 'robe', 'armor', 'cape'],
+};
+export const PROFILE_STYLE_NAMES = {
+  hairStyle: { short: 'สั้น', long: 'ยาว', bob: 'บ๊อบ', ponytail: 'หางม้า', bun: 'มวยผม', spiky: 'ตั้งแหลม' },
+  outfitStyle: { tunic: 'เสื้อกิลด์', coat: 'เสื้อโค้ต', robe: 'ชุดคลุมยาว', armor: 'เกราะเบา', cape: 'ผ้าคลุมไหล่' },
 };
 export const GUILD_BANNER_COLORS = [
   { id: '#ad8175', name: 'ดินเผา' }, { id: '#6689a5', name: 'ฟ้าคราม' }, { id: '#68896b', name: 'เขียวใบไม้' },
@@ -140,7 +145,7 @@ export const GUILD_BANNER_COLORS = [
   { id: '#b65f69', name: 'แดงกุหลาบ' },
 ];
 export const GUILD_EMBLEMS = GUILD_SYMBOLS.map(({ id, name }) => ({ id, name }));
-export const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ดาวเหนือ', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short', bannerColor: GUILD_BANNER_COLORS[0].id, bannerSymbol: 'leaf' };
+export const DEFAULT_PROFILE = { masterName: 'หัวหน้ากิลด์', guildName: 'กิลด์ดาวเหนือ', hair: PROFILE_LOOKS.hair[0], outfit: PROFILE_LOOKS.outfit[0], skin: PROFILE_LOOKS.skin[0], hairStyle: 'short', outfitStyle: 'tunic', bannerColor: GUILD_BANNER_COLORS[0].id, bannerSymbol: 'leaf' };
 /** Clean player-entered names and look choices; unknown values fall back to defaults. */
 export function normalizeProfile(input = {}) {
   const text = (value, fallback) => { const clean = String(value ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20); return clean || fallback; };
@@ -148,7 +153,7 @@ export function normalizeProfile(input = {}) {
   const bannerColor = GUILD_BANNER_COLORS.some(color => color.id === input.bannerColor) ? input.bannerColor : DEFAULT_PROFILE.bannerColor;
   const bannerSymbol = GUILD_EMBLEMS.some(symbol => symbol.id === input.bannerSymbol) ? input.bannerSymbol : DEFAULT_PROFILE.bannerSymbol;
   return { masterName: text(input.masterName, DEFAULT_PROFILE.masterName), guildName: text(input.guildName, DEFAULT_PROFILE.guildName),
-    hair: pick('hair', input.hair), outfit: pick('outfit', input.outfit), skin: pick('skin', input.skin), hairStyle: pick('hairStyle', input.hairStyle), bannerColor, bannerSymbol };
+    hair: pick('hair', input.hair), outfit: pick('outfit', input.outfit), skin: pick('skin', input.skin), hairStyle: pick('hairStyle', input.hairStyle), outfitStyle: pick('outfitStyle', input.outfitStyle), bannerColor, bannerSymbol };
 }
 
 export const INTRO_STEPS = ['reception', 'board', 'training', 'patrol', 'wait', 'visit', 'done'];

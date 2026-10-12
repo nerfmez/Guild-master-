@@ -214,7 +214,8 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
   const hair=member.hair||MEMBER_ART[member.id]?.hair||['#795b50','#ad785e','#d9be87','#706175','#8b7760','#cfaaa4'][n%6];
   const base=JOBS[member.class]?.parent||member.class||role;
   const master=role==='master',villager=role==='villager',mage=base==='mage'||/mage|sage/.test(role),healer=base==='healer'||/heal|cleric|bard/.test(role),archer=base==='archer'||/arch|ranger|scout/.test(role);
-  const back=direction==='north',side=direction==='east'||direction==='west',robe=mage||healer,long=member.hairStyle==='long';
+  const player=member.id==='master',clothing=player?(member.outfitStyle||'tunic'):null,hairstyle=member.hairStyle||'short';
+  const back=direction==='north',side=direction==='east'||direction==='west',robe=player?clothing==='robe':mage||healer,long=hairstyle==='long';
   const stride=walking?Math.sin(phase):0,step=walking?(stride>.3?1:stride<-.3?-1:0):0,hop=walking&&Math.abs(stride)>.6?-1:0;
   const breathe=pose==='breath'?1:0,sleep=pose==='sleep',blink=pose==='blink'||sleep;
   const train=pose==='train0'?0:pose==='train1'?1:-1,work=pose==='work0'?0:pose==='work1'?1:-1;
@@ -243,8 +244,9 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
   rect(c,-3+(side?step:0),-3+(step>0?-1:0),2,1,pants);rect(c,1-(side?step:0),-3+(step<0?-1:0),2,1,pants);}
   c.translate(0,hop);
   if(archer&&back){rect(c,-3,-10,2,5,P.woodDark);rect(c,-3,-11,1,1,P.coralLight);}
+  if(clothing==='cape'){poly(c,[[-6,-10],[6,-10],[7,-2],[-7,-2]],OUTLINE);poly(c,[[-5,-9],[5,-9],[6,-3],[-6,-3]],dark);rect(c,-5,-3,10,1,P.gold);}
   // Body: tunic or robe with a lit side and a shaded side.
-  if(robe){rect(c,-5,-6,10,4,OUTLINE);rect(c,-4,-6,8,3,color);rect(c,-4,-4,8,1,dark);}
+  if(robe||clothing==='coat'){rect(c,-5,-6,10,4,OUTLINE);rect(c,-4,-6,8,3,color);rect(c,-4,-4,8,1,dark);}
   rect(c,-4,-9+breathe,8,6-breathe,OUTLINE);rect(c,-3,-8+breathe,6,4-breathe,color);rect(c,-3,-8+breathe,1,3,light);rect(c,2,-8+breathe,1,4-breathe,dark);
   if(!back){if(master){rect(c,-2,-8+breathe,1,1,P.cream);rect(c,-1,-7+breathe,1,1,P.cream);rect(c,0,-6,1,1,P.cream);}
    else if(villager){if(n%2)rect(c,-2,-7+breathe,4,3,P.cream);}
@@ -252,6 +254,12 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
    else if(!robe&&!archer)rect(c,-3,-8+breathe,6,1,'#dfe6e2');
    else if(archer){rect(c,-2,-8+breathe,1,1,P.woodDark);rect(c,-1,-7+breathe,1,1,P.woodDark);rect(c,0,-6,1,1,P.woodDark);}}
   rect(c,-3,-5,6,1,'#8a6a4a');
+  if(player){
+    if(clothing==='coat'){rect(c,-1,-8,2,6,dark);rect(c,-3,-8,2,2,P.cream);rect(c,1,-8,2,2,P.cream);rect(c,1,-5,1,1,P.gold);rect(c,1,-3,1,1,P.gold);}
+    else if(clothing==='robe'){rect(c,-1,-8,2,6,light);rect(c,-3,-3,6,1,P.gold);}
+    else if(clothing==='armor'){rect(c,-3,-8,6,3,'#bbc9cd');rect(c,-3,-8,2,3,'#e8ede4');rect(c,2,-8,1,3,'#7e969c');rect(c,-6,-9,3,2,'#bbc9cd');rect(c,3,-9,3,2,'#bbc9cd');rect(c,-1,-6,2,1,P.gold);}
+    else if(clothing==='cape'){rect(c,-3,-9,6,2,P.cream);rect(c,-1,-8,2,2,P.gold);}
+  }
   // Arms: a coloured pixel column outlined on the outside, hands in skin.
   const swing=walking?step:0,raised=(train===0||work===0)&&!sit,forward=train===1||work===1||(sit&&!sip);
   rect(c,-6,-8-swing+breathe,2,4,OUTLINE);rect(c,-5,-8-swing+breathe,1,3,color);rect(c,-5,-5-swing+breathe,1,1,skin);
@@ -274,12 +282,16 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
     else{if(blink){rect(c,-3,-12,2,1,eye);rect(c,1,-12,2,1,eye);}else{rect(c,-3,-13,1,2,eye);rect(c,2,-13,1,2,eye);}
       rect(c,-4,-11,1,1,'#f19a8a');rect(c,3,-11,1,1,'#f19a8a');if(!sleep)rect(c,0,-11,1,1,'#c98b78');}
   }
+  if(hairstyle==='bob'){rect(c,-6,-16,2,6,hair);rect(c,4,-16,2,6,hair);rect(c,-5,-11,1,1,hairLight);if(back){rect(c,-5,-13,10,4,hair);rect(c,-4,-10,8,1,hairLight);}}
+  else if(hairstyle==='ponytail'){const hx=side?-8:5;rect(c,hx-1,-17,4,8,OUTLINE);rect(c,hx,-16,2,7,hair);rect(c,hx,-16,2,1,P.gold);rect(c,hx,-12,1,2,hairLight);}
+  else if(hairstyle==='bun'){rect(c,0,-23,6,5,OUTLINE);rect(c,1,-22,4,3,hair);rect(c,2,-22,2,1,hairLight);rect(c,0,-19,5,1,P.gold);}
+  else if(hairstyle==='spiky'){poly(c,[[-6,-17],[-5,-22],[-2,-19],[0,-24],[2,-20],[5,-22],[6,-16]],hair);rect(c,-1,-21,1,2,hairLight);}
   // Headwear by class.
-  if(mage){rect(c,-7,-18,14,1,OUTLINE);rect(c,-6,-18,12,1,dark);poly(c,[[-4,-18],[4,-18],[1,-24],[-1,-25]],OUTLINE);poly(c,[[-3,-18],[3,-18],[0,-23]],color);rect(c,-3,-19,6,1,P.gold);}
-  else if(healer){rect(c,-5,-20,10,3,OUTLINE);rect(c,-4,-20,8,2,P.cream);rect(c,0,-20,1,2,P.coral);rect(c,-1,-19,3,1,P.coral);}
-  else if(archer){rect(c,-6,-19,12,3,OUTLINE);rect(c,-5,-19,10,2,P.sage);rect(c,-4,-19,4,1,P.mint);rect(c,3,-22,1,3,P.coralLight);rect(c,4,-23,1,2,P.coralLight);}
+  if(mage&&!player){rect(c,-7,-18,14,1,OUTLINE);rect(c,-6,-18,12,1,dark);poly(c,[[-4,-18],[4,-18],[1,-24],[-1,-25]],OUTLINE);poly(c,[[-3,-18],[3,-18],[0,-23]],color);rect(c,-3,-19,6,1,P.gold);}
+  else if(healer&&!player){rect(c,-5,-20,10,3,OUTLINE);rect(c,-4,-20,8,2,P.cream);rect(c,0,-20,1,2,P.coral);rect(c,-1,-19,3,1,P.coral);}
+  else if(archer&&!player){rect(c,-6,-19,12,3,OUTLINE);rect(c,-5,-19,10,2,P.sage);rect(c,-4,-19,4,1,P.mint);rect(c,3,-22,1,3,P.coralLight);rect(c,4,-23,1,2,P.coralLight);}
   else if(villager){const hat=member.hat??n%3;if(hat===0){rect(c,-8,-17,16,2,OUTLINE);rect(c,-7,-17,14,1,'#e2c37e');rect(c,-4,-21,8,4,OUTLINE);rect(c,-3,-20,6,3,'#e8cd8c');rect(c,-3,-18,6,1,P.coral);}else if(hat===1){rect(c,-5,-19,10,3,OUTLINE);rect(c,-4,-19,8,2,tone(color,.2));if(!back)rect(c,4,-16,2,2,tone(color,.2));}}
-  else if(!master){rect(c,-5,-17,10,1,P.cream);if(!back)rect(c,4,-17,2,1,P.gold);}
+  else if(!master&&!player){rect(c,-5,-17,10,1,P.cream);if(!back)rect(c,4,-17,2,1,P.gold);}
   else{rect(c,-1,-19,2,1,hairLight);}
   if(sleep){rect(c,-3,-12,2,1,'#3a2f2b');}
   c.translate(0,-breathe-(sleep?1:0));
@@ -287,7 +299,7 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
   if(work>=0){rect(c,hand.x+1,hand.y-(work===0?4:0),1,5,P.woodDark);rect(c,hand.x-1,hand.y-(work===0?6:-4),4,2,'#8f9a98');}
   else if(villager){if(member.letter&&!back){rect(c,hand.x-1,hand.y-3,5,4,OUTLINE);rect(c,hand.x,hand.y-2,3,2,P.cream);rect(c,hand.x+1,hand.y-2,1,1,P.coral);}}
   else if(master){rect(c,hand.x,hand.y-2,3,4,OUTLINE);rect(c,hand.x+1,hand.y-1,1,2,P.white);if(!back)rect(c,-7,-6,2,2,P.woodLight);}
-  else if(robe){const top=healer?P.gold:P.blue,glow=train>=0;rect(c,-7,-16,1,13,P.woodDark);rect(c,-8,-18,3,3,OUTLINE);rect(c,-7,-17,1,1,glow?P.white:top);if(glow){rect(c,-9-train,-20,1,1,tone(top,.5));rect(c,-5+train,-21,1,1,P.white);}}
+  else if(mage||healer){const top=healer?P.gold:P.blue,glow=train>=0;rect(c,-7,-16,1,13,P.woodDark);rect(c,-8,-18,3,3,OUTLINE);rect(c,-7,-17,1,1,glow?P.white:top);if(glow){rect(c,-9-train,-20,1,1,tone(top,.5));rect(c,-5+train,-21,1,1,P.white);}}
   else if(archer){if(train>=0){rect(c,hand.x+2,hand.y-4,1,9,P.woodDark);rect(c,hand.x+1,hand.y-5,1,1,P.woodDark);rect(c,hand.x+1,hand.y+5,1,1,P.woodDark);if(train===1)rect(c,hand.x+4,hand.y,4,1,P.woodDark);}
    else if(!back){rect(c,-7,-12,1,7,P.woodDark);rect(c,-6,-13,1,1,P.woodDark);rect(c,-6,-5,1,1,P.woodDark);}}
   else{
