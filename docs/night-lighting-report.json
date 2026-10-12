@@ -1,0 +1,56 @@
+[
+  {
+    "mode": "canvas",
+    "day": {
+      "lum": 158.1203186000133,
+      "lights": 40,
+      "visible": 0,
+      "objects": 3787,
+      "scheme": "light only"
+    },
+    "night": {
+      "lum": 96.19907776999614,
+      "lights": 40,
+      "visible": 34,
+      "objects": 3793,
+      "scheme": "light only"
+    },
+    "ratio": 0.6083916262105739
+  },
+  {
+    "mode": "webgl",
+    "day": {
+      "lum": 158.39088018501405,
+      "lights": 40,
+      "visible": 0,
+      "objects": 2468,
+      "scheme": "light only"
+    },
+    "night": {
+      "lum": 96.59848043498828,
+      "lights": 40,
+      "visible": 34,
+      "objects": 3774,
+      "scheme": "light only"
+    },
+    "ratio": 0.6098740048805399
+  },
+  {
+    "mode": "standalone",
+    "day": {
+      "lum": 158.11154437001326,
+      "lights": 40,
+      "visible": 0,
+      "objects": 3790,
+      "scheme": "light only"
+    },
+    "night": {
+      "lum": 96.19993712499617,
+      "lights": 40,
+      "visible": 34,
+      "objects": 3795,
+      "scheme": "light only"
+    },
+    "ratio": 0.6084308233677655
+  }
+]

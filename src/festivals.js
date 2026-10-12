@@ -16,6 +16,14 @@ const VENUE = { tournament: 'arena', harvest: 'fairground', lantern: 'stage' };
 export const FESTIVAL_VENUE = VENUE;
 
 export function createFestivals() { return { live: null, ready: {}, history: [], held: 0 }; }
+export function isGameNight(state) { const t = Number(state.clock) || 0; return t < 60 || t >= 180; }
+export function lanternSchedule(state) {
+  const t = Number(state.clock) || 0, available = t >= 180 ? 300 - t : 60 - t;
+  const night = isGameNight(state), ok = night && available >= 10;
+  const prep = ok && available < FESTIVALS.lantern.prep + FESTIVALS.lantern.length ? Math.min(FESTIVALS.lantern.prep, available * .2) : FESTIVALS.lantern.prep;
+  const length = ok ? Math.min(FESTIVALS.lantern.length, available - prep) : FESTIVALS.lantern.length;
+  return { ok, prep, length, reason: !night ? 'โคมลอยจัดได้เฉพาะกลางคืน 18:00–06:00' : 'ใกล้เช้าแล้ว · รอจัดโคมลอยคืนนี้ตั้งแต่ 18:00' };
+}
 
 /** Can the guild hold this festival now? */
 export function festivalStatus(state, ctx, kind) {
@@ -26,7 +34,8 @@ export function festivalStatus(state, ctx, kind) {
   if (kind === 'tournament' && state.exams?.session) return { ok: false, reason: 'สนามสอบกำลังใช้สอบเลื่อนแรงค์ รอให้รอบสอบจบก่อน', level };
   const wait = Math.max(0, Math.ceil((fest.ready[kind] || 0) - state.elapsed));
   if (wait) return { ok: false, reason: `จัดได้อีกครั้งในอีก ${wait} วินาที`, level, wait };
-  return { ok: true, reason: '', level };
+  if (kind === 'lantern') { const schedule = lanternSchedule(state); return { ...schedule, level, reason: schedule.ok ? '' : schedule.reason }; }
+  return { ok: true, reason: '', level, prep: f.prep, length: f.length };
 }
 /** Visitors drawn in: the bigger the prize and the village, the bigger the crowd. */
 export function festivalVisitors(state, ctx, kind, gold, itemValue = 0) {
@@ -108,12 +117,13 @@ export function startFestival(state, ctx, payload) {
   const members = kind === 'tournament' ? festivalEntrants(state, ctx, gold) : [];
   ctx.pay(gold, `เงินรางวัล${f.name}`);
   const now = state.elapsed;
-  const live = { v: 2, kind, gold, item, start: now, open: now + f.prep, end: now + f.prep + f.length, length: f.length, visitors: festivalVisitors(state, ctx, kind, gold, item?.value || 0), members };
+  const prep = st.prep ?? f.prep, length = st.length ?? f.length;
+  const live = { v: 2, kind, gold, item, start: now, open: now + prep, end: now + prep + length, length, visitors: festivalVisitors(state, ctx, kind, gold, item?.value || 0), members };
   if (kind === 'tournament') { seedBracket(state, ctx, live, members); for (const id of members) ctx.enter(id, now + 600); stageTournament(state, ctx, live); }
   if (kind === 'harvest') stageHarvest(state, ctx, live);
   if (kind === 'lantern') stageLantern(state, ctx, live);
   state.festivals.live = live;
-  ctx.log(`ประกาศ${f.name}! รางวัล ${gold} G${item ? ' และ' + item.name : ''} · เริ่มในอีก ${f.prep} วินาที`, 'cozy');
+  ctx.log(`ประกาศ${f.name}! รางวัล ${gold} G${item ? ' และ' + item.name : ''} · เริ่มในอีก ${Math.ceil(prep)} วินาที`, 'cozy');
   return { ok: true, message: `ประกาศ${f.name}แล้ว ชาวบ้านกำลังมารวมตัว` };
 }
 

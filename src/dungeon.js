@@ -183,7 +183,7 @@ function banner(c, x, y, text, color, size = 10) {
 }
 function hpBar(c, x, y, w, ratio, color, label) {
   rect(c, x - 1, y - 1, w + 2, 6, '#4f4540'); rect(c, x, y, w, 4, '#e6dcc4'); rect(c, x, y, w * Math.max(0, Math.min(1, ratio)), 4, color);
-  if (label) { c.fillStyle = '#fff8e7'; c.font = 'bold 8px "Noto Sans Thai", sans-serif'; c.textBaseline = 'bottom'; c.fillText(label, x, y - 2); }
+  if (label) { c.fillStyle = '#584c43'; c.font = 'bold 8px "Noto Sans Thai", sans-serif'; c.textBaseline = 'bottom'; c.fillText(label, x, y - 2); }
 }
 
 /** Draw the mission as a top-down dungeon: fogged map, walking party, fights in each room. */
@@ -286,11 +286,11 @@ export function drawDungeonScene(canvas, mission, quest, state, options = {}) {
   if (memory.bossAt !== undefined && t - memory.bossAt < 1.4) { c.globalAlpha = Math.min(1, (1.4 - (t - memory.bossAt)) * 2); banner(c, W / 2, H / 2 - 10, 'บอสปรากฏ!', '#d98978', 14); c.globalAlpha = 1; }
   if (mission.status === 'completed' || mission.status === 'failed' || mission.status === 'recalled') banner(c, W / 2, H / 2 - 10, mission.status === 'completed' ? 'ภารกิจสำเร็จ!' : 'ถอยกลับบ้าน', mission.status === 'completed' ? '#7fae6f' : '#a59d8f', 14);
   // HUD.
-  rect(c, 0, 0, W, 16, '#3d352cb0');
+  rect(c, 0, 0, W, 16, '#fff3dcee');
   hpBar(c, 6, 8, 90, (combat.partyHp || 0) / Math.max(1, combat.partyMaxHp || 1), '#90b89c', 'ทีม');
   if (stage.fight > 0) hpBar(c, W - 96, 8, 90, (combat.enemyHp || 0) / Math.max(1, combat.enemyMaxHp || 1), '#d98978', stage.fight === 3 ? 'บอส' : 'ศัตรู');
   const caption = mission.status === 'completed' ? 'กลับบ้านแล้ว' : mission.status === 'failed' || mission.status === 'recalled' ? 'ถอยกลับบ้าน' : stage.back ? 'เดินทางกลับบ้าน' : stage.fight > 0 ? (stage.fight === 3 ? 'ห้องบอส!' : `ห้อง ${stage.fight}/3`) : `กำลังเดินไปห้อง ${stage.target}/3`;
-  c.fillStyle = '#fff8e7'; c.font = 'bold 9px "Noto Sans Thai", sans-serif'; c.textBaseline = 'middle'; const tw = c.measureText(caption).width; c.fillText(caption, (W - tw) / 2, 8);
-  if (paused) { c.fillStyle = '#fff8e7'; c.fillText('หยุดเวลา', W - 44, H - 8); }
+  c.fillStyle = '#584c43'; c.font = 'bold 9px "Noto Sans Thai", sans-serif'; c.textBaseline = 'middle'; const tw = c.measureText(caption).width; c.fillText(caption, (W - tw) / 2, 8);
+  if (paused) { c.fillStyle = '#584c43'; c.fillText('หยุดเวลา', W - 44, H - 8); }
   c.restore();
 }

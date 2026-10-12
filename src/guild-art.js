@@ -148,6 +148,12 @@ export function makeBuilding(state){
  for(let x=0;x<w;x++)if(Math.abs(x+.5-w/2)>.75)add('cut-x-'+x,x,h,object(c=>wall(c,'x',1,6)),6);
  for(let y=0;y<h;y++)add('cut-y-'+y,w,y,object(c=>wall(c,'y',1,6)),6);
  add('entrance',w/2-.75,h,object(c=>{cube(c,0,0,1.5,.38,-3,3,'#ae9e82','#dac49e','#8f8b76');cube(c,0,.38,1.5,.34,-6,3,'#a99b7f','#d6c09c','#908c76');}),8);
+ for(const part of layers){
+  const axis=part.name.startsWith('back-x-')?'x':part.name.startsWith('back-y-')?'y':null,index=Number(part.name.split('-').at(-1));
+  if(axis&&index%3===1){const at=(t,z)=>axis==='x'?[t,0,z]:[0,t,z];part.sprite.nightLights=[{points:[at(.18,8),at(.78,8),at(.78,22),at(.18,22)].map(v=>q(...v)),colors:['#adbbb0','#e6ebd4']}];}
+  if(part.name==='entrance')part.sprite.nightLights=[{kind:'lamp',x:q(.05,0,12)[0],y:q(.05,0,12)[1]},{kind:'spill',x:q(.75,-.4,0)[0],y:q(.75,-.4,0)[1],radius:44}];
+  if(part.name==='floor')part.sprite.nightLights=[{kind:'spill',x:q(w/2,h/2,0)[0],y:q(w/2,h/2,0)[1],radius:48}];
+ }
  return{layers};
 }
 export function makePartition(room,state){
@@ -302,7 +308,7 @@ export function makeStall(seed=1,variant=0){
 }
 export function makeHome(name,seed=1){
  const s=HOME_STYLES[name]||HOME_STYLES.thatch,{w,h,z,ridge,storeys=1}=s,pitch=s.pitch||(ridge==='y'?w:h)*11,o=.16,[r0,r1,rl,rk]=ROOFS[s.roof],[w0,w1]=WALLS[s.wall],r=rng(seed),peak=z+pitch;
- let smoke=null;const footX=Math.ceil(h*24)+30,footY=peak+40,result=stamp(Math.ceil((w+h)*24)+60+(s.forge?40:0),footY+Math.ceil((w+h)*12)+30,footX,footY,c=>{
+ let smoke=null;const nightLights=[];const footX=Math.ceil(h*24)+30,footY=peak+40,result=stamp(Math.ceil((w+h)*24)+60+(s.forge?40:0),footY+Math.ceil((w+h)*12)+30,footX,footY,c=>{
   const F=(u,zz)=>[u,h,zz],S=(u,zz)=>[w,u,zz],quad=(at,u0,u1,z0,z1,color,edge)=>face(c,[at(u0,z0),at(u1,z0),at(u1,z1),at(u0,z1)],color,edge);
   top(c,-.1,.1,w+.45,h+.4,0,'#5f705040');
   if(s.porch)plank(c,ridge==='x'?.2:.2,h,ridge==='x'?w-.4:w-.4,.55,0);
@@ -321,6 +327,7 @@ export function makeHome(name,seed=1){
   }
   // Windows, door, shutters and flower boxes.
   const win=(at,u,zb,ww,wh,lit)=>{
+   nightLights.push({points:[at(u+.05,zb+2),at(u+ww-.05,zb+2),at(u+ww-.05,zb+wh-2),at(u+.05,zb+wh-2)].map(v=>q(...v)),colors:['#a5c0b8','#f0d79a','#e6f2ee']});
    if(s.shutters){quad(at,u-.16,u,zb,zb+wh,s.shutters,C.ink);quad(at,u+ww,u+ww+.16,zb,zb+wh,s.shutters,C.ink);}
    quad(at,u,u+ww,zb,zb+wh,'#7a5f4a');quad(at,u+.05,u+ww-.05,zb+2,zb+wh-2,lit?'#f0d79a':'#a5c0b8');stroke(c,at(u+ww/2,zb+2),at(u+ww/2,zb+wh-2),C.light);stroke(c,at(u+.05,zb+wh/2),at(u+ww-.05,zb+wh/2),C.light);
    if(!lit)stroke(c,at(u+.1,zb+wh-4),at(u+.2,zb+wh-3),'#e6f2ee');
@@ -344,16 +351,16 @@ export function makeHome(name,seed=1){
    for(let y=.1;y<h+o;y+=thatch?.17:.3){stroke(c,[-o+.05,y,z+1],[w/2,y,peak],thatch?rl:rk);stroke(c,[w/2,y,peak],[w+o-.05,y,z+1],rk);}
    for(let k=1;k<4;k++){const f=k/4;stroke(c,[-o+(w/2+o)*f,-o,z+pitch*f],[-o+(w/2+o)*f,h+o,z+pitch*f],rl);}
    face(c,[F(0,z),[w/2,h+.01,peak-3],F(w,z)].map(p=>[p[0],h+o+.01,p[2]]),w0,C.ink);stroke(c,[-o,h+o,z],[w/2,h+o,peak],C.ink,3);stroke(c,[w/2,h+o,peak],[w+o,h+o,z],C.ink,3);stroke(c,[-o,h+o+.02,z+1],[w/2,h+o+.02,peak+1],rl,1);
-   if(storeys===1||true){const zb=z+pitch*.3;quad((u,zz)=>[u,h+o+.02,zz],w/2-.2,w/2+.2,zb,zb+9,'#7a5f4a');quad((u,zz)=>[u,h+o+.02,zz],w/2-.15,w/2+.15,zb+1,zb+8,'#a5c0b8');}
+   if(storeys===1||true){const zb=z+pitch*.3;quad((u,zz)=>[u,h+o+.02,zz],w/2-.2,w/2+.2,zb,zb+9,'#7a5f4a');quad((u,zz)=>[u,h+o+.02,zz],w/2-.15,w/2+.15,zb+1,zb+8,'#a5c0b8');nightLights.push({points:[[w/2-.15,h+o+.02,zb+1],[w/2+.15,h+o+.02,zb+1],[w/2+.15,h+o+.02,zb+8],[w/2-.15,h+o+.02,zb+8]].map(v=>q(...v)),colors:['#a5c0b8']});}
    stroke(c,[w/2,-o,peak],[w/2,h+o,peak],C.ink,3);
   }else{
    face(c,[[-o,-o,z],[w+o,-o,z],[w+o,h/2,peak],[-o,h/2,peak]],r1,C.ink);face(c,[[-o,h/2,peak],[w+o,h/2,peak],[w+o,h+o,z],[-o,h+o,z]],r0,C.ink);
    for(let x=.1;x<w+o;x+=thatch?.17:.3)stroke(c,[x,h/2,peak],[x,h+o-.05,z+1],thatch?rl:rk);
    for(let k=1;k<4;k++){const f=k/4;stroke(c,[-o,h+o-(h/2+o)*f,z+pitch*f],[w+o,h+o-(h/2+o)*f,z+pitch*f],rl);}
    face(c,[[w+o+.01,0,z],[w+o+.01,h/2,peak-3],[w+o+.01,h,z]],w1,C.ink);stroke(c,[w+o,-o,z],[w+o,h/2,peak],C.ink,3);stroke(c,[w+o,h/2,peak],[w+o,h+o,z],C.ink,3);
-   {const zb=z+pitch*.3;quad((u,zz)=>[w+o+.02,u,zz],h/2-.18,h/2+.18,zb,zb+8,'#7a5f4a');quad((u,zz)=>[w+o+.02,u,zz],h/2-.13,h/2+.13,zb+1,zb+7,'#a5c0b8');}
+   {const zb=z+pitch*.3;quad((u,zz)=>[w+o+.02,u,zz],h/2-.18,h/2+.18,zb,zb+8,'#7a5f4a');quad((u,zz)=>[w+o+.02,u,zz],h/2-.13,h/2+.13,zb+1,zb+7,'#a5c0b8');nightLights.push({points:[[w+o+.02,h/2-.13,zb+1],[w+o+.02,h/2+.13,zb+1],[w+o+.02,h/2+.13,zb+7],[w+o+.02,h/2-.13,zb+7]].map(v=>q(...v)),colors:['#a5c0b8']});}
    stroke(c,[-o,h/2,peak],[w+o,h/2,peak],C.ink,3);
-   if(s.dormer){const u=w*.35,zz=z+pitch*.35;cube(c,u,h*.6,.6,.35,zz-6,12,w0,r0,w1);face(c,[[u-.06,h*.6+.37,zz+6],[u+.3,h*.6+.37,zz+14],[u+.66,h*.6+.37,zz+6]],r1,C.ink);quad((uu,z2)=>[uu,h*.6+.36,z2],u+.15,u+.45,zz-3,zz+5,'#a5c0b8',C.ink);}
+   if(s.dormer){const u=w*.35,zz=z+pitch*.35;cube(c,u,h*.6,.6,.35,zz-6,12,w0,r0,w1);face(c,[[u-.06,h*.6+.37,zz+6],[u+.3,h*.6+.37,zz+14],[u+.66,h*.6+.37,zz+6]],r1,C.ink);quad((uu,z2)=>[uu,h*.6+.36,z2],u+.15,u+.45,zz-3,zz+5,'#a5c0b8',C.ink);nightLights.push({points:[[u+.15,h*.6+.36,zz-3],[u+.45,h*.6+.36,zz-3],[u+.45,h*.6+.36,zz+5],[u+.15,h*.6+.36,zz+5]].map(v=>q(...v)),colors:['#a5c0b8']});}
   }
   if(thatch){const eave=ridge==='x'?[[-o,h+o],[w+o,h+o]]:[[-o,h+o],[-o,-o]];for(let k=0;k<=24;k++){const f=k/24,[x,y]=q(eave[0][0]+(eave[1][0]-eave[0][0])*f,eave[0][1]+(eave[1][1]-eave[0][1])*f,z);R(c,x,y,1,2+(k%3),k%2?rk:r0);}}
   // Chimney, then the special touches.
@@ -364,12 +371,14 @@ export function makeHome(name,seed=1){
   if(s.lantern){const [lx,ly]=q(...F(.15,z/2-4));R(c,lx-2,ly-6,5,6,'#5a463f');R(c,lx-1,ly-5,3,4,'#f4d48a');R(c,lx,ly-8,1,2,'#5a463f');}
   if(s.woodpile){for(let k=0;k<3;k++)for(let m=0;m<3-k;m++){const [lx,ly]=q(w+.18,.3+m*.28+k*.14,3+k*5);E(c,lx,ly,2.6,2.6,'#8a6446');E(c,lx,ly,1.4,1.4,'#d9b083');}}
  });
+ const [lx,ly]=q(.15,h,z/2-1),[dx,dy]=q(w*.62+.25,h+.35,0);
+ result.nightLights=[...nightLights,{kind:'lamp',x:lx,y:ly},{kind:'spill',x:dx,y:dy,radius:42}];
  if(smoke)result.smoke={x:smoke[0],y:smoke[1],dark:s.smoke==='dark'};
  return result;
 }
 /** The village dojo: a low hall under a two-tier roof, sliding doors open onto a sand yard with practice dummies. Footprint 3.6×3. */
 export function makeDojo(seed=149){
- return stamp(220,190,96,118,c=>{
+ const out=stamp(220,190,96,118,c=>{
   const quad=(pts,col,edge)=>face(c,pts,col,edge),sand='#dccb9c';
   top(c,-.1,-.1,3.9,3.3,0,'#5f705040');
   // Sand yard with rake lines in front of the hall.
@@ -404,9 +413,11 @@ export function makeDojo(seed=149){
   for(const [x,y] of [[.6,2.6],[2.7,2.55]]){const [px,py]=q(x,y,0);R(c,px-1,py-20,3,20,'#6b4f3a');R(c,px-7,py-15,15,2,'#6b4f3a');E(c,px,py-13,4,6,'#d9c08a');E(c,px,py-22,3,3,'#e6cf8e');R(c,px-3,py-12,6,1,'#a3824a');}
   {const [px,py]=q(3.3,.9,0);R(c,px-6,py-18,14,2,'#6b4f3a');R(c,px-6,py-8,14,2,'#6b4f3a');R(c,px-6,py-18,2,18,'#5a3f30');R(c,px+6,py-18,2,18,'#5a3f30');L(c,px-3,py-22,px-3,py-2,'#c4ccd0');L(c,px+1,py-24,px+1,py-2,'#a77a55');L(c,px+4,py-21,px+4,py-2,'#c4ccd0');}
  });
+ out.nightLights=[...[[.35,2,17],[2.65,2,17]].map(v=>{const[x,y]=q(...v);return{kind:'lamp',x,y};}),{points:[[.05,2,7],[.55,2,7],[.55,2,28],[.05,2,28]].map(v=>q(...v)),colors:['#efe6d2']},{kind:'spill',x:q(1.5,2.4,0)[0],y:q(1.5,2.4,0)[1],radius:42}];
+ return out;
 }
 /** Draw on top of a home sprite: same foot, extra margin around it for things set out front. */
-function dressHome(base,pad,paint){return stamp(base.canvas.width+pad*2,base.canvas.height+pad,base.footX+pad,base.footY,c=>{c.drawImage(base.canvas,-base.footX,-base.footY);paint(c);});}
+function dressHome(base,pad,paint){const out=stamp(base.canvas.width+pad*2,base.canvas.height+pad,base.footX+pad,base.footY,c=>{c.drawImage(base.canvas,-base.footX,-base.footY);paint(c);});out.nightLights=base.nightLights;return out;}
 /** General store: a goods-filled window, a table of wares, barrels, sacks and a chalkboard out front. */
 export function makeShop(seed=131){
  const base=makeHome('store',seed),{w,h}=HOME_STYLES.store;

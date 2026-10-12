@@ -3,6 +3,7 @@
 <head>
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+ <meta name="color-scheme" content="only light">
  <meta name="theme-color" content="#939c32">
  <meta name="description" content="Guild Master — บ้านของนักผจญภัยในหมู่บ้านพิกเซล">
  <title>Guild Master · R50</title>
@@ -142,7 +143,7 @@ body.on-title .topbar,body.on-title .screen-bottom,body.on-title .world-actions,
 .swatch.on{box-shadow:0 0 0 3px #6b8a5f}
 .pill{min-height:0;padding:6px 14px;border-radius:16px;font-size:12px;background:#f3ead6;border:1px solid #e0d1b0}
 .pill.on{background:var(--sage);border-color:var(--sage);color:#fff}
-.guild-sign{display:grid;justify-items:center;gap:2px;margin:10px auto 14px;padding:14px 20px 12px;max-width:300px;background:#7a5a3a;border:3px solid #5d4229;border-radius:8px;box-shadow:0 4px 0 #3d2c1c;color:#fbecc8;text-align:center}
+.guild-sign{display:grid;justify-items:center;gap:2px;margin:10px auto 14px;padding:14px 20px 12px;max-width:300px;background:#eee0c6;border:3px solid #b8955e;border-radius:8px;box-shadow:0 4px 0 #b8955e;color:var(--ink);text-align:center}
 .guild-sign img{width:34px;height:34px}.guild-sign b{font-size:21px}.guild-sign small{font-size:11px;opacity:.85}
 .name-ideas{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 @media(max-width:620px){.setup-master{flex-direction:column;align-items:stretch}.setup-stage{flex-direction:row;justify-content:center}.setup-stage canvas{width:104px;height:104px}}
@@ -190,8 +191,8 @@ body.placing .screen-bottom,body.placing .corner-stack{visibility:hidden}
 .qlock{font-size:11px;color:#9b7a4a;line-height:1.5}
 .prep-hero{position:relative;margin:4px 0 8px;border-radius:12px;overflow:hidden;border:1px solid #e3d3b0}
 .prep-hero canvas{display:block;width:100%;aspect-ratio:8/3;height:auto;image-rendering:pixelated}
-.prep-title{position:absolute;left:0;right:0;bottom:0;display:grid;gap:1px;padding:22px 14px 9px;background:linear-gradient(transparent,#3d352ccc);color:#fff8e7}
-.prep-title small{font-size:11px;opacity:.9}.prep-title b{font-size:19px;text-shadow:0 1px 0 #3d352c}
+.prep-title{position:absolute;left:0;right:0;bottom:0;display:grid;gap:1px;padding:22px 14px 9px;background:linear-gradient(transparent,#fff8e7ee);color:var(--ink)}
+.prep-title small{font-size:11px;opacity:.9}.prep-title b{font-size:19px;text-shadow:none}
 .team-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px}
 .slot{position:relative;display:grid;justify-items:center;gap:1px;min-height:112px;padding:8px 4px;border-radius:11px;text-align:center}
 .slot.empty{border:2px dashed #d8c7a2;background:#fbf6ea;color:#b39c74;align-content:center}.slot.empty span{font-size:28px;line-height:1}.slot.empty small{font-size:11px}
@@ -220,7 +221,7 @@ body.placing .screen-bottom,body.placing .corner-stack{visibility:hidden}
 @media(max-width:620px){.qgrid{grid-template-columns:1fr 1fr;gap:7px}.qbody{padding:7px 8px 9px}.qbody>b{font-size:13px}.qinfo span:last-child{display:none}.roster{grid-template-columns:1fr 1fr}.slot{min-height:98px}.slot canvas{width:44px;height:50px}}
 .go-button:disabled{background:#cfc6b2;border-color:#bdb39d;color:#fff;opacity:1}
 .go-button{position:static}
-.dungeon-view{display:block;width:100%;height:auto;aspect-ratio:40/22;image-rendering:pixelated;border-radius:10px;border:2px solid #5a463f;box-shadow:0 3px 0 #d8c7a2;background:#26301f}
+.dungeon-view{display:block;width:100%;height:auto;aspect-ratio:40/22;image-rendering:pixelated;border-radius:10px;border:2px solid #5a463f;box-shadow:0 3px 0 #d8c7a2;background:#f8edd3}
 .mission-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:2px 0 8px}.mission-head b{font-size:17px}.mission-head small{font-size:11.5px;color:var(--muted)}
 .dungeon-view{width:auto;max-width:100%;max-height:min(46vh,420px);margin:0 auto 10px}
 .route{display:flex;align-items:center;gap:4px;margin:0 auto 10px;max-width:420px}
@@ -326,7 +327,7 @@ body.placing .screen-bottom,body.placing .corner-stack{visibility:hidden}
 
 /* Coach mark: the dock button the current goal needs pulses with a short tip. */
 .dock-btn.coach{border-color:#d9584a;background:#fff3e0;animation:coach-pulse 1.3s ease-in-out infinite}
-.dock-btn.coach::after{content:attr(data-coach-tip);position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);padding:5px 10px;border-radius:8px;background:#5a4a36;color:#fff7ea;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 4px 10px #2a221640;pointer-events:none}
+.dock-btn.coach::after{content:attr(data-coach-tip);position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);padding:5px 10px;border-radius:8px;background:#fff3dc;color:var(--ink);font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 4px 10px #2a221640;pointer-events:none}
 .dock-btn.coach::before{content:'';position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#5a4a36;border-bottom:0}
 @keyframes coach-pulse{50%{box-shadow:0 0 0 6px #d9584a33}}
 @media (prefers-reduced-motion:reduce){.dock-btn.coach{animation:none}}
@@ -365,12 +366,12 @@ body.placing .screen-bottom,body.placing .corner-stack{visibility:hidden}
 .event-choice:hover,.event-choice:focus-visible{background:#fdeec8;border-color:#967b49}
 .event-choice b{font-size:14px;font-weight:600}
 .event-choice small{font-size:11.5px;color:#7a6a58;line-height:1.5}
-.event-banner{position:absolute;z-index:6;left:50%;top:calc(max(20px,env(safe-area-inset-top)) + 78px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:min(440px,calc(100% - 24px));padding:8px 8px 8px 14px;background:#3d2c22ee;color:#fbeed2;border:1px solid #c79b55;border-radius:8px;box-shadow:0 6px 20px #00000040;animation:chip-pop .25s ease-out}
+.event-banner{position:absolute;z-index:6;left:50%;top:calc(max(20px,env(safe-area-inset-top)) + 78px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:min(440px,calc(100% - 24px));padding:8px 8px 8px 14px;background:#fff3dcee;color:var(--ink);border:1px solid #c79b55;border-radius:8px;box-shadow:0 6px 20px #00000040;animation:chip-pop .25s ease-out}
 .event-banner div{display:grid;gap:1px;min-width:0}
 .event-banner b{font-size:14px;font-weight:600}
-.event-banner small{font-size:11px;color:#e3cfa5}
+.event-banner small{font-size:11px;color:#7a6040}
 .event-banner button{font:inherit;font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid #c79b55;background:#f3d58e;color:#3d2c22;cursor:pointer;font-weight:600}
-.event-banner .eb-close{background:transparent;color:#e3cfa5;border:none;padding:6px 8px}
+.event-banner .eb-close{background:transparent;color:#7a6040;border:none;padding:6px 8px}
 @media(max-width:620px){.event-banner{top:calc(max(15px,env(safe-area-inset-top)) + 186px)}}
 body.on-title .event-banner{visibility:hidden}
 .event-history{display:grid;gap:6px;margin-bottom:8px}
@@ -392,8 +393,8 @@ body.on-title .event-banner{visibility:hidden}
 .trade-btns button{min-height:0;padding:6px 9px;font-size:11.5px}
 .trade-contract{padding:8px 11px;margin-bottom:6px;border-radius:9px;background:#f3ead2;border:1px dashed #b89a62;font-size:12px}
 .trade-contract .ok{color:#4f8a45;font-weight:600}
-.display-case{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:9px;border-radius:10px;background:linear-gradient(#6b4e36,#5a412c);border:2px solid #3f2d1f}
-.display-case span{display:grid;place-items:center;aspect-ratio:1;font-size:22px;background:#f8edd333;border:1px solid #f8edd355;border-radius:6px}
+.display-case{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:9px;border-radius:10px;background:linear-gradient(#eee0c6,#e2cfac);border:2px solid #b8955e}
+.display-case span{display:grid;place-items:center;aspect-ratio:1;font-size:22px;background:#fff8e7;border:1px solid #c9b07e;border-radius:6px}
 .display-case span.empty{opacity:.4}
 .link-button{background:none;border:none;padding:0;min-height:0;font:inherit;font-size:11px;color:var(--muted);cursor:pointer}
 @media(max-width:620px){.trade-row{grid-template-columns:30px 1fr}.trade-btns{grid-column:1/-1;justify-content:flex-start}}
@@ -407,8 +408,8 @@ body.on-title .event-banner{visibility:hidden}
 .move-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.move-list button{min-height:0;padding:6px 10px;font-size:11.5px}
 @media(max-width:620px){.home-row{grid-template-columns:30px 1fr}.home-row button{grid-column:1/-1}}
 /* Full-screen dungeon battle */
-.dungeon-dialog{width:min(980px,calc(100vw - 24px));max-width:none;padding:10px 12px 12px;background:#2c241e;border:2px solid #6b5440}
-.dungeon-dialog .dd-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#fbeed2}
+.dungeon-dialog{width:min(980px,calc(100vw - 24px));max-width:none;padding:10px 12px 12px;background:var(--paper);border:2px solid #6b5440}
+.dungeon-dialog .dd-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:var(--ink)}
 .dungeon-dialog .dd-head b{font-size:14px;font-weight:600}.dungeon-dialog .close-dialog{position:static;color:#4f4540}
 .dungeon-dialog .dungeon-view{width:100%;max-height:none;margin:0}
 .mission-watch{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}.mission-watch button{min-height:0;padding:8px}
@@ -416,12 +417,12 @@ body.on-title .event-banner{visibility:hidden}
 .world-actions #hero-toggle{font-size:17px}.world-actions #hero-toggle.active{background:#f3d58e;border-color:#b98a3e}
 .hero-hud{position:absolute;inset:0;z-index:5;pointer-events:none}
 .hero-hud>*{pointer-events:auto}
-.hero-status{position:absolute;left:24px;top:calc(max(20px,env(safe-area-inset-top)) + 78px);width:min(260px,calc(100% - 48px));display:grid;gap:4px;padding:10px 12px;background:#2c241ee6;color:#fbeed2;border:1px solid #c79b55;border-radius:8px}
-.hero-status b{font-size:14px;font-weight:600}.hero-status small{font-size:11px;color:#e3cfa5}
-.hero-bar{height:7px;border-radius:4px;background:#00000055;overflow:hidden}.hero-bar i{display:block;height:100%;width:0;border-radius:4px;transition:width .15s}
+.hero-status{position:absolute;left:24px;top:calc(max(20px,env(safe-area-inset-top)) + 78px);width:min(260px,calc(100% - 48px));display:grid;gap:4px;padding:10px 12px;background:#fff3dcef;color:var(--ink);border:1px solid #c79b55;border-radius:8px}
+.hero-status b{font-size:14px;font-weight:600}.hero-status small{font-size:11px;color:#7a6040}
+.hero-bar{height:7px;border-radius:4px;background:#e6dac0;overflow:hidden}.hero-bar i{display:block;height:100%;width:0;border-radius:4px;transition:width .15s}
 .hero-bar.hp i{background:#7fd18b}.hero-bar.xp i{background:#e8cd8c}
 .hero-status button{margin-top:4px;min-height:0;padding:6px 10px;font-size:12px;border-radius:999px;background:#f3d58e;border:1px solid #b98a3e;color:#3d2c22;cursor:pointer}
-.hero-stick{position:absolute;left:28px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 24px);width:120px;height:120px;border-radius:50%;background:#2c241e55;border:2px solid #fbeed266;touch-action:none}
+.hero-stick{position:absolute;left:28px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 24px);width:120px;height:120px;border-radius:50%;background:#f8edd388;border:2px solid #b8955e88;touch-action:none}
 .hero-stick i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:#fbeed2cc;border:2px solid #c79b55;transition:transform .05s}
 .hero-buttons{position:absolute;right:24px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 24px);display:flex;gap:10px;align-items:flex-end}
 .hero-buttons button{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;font-size:22px;background:#fbeed2e8;border:2px solid #b98a3e;color:#3d2c22;touch-action:none;cursor:pointer;padding:0}
@@ -455,10 +456,10 @@ body.on-title .hero-hud{display:none}
 .live-member.ko{background:#f6e3da;border-color:#e3b9a6}
 .live-member button{min-height:0;padding:6px 10px;font-size:11.5px}
 /* Market hub */
-.market-hero{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px;margin-bottom:10px;border-radius:12px;background:linear-gradient(135deg,#6b5a3a,#4f4230);color:#fbeed2;border:1px solid #3d3324}
+.market-hero{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px;margin-bottom:10px;border-radius:12px;background:linear-gradient(135deg,#fff3dc,#eee0c6);color:var(--ink);border:1px solid #c9b07e}
 .market-hero div{display:grid;gap:2px;min-width:0}
-.market-hero small{font-size:10.5px;color:#e3cfa5}.market-hero b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.market-hero b.neg{color:#f3a08a}
-.mini-bar{display:block;height:4px;border-radius:2px;background:#00000040;overflow:hidden}.mini-bar i{display:block;height:100%;background:#e8cd8c}
+.market-hero small{font-size:10.5px;color:#7a6040}.market-hero b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.market-hero b.neg{color:#a44332}
+.mini-bar{display:block;height:4px;border-radius:2px;background:#e6dac0;overflow:hidden}.mini-bar i{display:block;height:100%;background:#a88a44}
 .market-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;scrollbar-width:none}
 .market-tabs button{flex:0 0 auto;min-height:0;padding:7px 12px;border-radius:999px;font-size:12px;background:#fffaee;border:1px solid #e3d3b0;white-space:nowrap}
 .market-tabs button.active{background:var(--sage);border-color:var(--sage);color:#fff}
@@ -517,9 +518,9 @@ body.on-title .hero-hud{display:none}
 .lesson-progress{display:grid;gap:4px;margin:8px 0;font-size:13px}.lesson-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
 
 /* R40: boss bar */
-.boss-bar{display:grid;gap:4px;margin:8px 0;padding:8px 10px;border:2px solid #8a3a2a;border-radius:10px;background:#2c241e;color:#ffe9c7}
-.boss-bar em{font-style:normal;color:#ffb070}.boss-bar>i{display:block;height:10px;border-radius:6px;background:#4a3a32;overflow:hidden}.boss-bar>i>i{display:block;height:100%;background:linear-gradient(90deg,#d9623f,#f08a4b)}
-.boss-bar.enraged{animation:coach-pulse 1s ease-in-out infinite}.boss-bar.enraged>i>i{background:linear-gradient(90deg,#ff3a2a,#ff8a3a)}.boss-bar small{color:#c9b8a0;font-size:11px}
+.boss-bar{display:grid;gap:4px;margin:8px 0;padding:8px 10px;border:2px solid #8a3a2a;border-radius:10px;background:#fff0e3;color:var(--ink)}
+.boss-bar em{font-style:normal;color:#a44b25}.boss-bar>i{display:block;height:10px;border-radius:6px;background:#ebd4bf;overflow:hidden}.boss-bar>i>i{display:block;height:100%;background:linear-gradient(90deg,#d9623f,#f08a4b)}
+.boss-bar.enraged{animation:coach-pulse 1s ease-in-out infinite}.boss-bar.enraged>i>i{background:linear-gradient(90deg,#ff3a2a,#ff8a3a)}.boss-bar small{color:#7a6040;font-size:11px}
 
 .volume-row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:13px;color:#5a4a36}.volume-row input{flex:1;max-width:260px;accent-color:#7f9a62}
 
@@ -621,14 +622,14 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
 .hs-top{display:flex;gap:8px;align-items:center}.hs-cls{font-size:22px;width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:#f3d58e33;border:1px solid #b98a3e}
 .hs-top div{display:grid}
 .hero-bar.ult{height:5px}.hero-bar.ult i{background:linear-gradient(90deg,#c58bff,#ffb35a)}.hero-bar.ult.full{box-shadow:0 0 0 1px #ffd36a,0 0 8px #ffb35a}
-.hero-pack{font-size:11px;color:#f3e3c0;line-height:1.5}
-.hero-jobs{display:grid;gap:2px;font-size:10.5px;color:#ffd36a}.hero-jobs span.done{color:#9fe08a;text-decoration:line-through}.hero-jobs:empty{display:none}
+.hero-pack{font-size:11px;color:#7a6040;line-height:1.5}
+.hero-jobs{display:grid;gap:2px;font-size:10.5px;color:#9b6410}.hero-jobs span.done{color:#4f7a3a;text-decoration:line-through}.hero-jobs:empty{display:none}
 .hero-order{display:flex;gap:4px}.hero-order button{flex:1;margin:0!important;padding:4px 6px!important;font-size:11px!important;background:#fbeed2!important}.hero-order button.active{background:#f3d58e!important;font-weight:700}
 .hero-map{position:absolute;right:70px;top:calc(max(20px,env(safe-area-inset-top)) + 78px);width:220px;height:150px;border-radius:8px;image-rendering:auto;pointer-events:none!important;box-shadow:0 3px 10px #0005}
 .hero-buttons{position:absolute;right:16px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 18px);width:250px;height:210px;display:block}
 .hero-buttons button{position:absolute;display:grid;place-items:center;width:60px;height:60px;border-radius:50%;font-size:21px;background:#fbeed2e8;border:2px solid #b98a3e;color:#3d2c22;touch-action:none;cursor:pointer;overflow:hidden;padding:0}
 .hero-buttons button small{font-size:8.5px;margin-top:-8px;max-width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hero-buttons button .cd{position:absolute;inset:0;border-radius:50%;background:conic-gradient(#2c241eaa var(--cd,0%),transparent 0);pointer-events:none}
+.hero-buttons button .cd{position:absolute;inset:0;border-radius:50%;background:conic-gradient(#dac9a788 var(--cd,0%),transparent 0);pointer-events:none}
 .hero-buttons #hero-attack{right:0;bottom:0;width:86px;height:86px;font-size:30px;background:#f3d58e}
 .hero-buttons #hero-s1{right:96px;bottom:2px}.hero-buttons #hero-s2{right:78px;bottom:72px}.hero-buttons #hero-ult{right:10px;bottom:96px}
 .hero-buttons #hero-ult.ready{background:#ffd36a;box-shadow:0 0 0 3px #ffb35a88,0 0 14px #ffb35a;animation:chest-nudge 1.6s ease-in-out infinite}
@@ -669,12 +670,12 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
 .call-class.active{border-color:#b98a3e;background:#fbeed2;box-shadow:0 0 0 2px #f3d58e}
 .call-learn{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}.call-learn span{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;padding:3px 9px;border-radius:99px;background:#f2ead8;color:#5a4a38}.call-learn i{font-style:normal}
 .call-next{margin:4px 0 8px;padding-left:18px;font-size:12.5px;line-height:1.9;color:#5a4a38}
-.hero-call{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(20px,env(safe-area-inset-top)) + 78px);width:min(420px,calc(100% - 640px));min-width:300px;display:grid;gap:2px;padding:8px 12px;background:#3a1f1ae8;color:#fbeed2;border:1px solid #d9584a;border-radius:9px;box-shadow:0 4px 14px #0006;pointer-events:none!important;text-align:center}
+.hero-call{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(20px,env(safe-area-inset-top)) + 78px);width:min(420px,calc(100% - 640px));min-width:300px;display:grid;gap:2px;padding:8px 12px;background:#fff0e8f2;color:var(--ink);border:1px solid #d9584a;border-radius:9px;box-shadow:0 4px 14px #0006;pointer-events:none!important;text-align:center}
 .hero-call[hidden]{display:none}
-.hero-call small{font-size:10.5px;color:#ffb3a5;display:flex;align-items:center;justify-content:center;gap:4px}
-.hero-call small i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b4a40}.hero-call small i.done{background:#9fe08a}.hero-call small i.on{background:#ffd36a;box-shadow:0 0 6px #ffd36a}
-.hero-call b{font-size:15px}.hero-call b em{font-style:normal;color:#ffd36a;margin-left:6px;font-size:14px}
-.hero-call span{font-size:11.5px;color:#f3e3c0;line-height:1.5}
+.hero-call small{font-size:10.5px;color:#a44332;display:flex;align-items:center;justify-content:center;gap:4px}
+.hero-call small i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#dac9ba}.hero-call small i.done{background:#6e9855}.hero-call small i.on{background:#b17a18;box-shadow:0 0 6px #b17a18}
+.hero-call b{font-size:15px}.hero-call b em{font-style:normal;color:#9b6410;margin-left:6px;font-size:14px}
+.hero-call span{font-size:11.5px;color:#7a6040;line-height:1.5}
 @media(max-width:620px){.hero-call{left:10px;right:58px;transform:none;width:auto;min-width:0;top:calc(max(15px,env(safe-area-inset-top)) + 106px);padding:6px 9px}.hero-call b{font-size:13px}.hero-call span{font-size:10.5px}
  body.hero-calling .hero-status,body.hero-calling .hero-map{margin-top:78px}}
 
@@ -683,25 +684,78 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
 @media(max-width:620px){.hero-encounter-hud{right:14px;top:calc(max(15px,env(safe-area-inset-top)) + 240px);width:min(205px,max(155px,calc(100vw - 220px)))}}
 @media(max-height:500px) and (min-width:621px){.hero-encounter-hud{right:310px;top:95px}}
 /* Live shows in the village: a compact panel that follows the exam round or the festival */
-.show-panel{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 96px);width:min(420px,calc(100% - 660px));min-width:320px;z-index:6;display:grid;gap:5px;padding:9px 11px;background:#2c241eeb;color:#fbeed2;border:1px solid #c79b55;border-radius:10px;box-shadow:0 6px 16px #0006;font-size:12px}
+.show-panel{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 96px);width:min(420px,calc(100% - 660px));min-width:320px;z-index:6;display:grid;gap:5px;padding:9px 11px;background:#fffaf0f5;color:#3d2c22;border:1px solid #c79b55;border-radius:10px;box-shadow:0 6px 16px #0003;font-size:12px}
 .show-panel[hidden]{display:none}
 .sp-head{display:flex;align-items:center;gap:6px}.sp-head b{flex:1;font-size:13px}
 .sp-go,.sp-x{padding:3px 8px!important;font-size:11px!important;border-radius:7px;background:#fbeed2!important;color:#3d2c22!important;border:1px solid #b98a3e!important;min-height:0!important}
 .sp-x{padding:2px 7px!important;font-size:13px!important}
-.sp-stage{font-size:12.5px;font-weight:700;color:#ffe08a;display:flex;gap:8px;align-items:baseline}.sp-stage small{margin-left:auto;font-weight:400;color:#f3e3c0}
-.sp-hp{display:block;height:6px;border-radius:4px;background:#5a4a3c;overflow:hidden}.sp-hp u{display:block;height:100%;background:#8fd17a;transition:width .2s}.sp-hp.time u{background:#ffd36a}
+.sp-stage{font-size:12.5px;font-weight:700;color:#8a5a20;display:flex;gap:8px;align-items:baseline}.sp-stage small{margin-left:auto;font-weight:400;color:#7a6a52}
+.sp-hp{display:block;height:6px;border-radius:4px;background:#eadfc6;overflow:hidden}.sp-hp u{display:block;height:100%;background:#6fae58;transition:width .2s}.sp-hp.time u{background:#d9a441}
 .sp-table{display:grid;gap:2px;max-height:190px;overflow:auto}
 .sp-row{display:grid;grid-template-columns:minmax(0,1fr) 30px 30px 30px 54px;gap:4px;align-items:center;padding:2px 4px;border-radius:5px}
-.sp-row b{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sp-row b small{margin-left:4px;font-weight:400;color:#cbb994}
-.sp-row span{text-align:center;font-weight:700;color:#f3e3c0}.sp-row span.on{color:#ffe08a}.sp-row em{font-style:normal;font-size:10.5px;color:#cbb994;text-align:right}
-.sp-row.head{color:#cbb994;font-size:10.5px}.sp-row.head b{font-size:10.5px;font-weight:400}.sp-row.mine{background:#3f6a8a55}
-.sp-bout{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}.sp-bout>i{font-style:normal;font-weight:800;color:#ffb35a}
-.sp-fighter{display:grid;gap:3px}.sp-fighter b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sp-fighter.mine b{color:#bfe3ff}.sp-fighter.win b::after{content:' ✓';color:#9fe08a}.sp-fighter.lose{opacity:.55}
-.sp-draw,.sp-farms{display:flex;flex-wrap:wrap;gap:4px}.sp-draw span,.sp-farms span{font-size:10.5px;padding:2px 7px;border-radius:99px;background:#4a3c30}.sp-draw span.mine{background:#3f6a8a}.sp-draw span.out{opacity:.4;text-decoration:line-through}.sp-draw span.champ,.sp-farms span.champ{background:#b98a3e;color:#fff}
-.sp-farms span b{color:#ffe08a;margin-left:3px}
-.sp-note{font-size:10.5px;color:#cbb994}
+.sp-row b{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sp-row b small{margin-left:4px;font-weight:400;color:#8a7a62}
+.sp-row span{text-align:center;font-weight:700;color:#5a4a38}.sp-row span.on{color:#b06a10}.sp-row em{font-style:normal;font-size:10.5px;color:#7a6a52;text-align:right}
+.sp-row.head{color:#8a7a62;font-size:10.5px}.sp-row.head b{font-size:10.5px;font-weight:400}.sp-row.mine{background:#dcecf7}
+.sp-bout{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}.sp-bout>i{font-style:normal;font-weight:800;color:#b85a2a}
+.sp-fighter{display:grid;gap:3px}.sp-fighter b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sp-fighter.mine b{color:#2f6f9a}.sp-fighter.win b::after{content:' ✓';color:#4f8a3c}.sp-fighter.lose{opacity:.55}
+.sp-draw,.sp-farms{display:flex;flex-wrap:wrap;gap:4px}.sp-draw span,.sp-farms span{font-size:10.5px;padding:2px 7px;border-radius:99px;background:#f1e6cf}.sp-draw span.mine{background:#dcecf7;color:#2f6f9a}.sp-draw span.out{opacity:.4;text-decoration:line-through}.sp-draw span.champ,.sp-farms span.champ{background:#b98a3e;color:#fff}
+.sp-farms span b{color:#b06a10;margin-left:3px}
+.sp-note{font-size:10.5px;color:#7a6a52}
 @media(max-width:1100px){.show-panel{width:min(420px,calc(100% - 24px))}}
 @media(max-width:620px){.show-panel{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 84px);min-width:0;width:calc(100% - 20px);padding:7px 9px;font-size:11px}.sp-table{max-height:120px}}
+/* Preserve the original art palette, including Android browsers' automatic darkening. */
+:root{color-scheme:only light}html,body{color-scheme:only light}
+.compact-control{display:none}
+#notifications-dialog{width:min(520px,calc(100vw - 24px));max-height:75dvh;overflow:auto;padding:24px 18px;color:var(--ink);background:var(--paper)}
+#notifications-title{padding-right:32px;font-size:19px}
+#notification-hud .corner-stack{position:static;display:block!important;visibility:visible!important;width:auto;max-width:none;margin:12px 0;transform:none}
+#notification-hud .near-goals{visibility:visible!important}
+#notification-hud .city-stats{position:static;transform:none;display:flex!important;flex-wrap:wrap;max-width:none;margin:14px 0}
+#notification-hud .event-banner{position:static;transform:none;margin:12px 0;max-width:none}
+.notification-news{display:block;width:100%;text-align:left;font-size:12px;line-height:1.8;margin:6px 0;padding:9px 11px;border:1px solid var(--line);border-radius:7px;background:#f4efdf}.notification-news.error{border-color:#d99b82}
+body.compact-ui .compact-control{display:inline-flex;align-items:center;justify-content:center}
+body.compact-ui .topbar{top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;pointer-events:none}
+body.compact-ui .brand{min-width:0;gap:7px}body.compact-ui .brand img{width:23px;height:26px}body.compact-ui .brand strong{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body.compact-ui .brand small{display:none}
+body.compact-ui .calendar{grid-row:1;grid-column:2;font-size:10px;min-width:0}body.compact-ui .calendar strong{display:inline;font-size:11px;margin-right:6px}body.compact-ui .calendar span{font-size:10px}
+body.compact-ui .resources{grid-row:2;grid-column:1/-1;justify-self:stretch;justify-content:space-between;width:100%;margin:0;gap:6px;min-height:32px;padding:4px 9px;border-radius:7px}
+body.compact-ui .resource{gap:3px}body.compact-ui .resource small{display:none}body.compact-ui .resource b{font-size:11px}body.compact-ui .resource-icon{width:16px;height:18px}body.compact-ui .resource.rank{padding-left:7px}body.compact-ui .rank-seal{width:17px;height:21px;font-size:12px}body.compact-ui .eff-chip{font-size:10px;padding:2px 4px}
+body.compact-ui .world-actions{top:calc(max(12px,env(safe-area-inset-top)) + 73px);left:12px;right:12px;display:flex;flex-direction:row;gap:5px;z-index:6}
+body.compact-ui .world-actions button{width:32px;height:32px;min-height:32px;padding:2px;font-size:20px;border-radius:7px}
+body.compact-ui #notifications-button{width:auto;min-width:68px;margin-right:auto;gap:6px;font-size:17px}#notifications-count{font-size:11px}#notifications-button.urgent{border-color:#ad8652}
+body.compact-ui #hero-toggle{order:2}body.compact-ui #fullscreen-button{order:3}body.compact-ui #view-controls-toggle{order:4}
+body.compact-ui #zoom-in,body.compact-ui #zoom-out,body.compact-ui #home-view{display:none}
+body.compact-ui .world-actions.expanded #zoom-in,body.compact-ui .world-actions.expanded #zoom-out,body.compact-ui .world-actions.expanded #home-view{display:block;position:absolute;top:38px}
+body.compact-ui #zoom-in{right:74px}body.compact-ui #zoom-out{right:37px}body.compact-ui #home-view{right:0}
+body.compact-ui .screen-bottom{left:10px;right:10px;bottom:max(8px,env(safe-area-inset-bottom));display:block}
+body.compact-ui .dock{width:100%;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:1px;padding:3px;border-radius:9px}
+body.compact-ui .dock-btn{width:auto;min-width:0;height:52px;padding:3px 1px;font-size:9px;line-height:1.25}body.compact-ui .dock-icon{width:24px;height:24px}body.compact-ui .dock-btn span{max-width:100%;min-height:22px;overflow:hidden}
+body.compact-ui .screen-bottom .time-controls{position:absolute;left:0;bottom:66px;gap:0;padding:2px}body.compact-ui .time-controls button{height:27px;min-width:27px;font-size:10px;padding:3px 5px}
+body.compact-ui .toasts{top:auto;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 72px);width:calc(100vw - 24px);max-width:420px}body.compact-ui .toast{font-size:11px;line-height:1.6;padding:8px 12px;max-height:76px;overflow:hidden}body.compact-ui .toast:not(:last-child){display:none}
+body.compact-ui .hero-status{left:12px;top:calc(max(12px,env(safe-area-inset-top)) + 116px);width:160px;padding:7px 9px;gap:3px}body.compact-ui .hero-status b{font-size:11px}body.compact-ui .hero-status small{font-size:9px}body.compact-ui .hero-status .hs-cls{font-size:19px}
+body.compact-ui:not(.hero-details-open) #hero-pack,body.compact-ui:not(.hero-details-open) #hero-jobs,body.compact-ui:not(.hero-details-open) #hero-order{display:none}
+body.compact-ui .hero-map{display:none;right:12px;top:calc(max(12px,env(safe-area-inset-top)) + 116px);width:132px;height:90px}body.compact-ui.hero-map-open .hero-map{display:block}
+body.compact-ui .hero-encounter-hud{top:calc(max(12px,env(safe-area-inset-top)) + 227px);right:12px;width:min(185px,calc(100vw - 194px));font-size:10px;padding:8px}body.compact-ui .hero-encounter-hud b{font-size:11px}
+body.compact-ui .hero-help{display:none}body.compact-ui .hero-stick{width:100px;height:100px;left:14px}body.compact-ui .hero-stick i{width:40px;height:40px;margin:-20px}
+body.compact-ui .hero-status #hero-details-toggle{font-size:9px;min-height:24px;padding:3px 6px}
+body.play-focus .brand,body.play-focus .calendar,body.play-focus .resources{display:none}body.play-focus .world-actions{top:max(12px,env(safe-area-inset-top))}
+@media(max-height:500px){body.compact-ui .brand{display:none}body.compact-ui .topbar{grid-template-columns:minmax(0,1fr) auto;gap:8px;right:14px}body.compact-ui .resources{grid-row:1;grid-column:1;width:min(620px,calc(100vw - 125px));justify-self:start}body.compact-ui .world-actions{top:calc(max(10px,env(safe-area-inset-top)) + 38px)}body.compact-ui .hero-status{top:86px;width:148px}body.compact-ui .hero-map{top:86px;width:116px;height:79px}body.compact-ui .hero-encounter-hud{top:92px;right:145px;width:190px;max-height:120px;overflow:auto}body.compact-ui .hero-stick{width:85px;height:85px;bottom:12px}body.compact-ui .hero-buttons{bottom:12px}body.compact-ui .hero-calling .hero-call{top:84px}}
+body.compact-ui .resource.rank>div{display:block}body.compact-ui .resources{overflow-x:auto;scrollbar-width:none;pointer-events:auto;overscroll-behavior:contain}body.compact-ui .resources .resource{flex-shrink:0}
+.landscape-control,#restore-ui{display:none}
+body.compact-ui #scene-only-button{order:3}
+@media(orientation:landscape){
+ body.compact-ui .screen-bottom{display:flex;align-items:flex-end;justify-content:flex-end;gap:6px;pointer-events:none}
+ body.compact-ui .screen-bottom .time-controls{position:static;margin-right:auto;pointer-events:auto}
+ body.compact-ui .dock{display:none;width:min(344px,calc(100vw - 182px));grid-template-columns:repeat(8,minmax(0,1fr));pointer-events:auto;padding:2px}
+ body.compact-ui.landscape-dock-open .dock{display:grid}
+ body.compact-ui .dock-btn{height:38px;padding:3px;gap:0}
+ body.compact-ui .dock-btn>span{display:none}
+ body.compact-ui .dock-icon{width:24px;height:24px}
+ body.compact-ui .landscape-control{display:flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0;font-size:23px;background:#f8edd3f2;border-color:#967b49;pointer-events:auto}
+ body.compact-ui .dock-badge{top:-5px;right:-2px;font-size:9px;min-width:14px;height:14px}
+}
+body.scene-only .world-area>:not(#world-wrap):not(#restore-ui),body.scene-only .toasts{display:none!important}
+body.scene-only #restore-ui{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:35;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;font-size:22px;background:#fff3dcc9;border:1px solid #b8955e;opacity:.5}
+body.scene-only #restore-ui:hover,body.scene-only #restore-ui:focus-visible{opacity:1}
 </style>
 </head>
 <body>
@@ -714,9 +768,9 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
     <div id="calendar" class="calendar"></div>
    </header>
    <div id="city-stats" class="city-stats" aria-label="ตัวเลขเมือง"></div>
-   <div class="world-actions" aria-label="มุมมองฉาก"><button id="zoom-in" aria-label="ซูมเข้า">+</button><button id="zoom-out" aria-label="ซูมออก">−</button><button id="home-view" aria-label="กลับมุมมองกิลด์">⌂</button><button id="hero-toggle" aria-label="ออกไปข้างนอกเป็นหัวหน้ากิลด์" title="ออกไปข้างนอกเอง">⚔</button></div>
+   <div class="world-actions" aria-label="มุมมองฉาก"><button id="notifications-button" class="compact-control" aria-haspopup="dialog" aria-controls="notifications-dialog">☷ <span id="notifications-count">0</span></button><button id="scene-only-button" aria-label="ซ่อน UI ดูบรรยากาศ" title="ซ่อน UI ดูบรรยากาศ" aria-pressed="false">◉</button><button id="fullscreen-button" aria-label="เล่นเต็มจอ" aria-pressed="false">⛶</button><button id="view-controls-toggle" class="compact-control" aria-label="มุมมองเพิ่มเติม" aria-expanded="false">⋯</button><button id="zoom-in" aria-label="ซูมเข้า">+</button><button id="zoom-out" aria-label="ซูมออก">−</button><button id="home-view" aria-label="กลับมุมมองกิลด์">⌂</button><button id="hero-toggle" aria-label="ออกไปข้างนอกเป็นหัวหน้ากิลด์" title="ออกไปข้างนอกเอง">⚔</button></div>
    <div id="show-panel" class="show-panel" hidden aria-live="polite"></div>
-   <div id="hero-hud" class="hero-hud" hidden><div class="hero-status"><div class="hs-top"><span id="hero-cls" class="hs-cls">🛡</span><div><b id="hero-name">หัวหน้ากิลด์</b><small id="hero-level">Lv.1</small></div></div><div class="hero-bar hp"><i id="hero-hp"></i></div><div class="hero-bar xp"><i id="hero-xp"></i></div><div class="hero-bar ult"><i id="hero-ultbar"></i></div><small id="hero-info"></small><small id="hero-buffs"></small><div id="hero-pack" class="hero-pack"></div><div id="hero-jobs" class="hero-jobs"></div><div id="hero-order" class="hero-order" hidden><button type="button" data-hero-order="follow">ตามมา</button><button type="button" data-hero-order="attack">บุก</button><button type="button" data-hero-order="hold">รอ</button></div><button id="hero-exit" type="button">🏠 กลับกิลด์</button></div><div id="hero-call" class="hero-call" hidden></div><aside id="hero-encounter-hud" class="hero-encounter-hud" aria-label="ภารกิจย่อย Hero" hidden></aside><canvas id="hero-map" class="hero-map" width="220" height="150" aria-label="แผนที่เล็ก"></canvas><div id="hero-stick" class="hero-stick" aria-label="เดิน (WASD)"><i></i></div><div class="hero-buttons"><button id="hero-act" type="button" hidden>✋<small>เก็บ</small></button><button id="hero-ult" type="button" aria-label="ท่าไม้ตาย (U)">💥<small>ไม้ตาย</small><i class="cd"></i></button><button id="hero-s2" type="button" aria-label="สกิล 2 (L)">🛡<small>สกิล 2</small><i class="cd"></i></button><button id="hero-s1" type="button" aria-label="สกิล 1 (K)">🌀<small>สกิล 1</small><i class="cd"></i></button><button id="hero-dash" type="button" aria-label="หลบ (Shift)">💨<small>หลบ</small><i class="cd"></i></button><button id="hero-attack" type="button" aria-label="โจมตี (J)">⚔<small>โจมตี</small></button></div><p class="hero-help">WASD เดิน · J/Space โจมตี · K สกิล 1 · L สกิล 2 · U ไม้ตาย · Shift หลบ · E เก็บ/ช่วยคน · แตะมอนเพื่อล็อกเป้า · เวลาเดินที่ ×1</p></div>
+   <div id="hero-hud" class="hero-hud" hidden><div class="hero-status"><div class="hs-top"><span id="hero-cls" class="hs-cls">🛡</span><div><b id="hero-name">หัวหน้ากิลด์</b><small id="hero-level">Lv.1</small></div></div><div class="hero-bar hp"><i id="hero-hp"></i></div><div class="hero-bar xp"><i id="hero-xp"></i></div><div class="hero-bar ult"><i id="hero-ultbar"></i></div><small id="hero-info"></small><small id="hero-buffs"></small><div id="hero-pack" class="hero-pack"></div><div id="hero-jobs" class="hero-jobs"></div><div id="hero-order" class="hero-order" hidden><button type="button" data-hero-order="follow">ตามมา</button><button type="button" data-hero-order="attack">บุก</button><button type="button" data-hero-order="hold">รอ</button></div><button id="hero-details-toggle" class="compact-control" aria-expanded="false">ข้อมูลตัวละคร</button><button id="hero-map-toggle" class="compact-control" aria-pressed="false">แผนที่</button><button id="hero-exit" type="button">🏠 กลับกิลด์</button></div><div id="hero-call" class="hero-call" hidden></div><aside id="hero-encounter-hud" class="hero-encounter-hud" aria-label="ภารกิจย่อย Hero" hidden></aside><canvas id="hero-map" class="hero-map" width="220" height="150" aria-label="แผนที่เล็ก"></canvas><div id="hero-stick" class="hero-stick" aria-label="เดิน (WASD)"><i></i></div><div class="hero-buttons"><button id="hero-act" type="button" hidden>✋<small>เก็บ</small></button><button id="hero-ult" type="button" aria-label="ท่าไม้ตาย (U)">💥<small>ไม้ตาย</small><i class="cd"></i></button><button id="hero-s2" type="button" aria-label="สกิล 2 (L)">🛡<small>สกิล 2</small><i class="cd"></i></button><button id="hero-s1" type="button" aria-label="สกิล 1 (K)">🌀<small>สกิล 1</small><i class="cd"></i></button><button id="hero-dash" type="button" aria-label="หลบ (Shift)">💨<small>หลบ</small><i class="cd"></i></button><button id="hero-attack" type="button" aria-label="โจมตี (J)">⚔<small>โจมตี</small></button></div><p class="hero-help">WASD เดิน · J/Space โจมตี · K สกิล 1 · L สกิล 2 · U ไม้ตาย · Shift หลบ · E เก็บ/ช่วยคน · แตะมอนเพื่อล็อกเป้า · เวลาเดินที่ ×1</p></div>
    <div class="corner-stack"><button id="goal-card" class="goal-card" type="button" aria-live="polite"></button><div id="near-goals" class="near-goals" aria-label="เป้าหมายใกล้ตัว"></div></div>
    <div id="event-banner" class="event-banner" hidden role="status"></div>
    <div id="follow-chip" class="follow-chip" hidden role="status"><span class="fc-dot" aria-hidden="true"></span><div class="fc-text"><b id="fc-name"></b><small id="fc-sub"></small></div><button id="fc-mission" type="button">ภารกิจ</button><button id="fc-stop" type="button" aria-label="หยุดติดตาม">✕</button></div>
@@ -733,7 +787,9 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
      <button class="dock-btn" data-tab="workshop" data-dock="workshop"><canvas class="dock-icon" width="40" height="40" data-item="sword"></canvas><span>คราฟต์</span></button>
      <button id="menu-button" class="dock-btn" data-tab="home" data-dock="home" aria-haspopup="dialog" aria-controls="management-dialog"><canvas class="dock-icon" width="40" height="40" data-item="banner"></canvas><span>กิลด์</span></button>
     </nav>
+    <button id="dock-toggle" class="landscape-control" aria-label="เปิดเมนู" aria-controls="dock" aria-expanded="false">☰</button>
    </div>
+   <button id="restore-ui" aria-label="แสดง UI" title="แสดง UI">☷</button>
   </main>
   <dialog id="management-dialog" class="management-dialog" aria-labelledby="panel-heading">
    <aside class="notebook">
@@ -762,6 +818,7 @@ button.policy-card:hover{border-color:#93ad73;background:#f2f6e8}.policy-list{di
   <dialog id="away-dialog" class="away-dialog" aria-label="ระหว่างที่คุณไม่อยู่"><div id="away-content"></div></dialog>
   <dialog id="call-dialog" class="event-dialog call-dialog" aria-labelledby="call-title"><div id="call-content"></div></dialog>
   <dialog id="hero-event-dialog" class="event-dialog hero-event-dialog" aria-labelledby="hero-event-title"><div id="hero-event-content"></div></dialog>
+  <dialog id="notifications-dialog" aria-labelledby="notifications-title"><button id="notifications-close" class="close-dialog" aria-label="ปิดข่าว">×</button><h2 id="notifications-title">ข่าวและเป้าหมาย</h2><div id="notification-news"></div><div id="notification-hud"></div></dialog>
   <dialog id="event-dialog" class="event-dialog" aria-labelledby="event-title"><div id="event-content"></div></dialog>
   <dialog id="report-dialog" class="report-dialog" aria-labelledby="report-title"><div id="report-content"></div></dialog>
   <dialog id="confirm-dialog"><h2 id="confirm-title"></h2><p id="confirm-message"></p><div class="dialog-actions"><button id="confirm-cancel" class="secondary">ยกเลิก</button><button id="confirm-ok" class="primary">ยืนยัน</button></div></dialog>
@@ -1842,6 +1899,133 @@ if(typeof Image!=='undefined')for(const url of [...Object.values(ICONS),...Objec
 
 return {illustratedIcon,drawIllustratedIcon,drawIllustratedRegion};
 })();
+const NightLighting=(()=>{
+/* Bake small warm light layers once; the renderer only fades/moves them at dusk. */
+function nightAmount(clock = 0) {
+  const t = ((clock % 240) + 240) % 240 / 240;
+  return t < .2 ? 1 : t < .25 ? (.25 - t) / .05 : t < .72 ? 0 : t < .8 ? (t - .72) / .08 : 1;
+}
+
+// Pixel anchors for the existing farm and frontier sprites, relative to their feet.
+function sceneryNightLights(key,sprite) {
+  const at=(x,y,kind='lamp',radius=36)=>({kind,x:x-sprite.footX,y:y-sprite.footY,radius});
+  const pane=(points,colors)=>({points:points.map(([x,y])=>[x-sprite.footX,y-sprite.footY]),colors});
+  if(key==='lm-lamp')return[at(10,14,'lamp',30),at(7,40,'spill',36)];
+  if(key==='barn')return[pane([[28,95],[43,95],[43,110],[28,110]],['#687b77','#b4bda0','#4e625d']),at(79,105),at(66,132,'spill',42)];
+  if(key==='windmill')return[pane([[29,57],[35,57],[35,64],[29,64]],['#9fc0c8','#d8eef0']),at(42,86),at(32,111,'spill',36)];
+  if(key==='lm-post-0')return[at(54,38,'lamp',30)];
+  if(key==='lm-fire-0')return[at(22,27,'spill',44)];
+  if(key.startsWith('lm-frontier-camp'))return[{kind:'spill',x:-31.2,y:4.8,radius:46}];
+  return [];
+}
+
+function makeNightLight(sprite) {
+  const pad = 48, width = sprite.canvas.width + pad * 2, height = sprite.canvas.height + pad * 2;
+  const canvas = () => { const c = document.createElement('canvas'); c.width = width; c.height = height; return c; };
+  const panes = canvas(), glow = canvas(), p = panes.getContext('2d'), g = glow.getContext('2d');
+  const ox = sprite.footX + pad, oy = sprite.footY + pad;
+  const polygon = (ctx, points) => { ctx.beginPath(); points.forEach(([x,y], i) => i ? ctx.lineTo(ox+x,oy+y) : ctx.moveTo(ox+x,oy+y)); ctx.closePath(); ctx.fill(); };
+  const colors = new Set();
+  for (const light of sprite.nightLights || []) {
+    if (light.points) {
+      p.fillStyle = '#ffbe5c'; polygon(p, light.points);
+      for (const color of light.colors || []) colors.add(color.toLowerCase());
+    }
+  }
+  // Illuminate the glass, retaining mullions, shutters and anything in front of it.
+  const pixels = p.getImageData(pad,pad,sprite.canvas.width,sprite.canvas.height);
+  const original = sprite.canvas.getContext('2d').getImageData(0,0,sprite.canvas.width,sprite.canvas.height).data;
+  for (let i=0; i<pixels.data.length; i+=4) if (pixels.data[i+3]) {
+    const color = '#'+[original[i],original[i+1],original[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+    if (!colors.has(color)) pixels.data[i+3]=0;
+  }
+  p.putImageData(pixels,pad,pad);
+  for (const light of sprite.nightLights || []) {
+    const points = light.points;
+    const x = ox + (points ? points.reduce((s,a)=>s+a[0],0)/points.length : light.x);
+    const y = oy + (points ? points.reduce((s,a)=>s+a[1],0)/points.length : light.y);
+    if (light.kind === 'lamp') {
+      p.fillStyle='#795338'; p.fillRect(Math.round(x)-3,Math.round(y)-4,6,8);
+      p.fillStyle='#ffb54f'; p.fillRect(Math.round(x)-2,Math.round(y)-3,4,6);
+      p.fillStyle='#fff0c3'; p.fillRect(Math.round(x)-1,Math.round(y)-2,2,4);
+    }
+    const radius = light.radius || (points ? 22 : 36), sy = light.kind === 'spill' ? .5 : .8;
+    g.save(); g.translate(x,y); g.scale(1,sy);
+    const halo=g.createRadialGradient(0,0,0,0,0,radius);
+    halo.addColorStop(0,light.kind==='spill'?'rgba(255,136,40,.44)':'rgba(255,150,48,.56)');
+    halo.addColorStop(.4,'rgba(255,132,36,.2)'); halo.addColorStop(1,'rgba(255,120,30,0)');
+    g.fillStyle=halo;g.fillRect(-radius,-radius,radius*2,radius*2);g.restore();
+  }
+  return {panes,glow,pad};
+}
+
+return {nightAmount,sceneryNightLights,makeNightLight};
+})();
+const Fullscreen=(()=>{
+/* Native fullscreen where available; focus mode keeps unsupported mobile browsers playable. */
+function initFullscreen(button, { notify = () => {}, resize = () => {} } = {}) {
+  const root = document.documentElement;
+  const current = () => document.fullscreenElement || document.webkitFullscreenElement;
+  const sync = () => { const on = Boolean(current()) || document.body.classList.contains('play-focus'); button.textContent = on ? '↙' : '⛶'; const label=current()?'ออกจากเต็มจอ':on?'ออกจากโหมดเล่น':'เล่นเต็มจอ';button.setAttribute('aria-label',label); button.setAttribute('aria-pressed', String(on)); button.title=label; resize(); };
+  button.addEventListener('click', async () => {
+    try {
+      if (current()) { const exit = document.exitFullscreen || document.webkitExitFullscreen; await exit.call(document); }
+      else if (document.body.classList.contains('play-focus')) document.body.classList.remove('play-focus');
+      else { const request = root.requestFullscreen || root.webkitRequestFullscreen;
+        if (request) await request.call(root,...(root.requestFullscreen?[{navigationUI:'hide'}]:[]));
+        else { document.body.classList.add('play-focus'); notify('เปิดโหมดเล่นซ่อนแถบข้อมูลแล้ว · เบราว์เซอร์นี้ไม่รองรับการซ่อนแถบด้านบน'); }
+      }
+    } catch { document.body.classList.add('play-focus'); notify('เบราว์เซอร์ไม่อนุญาตเต็มจอ · เปิดโหมดเล่นซ่อนแถบข้อมูลแทน'); }
+    sync();
+  });
+  document.addEventListener('fullscreenchange', sync); document.addEventListener('webkitfullscreenchange', sync);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('play-focus')) { document.body.classList.remove('play-focus'); sync(); } });
+  sync(); return { sync };
+}
+
+return {initFullscreen};
+})();
+const MobileUI=(()=>{
+/* Keep the world's corners clear on phones; the original controls live in a drawer. */
+function initMobileUI({ beforeOpen = () => {}, afterClose = () => {}, beforeSceneOnly = () => {}, afterSceneOnly = () => {} } = {}) {
+  const $ = id => document.getElementById(id), button = $('notifications-button'), dialog = $('notifications-dialog');
+  const media = matchMedia('(max-width:900px), (max-height:500px), (pointer:coarse) and (max-width:1400px)'), records = [];
+  const nodes = [document.querySelector('.corner-stack'), $('city-stats'),$('event-banner')];
+  const anchors = nodes.map(node => { const anchor = document.createComment('HUD home'); node.before(anchor); return anchor; });
+  const sync = () => { const goals = $('near-goals').querySelectorAll('button').length + 1 + Number(!$('event-banner').hidden), unread = records.filter(r => !r.read).length;
+    $('notifications-count').textContent = String(goals + unread); button.setAttribute('aria-label', `ข่าวและเป้าหมาย ${goals + unread} เรื่อง`); button.classList.toggle('urgent', $('goal-card').classList.contains('urgent') || unread > 0);
+  };
+  const render = () => { const box = $('notification-news'); box.replaceChildren();
+    if (!records.length) { const p = document.createElement('p'); p.className = 'tiny-note'; p.textContent = 'ข่าวใหม่จะรวมไว้ที่นี่ เป้าหมายและหีบอยู่ด้านล่าง'; box.append(p); }
+    for (const record of records) { const el = document.createElement(record.action ? 'button' : 'p'); el.className = 'notification-news' + (record.error ? ' error' : ''); el.textContent = record.text;
+      if (record.action) { el.type = 'button'; el.addEventListener('click', () => { dialog.close(); record.action(); }); } box.append(el);
+    }
+  };
+  const layout = () => { document.body.classList.toggle('compact-ui', media.matches);
+    nodes.forEach((node, i) => { if (media.matches) $('notification-hud').append(node); else anchors[i].after(node); });
+    if (!media.matches && dialog.open) dialog.close(); sync();
+  };
+  button.addEventListener('click', () => { beforeOpen(); records.forEach(r => r.read = true); render(); sync(); dialog.showModal(); });
+  $('notifications-close').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('close', afterClose);
+  $('notification-hud').addEventListener('click',event=>{if(event.target.closest('button'))dialog.close();},true);
+  dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();});
+  $('view-controls-toggle').addEventListener('click', () => { const el = $('view-controls-toggle'), expanded = el.getAttribute('aria-expanded') !== 'true'; el.setAttribute('aria-expanded', String(expanded)); document.querySelector('.world-actions').classList.toggle('expanded', expanded); });
+  $('hero-details-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('hero-details-open');$('hero-details-toggle').setAttribute('aria-expanded',String(on));});
+  $('hero-map-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('hero-map-open');$('hero-map-toggle').setAttribute('aria-pressed',String(on));});
+  document.querySelectorAll('.dock-btn').forEach(el=>{if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label',el.querySelector('span').textContent.trim());});
+  $('dock-toggle').addEventListener('click',()=>{const on=document.body.classList.toggle('landscape-dock-open');$('dock-toggle').setAttribute('aria-expanded',String(on));$('dock-toggle').setAttribute('aria-label',on?'พับเมนู':'เปิดเมนู');$('dock-toggle').textContent=on?'×':'☰';});
+  $('dock').addEventListener('click',event=>{if(event.target.closest('.dock-btn')){document.body.classList.remove('landscape-dock-open');$('dock-toggle').setAttribute('aria-expanded','false');$('dock-toggle').setAttribute('aria-label','เปิดเมนู');$('dock-toggle').textContent='☰';}});
+  const sceneOnly=on=>{document.body.classList.toggle('scene-only',on);$('scene-only-button').setAttribute('aria-pressed',String(on));if(on){beforeSceneOnly();$('restore-ui').focus({preventScroll:true});}else{afterSceneOnly();$('scene-only-button').focus({preventScroll:true});}};
+  $('scene-only-button').addEventListener('click',()=>sceneOnly(true));
+  $('restore-ui').addEventListener('click',()=>sceneOnly(false));
+  window.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('scene-only')){event.preventDefault();sceneOnly(false);}});
+  media.addEventListener('change', layout); layout();
+  return { sync, compact: () => media.matches, record(text, error, action) { records.unshift({ text, error, action, read: dialog.open }); records.length = Math.min(records.length, 24); if (dialog.open) render(); sync(); } };
+}
+
+return {initMobileUI};
+})();
 const Site=(()=>{
 // Shared physical layout: placement, navigation and artwork read the same geometry.
 const START_BUILDING={x:5,y:4,width:8,height:6,level:0};
@@ -2561,8 +2745,8 @@ const Town=(()=>{
    winding around whatever stands in the way and joining paths that are already there. Paths start as
    trodden trails and wear into dirt roads, and into cobbles once the village is a town.
    Pure logic: grid units only, no drawing. */
-const { VILLAGE_LOTS, VILLAGE_BUSINESSES, BUILDING_FOOTPRINTS, HOUSE_TIERS, HOME_NEEDS, HOUSE_UPGRADES }=Content;
-const { buildingRect, WORLD_PATHS, SITE_COTTAGES }=Site;
+const { VILLAGE_LOTS, VILLAGE_BUSINESSES, BUILDING_FOOTPRINTS, BUILDING_STAGES, FACILITIES, HOUSE_TIERS, HOME_NEEDS, HOUSE_UPGRADES }=Content;
+const { buildingRect, WORLD_PATHS, SITE_COTTAGES, SITE_TREES, siteRoads, siteDecorations }=Site;
 
 const RES = 0.5;
 const lotOf = (state, key) => state.village?.lots?.[key] || (key[0] === 'h' ? VILLAGE_LOTS.houses[+key.slice(1)] : VILLAGE_LOTS[key]);
@@ -2724,14 +2908,30 @@ function sanitizeHomes(data, houses) {
   }
   return out;
 }
-/** Can this building stand here, turned this way? Checks other village buildings and the guild only. */
-function spotFree(state, key, kind, x, y, rot) {
-  const [w, h] = footprintOf(kind, rot), g = buildingRect(state), others = villageBuildings(state).filter(b => b.key !== key);
-  const hit = r => x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y;
-  return !others.some(o => hit({ x: o.x - 0.4, y: o.y - 0.4, w: o.w + 0.8, h: o.h + 0.8 })) && !hit({ x: g.x - 1, y: g.y - 1, w: g.w + 2, h: g.h + 3 });
+/** Reserve the hall's actual future footprint, independently of purchased land. */
+function guildExpansionReserve(state) {
+  const g=buildingRect(state),last=BUILDING_STAGES.at(-1);
+  return {x:g.x-1,y:g.y-1,w:Math.max(g.w,last.width)+2,h:Math.max(g.h,last.height)+3};
 }
+function villagePlacementBlockers(state,key) {
+  return [
+    {...guildExpansionReserve(state),reason:'พื้นที่สำหรับต่อเติมกิลด์และทางเข้า'},
+    ...siteRoads(state).map(r=>({...r,reason:'ต้องเว้นถนนและทางเข้า'})),
+    ...SITE_COTTAGES.map(c=>({x:c.x-.3,y:c.y-.3,w:c.w+.6,h:c.h+.6,reason:'ทับอาคารเดิม'})),
+    ...siteDecorations(state).map(r=>({...r,reason:'ทับของรอบกิลด์'})),
+    ...SITE_TREES.map(([x,y])=>({x:x-.5,y:y-.5,w:1,h:1,reason:'ทับต้นไม้'})),
+    ...villageBuildings(state).filter(b=>b.key!==key).map(b=>({x:b.x-.4,y:b.y-.4,w:b.w+.8,h:b.h+.8,reason:'ทับอาคารอื่น'})),
+    ...(state.facilities||[]).filter(f=>FACILITIES[f.type]).map(f=>{const d=FACILITIES[f.type];return{x:f.x,y:f.y,w:f.rotation%2?d.h:d.w,h:f.rotation%2?d.w:d.h,reason:'ทับของหรือแปลงสมุนไพรของกิลด์'};})
+  ];
+}
+function villagePlacementProblem(state,key,kind,x,y,rot=0) {
+  const [w,h]=footprintOf(kind,rot);
+  const block=villagePlacementBlockers(state,key).find(r=>x<r.x+r.w&&x+w>r.x&&y<r.y+r.h&&y+h>r.y);
+  return block?.reason||null;
+}
+const spotFree=(state,key,kind,x,y,rot)=>!villagePlacementProblem(state,key,kind,x,y,rot);
 
-return {villageBuildings,ROTATABLE,footprintOf,doorOf,routePath,homeOf,needsMet,homeStatus,housingCapacity,population,tickTown,pathTier,sanitizePaths,sanitizeHomes,spotFree};
+return {villageBuildings,ROTATABLE,footprintOf,doorOf,routePath,homeOf,needsMet,homeStatus,housingCapacity,population,tickTown,pathTier,sanitizePaths,sanitizeHomes,guildExpansionReserve,villagePlacementBlockers,villagePlacementProblem,spotFree};
 })();
 const HeroEvents=(()=>{
 /* Encounters for the player-controlled guild master. Their own saved random stream
@@ -4980,6 +5180,14 @@ const VENUE = { tournament: 'arena', harvest: 'fairground', lantern: 'stage' };
 const FESTIVAL_VENUE = VENUE;
 
 function createFestivals() { return { live: null, ready: {}, history: [], held: 0 }; }
+function isGameNight(state) { const t = Number(state.clock) || 0; return t < 60 || t >= 180; }
+function lanternSchedule(state) {
+  const t = Number(state.clock) || 0, available = t >= 180 ? 300 - t : 60 - t;
+  const night = isGameNight(state), ok = night && available >= 10;
+  const prep = ok && available < FESTIVALS.lantern.prep + FESTIVALS.lantern.length ? Math.min(FESTIVALS.lantern.prep, available * .2) : FESTIVALS.lantern.prep;
+  const length = ok ? Math.min(FESTIVALS.lantern.length, available - prep) : FESTIVALS.lantern.length;
+  return { ok, prep, length, reason: !night ? 'โคมลอยจัดได้เฉพาะกลางคืน 18:00–06:00' : 'ใกล้เช้าแล้ว · รอจัดโคมลอยคืนนี้ตั้งแต่ 18:00' };
+}
 
 /** Can the guild hold this festival now? */
 function festivalStatus(state, ctx, kind) {
@@ -4990,7 +5198,8 @@ function festivalStatus(state, ctx, kind) {
   if (kind === 'tournament' && state.exams?.session) return { ok: false, reason: 'สนามสอบกำลังใช้สอบเลื่อนแรงค์ รอให้รอบสอบจบก่อน', level };
   const wait = Math.max(0, Math.ceil((fest.ready[kind] || 0) - state.elapsed));
   if (wait) return { ok: false, reason: `จัดได้อีกครั้งในอีก ${wait} วินาที`, level, wait };
-  return { ok: true, reason: '', level };
+  if (kind === 'lantern') { const schedule = lanternSchedule(state); return { ...schedule, level, reason: schedule.ok ? '' : schedule.reason }; }
+  return { ok: true, reason: '', level, prep: f.prep, length: f.length };
 }
 /** Visitors drawn in: the bigger the prize and the village, the bigger the crowd. */
 function festivalVisitors(state, ctx, kind, gold, itemValue = 0) {
@@ -5072,12 +5281,13 @@ function startFestival(state, ctx, payload) {
   const members = kind === 'tournament' ? festivalEntrants(state, ctx, gold) : [];
   ctx.pay(gold, `เงินรางวัล${f.name}`);
   const now = state.elapsed;
-  const live = { v: 2, kind, gold, item, start: now, open: now + f.prep, end: now + f.prep + f.length, length: f.length, visitors: festivalVisitors(state, ctx, kind, gold, item?.value || 0), members };
+  const prep = st.prep ?? f.prep, length = st.length ?? f.length;
+  const live = { v: 2, kind, gold, item, start: now, open: now + prep, end: now + prep + length, length, visitors: festivalVisitors(state, ctx, kind, gold, item?.value || 0), members };
   if (kind === 'tournament') { seedBracket(state, ctx, live, members); for (const id of members) ctx.enter(id, now + 600); stageTournament(state, ctx, live); }
   if (kind === 'harvest') stageHarvest(state, ctx, live);
   if (kind === 'lantern') stageLantern(state, ctx, live);
   state.festivals.live = live;
-  ctx.log(`ประกาศ${f.name}! รางวัล ${gold} G${item ? ' และ' + item.name : ''} · เริ่มในอีก ${f.prep} วินาที`, 'cozy');
+  ctx.log(`ประกาศ${f.name}! รางวัล ${gold} G${item ? ' และ' + item.name : ''} · เริ่มในอีก ${Math.ceil(prep)} วินาที`, 'cozy');
   return { ok: true, message: `ประกาศ${f.name}แล้ว ชาวบ้านกำลังมารวมตัว` };
 }
 
@@ -5294,7 +5504,7 @@ function sanitizeFestivals(data, ids) {
   return fest;
 }
 
-return {FESTIVAL_VENUE,createFestivals,festivalStatus,festivalVisitors,festivalEntrants,startFestival,tickFestivals,festivalView,sanitizeFestivals};
+return {FESTIVAL_VENUE,createFestivals,isGameNight,lanternSchedule,festivalStatus,festivalVisitors,festivalEntrants,startFestival,tickFestivals,festivalView,sanitizeFestivals};
 })();
 const Audio=(()=>{
 /* Sound for the guild: gentle generative music that follows the camera (village, meadow, misty woods, canyon,
@@ -5470,7 +5680,56 @@ function fxSound(e) {
   }
 }
 
-return {unlockAudio,setAudio,audioOptions,setMusicArea,musicArea,MUSIC_AREAS,sfx,fxSound};
+// ---- Night ambience: crickets, a soft breeze, an owl now and then; frogs by water, deeper wind in the mist. ----
+let ambBus = null, ambLevel = 0, ambPlace = 'village', ambTimer = null, breeze = null;
+const ambNext = { crickets: [0, 0, 0], owl: 0, frog: 0, chime: 0 };
+function ambGain() { return (opts.sfx ? 1 : 0) * ambLevel; }
+function startBreeze() {
+  const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+  s.buffer = noiseBuf; s.loop = true; f.type = 'lowpass'; f.frequency.value = 380; g.gain.value = 0;
+  lfo.frequency.value = .07; lg.gain.value = 120; lfo.connect(lg); lg.connect(f.frequency);
+  s.connect(f); f.connect(g); g.connect(ambBus); s.start(); lfo.start();
+  breeze = { g, f };
+}
+function chirp(t, pitch, pulses, gain) {
+  for (let k = 0; k < pulses; k++) tone(ambBus, pitch, t + k * .07, .028, { type: 'sine', gain, attack: .004, release: .02 });
+}
+function ambTick() {
+  if (!ctx || ctx.state !== 'running') return;
+  const level = ambGain(), now = ctx.currentTime;
+  if (!breeze) startBreeze();
+  const mist = ambPlace === 'mist' || ambPlace === 'peak';
+  breeze.g.gain.setTargetAtTime(level * (mist ? .1 : .045), now, .8);
+  breeze.f.frequency.setTargetAtTime(mist ? 260 : 380, now, 1);
+  if (level < .02) return;
+  // Three crickets, each with its own pitch and rhythm.
+  ambNext.crickets.forEach((at, i) => {
+    if (now < at) return;
+    if (!mist || i === 0) chirp(now + .05, [4300, 4700, 3900][i], 3 + (i % 2), .022 * level);
+    ambNext.crickets[i] = now + .55 + i * .23 + Math.random() * .9;
+  });
+  if (now >= ambNext.owl) {
+    if (ambNext.owl) { const t = now + .1, f = mist ? 300 : 360; tone(ambBus, f, t, .22, { type: 'sine', gain: .07 * level, attack: .06, release: .18, slide: .9, filter: 900 }); tone(ambBus, f * .94, t + .45, .35, { type: 'sine', gain: .06 * level, attack: .08, release: .25, slide: .88, filter: 900 }); }
+    ambNext.owl = now + 14 + Math.random() * 18;
+  }
+  if (ambPlace === 'meadow' && now >= ambNext.frog) {
+    if (ambNext.frog) for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k++) tone(ambBus, 150 + Math.random() * 30, now + .1 + k * .16, .08, { type: 'sawtooth', gain: .035 * level, attack: .01, release: .05, filter: 600, slide: .8 });
+    ambNext.frog = now + 2.5 + Math.random() * 4;
+  }
+  if (mist && now >= ambNext.chime) {
+    if (ambNext.chime) { const root = 72 + [0, 3, 7, 10][Math.floor(Math.random() * 4)]; tone(ambBus, midi(root), now + .1, .6, { type: 'sine', gain: .03 * level, attack: .005, release: 1.2 }); }
+    ambNext.chime = now + 6 + Math.random() * 8;
+  }
+}
+/** Night ambience follows the night (0 day … 1 deep night) and the area the camera is looking at. */
+function setNightAmbience(level, place = 'village') {
+  if (!ensure()) return;
+  if (!ambBus) { ambBus = ctx.createGain(); ambBus.gain.value = .9; ambBus.connect(master); }
+  ambLevel = Math.max(0, Math.min(1, level)); ambPlace = place;
+  if (!ambTimer) ambTimer = setInterval(ambTick, 150);
+}
+
+return {unlockAudio,setAudio,audioOptions,setMusicArea,musicArea,MUSIC_AREAS,sfx,fxSound,setNightAmbience};
 })();
 const Trade=(()=>{
 /* The guild's trade: adventurers sell monster parts and treasures at the guild counter, the guild stores them,
@@ -6711,7 +6970,7 @@ const { INN, tickLife, createWorld, rallyDefenders, recallHunters, addFree, free
 const { tickHeroEncounters, resolveHeroEncounter, abandonHeroChallenge, cancelHeroEncounters, sanitizeHeroEncounters }=HeroEvents;
 const { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector }=Storyteller;
 const { SPECIES }=Bestiary;
-const { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf }=Town;
+const { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, villagePlacementProblem, ROTATABLE, homeOf, villageBuildings, doorOf }=Town;
 const { goalBoard, claimGoal, sanitizeMastery, setGoalJobs }=Goals;
 const { HERO_CLASSES, HERO_TREE, HERO_GEAR, CLASS_CHANGE_FEE, HERO_BOUNDS, CONTRACT_KINDS, RARE_MATS, treePoints }=HeroData;
 const { createProgress, sanitizeProgress, addChest, rollChest, recordKill, recordTreasure, offerPolicies, choosePolicy, hasPolicy, newDailyGoals, dailyView, POLICIES, CHESTS, CHEST_RARITIES, TREASURE_SETS, CODEX_FAMILIES }=Progress;
@@ -8475,7 +8734,7 @@ function moveVillageBuilding(state, payload) {
   if (rot && !ROTATABLE(key)) return failure('อาคารนี้หมุนไม่ได้');
   if (!finiteNumber(spot.x) || !finiteNumber(spot.y) || Math.abs(spot.x) > 90 || Math.abs(spot.y) > 90) return failure('ตำแหน่งที่ตั้งไม่ถูกต้อง');
   const x = Math.round(spot.x * 4) / 4, y = Math.round(spot.y * 4) / 4;
-  if (!spotFree(state, key, kind, x, y, rot)) return failure('ทับอาคารอื่นหรือที่ดินกิลด์');
+  const problem=villagePlacementProblem(state,key,kind,x,y,rot);if(problem)return failure(problem);
   state.village.lots = { ...(state.village.lots || {}), [key]: { x, y, ...(rot ? { rot: 1 } : {}) } };
   if (state.village.paths) delete state.village.paths[key];
   return success('ย้ายอาคารแล้ว ทางเดินจะค่อย ๆ เกิดใหม่จากประตู');
@@ -8486,8 +8745,10 @@ function buildProject(state, payload) {
   // The player picks where a new building stands; upgrades stay where they are.
   const key = id === 'house' ? 'h' + state.village.houses : id, spot = payload.spot;
   if (spot && (!finiteNumber(spot.x) || !finiteNumber(spot.y) || Math.abs(spot.x) > 90 || Math.abs(spot.y) > 90)) return failure('ตำแหน่งที่ตั้งไม่ถูกต้อง');
+  const newBuilding=id==='house'||!state.village[id];
+  if(spot&&newBuilding){const x=Math.round(spot.x*4)/4,y=Math.round(spot.y*4)/4,rot=spot.rot===1&&ROTATABLE(key)?1:0,problem=villagePlacementProblem(state,key,id,x,y,rot);if(problem)return failure(problem);}
   transact(state, status.cost, `หมู่บ้าน: ${p.name}`);
-  if (spot && !state.village.lots?.[key]) state.village.lots = { ...(state.village.lots || {}), [key]: { x: Math.round(spot.x * 4) / 4, y: Math.round(spot.y * 4) / 4, ...(spot.rot === 1 && ROTATABLE(key) ? { rot: 1 } : {}) } };
+  if (spot && newBuilding) state.village.lots = { ...(state.village.lots || {}), [key]: { x: Math.round(spot.x * 4) / 4, y: Math.round(spot.y * 4) / 4, ...(spot.rot === 1 && ROTATABLE(key) ? { rot: 1 } : {}) } };
   if (id === 'house') state.village.houses += 1; else state.village[id] = (state.village[id] || 0) + 1;
   if (id === 'shop' || id === 'smithy') restockShops(state);
   const before = getVillageInfo(state).level;
@@ -10118,7 +10379,7 @@ function banner(c, x, y, text, color, size = 10) {
 }
 function hpBar(c, x, y, w, ratio, color, label) {
   rect(c, x - 1, y - 1, w + 2, 6, '#4f4540'); rect(c, x, y, w, 4, '#e6dcc4'); rect(c, x, y, w * Math.max(0, Math.min(1, ratio)), 4, color);
-  if (label) { c.fillStyle = '#fff8e7'; c.font = 'bold 8px "Noto Sans Thai", sans-serif'; c.textBaseline = 'bottom'; c.fillText(label, x, y - 2); }
+  if (label) { c.fillStyle = '#584c43'; c.font = 'bold 8px "Noto Sans Thai", sans-serif'; c.textBaseline = 'bottom'; c.fillText(label, x, y - 2); }
 }
 
 /** Draw the mission as a top-down dungeon: fogged map, walking party, fights in each room. */
@@ -10221,12 +10482,12 @@ function drawDungeonScene(canvas, mission, quest, state, options = {}) {
   if (memory.bossAt !== undefined && t - memory.bossAt < 1.4) { c.globalAlpha = Math.min(1, (1.4 - (t - memory.bossAt)) * 2); banner(c, W / 2, H / 2 - 10, 'บอสปรากฏ!', '#d98978', 14); c.globalAlpha = 1; }
   if (mission.status === 'completed' || mission.status === 'failed' || mission.status === 'recalled') banner(c, W / 2, H / 2 - 10, mission.status === 'completed' ? 'ภารกิจสำเร็จ!' : 'ถอยกลับบ้าน', mission.status === 'completed' ? '#7fae6f' : '#a59d8f', 14);
   // HUD.
-  rect(c, 0, 0, W, 16, '#3d352cb0');
+  rect(c, 0, 0, W, 16, '#fff3dcee');
   hpBar(c, 6, 8, 90, (combat.partyHp || 0) / Math.max(1, combat.partyMaxHp || 1), '#90b89c', 'ทีม');
   if (stage.fight > 0) hpBar(c, W - 96, 8, 90, (combat.enemyHp || 0) / Math.max(1, combat.enemyMaxHp || 1), '#d98978', stage.fight === 3 ? 'บอส' : 'ศัตรู');
   const caption = mission.status === 'completed' ? 'กลับบ้านแล้ว' : mission.status === 'failed' || mission.status === 'recalled' ? 'ถอยกลับบ้าน' : stage.back ? 'เดินทางกลับบ้าน' : stage.fight > 0 ? (stage.fight === 3 ? 'ห้องบอส!' : `ห้อง ${stage.fight}/3`) : `กำลังเดินไปห้อง ${stage.target}/3`;
-  c.fillStyle = '#fff8e7'; c.font = 'bold 9px "Noto Sans Thai", sans-serif'; c.textBaseline = 'middle'; const tw = c.measureText(caption).width; c.fillText(caption, (W - tw) / 2, 8);
-  if (paused) { c.fillStyle = '#fff8e7'; c.fillText('หยุดเวลา', W - 44, H - 8); }
+  c.fillStyle = '#584c43'; c.font = 'bold 9px "Noto Sans Thai", sans-serif'; c.textBaseline = 'middle'; const tw = c.measureText(caption).width; c.fillText(caption, (W - tw) / 2, 8);
+  if (paused) { c.fillStyle = '#584c43'; c.fillText('หยุดเวลา', W - 44, H - 8); }
   c.restore();
 }
 
@@ -10383,6 +10644,12 @@ function makeBuilding(state){
  for(let x=0;x<w;x++)if(Math.abs(x+.5-w/2)>.75)add('cut-x-'+x,x,h,object(c=>wall(c,'x',1,6)),6);
  for(let y=0;y<h;y++)add('cut-y-'+y,w,y,object(c=>wall(c,'y',1,6)),6);
  add('entrance',w/2-.75,h,object(c=>{cube(c,0,0,1.5,.38,-3,3,'#ae9e82','#dac49e','#8f8b76');cube(c,0,.38,1.5,.34,-6,3,'#a99b7f','#d6c09c','#908c76');}),8);
+ for(const part of layers){
+  const axis=part.name.startsWith('back-x-')?'x':part.name.startsWith('back-y-')?'y':null,index=Number(part.name.split('-').at(-1));
+  if(axis&&index%3===1){const at=(t,z)=>axis==='x'?[t,0,z]:[0,t,z];part.sprite.nightLights=[{points:[at(.18,8),at(.78,8),at(.78,22),at(.18,22)].map(v=>q(...v)),colors:['#adbbb0','#e6ebd4']}];}
+  if(part.name==='entrance')part.sprite.nightLights=[{kind:'lamp',x:q(.05,0,12)[0],y:q(.05,0,12)[1]},{kind:'spill',x:q(.75,-.4,0)[0],y:q(.75,-.4,0)[1],radius:44}];
+  if(part.name==='floor')part.sprite.nightLights=[{kind:'spill',x:q(w/2,h/2,0)[0],y:q(w/2,h/2,0)[1],radius:48}];
+ }
  return{layers};
 }
 function makePartition(room,state){
@@ -10537,7 +10804,7 @@ function makeStall(seed=1,variant=0){
 }
 function makeHome(name,seed=1){
  const s=HOME_STYLES[name]||HOME_STYLES.thatch,{w,h,z,ridge,storeys=1}=s,pitch=s.pitch||(ridge==='y'?w:h)*11,o=.16,[r0,r1,rl,rk]=ROOFS[s.roof],[w0,w1]=WALLS[s.wall],r=rng(seed),peak=z+pitch;
- let smoke=null;const footX=Math.ceil(h*24)+30,footY=peak+40,result=stamp(Math.ceil((w+h)*24)+60+(s.forge?40:0),footY+Math.ceil((w+h)*12)+30,footX,footY,c=>{
+ let smoke=null;const nightLights=[];const footX=Math.ceil(h*24)+30,footY=peak+40,result=stamp(Math.ceil((w+h)*24)+60+(s.forge?40:0),footY+Math.ceil((w+h)*12)+30,footX,footY,c=>{
   const F=(u,zz)=>[u,h,zz],S=(u,zz)=>[w,u,zz],quad=(at,u0,u1,z0,z1,color,edge)=>face(c,[at(u0,z0),at(u1,z0),at(u1,z1),at(u0,z1)],color,edge);
   top(c,-.1,.1,w+.45,h+.4,0,'#5f705040');
   if(s.porch)plank(c,ridge==='x'?.2:.2,h,ridge==='x'?w-.4:w-.4,.55,0);
@@ -10556,6 +10823,7 @@ function makeHome(name,seed=1){
   }
   // Windows, door, shutters and flower boxes.
   const win=(at,u,zb,ww,wh,lit)=>{
+   nightLights.push({points:[at(u+.05,zb+2),at(u+ww-.05,zb+2),at(u+ww-.05,zb+wh-2),at(u+.05,zb+wh-2)].map(v=>q(...v)),colors:['#a5c0b8','#f0d79a','#e6f2ee']});
    if(s.shutters){quad(at,u-.16,u,zb,zb+wh,s.shutters,C.ink);quad(at,u+ww,u+ww+.16,zb,zb+wh,s.shutters,C.ink);}
    quad(at,u,u+ww,zb,zb+wh,'#7a5f4a');quad(at,u+.05,u+ww-.05,zb+2,zb+wh-2,lit?'#f0d79a':'#a5c0b8');stroke(c,at(u+ww/2,zb+2),at(u+ww/2,zb+wh-2),C.light);stroke(c,at(u+.05,zb+wh/2),at(u+ww-.05,zb+wh/2),C.light);
    if(!lit)stroke(c,at(u+.1,zb+wh-4),at(u+.2,zb+wh-3),'#e6f2ee');
@@ -10579,16 +10847,16 @@ function makeHome(name,seed=1){
    for(let y=.1;y<h+o;y+=thatch?.17:.3){stroke(c,[-o+.05,y,z+1],[w/2,y,peak],thatch?rl:rk);stroke(c,[w/2,y,peak],[w+o-.05,y,z+1],rk);}
    for(let k=1;k<4;k++){const f=k/4;stroke(c,[-o+(w/2+o)*f,-o,z+pitch*f],[-o+(w/2+o)*f,h+o,z+pitch*f],rl);}
    face(c,[F(0,z),[w/2,h+.01,peak-3],F(w,z)].map(p=>[p[0],h+o+.01,p[2]]),w0,C.ink);stroke(c,[-o,h+o,z],[w/2,h+o,peak],C.ink,3);stroke(c,[w/2,h+o,peak],[w+o,h+o,z],C.ink,3);stroke(c,[-o,h+o+.02,z+1],[w/2,h+o+.02,peak+1],rl,1);
-   if(storeys===1||true){const zb=z+pitch*.3;quad((u,zz)=>[u,h+o+.02,zz],w/2-.2,w/2+.2,zb,zb+9,'#7a5f4a');quad((u,zz)=>[u,h+o+.02,zz],w/2-.15,w/2+.15,zb+1,zb+8,'#a5c0b8');}
+   if(storeys===1||true){const zb=z+pitch*.3;quad((u,zz)=>[u,h+o+.02,zz],w/2-.2,w/2+.2,zb,zb+9,'#7a5f4a');quad((u,zz)=>[u,h+o+.02,zz],w/2-.15,w/2+.15,zb+1,zb+8,'#a5c0b8');nightLights.push({points:[[w/2-.15,h+o+.02,zb+1],[w/2+.15,h+o+.02,zb+1],[w/2+.15,h+o+.02,zb+8],[w/2-.15,h+o+.02,zb+8]].map(v=>q(...v)),colors:['#a5c0b8']});}
    stroke(c,[w/2,-o,peak],[w/2,h+o,peak],C.ink,3);
   }else{
    face(c,[[-o,-o,z],[w+o,-o,z],[w+o,h/2,peak],[-o,h/2,peak]],r1,C.ink);face(c,[[-o,h/2,peak],[w+o,h/2,peak],[w+o,h+o,z],[-o,h+o,z]],r0,C.ink);
    for(let x=.1;x<w+o;x+=thatch?.17:.3)stroke(c,[x,h/2,peak],[x,h+o-.05,z+1],thatch?rl:rk);
    for(let k=1;k<4;k++){const f=k/4;stroke(c,[-o,h+o-(h/2+o)*f,z+pitch*f],[w+o,h+o-(h/2+o)*f,z+pitch*f],rl);}
    face(c,[[w+o+.01,0,z],[w+o+.01,h/2,peak-3],[w+o+.01,h,z]],w1,C.ink);stroke(c,[w+o,-o,z],[w+o,h/2,peak],C.ink,3);stroke(c,[w+o,h/2,peak],[w+o,h+o,z],C.ink,3);
-   {const zb=z+pitch*.3;quad((u,zz)=>[w+o+.02,u,zz],h/2-.18,h/2+.18,zb,zb+8,'#7a5f4a');quad((u,zz)=>[w+o+.02,u,zz],h/2-.13,h/2+.13,zb+1,zb+7,'#a5c0b8');}
+   {const zb=z+pitch*.3;quad((u,zz)=>[w+o+.02,u,zz],h/2-.18,h/2+.18,zb,zb+8,'#7a5f4a');quad((u,zz)=>[w+o+.02,u,zz],h/2-.13,h/2+.13,zb+1,zb+7,'#a5c0b8');nightLights.push({points:[[w+o+.02,h/2-.13,zb+1],[w+o+.02,h/2+.13,zb+1],[w+o+.02,h/2+.13,zb+7],[w+o+.02,h/2-.13,zb+7]].map(v=>q(...v)),colors:['#a5c0b8']});}
    stroke(c,[-o,h/2,peak],[w+o,h/2,peak],C.ink,3);
-   if(s.dormer){const u=w*.35,zz=z+pitch*.35;cube(c,u,h*.6,.6,.35,zz-6,12,w0,r0,w1);face(c,[[u-.06,h*.6+.37,zz+6],[u+.3,h*.6+.37,zz+14],[u+.66,h*.6+.37,zz+6]],r1,C.ink);quad((uu,z2)=>[uu,h*.6+.36,z2],u+.15,u+.45,zz-3,zz+5,'#a5c0b8',C.ink);}
+   if(s.dormer){const u=w*.35,zz=z+pitch*.35;cube(c,u,h*.6,.6,.35,zz-6,12,w0,r0,w1);face(c,[[u-.06,h*.6+.37,zz+6],[u+.3,h*.6+.37,zz+14],[u+.66,h*.6+.37,zz+6]],r1,C.ink);quad((uu,z2)=>[uu,h*.6+.36,z2],u+.15,u+.45,zz-3,zz+5,'#a5c0b8',C.ink);nightLights.push({points:[[u+.15,h*.6+.36,zz-3],[u+.45,h*.6+.36,zz-3],[u+.45,h*.6+.36,zz+5],[u+.15,h*.6+.36,zz+5]].map(v=>q(...v)),colors:['#a5c0b8']});}
   }
   if(thatch){const eave=ridge==='x'?[[-o,h+o],[w+o,h+o]]:[[-o,h+o],[-o,-o]];for(let k=0;k<=24;k++){const f=k/24,[x,y]=q(eave[0][0]+(eave[1][0]-eave[0][0])*f,eave[0][1]+(eave[1][1]-eave[0][1])*f,z);R(c,x,y,1,2+(k%3),k%2?rk:r0);}}
   // Chimney, then the special touches.
@@ -10599,12 +10867,14 @@ function makeHome(name,seed=1){
   if(s.lantern){const [lx,ly]=q(...F(.15,z/2-4));R(c,lx-2,ly-6,5,6,'#5a463f');R(c,lx-1,ly-5,3,4,'#f4d48a');R(c,lx,ly-8,1,2,'#5a463f');}
   if(s.woodpile){for(let k=0;k<3;k++)for(let m=0;m<3-k;m++){const [lx,ly]=q(w+.18,.3+m*.28+k*.14,3+k*5);E(c,lx,ly,2.6,2.6,'#8a6446');E(c,lx,ly,1.4,1.4,'#d9b083');}}
  });
+ const [lx,ly]=q(.15,h,z/2-1),[dx,dy]=q(w*.62+.25,h+.35,0);
+ result.nightLights=[...nightLights,{kind:'lamp',x:lx,y:ly},{kind:'spill',x:dx,y:dy,radius:42}];
  if(smoke)result.smoke={x:smoke[0],y:smoke[1],dark:s.smoke==='dark'};
  return result;
 }
 /** The village dojo: a low hall under a two-tier roof, sliding doors open onto a sand yard with practice dummies. Footprint 3.6×3. */
 function makeDojo(seed=149){
- return stamp(220,190,96,118,c=>{
+ const out=stamp(220,190,96,118,c=>{
   const quad=(pts,col,edge)=>face(c,pts,col,edge),sand='#dccb9c';
   top(c,-.1,-.1,3.9,3.3,0,'#5f705040');
   // Sand yard with rake lines in front of the hall.
@@ -10639,9 +10909,11 @@ function makeDojo(seed=149){
   for(const [x,y] of [[.6,2.6],[2.7,2.55]]){const [px,py]=q(x,y,0);R(c,px-1,py-20,3,20,'#6b4f3a');R(c,px-7,py-15,15,2,'#6b4f3a');E(c,px,py-13,4,6,'#d9c08a');E(c,px,py-22,3,3,'#e6cf8e');R(c,px-3,py-12,6,1,'#a3824a');}
   {const [px,py]=q(3.3,.9,0);R(c,px-6,py-18,14,2,'#6b4f3a');R(c,px-6,py-8,14,2,'#6b4f3a');R(c,px-6,py-18,2,18,'#5a3f30');R(c,px+6,py-18,2,18,'#5a3f30');L(c,px-3,py-22,px-3,py-2,'#c4ccd0');L(c,px+1,py-24,px+1,py-2,'#a77a55');L(c,px+4,py-21,px+4,py-2,'#c4ccd0');}
  });
+ out.nightLights=[...[[.35,2,17],[2.65,2,17]].map(v=>{const[x,y]=q(...v);return{kind:'lamp',x,y};}),{points:[[.05,2,7],[.55,2,7],[.55,2,28],[.05,2,28]].map(v=>q(...v)),colors:['#efe6d2']},{kind:'spill',x:q(1.5,2.4,0)[0],y:q(1.5,2.4,0)[1],radius:42}];
+ return out;
 }
 /** Draw on top of a home sprite: same foot, extra margin around it for things set out front. */
-function dressHome(base,pad,paint){return stamp(base.canvas.width+pad*2,base.canvas.height+pad,base.footX+pad,base.footY,c=>{c.drawImage(base.canvas,-base.footX,-base.footY);paint(c);});}
+function dressHome(base,pad,paint){const out=stamp(base.canvas.width+pad*2,base.canvas.height+pad,base.footX+pad,base.footY,c=>{c.drawImage(base.canvas,-base.footX,-base.footY);paint(c);});out.nightLights=base.nightLights;return out;}
 /** General store: a goods-filled window, a table of wares, barrels, sacks and a chalkboard out front. */
 function makeShop(seed=131){
  const base=makeHome('store',seed),{w,h}=HOME_STYLES.store;
@@ -12660,11 +12932,12 @@ const { STAFF,FACILITIES,VILLAGE_LOTS,VILLAGE_PROJECTS,HUNT_ZONES,CLASS_COMBAT,M
 const { getRoomSize,getFacilityEntry,findWalkPath,getWalkableSpots,canPlaceFacility,canPlacePartition,previewPartitionMove,getVillageInfo,petitionHome }=Engine;
 const { makeActorTexture,villagerLook,applicantLook }=Artwork;
 const { drainFx }=Life;
-const { pathTier, footprintOf, ROTATABLE, homeOf, villageBuildings, doorOf, population }=Town;
+const { pathTier, footprintOf, ROTATABLE, homeOf, villageBuildings, doorOf, population, guildExpansionReserve, villagePlacementBlockers, villagePlacementProblem }=Town;
 const SHOT_COLORS={arrow:0xc9a06a,pierce:0xf3e2b0,magic:0xb7a6ff,bolt:0xf08a4b,fire:0xf08a4b,frostbolt:0x9fd3f0,frost:0x9fd3f0,spark:0xc9dcff,light:0xfff1c4,note:0xf2b8d8};
 const { QUESTS,REGIONS }=Content;
 const { WORLD_PATHS }=Site;
 const { GATHER_NODES }=HeroData;
+const { nightAmount,makeNightLight,sceneryNightLights }=NightLighting;
 const { WORLD,QUEST_SITES,SIGNPOSTS,FIELDS,DOCK,LAKE,MEADOW_SCENE,WILD_SCENE,FOOTBRIDGE,questRoute,regionOpen,villageSpotProblem,VILLAGE_FOOTPRINT,monsterSpawns,inWater,biomeAt,makeGroundPainter,setVillagePaths,scatterMeadow,scatterNature,mistTint,makeBridge,makeFog }=Overworld;
 const { SPECIES,makeMonster,questFoe }=Bestiary;
 const { decorateFrontier }=FrontierArt;
@@ -12728,12 +13001,30 @@ class GuildRenderer {
   const canvas=this.canvas.cloneNode(false);this.canvas.replaceWith(canvas);
   // A failed boot has no next frame to process Phaser's deferred destruction.
   if(this.game){this.game.destroy(false);this.game.runDestroy();}
-  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.villageGhost=null;this.pointers.clear();this.drag=null;this.pinch=null;
+  this.canvas=canvas;this.ready=false;this.scene=null;this.camera=null;this.actors=new Map();this.rooms=[];this.furnitureSprites=[];this.siteProps=[];this.idleKey=null;this.placementKey=null;this.ghostBox=null;this.villageGhost=null;this.villageReserve=null;this.pointers.clear();this.drag=null;this.pinch=null;
   this.start(Phaser.CANVAS);
  }
  // Baked canvases are registered as plain image sources: a CanvasTexture would read every pixel back with getImageData, which stalls GPU-backed canvases.
  texture(key,canvas){const t=this.scene.textures;if(t.exists(key))t.remove(key);t.addImage(key,canvas).setFilter(Phaser.Textures.FilterMode.NEAREST);return key;}
- put(key,sprite,x,y,depth=y){if(!this.scene.textures.exists(key))this.texture(key,sprite.canvas);return this.scene.add.image(x-sprite.footX,y-sprite.footY,key).setOrigin(0).setDepth(depth);}
+ put(key,sprite,x,y,depth=y){if(!this.scene.textures.exists(key))this.texture(key,sprite.canvas);const image=this.scene.add.image(x-sprite.footX,y-sprite.footY,key).setOrigin(0).setDepth(depth);this.registerNightLights(image,sprite,key);return image;}
+ registerNightLights(image,sprite,key){
+  if(!sprite.nightLights?.length)return;
+  const signature=hash(JSON.stringify([sprite.canvas.width,sprite.canvas.height,sprite.nightLights]));
+  const textureKey=`night-${key}-${signature}`,cached=this.nightTextures??=new Map();let light=cached.get(textureKey);
+  if(!light||!this.scene.textures.exists(textureKey+'-panes')){light=makeNightLight(sprite);cached.set(textureKey,{pad:light.pad});this.texture(textureKey+'-panes',light.panes);this.texture(textureKey+'-glow',light.glow);}
+  const panes=this.scene.add.image(0,0,textureKey+'-panes').setOrigin(0).setDepth(99976).setVisible(false);
+  const glow=this.scene.add.image(0,0,textureKey+'-glow').setOrigin(0).setDepth(99975).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+  panes.noCull=glow.noCull=true;
+  (this.buildingLights??=new Map()).set(image,{panes,glow,pad:light.pad});
+ }
+ updateBuildingLights(strength,time){
+  for(const [source,light] of this.buildingLights||[]){
+   if(source.scene!==this.scene||!source.active){light.panes.destroy();light.glow.destroy();this.buildingLights.delete(source);continue;}
+   const visible=strength>.01&&source.visible&&!source.cameraFilter;
+   for(const image of [light.panes,light.glow])image.setPosition(source.x-light.pad*source.scaleX,source.y-light.pad*source.scaleY).setScale(source.scaleX,source.scaleY).setFlipX(source.flipX).setVisible(visible);
+   light.panes.setAlpha(strength*.96);light.glow.setAlpha(strength*(.94+Math.sin(time*1.4+source.x)*.035));
+  }
+ }
  setup(){
   this.ready=true;this.camera=this.scene.cameras.main;this.camera.roundPixels=true;
   this.width=this.game.scale.width;this.height=this.game.scale.height;
@@ -12806,8 +13097,8 @@ class GuildRenderer {
   const st=style==='dojo'?{w:3.6,h:3}:HOME_STYLES[style],key='home-'+style,p=gridPoint(x,y),dw=st.w,dh=style==='dojo'?4:st.h,c=rot?gridPoint(x+dh/2,y+dw/2):gridPoint(x+dw/2,y+dh/2);let s=this.homeSprites?.get(key);
   if(!s||!this.scene.textures.exists(key)){s=style==='dojo'?makeDojo(seed):style==='store'?makeShop(seed):style==='smithy'?makeSmithyShop(seed):makeHome(style,seed);(this.homeSprites??=new Map()).set(key,s);this.texture(key,s.canvas);}
   if(s.smoke)(this.chimneys??=[]).push({x:p.x+(rot?-s.smoke.x:s.smoke.x),y:p.y+s.smoke.y,dark:s.smoke.dark,clock:Math.random()});
-  if(rot)return this.scene.add.image(p.x-(s.canvas.width-s.footX),p.y-s.footY,key).setOrigin(0).setFlipX(true).setDepth(c.y+4);
-  return this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(c.y+4);
+  const image=this.scene.add.image(p.x-(rot?s.canvas.width-s.footX:s.footX),p.y-s.footY,key).setOrigin(0).setFlipX(Boolean(rot)).setDepth(c.y+4);
+  this.registerNightLights(image,s,key);return image;
  }
  // World ground is painted lazily in crisp chunks around the view, a few rows per frame.
  initGround(){
@@ -12838,7 +13129,7 @@ class GuildRenderer {
  }
  decorateWorld(){
   const N=window.VillageNature,V=window.VillageProps,B=window.VillageBuildings;this.worldProps=[];this.initGround();this.cullClock=0;
-  const meta=this.propMeta??=new Map();const place=(key,make,x,y,depth)=>{const p=gridPoint(x,y);let s=meta.get(key);if(!s||!this.scene.textures.exists(key)){s=make();meta.set(key,s);this.texture(key,s.canvas);}const image=this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(depth??p.y);this.worldProps.push(image);return image;};
+  const meta=this.propMeta??=new Map();const place=(key,make,x,y,depth)=>{const p=gridPoint(x,y);let s=meta.get(key);if(!s||!this.scene.textures.exists(key)){s=make();meta.set(key,s);this.texture(key,s.canvas);}const image=this.scene.add.image(p.x-s.footX,p.y-s.footY,key).setOrigin(0).setDepth(depth??p.y);s.nightLights??=sceneryNightLights(key,s);this.registerNightLights(image,s,key);this.worldProps.push(image);return image;};
   const flat=(key,s,depth)=>{this.texture(key,s.canvas);const image=this.scene.add.image(s.x,s.y,key).setOrigin(0).setDepth(depth);this.worldProps.push(image);return image;};
   const bake=(key,make)=>{if(!this.scene.textures.exists(key))this.texture(key,make().canvas);return key;};
   const bridge=makeBridge();flat('world-bridge',bridge,bridge.depthY);const foot=makeBridge(FOOTBRIDGE,'y');flat('foot-bridge',foot,foot.depthY);
@@ -13058,22 +13349,22 @@ class GuildRenderer {
   return out;}
  underBuilding(x,y){return (this.villageRects()||[]).some(r=>x>r.x-.6&&x<r.x+r.w+.6&&y>r.y-.6&&y<r.y+r.h+.6);}
  // ---- Choosing where a village building goes: tap the map, see green or red, then confirm. ----
- villageBlockers(key){const g=this.state.grid||{width:20,height:16},b=buildingRect(this.state);
-  return[{x:-.5,y:-.5,w:g.width+1,h:g.height+1},{x:b.x-1,y:b.y-1,w:b.w+2,h:b.h+3},...siteRoads(this.state),...SITE_COTTAGES.map(c=>({x:c.x-.3,y:c.y-.3,w:c.w+.6,h:c.h+.6})),...SITE_TREES.map(([x,y])=>({x:x-.5,y:y-.5,w:1,h:1})),...this.villageRects(key).map(r=>({x:r.x-.4,y:r.y-.4,w:r.w+.8,h:r.h+.8}))];}
+ villageBlockers(key){return villagePlacementBlockers(this.state,key);}
  startVillagePlacement(key,kind,moving=false){
-  const lot=this.villageLot(key),rot=moving&&lot?.rot===1?1:0,[w,h]=footprintOf(kind,rot),blockers=this.villageBlockers(key),ok=(x,y)=>!villageSpotProblem(x,y,w,h,blockers);
+  const lot=this.villageLot(key),rot=moving&&lot?.rot===1?1:0,[w,h]=footprintOf(kind,rot),blockers=this.villageBlockers(key),ok=(x,y)=>!villagePlacementProblem(this.state,key,kind,x,y,rot)&&!villageSpotProblem(x,y,w,h,blockers);
   let start=lot||{x:8,y:21};
   if(!ok(start.x,start.y))search:for(let r=1;r<30;r+=1)for(let a=0;a<Math.PI*2;a+=.35){const x=Math.round((start.x+Math.cos(a)*r)*4)/4,y=Math.round((start.y+Math.sin(a)*r*.8)*4)/4;if(ok(x,y)){start={x,y};break search;}}
   this.villagePick={key,kind,w,h,rot,x:start.x,y:start.y,blockers};this.stopFollow?.();
   const p=gridPoint(start.x+w/2,start.y+h/2);this.focusX=p.x;this.focusY=p.y;this.userPanned=true;this.zoom=Math.max(this.zoom,1);this.applyView();this.updateVillagePick();}
- updateVillagePick(){const v=this.villagePick;if(!v)return;v.problem=villageSpotProblem(v.x,v.y,v.w,v.h,v.blockers);
-  const g=this.villageGhost??=this.scene.add.graphics().setDepth(9998);g.clear();const pts=gridPolygon(v.x,v.y,v.w,v.h),col=v.problem?0xd9584a:0x6fae5a;
+ updateVillagePick(){const v=this.villagePick;if(!v)return;v.problem=villagePlacementProblem(this.state,v.key,v.kind,v.x,v.y,v.rot)||villageSpotProblem(v.x,v.y,v.w,v.h,v.blockers);
+  const reserve=guildExpansionReserve(this.state),outline=this.villageReserve??=this.scene.add.graphics().setDepth(99977);outline.clear();outline.fillStyle(0xc39c50,.045);outline.fillPoints(gridPolygon(reserve.x,reserve.y,reserve.w,reserve.h),true);outline.lineStyle(2,0xc39c50,.8);outline.strokePoints(gridPolygon(reserve.x,reserve.y,reserve.w,reserve.h),true);outline.setVisible(true);
+  const g=this.villageGhost??=this.scene.add.graphics().setDepth(99978);g.clear();const pts=gridPolygon(v.x,v.y,v.w,v.h),col=v.problem?0xd9584a:0x6fae5a;
   g.fillStyle(col,.35);g.fillPoints(pts,true);g.lineStyle(2,col,.95);g.strokePoints(pts,true);g.setVisible(true);
   this.onVillagePick?.({ok:!v.problem,message:v.problem});}
  getVillagePick(){const v=this.villagePick;return v?{ok:!v.problem,message:v.problem,x:v.x,y:v.y,rot:v.rot}:null;}
  /** Turn the building being placed: its footprint swaps and the door faces the other way. */
  rotateVillagePick(){const v=this.villagePick;if(!v||!ROTATABLE(v.key))return false;v.rot=v.rot?0:1;[v.w,v.h]=footprintOf(v.kind,v.rot);this.updateVillagePick();return true;}
- stopVillagePlacement(){this.villagePick=null;this.villageGhost?.clear();}
+ stopVillagePlacement(){this.villagePick=null;this.villageGhost?.clear();this.villageReserve?.clear();}
  // Village footpaths grow by themselves: repaint the village ground and the world chunks they cross when they change.
  syncPaths(){const v=getVillageInfo(this.state),paths=this.state.village?.paths||{};
   const sig=JSON.stringify(Object.entries(paths).map(([k,p])=>[k,p.pts.length,p.pts[0],pathTier(p.wear,v.level)]));if(sig===this.pathSig)return;const first=this.pathSig===undefined;this.pathSig=sig;
@@ -13093,13 +13384,15 @@ class GuildRenderer {
   for(const id of VILLAGE_BUSINESSES){const lot=VILLAGE_LOTS[id],at=this.villageLot(id);if(v[id])want.push(id==='market'?{key:id,market:v[id],seed:lot.seed,x:at.x,y:at.y}:id==='arena'?{key:id,arena:v[id],x:at.x,y:at.y}:id==='fairground'||id==='stage'?{key:id,fest:id,level:v[id],x:at.x,y:at.y}:id==='monument'?{key:id,monument:v[id],x:at.x,y:at.y}:{key:id,style:lot.style,seed:lot.seed,x:at.x,y:at.y,rot:at.rot||0});}
   const sig=JSON.stringify(want);if(sig===this.villageSig)return;const first=this.villageSig===null;this.villageSig=sig;
   const old=this.villageProps,next=new Map();
+const lightVenue=(image,sp,key,points)=>{sp.nightLights=points.flatMap(([x,y,z])=>{const p=gridPoint(x,y),ground=gridPoint(x,y+.3);return[{kind:'lamp',x:p.x-ORIGIN_X,y:p.y-ORIGIN_Y-z},{kind:'spill',x:ground.x-ORIGIN_X,y:ground.y-ORIGIN_Y,radius:38}];});this.registerNightLights(image,sp,key);};
+
   for(const w of want){const id=w.key+':'+(w.lot?'lot':w.market?'market'+w.market:w.arena?'arena'+w.arena:w.fest?w.fest+w.level:w.monument?'monument'+w.monument:w.style)+':'+w.x+','+w.y+','+(w.rot||0);if(old.has(id)){next.set(id,old.get(id));old.delete(id);continue;}
    const images=[],before=(this.chimneys||[]).length;
    if(w.lot){const s=makeSignpost('ที่ดินว่าง');if(!this.scene.textures.exists('lot-sign'))this.texture('lot-sign',s.canvas);const p=gridPoint(w.x,w.y);images.push(this.scene.add.image(p.x-s.footX,p.y-s.footY,'lot-sign').setOrigin(0).setDepth(p.y).setAlpha(.9));}
-   else if(w.market){for(let k=0;k<w.market;k++){const key='stall-'+k,sp=makeStall(w.seed+k,k);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const at=[[0,0],[2.1,.3],[.9,2.1]][k],p=gridPoint(w.x+at[0],w.y+at[1]),c=gridPoint(w.x+at[0]+.8,w.y+at[1]+.6);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+4));}}
-   else if(w.arena){const key='arena-'+w.arena,sp=makeArena(w.arena);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+2,w.y+1.5);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y-20));}
-   else if(w.monument){const key='monument-'+w.monument,sp=makeMonument(w.monument);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+1,w.y+1);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+6));}
-   else if(w.fest){const make=w.fest==='stage'?makeStage:makeFairground,[fw,fh]=w.fest==='stage'?[3.4,2.8]:[5,4];for(let f=0;f<2;f++){const k=`${w.fest}-${w.level}-${f}`;if(!this.scene.textures.exists(k))this.texture(k,make(w.level,f).canvas);}const sp=make(w.level,0),p=gridPoint(w.x,w.y),c=gridPoint(w.x+fw/2,w.y+fh/2),img=this.scene.add.image(p.x-sp.footX,p.y-sp.footY,`${w.fest}-${w.level}-0`).setOrigin(0).setDepth(c.y-20);img.festKey=`${w.fest}-${w.level}`;images.push(img);}
+   else if(w.market){for(let k=0;k<w.market;k++){const key='stall-'+k,sp=makeStall(w.seed+k,k);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const at=[[0,0],[2.1,.3],[.9,2.1]][k],p=gridPoint(w.x+at[0],w.y+at[1]),c=gridPoint(w.x+at[0]+.8,w.y+at[1]+.6);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+4));lightVenue(images.at(-1),sp,key,[[.08,1.2,23]]);}}
+   else if(w.arena){const key='arena-'+w.arena,sp=makeArena(w.arena);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+2,w.y+1.5);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y-20));lightVenue(images.at(-1),sp,key,[[.2,3.45,22],[1.2,3.45,22]]);}
+   else if(w.monument){const key='monument-'+w.monument,sp=makeMonument(w.monument);if(!this.scene.textures.exists(key))this.texture(key,sp.canvas);const p=gridPoint(w.x,w.y),c=gridPoint(w.x+1,w.y+1);images.push(this.scene.add.image(p.x-sp.footX,p.y-sp.footY,key).setOrigin(0).setDepth(c.y+6));lightVenue(images.at(-1),sp,key,[[.1,1.9,9],[1.9,1.9,9]]);}
+   else if(w.fest){const make=w.fest==='stage'?makeStage:makeFairground,[fw,fh]=w.fest==='stage'?[3.4,2.8]:[5,4];for(let f=0;f<2;f++){const k=`${w.fest}-${w.level}-${f}`;if(!this.scene.textures.exists(k))this.texture(k,make(w.level,f).canvas);}const sp=make(w.level,0),p=gridPoint(w.x,w.y),c=gridPoint(w.x+fw/2,w.y+fh/2),img=this.scene.add.image(p.x-sp.footX,p.y-sp.footY,`${w.fest}-${w.level}-0`).setOrigin(0).setDepth(c.y-20);img.festKey=`${w.fest}-${w.level}`;images.push(img);lightVenue(img,sp,`${w.fest}-${w.level}`,[[.2,fh-.1,24],[fw-.2,fh-.1,24]]);}
    else images.push(this.addHome(w.style,w.seed,w.x,w.y,w.rot));
    const chimneys=(this.chimneys||[]).slice(before);
    for(const image of images){this.worldProps.push(image);if(!first&&!w.lot){const y=image.y;image.y=y-18;this.scene.tweens.add({targets:image,y,duration:420,ease:'Bounce.easeOut'});}}
@@ -13225,6 +13518,15 @@ class GuildRenderer {
    // While the master is out, ready spots glint so they are easy to spot.
    o.img.setAlpha(1);if(near&&ready&&!o.img.cameraFilter){const k=.85+Math.sin(t*4+o.n.x)*.15;o.img.setTint(Phaser.Display.Color.GetColor(255,Math.round(240*k+15),Math.round(200*k+55)));}else o.img.clearTint();}
  }
+ // Let scenery keep moving while hiding gameplay overlays and disabling selection.
+ setSceneOnly(on){
+  this.sceneOnly=on;this.stopFollow();this.hpBars?.setVisible(!on);this.heroMarks?.setVisible(!on);
+  if(on){
+   this.heroGoalMarker?.setVisible(false);
+   for(const s of this.lifeSprites?.values()||[]){s.label?.setVisible(false);s.crown?.setVisible(false);}
+   for(const o of this.fxTexts||[])o.text.setVisible(false);
+  }
+ }
  /** The monster under a tap, for locking on. */
  pickMonster(clientX,clientY){if(!this.camera)return null;const w=this.worldPoint(this.screenPoint({clientX,clientY}));let best=null,bd=40;for(const m of this.state.world?.monsters||[]){if(m.dead)continue;const q=gridPoint(m.x,m.y),d=Math.hypot(q.x-w.x,q.y-12-w.y);if(d<bd){bd=d;best=m.id;}}return best;}
  updateHero(dt){
@@ -13243,12 +13545,13 @@ class GuildRenderer {
   // Health and a little name tag above the master's head.
   const ratio=h.hp/Math.max(1,h.maxHp);this.hpBars.fillStyle(0x3b302a,.85).fillRect(Math.round(at.x-11),Math.round(at.y-40),22,4);this.hpBars.fillStyle(ratio<.35?0xe0a050:0x7fd18b,1).fillRect(Math.round(at.x-10),Math.round(at.y-39),Math.round(20*ratio),2);
   // Marks for the master: the locked foe, traps, a lead ring around nearby friends, and who can be helped up.
-  const g=this.heroMarks??=this.scene.add.graphics().setDepth(4);g.clear();
+  const g=this.heroMarks??=this.scene.add.graphics().setDepth(4);g.clear();g.setVisible(!this.sceneOnly);
   const lock=h.lock&&(this.state.world?.monsters||[]).find(o=>o.id===h.lock&&!o.dead);if(lock){const q=gridPoint(lock.x,lock.y);g.lineStyle(2,0xffd36a,.95).strokeEllipse(q.x,q.y,34,17);g.lineStyle(1,0xff8a5a,.8).strokeEllipse(q.x,q.y,40,20);}
   for(const t of h.traps||[]){const q=gridPoint(t.x,t.y);g.fillStyle(0x6b4a32,.9).fillEllipse(q.x,q.y,16,8);g.lineStyle(1,0xd9c39a,1).strokeEllipse(q.x,q.y,16,8);}
   g.lineStyle(1,0xffe9a8,.25).strokeEllipse(at.x,at.y,8*CELL_W,4*CELL_W);
   for(const hn of this.state.world?.hunters||[]){if(hn.mode!=='down'||hn.carriedBy==='hero')continue;const q=gridPoint(hn.x,hn.y);if(Math.hypot(hn.x-h.x,hn.y-h.y)<8){const pulse=.5+Math.sin((this.realTime||0)*6)*.3;g.lineStyle(2,0xff6a5a,pulse).strokeEllipse(q.x,q.y,30,15);}}
   for(const c of h.contracts||[]){if(c.done||!c.monsterId||c.day!==this.state.day)continue;const mm=(this.state.world?.monsters||[]).find(o=>o.id===c.monsterId&&!o.dead);if(!mm)continue;const q=gridPoint(mm.x,mm.y);g.fillStyle(0xffd36a,1).fillTriangle(q.x-5,q.y-52,q.x+5,q.y-52,q.x,q.y-44);}
+  if(this.sceneOnly)return;
   // The camera stays with the master.
   if(!this.heroCam){this.heroCam=true;this.stopFollow?.();this.zoomTarget=Math.max(.3,Math.min(2.4,2.1/(this.baseZoom||1)));}
   const k=1-Math.pow(.004,Math.min(dt,.1));this.focusX+=(at.x-this.focusX)*k;this.focusY+=(at.y-10-this.focusY)*k;this.userPanned=true;
@@ -13256,7 +13559,7 @@ class GuildRenderer {
   this.applyView();
  }
  updateHeroGoal(){
-  const h=this.state.hero,c=h?.encounters?.challenge,on=h?.active&&c?.kind==='reach';
+  const h=this.state.hero,c=h?.encounters?.challenge,on=!this.sceneOnly&&h?.active&&c?.kind==='reach';
   if(!on){this.heroGoalMarker?.setVisible(false);return;}
   if(!this.heroGoalMarker?.scene){
    const g=this.scene.add.graphics();g.lineStyle(2,0xd5ad68,.9).strokeEllipse(0,0,28,14);g.fillStyle(0xffe7a2,.35).fillEllipse(0,0,22,10);g.lineStyle(2,0xffedb9,1);g.beginPath();g.moveTo(0,-23);g.lineTo(6,-15);g.lineTo(0,-7);g.lineTo(-6,-15);g.closePath();g.strokePath();
@@ -13365,7 +13668,7 @@ class GuildRenderer {
   this.updateCaravan();
   this.updateFestival(dt);
   const w=this.state.world;if(!w||!this.scene)return;const t=this.realTime||0;
-  this.lifeSprites??=new Map();this.hpBars??=this.scene.add.graphics().setDepth(99990);this.hpBars.clear();
+  this.lifeSprites??=new Map();this.hpBars??=this.scene.add.graphics().setDepth(99990);this.hpBars.clear();this.hpBars.setVisible(!this.sceneOnly);
   this.updateShows(dt,playing);
   const seen=new Set(),hunters=new Map(w.hunters.map(h=>[h.id,h]));
   const bar=(x,y,ratio,color)=>{if(ratio>=1)return;this.hpBars.fillStyle(0x3b302a,.8).fillRect(Math.round(x-8),Math.round(y),16,3);this.hpBars.fillStyle(color,1).fillRect(Math.round(x-7),Math.round(y)+1,Math.max(1,Math.round(14*Math.max(0,ratio))),1);};
@@ -13380,8 +13683,8 @@ class GuildRenderer {
    const under=m.under>0;s.image.setTexture(this.monTex(m.species,frame,s.flash>0)).setPosition(Math.round(p.x),Math.round(p.y-lift+(under?10:0))).setDepth(p.y).setFlipX(!!s.flip).setScale(scale).setAlpha(under?.25:s.alpha).setVisible(s.alpha>0).setTint(m.elite?0xffe0b0:0xffffff);
    // Bosses carry a wide health bar with their name and current act.
    if((m.questBoss||MONSTER_STATS[m.species]?.boss)&&!m.dead){const y=p.y-sp.size[1]*scale-14,w=64,r=Math.max(0,m.hp/m.maxHp);this.hpBars.fillStyle(0x2c241e,.9).fillRect(Math.round(p.x-w/2-1),Math.round(y-1),w+2,7);this.hpBars.fillStyle(m.enraged?0xff5a3a:0xd9623f,1).fillRect(Math.round(p.x-w/2),Math.round(y),Math.round(w*r),5);
-    s.label??=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#ffe9c7',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);s.label.setText(`${SPECIES[m.species]?.name||''}${m.phaseName?' · '+m.phaseName:''}`).setPosition(Math.round(p.x),Math.round(y-2)).setDepth(p.y+2).setVisible(s.alpha>0);}else s.label?.setVisible(false);
-   if(m.elite&&!m.dead){s.crown??=this.scene.add.text(0,0,'👑',{fontSize:'12px'}).setOrigin(.5,1);s.crown.setPosition(Math.round(p.x),Math.round(p.y-sp.size[1]*scale-10)).setDepth(p.y+1).setVisible(s.alpha>0);}else s.crown?.setVisible(false);
+    s.label??=this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#ffe9c7',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2);s.label.setText(`${SPECIES[m.species]?.name||''}${m.phaseName?' · '+m.phaseName:''}`).setPosition(Math.round(p.x),Math.round(y-2)).setDepth(p.y+2).setVisible(!this.sceneOnly&&s.alpha>0);}else s.label?.setVisible(false);
+   if(m.elite&&!m.dead){s.crown??=this.scene.add.text(0,0,'👑',{fontSize:'12px'}).setOrigin(.5,1);s.crown.setPosition(Math.round(p.x),Math.round(p.y-sp.size[1]*scale-10)).setDepth(p.y+1).setVisible(!this.sceneOnly&&s.alpha>0);}else s.crown?.setVisible(false);
    s.shadow.setPosition(Math.round(p.x),Math.round(p.y)).setDepth(p.y-.5).setAlpha(s.alpha).setVisible(s.alpha>0);
    if(!m.dead&&!under)bar(p.x,p.y-sp.size[1]*scale-6,m.hp/m.maxHp,m.raid||m.elite||MONSTER_STATS[m.species]?.boss?0xd9623f:0xe0a24a);
   }
@@ -13429,17 +13732,18 @@ class GuildRenderer {
  }
  // ---- A town that lives: day and night, lamps and a gate as it grows, townsfolk about their day, a party when it levels up. ----
  cityCanvas(kind,lit){const c=document.createElement('canvas'),g=c.getContext('2d');g.imageSmoothingEnabled=false;const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
-  if(kind==='lamp'){c.width=12;c.height=36;px(5,8,2,27,'#4f4540');px(3,33,6,3,'#4f4540');px(2,2,8,7,'#4f4540');px(3,3,6,5,lit?'#ffe08a':'#d8cfae');px(4,0,4,2,'#4f4540');}
+  if(kind==='lamp'){c.width=12;c.height=36;px(5,8,2,27,'#4f4540');px(3,33,6,3,'#4f4540');px(2,2,8,7,'#4f4540');px(3,3,6,5,lit?'#ffd08a':'#d8cfae');px(4,0,4,2,'#4f4540');}
   else if(kind==='banner'){c.width=14;c.height=40;px(6,0,2,38,'#6f5240');px(3,36,8,4,'#6f5240');px(8,4,6,14,'#c9584a');px(8,18,3,3,'#c9584a');px(11,18,3,3,'#c9584a');px(9,7,3,3,'#ffe08a');}
   else if(kind==='gate'){c.width=64;c.height=58;px(4,14,10,44,'#9a8f80');px(50,14,10,44,'#9a8f80');px(2,10,14,6,'#7f7466');px(48,10,14,6,'#7f7466');px(4,4,56,8,'#8a6446');px(6,6,52,4,'#b98a60');px(22,0,20,6,'#8a6446');px(26,1,12,3,'#ffe08a');for(let y=18;y<56;y+=8){px(5,y,8,1,'#7f7466');px(51,y,8,1,'#7f7466');}}
-  else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,214,120,.55)');r.addColorStop(1,'rgba(255,214,120,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
+  else if(kind==='glow'){c.width=48;c.height=26;const r=g.createRadialGradient(24,13,1,24,13,22);r.addColorStop(0,'rgba(255,146,46,.66)');r.addColorStop(1,'rgba(255,140,40,0)');g.fillStyle=r;g.fillRect(0,0,48,26);}
   return c;}
- // Morning comes at the start of each day; dusk, night and a short dawn close it.
- darkness(){const t=(this.state.clock||0)/240;return t<.72?0:t<.8?.5*(t-.72)/.08:t<.95?.5:.5*(1-(t-.95)/.05);}
+ // A full night spans midnight; dawn and dusk fade continuously.
+ darkness(){return nightAmount(this.state.clock||0)*.68;}
 /** A soft colour grade over the whole view: warm sunlight from above, a gentle vignette, gold at dusk, blue at night. */
  atmosphereColors(t){
-  const K=[[0,[255,205,150,.2],[150,130,150,.04],.18],[.1,[255,238,196,.12],[150,140,130,.02],.15],[.56,[255,236,190,.1],[150,140,130,.02],.15],[.68,[255,160,80,.3],[205,112,132,.16],.24],
-   [.78,[126,92,172,.2],[44,52,112,.18],.3],[.88,[44,62,142,.16],[22,26,62,.2],.38],[.97,[232,152,172,.18],[92,102,172,.1],.24],[1,[255,205,150,.2],[150,130,150,.04],.18]];
+  const K=[[0,[80,102,142,.09],[38,52,82,.08],.18],[.2,[80,102,142,.09],[38,52,82,.08],.18],
+   [.25,[255,228,185,.12],[150,140,130,.02],.15],[.56,[255,236,190,.1],[150,140,130,.02],.15],
+   [.68,[255,160,80,.24],[205,112,132,.1],.2],[.8,[80,102,142,.09],[38,52,82,.08],.18],[1,[80,102,142,.09],[38,52,82,.08],.18]];
   let i=0;while(i<K.length-2&&t>=K[i+1][0])i++;const a=K[i],b=K[i+1],f=(t-a[0])/((b[0]-a[0])||1),mix=(p,q)=>p.map((v,k)=>v+(q[k]-v)*f);
   return{top:mix(a[1],b[1]),bottom:mix(a[2],b[2]),vignette:a[3]+(b[3]-a[3])*f};
  }
@@ -13487,15 +13791,16 @@ class GuildRenderer {
   if(!this.scene)return;const level=getVillageInfo(this.state).level,dark=this.darkness(),t=this.realTime||0;
   for(const k of ['lamp0','lamp1','banner','gate','glow'])if(!this.scene.textures.exists('city-'+k))this.texture('city-'+k,this.cityCanvas(k.replace(/[01]$/,''),k==='lamp1'));
   // Night falls over everything except the lamps and the interface.
-  if(!this.night?.scene){this.night=this.scene.add.rectangle(0,0,10,10,0x101a3a).setOrigin(0).setScrollFactor(0).setDepth(99970);}
-  const cam=this.camera;if(cam){const z=cam.zoom||1;this.night.setPosition(-cam.width/z,-cam.height/z).setSize(cam.width*3/z,cam.height*3/z);}this.night.setAlpha(dark*.9).setVisible(dark>0.01);
+  if(!this.night?.scene){this.night=this.scene.add.rectangle(0,0,10,10,0x111d33).setOrigin(0).setScrollFactor(0).setDepth(99970);}
+  const cam=this.camera;if(cam){const z=cam.zoom||1;this.night.setPosition(-cam.width/z,-cam.height/z).setSize(cam.width*3/z,cam.height*3/z);}this.night.setAlpha(dark*1.08).setVisible(dark>0.01);
   // Street furniture by stage: lamps from the third level, a gate from the fourth, banners at the fifth.
   const key=level+'';if(this.cityKey!==key){this.cityKey=key;for(const o of this.cityProps||[])o.image.destroy(),o.glow?.destroy();this.cityProps=[];
    const lamps=[[-7.5,16.3],[-1.5,16.3],[4.5,16.3],[17.5,16.3],[23.5,16.3],[29.5,16.3],[35.5,16.3]];
    if(level>=3)for(const [x,y] of lamps){const p=gridPoint(x,y);this.cityProps.push({kind:'lamp',image:this.scene.add.image(p.x,p.y,'city-lamp0').setOrigin(.5,1).setDepth(p.y),glow:this.scene.add.image(p.x,p.y-30,'city-glow').setDepth(99975).setBlendMode(Phaser.BlendModes.ADD)});}
    if(level>=4)for(const [x,y] of [[-13.5,17.2],[41,17.2]]){const p=gridPoint(x,y);this.cityProps.push({kind:'gate',image:this.scene.add.image(p.x,p.y,'city-gate').setOrigin(.5,1).setDepth(p.y+1)});}
    if(level>=5)for(const [x,y] of lamps.filter((_,i)=>i%2===0)){const p=gridPoint(x+.6,y-.3);this.cityProps.push({kind:'banner',image:this.scene.add.image(p.x,p.y,'city-banner').setOrigin(.5,1).setDepth(p.y)});}}
-  for(const o of this.cityProps||[])if(o.kind==='lamp'){o.image.setTexture(dark>.15?'city-lamp1':'city-lamp0');o.glow.setVisible(dark>.15).setAlpha(Math.min(1,dark*2)*(.85+Math.sin(t*3+o.image.x)*.08));}
+  for(const o of this.cityProps||[])if(o.kind==='lamp'){o.image.setTexture(dark>.15?'city-lamp1':'city-lamp0');o.glow.setVisible(dark>.01).setScale(1.4).setAlpha(Math.min(1,dark*2)*(.92+Math.sin(t*1.4+o.image.x)*.035));}
+  this.updateBuildingLights(Math.min(1,dark*2),t);
   this.updateFolk(dt,playing,dark);
   // A town that just grew throws a party: fireworks over the rooftops for a few seconds.
   const at=this.state.village?.celebrateAt;if(at!==undefined&&at!==this.celebrated){if(this.celebrated!==undefined&&this.state.elapsed-at<30){this.fireworks=8;this.fwAt=null;}this.celebrated=at;}
@@ -13520,7 +13825,7 @@ class GuildRenderer {
   }
  }
  // Damage numbers, skill flashes and knock-outs.
- floatText(x,y,text,color,size=9){
+ floatText(x,y,text,color,size=9){if(this.sceneOnly)return;
   this.fxTexts??=[];let o=this.fxTexts.find(o=>!o.live);
   if(!o){if(this.fxTexts.length>=48)return;o={text:this.scene.add.text(0,0,'',{fontFamily:'"Noto Sans Thai", sans-serif',fontSize:'9px',fontStyle:'bold',color:'#fff',stroke:'#3b302a',strokeThickness:3}).setOrigin(.5,1).setResolution(2)};this.fxTexts.push(o);}
   Object.assign(o,{live:true,age:0,x,y,drift:(Math.random()-.5)*8});o.text.setText(text).setColor(color).setFontSize(size).setVisible(true).setAlpha(1);
@@ -13584,7 +13889,7 @@ class GuildRenderer {
    else if(e.type==='revive')this.floatText(p.x,p.y-40,'ฟื้นแล้ว','#9fe08a',9);
    else if(e.type==='sell')this.floatText(p.x,p.y-40,`ขายของ ${e.amount} ชิ้น`,'#ffe08a',9);
   }
-  for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
+  for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setVisible(!this.sceneOnly).setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
  }
  // A point given in a piece of furniture's own frame (before it is turned), as a grid point in the hall.
  localPoint(f,lx,ly){const d=FACILITIES[f.type],r=f.rotation||0,[x,y]=r===1?[d.h-ly,lx]:r===2?[d.w-lx,d.h-ly]:r===3?[ly,d.w-lx]:[lx,ly];return{x:f.x+x,y:f.y+y};}
@@ -13838,7 +14143,7 @@ class GuildRenderer {
   bind('pointerdown',e=>{this.stopFollow();const p=this.screenPoint(e);this.canvas.setPointerCapture(e.pointerId);this.pointers.set(e.pointerId,p);
    if(this.pointers.size===1){const drag=this.drag={id:e.pointerId,start:p,last:p,moved:false},w=this.worldPoint(p);
     if(this.pending&&this.hitPending(w))this.grabPending(drag,w);
-    else if(!this.pending){const id=this.hitFacility(w);if(id)drag.hold=setTimeout(()=>{if(this.drag!==drag||drag.moved||this.pointers.size!==1)return;
+    else if(!this.pending&&!this.sceneOnly){const id=this.hitFacility(w);if(id)drag.hold=setTimeout(()=>{if(this.drag!==drag||drag.moved||this.pointers.size!==1)return;
      // Press and hold lifts a placed item straight into a drag.
      this.onSelect({kind:'pickup',id});this.setMoveMode(id);if(this.pending){this.grabPending(drag,this.worldPoint(drag.last));navigator.vibrate?.(12);}},380);}}
    if(this.pointers.size===2){const[a,b]=[...this.pointers.values()];this.pinch={dist:Math.hypot(a.x-b.x,a.y-b.y),zoom:this.zoom};this.drag.moved=true;this.drag.item=false;clearTimeout(this.drag.hold);}});
@@ -13865,6 +14170,7 @@ class GuildRenderer {
   return this.villageRects().find(b=>pointInRect(b,tile))?.key||SITE_COTTAGES.find(c=>pointInRect(c,tile))?.style||null;
  }
  select(p){
+  if(this.sceneOnly)return;
   const tile=gridPosition(p.x,p.y),x=Math.round(tile.x*4)/4,y=Math.round(tile.y*4)/4;
   if(this.pending){const d=this.footprint();this.setPending(tile.x-d.w/2,tile.y-d.h/2);return;}
   if(this.villagePick){const v=this.villagePick;v.x=Math.round((tile.x-v.w/2)*4)/4;v.y=Math.round((tile.y-v.h/2)*4)/4;this.updateVillagePick();return;}
@@ -13908,10 +14214,14 @@ const {QUEST_FOES,QUEST_BOSS,heroNearby,heroStats}=Life;
 const {HERO_CLASSES,HERO_TREE,TREE_BRANCHES,HERO_GEAR,RARE_MATS,GATHER_NODES,CLASS_CHANGE_FEE,heroXpNeeded,treePoints}=HeroData;
 const {WORLD_PATHS}=Site;
 const {SPECIES}=Bestiary;
-const {festivalView}=Festivals;
-const {unlockAudio,setAudio,setMusicArea,fxSound,sfx,MUSIC_AREAS,musicArea}=Audio;
+const {initFullscreen}=Fullscreen;
+const {initMobileUI}=MobileUI;
+const {festivalView,isGameNight}=Festivals;
+const {unlockAudio,setAudio,setMusicArea,setNightAmbience,fxSound,sfx,MUSIC_AREAS,musicArea}=Audio;
+const {nightAmount}=NightLighting;
 const {EXAM_STAGES,EXAM_RULES,examStage}=Exams;
 const $=id=>document.getElementById(id);
+let mobileHUD;
 const h=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const n=value=>Math.round(Number(value)||0).toLocaleString('th-TH');
 const saveKey='little-leaf-guild:v1';
@@ -13937,10 +14247,12 @@ function syncMusic(dt){musicClock-=dt;if(musicClock>0)return;musicClock=1.5;
  if(show&&live)id=live.kind==='lantern'?'night':'festival';
  else{const g=renderer?.viewGrid?.()||{x:10,y:10},boss=(state.world?.monsters||[]).some(m=>!m.dead&&(m.questBoss||MONSTER_STATS[m.species]?.boss)&&Math.hypot(m.x-g.x,m.y-g.y)<14);
   id=boss?'boss':live&&Math.hypot(g.x-14,g.y-20)<20&&state.elapsed>=live.open?(live.kind==='lantern'?'night':'festival'):g.x>108&&g.y<10?'peak':g.x>78?'canyon':g.y<-30?'mist':(g.x<-12||g.y>30||g.y<-8||g.x>40)?'meadow':'village';}
- setMusicArea(id);}
+ setMusicArea(id);
+ // Crickets and owls come out with the dark; the festival and boss themes keep the stage to themselves.
+ setNightAmbience(id==='boss'||id==='festival'?0:nightAmount(state.clock||0),id);}
 let audioContext;
 function playChime(){if(!ui.sound)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();audioContext.resume();const now=audioContext.currentTime;for(const [i,f] of [523.25,659.25,783.99].entries()){const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sine';osc.frequency.value=f;gain.gain.setValueAtTime(0,now+i*.065);gain.gain.linearRampToValueAtTime(.035,now+i*.065+.012);gain.gain.exponentialRampToValueAtTime(.001,now+i*.065+.23);osc.connect(gain);gain.connect(audioContext.destination);osc.start(now+i*.065);osc.stop(now+i*.065+.24);}}catch{}}
-function toast(text,error=false,onClick=null){const node=document.createElement('div');node.className='toast'+(error?' error':' success')+(onClick?' clickable':'');node.textContent=text;if(onClick){node.setAttribute('role','button');node.onclick=()=>{node.remove();onClick();};}$('toasts').appendChild(node);setTimeout(()=>node.remove(),5500);while($('toasts').children.length>3)$('toasts').firstChild.remove();}
+function toast(text,error=false,onClick=null){mobileHUD?.record(text,error,onClick);if(mobileHUD?.compact()&&!error)return;const node=document.createElement('div');node.className='toast'+(error?' error':' success')+(onClick?' clickable':'');node.textContent=text;if(onClick){node.setAttribute('role','button');node.onclick=()=>{node.remove();onClick();};}$('toasts').appendChild(node);setTimeout(()=>node.remove(),5500);while($('toasts').children.length>3)$('toasts').firstChild.remove();}
 function save(manual=false){try{const data=serializeGame(state);const previous=localStorage.getItem(saveKey);if(previous){try{deserializeGame(previous);localStorage.setItem(backupKey,previous);}catch{localStorage.setItem(saveKey+':corrupt',previous);}}localStorage.setItem(saveKey,data);localStorage.setItem(seenKey,String(Date.now()));saveFailure='';$('save-status').textContent='บันทึกแล้ว · '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});if(manual)toast('บันทึกกิลด์เรียบร้อย');return true;}catch(error){saveFailure='บันทึกอัตโนมัติไม่ได้ กรุณาส่งออกไฟล์เซฟ';$('save-status').textContent='⚠ '+saveFailure;if(manual)toast(saveFailure,true);return false;}}
 function dispatch(type,payload={}){try{const result=act(state,type,payload);if(!result.ok){toast(result.message||'ยังทำรายการนี้ไม่ได้',true);return false;}toast(result.message||'เรียบร้อย');playChime();renderer?.setState(state);save();syncUI();return true;}catch(error){console.error(error);toast('ทำรายการไม่สำเร็จ ข้อมูลกิลด์ยังอยู่',true);return false;}}
 function activeMissions(){return state.missions.filter(m=>m.status==='active'||m.status==='decision');}
@@ -13971,7 +14283,7 @@ function showCallDialog(force=false){const ci=heroCallInfo(state);if(!ci||ci.ste
  ${classes}<div class="call-learn">${CALL_LEARN.map(([i,t])=>`<span><i>${i}</i>${t}</span>`).join('')}</div><p class="tiny-note">รางวัล: ${n(ci.reward.gold)} G · ชื่อเสียง +${ci.reward.rep} · หีบเงิน · ของที่ระลึกจากศัตรูชนิดใหม่</p>
  <div class="dialog-actions"><button class="secondary" data-call-later>ไว้ทีหลัง</button><button class="primary" data-call-go ${wait>0?'disabled':''}>${wait>0?`🩹 พักอีก ${wait} วินาที`:'⚔ ออกโรงเอง'}</button></div>`;
  if(!$('call-dialog').open)$('call-dialog').showModal();}
-function maybeCall(){const ci=heroCallInfo(state);if(!ci||!ui.inGame||!$('title-screen').hidden||introActive(state))return;
+function maybeCall(){if(document.body.classList.contains('scene-only'))return;const ci=heroCallInfo(state);if(!ci||!ui.inGame||!$('title-screen').hidden||introActive(state))return;
  if(ci.step==='done'&&ci.report){if(!document.querySelector('dialog[open]'))showCallDone();return;}
  if(ci.step==='call'&&!ci.seen&&!heroOn()&&!document.querySelector('dialog[open]'))showCallDialog();}
 function showCallDone(){const ci=heroCallInfo(state);
@@ -14026,7 +14338,7 @@ function noteLog(e){if(!e||e.type==='daily'||e.type==='policy')return;if(/ไป
 function flushDigest(dt){digestClock+=dt;if(digestClock<75||!digest.length)return;digestClock=0;const list=digest;digest=[];if(list.length===1){toast(list[0].text);return;}toast(`📰 ระหว่างนี้มี ${list.length} เรื่อง · ล่าสุด: ${list.at(-1).text}`,false,()=>navigate('journal'));}
 function syncNear(){const box=$('near-goals');if(!box)return;const chests=state.progress?.chests||[],rows=introActive(state)?[]:nearGoals(state);const best=chests.find(c=>c.tier==='gold')||chests.find(c=>c.tier==='silver')||chests[0];
  const html=(best?`<button class="near-row chest tier-${best.tier}" data-open-chest><i>${CHESTS[best.tier].icon}</i><span><b>มีหีบรอเปิด ${chests.length} ใบ</b><small>แตะเพื่อเปิด</small></span></button>`:'')+rows.map(r=>`<button class="near-row${r.ready?' ready':''}" data-near="${h(r.action)}"><i>${r.icon}</i><span><b>${h(r.text)}</b><u><u style="width:${pct(r.have,r.need)}%"></u></u></span></button>`).join('');
- if(box.__html!==html){box.innerHTML=html;box.__html=html;}}
+ if(box.__html!==html){box.innerHTML=html;box.__html=html;}mobileHUD?.sync();}
 function runNear(action){const[kind,id]=String(action).split(':');if(kind==='call'){showCallDialog(true);return;}if(kind==='tab'){navigate(id);return;}if(kind==='upgrade'){navigate('build');ui.facilityId=id;renderer?.selectFacility?.(id);syncUI();}}
 /** Coins fly from the scene into the gold counter whenever the coffers grow. */
 function flyCoins(){const g=state.gold;if(lastGold!==null&&ui.inGame&&g-lastGold>=20&&!document.body.classList.contains('sheet-open')&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const target=document.querySelector('#resources .resource');if(target){const r=target.getBoundingClientRect(),count=Math.min(7,Math.ceil((g-lastGold)/40));for(let i=0;i<count;i++){const c=document.createElement('i');c.className='coin-fly';const sx=innerWidth*(.38+Math.random()*.24),sy=innerHeight*(.42+Math.random()*.2);c.style.left=sx+'px';c.style.top=sy+'px';c.style.setProperty('--dx',(r.left+14-sx)+'px');c.style.setProperty('--dy',(r.top+14-sy)+'px');c.style.animationDelay=i*70+'ms';document.body.appendChild(c);setTimeout(()=>c.remove(),1300+i*70);}const tag=document.createElement('b');tag.className='gold-gain';tag.textContent='+'+n(g-lastGold);tag.style.left=r.left+'px';tag.style.top=r.bottom+'px';document.body.appendChild(tag);setTimeout(()=>tag.remove(),1600);}}lastGold=g;}
@@ -14041,7 +14353,7 @@ function openChestNow(){const c=state.progress?.chests?.[0];if(!c)return;const r
  $('chest-content').innerHTML=`<div class="chest-stage open rarity-${x.rarity}" style="--rar:${rar.color}"><i class="rays"></i><div class="chest-box pop">${def.icon}</div></div><small style="color:${rar.color}">ระดับ${h(rar.name)}</small><h2>${h(def.name)}</h2><div class="chest-loot">${items.map(([i,t],k)=>`<span style="animation-delay:${.15+k*.12}s"><i>${i}</i>${h(t)}</span>`).join('')}</div>${x.treasure?'<p class="tiny-note">สมบัติเข้าห้องเก็บของแล้ว วางโชว์หรือประมูลได้ที่ตลาด</p>':''}<div class="dialog-actions">${left?`<button class="secondary" data-chest-close>เก็บ</button><button class="primary" data-chest-next>เปิดใบถัดไป (${left})</button>`:'<button class="primary" data-chest-close>เก็บ</button>'}</div>`;
  save();syncHUD();}
 /** A guild rank-up: confetti, the rank seal, and one guild policy to keep out of three. */
-function maybeCelebrate(){const offer=state.progress?.offer;if(!offer||!ui.inGame||document.querySelector('dialog[open]')||!$('title-screen').hidden||introActive(state))return;const key=offer.rank+offer.cards.join();if(chestCelebrated===key&&$('celebrate-dialog').open)return;chestCelebrated=key;
+function maybeCelebrate(){if(document.body.classList.contains('scene-only'))return;const offer=state.progress?.offer;if(!offer||!ui.inGame||document.querySelector('dialog[open]')||!$('title-screen').hidden||introActive(state))return;const key=offer.rank+offer.cards.join();if(chestCelebrated===key&&$('celebrate-dialog').open)return;chestCelebrated=key;
  if(ui.sound)sfx('fanfare',.5);
  const bits=Array.from({length:36},(_,i)=>`<i style="left:${(i*37)%100}%;background:${['#e7b54b','#d8735c','#7fa66a','#6aa6d8','#b07ad8'][i%5]};animation-delay:${(i%9)*.12}s;animation-duration:${2.2+(i%5)*.35}s"></i>`).join('');
  $('celebrate-content').innerHTML=`<div class="confetti" aria-hidden="true">${bits}</div><div class="celebrate-seal"><span class="rank-seal">${h(offer.rank)}</span></div><small>สมาคมกิลด์ประกาศ</small><h2>กิลด์เลื่อนเป็นระดับ ${h(offer.rank)}!</h2><p>ได้หีบทองเป็นของขวัญ และเลือกนโยบายกิลด์ได้ 1 ใบ นโยบายอยู่ถาวร ทำให้กิลด์ของคุณไม่เหมือนใคร</p><div class="policy-cards">${offer.cards.map(id=>{const p=POLICIES[id];return `<button class="policy-card" data-policy="${h(id)}"><i>${p.icon}</i><b>${h(p.name)}</b><small>${h(p.text)}</small></button>`;}).join('')}</div>`;
@@ -14095,7 +14407,7 @@ function renderTown(){const v=getVillageInfo(state),c=cityNumbers(),sat=townSati
  <div class="section-title">รายรับวันนี้<small>${last?`เมื่อวาน +${n(last.incomeTotal)} G`:''}</small></div><div class="day-book one">${income}</div>`;}
 function effChip(){if(!state.members.length)return'';const r=getEfficiencyReport(state),pctv=Math.round(r.avg*100),cls=pctv>=100?'good':pctv>=85?'ok':'bad';return `<button class="resource eff ${cls}" data-tab="efficiency" aria-label="ประสิทธิภาพกิลด์ ${pctv}%"><span class="resource-icon">📈</span><div><small>ประสิทธิภาพ</small><b>${pctv}%${r.trend>0?' <i class="up">↑</i>':r.trend<0?' <i class="down">↓</i>':''}</b></div></button>`;}
 function syncHUD(){const stats=getGuildStats(state);syncCityStats();syncNear();flyCoins();maybeCelebrate();maybeCall();{const last=(state.history||[]).at(-1);if(last&&ui.lastSummary!==last.day){if(ui.lastSummary!==undefined&&ui.inGame){const worst=last.losses?.[0],d=worst&&CONDITIONS.find(x=>x.id===worst.id);toast(`📒 สรุปวันที่ ${last.day}: รายรับ +${n(last.incomeTotal)} G · ประสิทธิภาพ ${Math.round(last.eff*100)}%${d?` · คอขวด ${d.icon} ${d.name} −${n(worst.gold)} G/วัน`:''}`);}ui.lastSummary=last.day;}}setHTML($('resources'),`<div class="resource"><span class="resource-icon">${illustratedIcon('coin')}</span><div><small>เงินกิลด์</small><b>${n(state.gold)}</b></div></div><div class="resource"><span class="resource-icon wood">${illustratedIcon('wood')}</span><div><small>ไม้</small><b>${n(state.wood)}</b></div></div><div class="resource"><span class="resource-icon stone">${illustratedIcon('stone')}</span><div><small>หิน</small><b>${n(state.stone)}</b></div></div><div class="resource"><span class="resource-icon herb">${illustratedIcon('herb')}</span><div><small>สมุนไพร</small><b>${n(state.herb)}</b></div></div><div class="resource rank"><span class="rank-seal">${h(state.rank)}</span><div><small>ชื่อเสียง</small><b>${n(state.rep)}</b></div></div>${effChip()}`);
-const clock=Number(state.clock)||0;const minute=Math.floor(clock/DAY_LENGTH*1440);const hour=`${String(Math.floor(minute/60)%24).padStart(2,'0')}:${String(minute%60).padStart(2,'0')}`;$('calendar').innerHTML=`<strong>วันที่ ${n(state.day)}</strong><span>☀ ${hour}</span>`;
+const clock=Number(state.clock)||0;const minute=Math.floor(clock/DAY_LENGTH*1440);const hour=`${String(Math.floor(minute/60)%24).padStart(2,'0')}:${String(minute%60).padStart(2,'0')}`;$('calendar').innerHTML=`<strong>วันที่ ${n(state.day)}</strong><span>${isGameNight(state)?'☾':'☀'} ${hour}</span>`;
 const chapter=state.story?.chapter||1;$('chapter-label').innerHTML=`<span>CHAPTER ${chapter}</span><b>${['','บ้านหลังเล็ก','เสียงระฆังในป่า','เส้นทางในหมอก','ทุกคนต้องกลับบ้าน','ใต้ร่มใบไม้'][chapter]||'ใต้ร่มใบไม้'}</b>`;
 let objective,meta;if(state.story?.finished){objective='บ้านที่ทุกคนได้กลับมา';meta='แคมเปญสำเร็จ · สำรวจและพัฒนากิลด์ต่อได้';}else if(!state.completedQuests?.patrol){objective='งานลาดตระเวนครั้งแรก';meta='นักผจญภัยจะหยิบงานจากกระดานและจับกลุ่มกันเอง';}else{objective=stats.nextRank?`เติบโตสู่กิลด์ระดับ ${stats.nextRank}`:'รักษาหัวใจป่า';const q=QUESTS.find(q=>q.id===stats.nextRankQuest);meta=stats.nextRank?`ชื่อเสียง ${n(state.rep)}/${n(stats.nextRankRep)}${q?' · '+q.name:''}`:'รับคำร้องสุดท้ายที่ป่าหมอกจันทร์';}$('objective').innerHTML=`<small>OUR NEXT LITTLE STEP</small><p>${h(objective)}</p><div class="objective-meta">${h(meta)}</div>`;
 $('pause-button').textContent=ui.paused?'▶':'Ⅱ';$('pause-button').setAttribute('aria-label',ui.paused?'เดินเวลา':'หยุดเวลา');document.querySelectorAll('[data-speed]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.speed)===ui.speed&&!ui.paused);b.setAttribute('aria-pressed',String(Number(b.dataset.speed)===ui.speed&&!ui.paused));});
@@ -14342,7 +14654,7 @@ function renderMarketHub(){const tab=ui.marketTab||'overview',v=getVillageInfo(s
 function renderJournal(){const stats=getGuildStats(state);const nextRequirement=RANK_REQUIREMENTS[stats.nextRank];const nextQuest=QUESTS.find(q=>q.id===nextRequirement?.quest);let goals=state.story?.finished?['ช่วยทีมสำรวจกลับบ้าน','รักษาหัวใจป่า','มีบ้านให้ทุกคนกลับมา']:[stats.nextRank?`ชื่อเสียง ${n(state.rep)} / ${n(nextRequirement?.rep||0)}`:'กิลด์ระดับ A',nextQuest?`สำเร็จคำร้อง ${nextQuest.name}`:'สำเร็จคำร้องรักษาหัวใจป่า'];const ledger=(state.ledger||[]).slice(0,8);return `${state.story?.finished?'<div class="finished-banner"><b>ทุกคนกลับบ้านแล้ว ❧</b><br>จบบทแรกของเดโม่แล้ว ขอบคุณที่ดูแลนักผจญภัยทุกคน เล่นต่อ รับคนใหม่ และพัฒนาหมู่บ้านได้ · แผนที่ใหม่และระดับ B ขึ้นไปจะมาในเกมเต็ม</div>':''}<div class="chapter-card"><small>OUR GUILD STORY · CHAPTER ${state.story?.chapter||1}</small><h2>${state.story?.finished?'บ้านใต้ร่มใบไม้':stats.nextRank?'ก้าวต่อไป · กิลด์ระดับ '+stats.nextRank:'รักษาหัวใจป่า'}</h2><p>จากบ้านเล็กท้ายเมือง สู่สถานที่ที่ผู้คนฝากความหวัง</p></div>${renderPromotion()}<div class="stat-grid"><div class="stat-box">คำร้องที่สำเร็จ<b>${n(Object.values(state.completedQuests||{}).reduce((s,v)=>s+Number(v||0),0))} งาน</b></div><div class="stat-box">ค่าดูแลต่อวัน<b>${n(stats.upkeep)} G</b></div><div class="stat-box">รายรับวันนี้<b>${n(stats.incomeToday)} G</b></div><div class="stat-box">รายจ่ายวันนี้<b>${n(stats.expenseToday)} G</b></div></div><div class="section-title">ช่วงเวลาดี ๆ ในกิลด์</div>${GUILD_EVENTS.map(e=>`<div class="item-card"><b style="font-size:12px">${h(e.name)}</b><p>${h(e.description)}</p><div class="build-cost">${h(moneyCost(e.cost))}</div><button class="secondary full-button" data-host-event="${e.id}" ${!state.facilities.some(f=>f.type===e.requires)||!canAfford(e.cost)?'disabled':''}>${state.facilities.some(f=>f.type===e.requires)?'จัดกิจกรรม':'ต้องมี'+FACILITIES[e.requires].name}</button></div>`).join('')}<div class="section-title">บัญชีล่าสุด</div>${ledger.length?ledger.map(entry=>{const amount=Number(entry.amount||entry.gold||0);return`<div class="ledger-row"><span>${h(entry.label||entry.text||entry.reason||entry.type)} · วันที่ ${entry.day}</span><b class="${amount<0?'negative':''}">${amount>0?'+':''}${n(amount)} G</b></div>`;}).join(''):'<p class="tiny-note">เริ่มรับคำร้องเพื่อเพิ่มรายรับของกิลด์</p>'}${eventHistory()}<div class="section-title">เรื่องราวที่เกิดขึ้น</div>${(state.log||[]).slice(0,14).map(entry=>`<div class="log-entry"><small>วันที่ ${h(entry.day)} · GUILD MEMORY</small>${h(entry.text)}</div>`).join('')}`;}
 function navigate(tab){ui.villageBuildingId=null;ui.partitionId=null;ui.petitionId=null;ui.roomDraftW=null;ui.roomDraftH=null;ui.tab=tab;openMenu();ui.questId=null;ui.memberId=null;ui.facilityId=null;ui.missionId=null;ui.selected.clear();syncUI();$('panel-content').scrollTop=0;}
 function cancelBuild(){if(ui.villagePlace){ui.villagePlace=null;renderer?.stopVillagePlacement();}ui.buildType=null;ui.moveId=null;ui.roomPlacement=null;ui.moveRoomId=null;renderer?.setRoomMode(null);renderer?.setBuildMode(null);renderer?.setMoveMode(null);syncHUD();}
-function onSceneSelect(selection){if(selection.kind==='villageBuilding'){cancelBuild();navigate('village');ui.villageBuildingId=selection.id;syncUI();return;}if(selection.kind==='mission'){openMenu();ui.tab='quests';ui.missionId=selection.id;ui.questId=null;ui.memberId=null;syncUI();return;}if(selection.kind==='pickup'){const f=state.facilities.find(f=>f.id===selection.id);if(!f)return;closeMenu();ui.buildType=null;ui.roomPlacement=null;ui.moveRoomId=null;ui.facilityId=null;ui.moveId=f.id;syncHUD();return;}if(selection.kind==='member'&&selection.id==='master'){cancelBuild();openSetup('edit');return;}if(selection.kind==='room'&&ui.roomPlacement){if(dispatch('buildRoom',{...ui.roomPlacement,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='moveRoom'&&ui.moveRoomId){if(dispatch('moveRoom',{roomId:ui.moveRoomId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='partition'){cancelBuild();navigate('build');ui.partitionId=selection.id;syncUI();}else if(selection.kind==='build'&&ui.buildType){if(dispatch('build',{type:ui.buildType,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='move'&&ui.moveId){if(dispatch('move',{facilityId:ui.moveId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='member'){cancelBuild();navigate('members');ui.memberId=selection.id;syncUI();}else if(selection.kind==='facility'){cancelBuild();navigate('build');ui.facilityId=selection.id;syncUI();}}
+function onSceneSelect(selection){if(document.body.classList.contains('scene-only'))return;if(selection.kind==='villageBuilding'){cancelBuild();navigate('village');ui.villageBuildingId=selection.id;syncUI();return;}if(selection.kind==='mission'){openMenu();ui.tab='quests';ui.missionId=selection.id;ui.questId=null;ui.memberId=null;syncUI();return;}if(selection.kind==='pickup'){const f=state.facilities.find(f=>f.id===selection.id);if(!f)return;closeMenu();ui.buildType=null;ui.roomPlacement=null;ui.moveRoomId=null;ui.facilityId=null;ui.moveId=f.id;syncHUD();return;}if(selection.kind==='member'&&selection.id==='master'){cancelBuild();openSetup('edit');return;}if(selection.kind==='room'&&ui.roomPlacement){if(dispatch('buildRoom',{...ui.roomPlacement,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='moveRoom'&&ui.moveRoomId){if(dispatch('moveRoom',{roomId:ui.moveRoomId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='partition'){cancelBuild();navigate('build');ui.partitionId=selection.id;syncUI();}else if(selection.kind==='build'&&ui.buildType){if(dispatch('build',{type:ui.buildType,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='move'&&ui.moveId){if(dispatch('move',{facilityId:ui.moveId,x:selection.x,y:selection.y,rotation:selection.rotation})){cancelBuild();syncUI();}}else if(selection.kind==='member'){cancelBuild();navigate('members');ui.memberId=selection.id;syncUI();}else if(selection.kind==='facility'){cancelBuild();navigate('build');ui.facilityId=selection.id;syncUI();}}
 let confirmCallback;
 function confirmAction(title,message,callback){$('confirm-title').textContent=title;$('confirm-message').textContent=message;confirmCallback=callback;$('confirm-dialog').showModal();}
 $('confirm-cancel').addEventListener('click',()=>{$('confirm-dialog').close();confirmCallback=null;});$('confirm-ok').addEventListener('click',()=>{$('confirm-dialog').close();const callback=confirmCallback;confirmCallback=null;callback?.();});
@@ -14358,7 +14670,7 @@ function syncHeroMode(){const on=heroOn();if(!on){clearHeroInput();if($('hero-ev
  if(on&&heroSpeedBefore===null){heroSpeedBefore=ui.speed;ui.speed=1;state.settings.speed=1;}else if(!on&&heroSpeedBefore!==null){ui.speed=heroSpeedBefore;state.settings.speed=heroSpeedBefore;heroSpeedBefore=null;}
  // Reports of finished jobs wait while the master is out fighting, and open on the way back in.
  if(!on&&reportQueue.length&&!$('report-dialog').open)setTimeout(()=>{if(!heroOn()&&reportQueue.length&&!$('report-dialog').open)showReport();},400);}
-function heroInput(){const h=state.hero;if(!h?.active)return;if($('hero-event-dialog').open){h.input={};return;}let sx=heroStick.x,sy=heroStick.y;
+function heroInput(){const h=state.hero;if(!h?.active)return;if($('hero-event-dialog').open||document.body.classList.contains('scene-only')){h.input={};return;}let sx=heroStick.x,sy=heroStick.y;
  if(heroKeys.has('KeyD')||heroKeys.has('ArrowRight'))sx+=1;if(heroKeys.has('KeyA')||heroKeys.has('ArrowLeft'))sx-=1;if(heroKeys.has('KeyS')||heroKeys.has('ArrowDown'))sy+=1;if(heroKeys.has('KeyW')||heroKeys.has('ArrowUp'))sy-=1;
  // Screen directions turn into the isometric grid: right is +x−y, down is +x+y.
  const len=Math.min(1,Math.hypot(sx,sy)),gx=sx+sy,gy=sy-sx,gl=Math.hypot(gx,gy)||1;
@@ -14378,10 +14690,10 @@ function syncHeroHud(){const hero=state.hero;syncCallHud();if(!hero?.active)retu
 /** The minimap: the land around the master, roads, hunting grounds, spots to gather, the fallen, and today's quarry. */
 let heroMapAt=0;
 function drawHeroMap(){const now=performance.now();if(now-heroMapAt<120)return;heroMapAt=now;const cv=$('hero-map'),c=cv.getContext('2d'),h=state.hero,W=cv.width,H=cv.height,s=2.4;
- const P=(x,y)=>[W/2+((x-y)-(h.x-h.y))*s,H/2+((x+y)-(h.x+h.y))*s/2];c.clearRect(0,0,W,H);c.fillStyle='#2c241edd';c.fillRect(0,0,W,H);
+ const P=(x,y)=>[W/2+((x-y)-(h.x-h.y))*s,H/2+((x+y)-(h.x+h.y))*s/2];c.clearRect(0,0,W,H);c.fillStyle='#fff3dcef';c.fillRect(0,0,W,H);
  const zoneCol={meadow:'#8fae6a',woods:'#5f8a55',hills:'#a8a090',mist:'#6f8f8a',canyon:'#c48a5a',peak:'#7a6f80'};
  for(const [id,z] of Object.entries(HUNT_ZONES)){const [x,y]=P(z.x,z.y);c.fillStyle=zoneCol[id]||'#8a8';c.globalAlpha=.55;c.beginPath();c.ellipse(x,y,z.r*s*1.4,z.r*s*.7,0,0,Math.PI*2);c.fill();}c.globalAlpha=1;
- c.strokeStyle='#d9c39a';c.lineWidth=1.5;for(const pts of Object.values(WORLD_PATHS)){c.beginPath();pts.forEach(([x,y],i)=>{const q=P(x,y);i?c.lineTo(...q):c.moveTo(...q);});c.stroke();}
+ c.strokeStyle='#9c8057';c.lineWidth=1.5;for(const pts of Object.values(WORLD_PATHS)){c.beginPath();pts.forEach(([x,y],i)=>{const q=P(x,y);i?c.lineTo(...q):c.moveTo(...q);});c.stroke();}
  if(RANKS.indexOf(state.rank)<RANKS.indexOf('B')){const [x0,y0]=P(80,-70),[x1,y1]=P(80,60);c.strokeStyle='#d9584a';c.setLineDash([3,3]);c.beginPath();c.moveTo(x0,y0);c.lineTo(x1,y1);c.stroke();c.setLineDash([]);}
  {const [x,y]=P(2,10);c.fillStyle='#f3d58e';c.fillRect(x-3,y-3,6,6);}
  for(const nd of GATHER_NODES){if((h.nodes?.[nd.id]??-1)>=state.day)continue;const [x,y]=P(nd.x,nd.y);if(x<0||y<0||x>W||y>H)continue;c.fillStyle=nd.kind==='tree'?'#7fd18b':nd.kind==='rock'?'#c9c3b4':'#d7a8f0';c.fillRect(x-1.5,y-1.5,3,3);}
@@ -14390,7 +14702,7 @@ function drawHeroMap(){const now=performance.now();if(now-heroMapAt<120)return;h
  {const bm=state.bounty&&(state.world?.monsters||[]).find(m=>m.id===state.bounty.monsterId&&!m.dead);if(bm)mark(bm.x,bm.y,'☠','#ff7a5a');for(const m of state.world?.monsters||[])if(m.boss&&!m.dead)mark(m.x,m.y,'♛','#d9a8ff');}
  {const ci=heroCallInfo(state);if(ci&&ci.target&&!['done','call'].includes(ci.step)){const t=ci.step==='carry'&&h.carry?guildDoor(state):ci.target;if(Math.floor(now/350)%2)mark(t.x,t.y,'❗','#ff6a5a');else mark(t.x,t.y,'❗','#ffd36a');}}
  for(const ct of heroContracts(state)){if(ct.done||!ct.at)continue;const [x,y]=P(ct.at.x,ct.at.y);c.fillStyle='#ffd36a';c.font='bold 12px sans-serif';c.textAlign='center';c.fillText('★',Math.max(6,Math.min(W-6,x)),Math.max(10,Math.min(H-2,y+4)));}
- c.save();c.translate(W/2,H/2);c.rotate(Math.atan2((h.fx+h.fy)/2,h.fx-h.fy));c.fillStyle='#fff';c.beginPath();c.moveTo(6,0);c.lineTo(-4,-4);c.lineTo(-4,4);c.closePath();c.fill();c.restore();
+ c.save();c.translate(W/2,H/2);c.rotate(Math.atan2((h.fx+h.fy)/2,h.fx-h.fy));c.fillStyle='#4f663e';c.beginPath();c.moveTo(6,0);c.lineTo(-4,-4);c.lineTo(-4,4);c.closePath();c.fill();c.restore();
  c.strokeStyle='#b98a3e';c.lineWidth=2;c.strokeRect(1,1,W-2,H-2);}
 $('hero-toggle').addEventListener('click',()=>{if(dispatch('heroMode',{on:!heroOn()})){closeMenu();syncHeroMode();if(!heroOn()){ui.zoom=1;renderer?.resetView?.();}}});
 $('hero-exit').addEventListener('click',()=>{if(dispatch('heroMode',{on:false})){syncHeroMode();ui.zoom=1;renderer?.resetView?.();}});
@@ -14398,11 +14710,11 @@ const heroPress=(id,fn)=>{const el=$(id);el.addEventListener('pointerdown',e=>{e
 heroPress('hero-attack',on=>{heroAttackHeld=on;});for(const [id,key] of [['hero-s1','s1'],['hero-s2','s2'],['hero-ult','ult'],['hero-dash','dash'],['hero-act','act']])heroPress(id,on=>{if(on)heroTap(key);});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-hero-order]');if(b)dispatch('heroOrder',{order:b.dataset.heroOrder});});
 // Tap a monster to lock on (anywhere but the controls).
-$('guild-world').addEventListener('pointerup',e=>{if(!heroOn()||!renderer?.pickMonster)return;const id=renderer.pickMonster(e.clientX,e.clientY);if(id&&state.hero){state.hero.lock=state.hero.lock===id?null:id;}});
+$('guild-world').addEventListener('pointerup',e=>{if(document.body.classList.contains('scene-only')||!heroOn()||!renderer?.pickMonster)return;const id=renderer.pickMonster(e.clientX,e.clientY);if(id&&state.hero){state.hero.lock=state.hero.lock===id?null:id;}});
 {const stick=$('hero-stick'),knob=stick.querySelector('i');const move=e=>{const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=r.width/2;let x=(e.clientX-cx)/max,y=(e.clientY-cy)/max;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l;}heroStick.x=x;heroStick.y=y;knob.style.transform=`translate(${x*max*.6}px,${y*max*.6}px)`;};
  stick.addEventListener('pointerdown',e=>{e.preventDefault();heroStick.id=e.pointerId;stick.setPointerCapture(e.pointerId);move(e);});stick.addEventListener('pointermove',e=>{if(heroStick.id===e.pointerId)move(e);});
  for(const ev of ['pointerup','pointercancel'])stick.addEventListener(ev,()=>{heroStick.id=null;heroStick.x=0;heroStick.y=0;knob.style.transform='';});}
-window.addEventListener('keydown',e=>{if(!heroOn()||e.target.matches?.('input,select,textarea')||document.querySelector('dialog[open]'))return;const k=e.code;
+window.addEventListener('keydown',e=>{if(document.body.classList.contains('scene-only')||!heroOn()||e.target.matches?.('input,select,textarea')||document.querySelector('dialog[open]'))return;const k=e.code;
  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyJ','Space'].includes(k)){heroKeys.add(k);e.preventDefault();e.stopImmediatePropagation();}
  else{const key={KeyK:'s1',KeyL:'s2',KeyU:'ult',KeyE:'act',ShiftLeft:'dash',ShiftRight:'dash'}[k];if(key){heroTap(key);e.preventDefault();e.stopImmediatePropagation();}}},true);
 window.addEventListener('keyup',e=>{heroKeys.delete(e.code);});
@@ -14419,7 +14731,7 @@ function syncHeroEncounterHud(){
  }else if(view?.pending)setHTML(el,`<b>${h(view.pending.title)}</b><button type="button" data-hero-open-event>เลือกว่าจะทำอะไร</button>`);
  else if(view?.notice)setHTML(el,`<b>${view.notice.won?'สำเร็จ!':'ไว้ลองใหม่คราวหน้า'} · ${h(view.notice.title)}</b><small>${h(view.notice.outcome)}</small>`);
 }
-function showHeroEncounter(){
+function showHeroEncounter(){if(document.body.classList.contains('scene-only'))return;
  const view=heroEncounterView(state),ev=view?.pending,dialog=$('hero-event-dialog');
  if(!ev||dialog.open||!$('title-screen').hidden||document.querySelector('dialog[open]'))return;
  clearHeroInput();
@@ -14439,7 +14751,7 @@ $('hero-event-dialog').addEventListener('close',()=>{clearHeroInput();lastFrame=
 $('hero-encounter-hud').addEventListener('click',event=>{if(event.target.closest('[data-hero-open-event]'))showHeroEncounter();if(event.target.closest('[data-hero-abandon]')){dispatch('abandonHeroChallenge');syncHeroHud();}});
 $('zoom-in').addEventListener('click',()=>{ui.zoom=Math.min(2.4,(renderer?.zoom||1)+.15);renderer?.setZoom(ui.zoom);});$('zoom-out').addEventListener('click',()=>{ui.zoom=Math.max(.3,(renderer?.zoom||1)-.15);renderer?.setZoom(ui.zoom);});$('home-view').addEventListener('click',()=>{ui.zoom=1;renderer?.resetView?.();renderer?.setZoom(1);});
 document.addEventListener('input',event=>{const d=event.target.dataset;if(d.roomDimension){ui[d.roomDimension==='width'?'roomWidth':'roomHeight']=Number(event.target.value);if($('room-estimate'))$('room-estimate').textContent=moneyCost(getPartitionCost(ui.roomWidth,ui.roomHeight));}if(d.partitionSize)ui[d.partitionSize==='width'?'roomDraftW':'roomDraftH']=Number(event.target.value);});
-document.addEventListener('keydown',event=>{if(event.target.matches('input,select,textarea,button')||document.querySelector('dialog[open]'))return;if((event.key==='Enter'||event.key===' ')&&event.target.matches('[role="button"]')){event.preventDefault();event.target.click();return;}if(event.code==='KeyR'&&(ui.buildType||ui.moveId||ui.roomPlacement||ui.moveRoomId||ui.villagePlace)){event.preventDefault();if(ui.villagePlace)renderer?.rotateVillagePick();else renderer?.rotatePlacement();syncHUD();return;}if(event.code==='Space'){event.preventDefault();ui.paused=!ui.paused;syncHUD();}if(['1','2','4'].includes(event.key)){if(heroOn()&&event.key!=='1'){toast('ตอนออกไปเองใช้ได้แค่ความเร็ว ×1',true);return;}ui.speed=Number(event.key);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();}if(event.key==='Escape'){cancelBuild();closeMenu();}});
+document.addEventListener('keydown',event=>{if(document.body.classList.contains('scene-only'))return;if(event.target.matches('input,select,textarea,button')||document.querySelector('dialog[open]'))return;if((event.key==='Enter'||event.key===' ')&&event.target.matches('[role="button"]')){event.preventDefault();event.target.click();return;}if(event.code==='KeyR'&&(ui.buildType||ui.moveId||ui.roomPlacement||ui.moveRoomId||ui.villagePlace)){event.preventDefault();if(ui.villagePlace)renderer?.rotateVillagePick();else renderer?.rotatePlacement();syncHUD();return;}if(event.code==='Space'){event.preventDefault();ui.paused=!ui.paused;syncHUD();}if(['1','2','4'].includes(event.key)){if(heroOn()&&event.key!=='1'){toast('ตอนออกไปเองใช้ได้แค่ความเร็ว ×1',true);return;}ui.speed=Number(event.key);state.settings.speed=ui.speed;ui.paused=false;syncHUD();save();}if(event.key==='Escape'){cancelBuild();closeMenu();}});
 
 // Goal card: always says what to do next, and opens the screen that does it.
 function introGoal(){const step=state.intro.step,cost=type=>moneyCost(FACILITIES[type].cost);
@@ -14500,7 +14812,7 @@ function watchExams(){const now=new Map(state.members.filter(m=>m.errand?.kind==
  if(examWatch){for(const [id,rank] of now)if(!examWatch.has(id)){const m=state.members.find(x=>x.id===id);toast(`${m.name}ไปสอบเลื่อนเป็นแรงค์ ${rank} ที่สนามสอบ · แตะเพื่อดู`,false,open(id));}
   for(const [id,rank] of examWatch)if(!now.has(id)){const m=state.members.find(x=>x.id===id);if(!m)continue;const passed=m.rank===rank;if(ui.sound)sfx(passed?'fanfare':'stamp',.3);toast(passed?`${m.name}สอบผ่าน! เป็นนักผจญภัยแรงค์ ${rank}`:`${m.name}สอบแรงค์ ${rank} ไม่ผ่าน · จะกลับไปสอบใหม่พรุ่งนี้`,!passed,open(id));}}
  examWatch=now;}
-function syncGoal(){watchExams();watchShows();autoLesson();const g=goalInfo(),card=$('goal-card');if(!card)return;const html=`<small>${h(g.label)}</small><b>${h(g.title)}</b><span>${h(g.meta)}</span>${g.progress!=null?`<i class="goal-progress"><i style="width:${pct(g.progress,1)}%"></i></i>`:''}`;if(card.__html!==html){card.innerHTML=html;card.__html=html;}card.dataset.goal=g.action;card.classList.toggle('urgent',!!g.urgent);syncCoach(g.coach);}
+function syncGoal(){watchExams();watchShows();autoLesson();const g=goalInfo(),card=$('goal-card');if(!card)return;const html=`<small>${h(g.label)}</small><b>${h(g.title)}</b><span>${h(g.meta)}</span>${g.progress!=null?`<i class="goal-progress"><i style="width:${pct(g.progress,1)}%"></i></i>`:''}`;if(card.__html!==html){card.innerHTML=html;card.__html=html;}card.dataset.goal=g.action;card.classList.toggle('urgent',!!g.urgent);syncCoach(g.coach);mobileHUD?.sync();}
 // A pulsing hint on the dock button the current goal needs, until the player has opened that menu once for it.
 let coachSeen=null;
 function syncCoach(tab){if(!coachSeen){coachSeen={};try{coachSeen=JSON.parse(localStorage.getItem('guild-master:coach')||'{}');}catch{}}const seen=coachSeen;if(tab&&ui.tab===tab&&$('management-dialog').open){seen[tab]=true;try{localStorage.setItem('guild-master:coach',JSON.stringify(seen));}catch{}}
@@ -14515,7 +14827,7 @@ $('goal-card').addEventListener('click',()=>runGoal($('goal-card').dataset.goal)
 
 // The storyteller: a choice opens a small dialog once; big events show a banner with a watch button.
 let shownEvent=null;
-function showEvent(force=false){const ev=state.director?.pending;if(!ev||document.querySelector('dialog[open]'))return;if(!force&&(shownEvent===ev.expires+ev.id||$('management-dialog').open||$('report-dialog').open||$('visitor-dialog').open||$('confirm-dialog').open))return;shownEvent=ev.expires+ev.id;
+function showEvent(force=false){if(document.body.classList.contains('scene-only'))return;const ev=state.director?.pending;if(!ev||document.querySelector('dialog[open]'))return;if(!force&&(shownEvent===ev.expires+ev.id||$('management-dialog').open||$('report-dialog').open||$('visitor-dialog').open||$('confirm-dialog').open))return;shownEvent=ev.expires+ev.id;
  const left=Math.max(0,Math.ceil((ev.expires-state.elapsed)/60));
  $('event-content').innerHTML=`<small class="report-kicker">${ev.kind==='major'?'เหตุการณ์ใหญ่':'เรื่องที่ต้องตัดสินใจ'}</small><h2 id="event-title"><span class="event-big-icon">${h(ev.icon)}</span>${h(ev.title)}</h2><p>${h(ev.text)}</p><div class="event-choices">${ev.choices.map(c=>`<button class="event-choice" data-event-choice="${h(c.id)}"><b>${h(c.label)}</b><small>${h(c.desc)}</small></button>`).join('')}</div><div class="dialog-actions"><button class="secondary" data-event-later>ไว้ทีหลัง (${left} นาที)</button></div>`;
  $('event-dialog').showModal();}
@@ -14528,7 +14840,7 @@ $('event-banner').addEventListener('click',event=>{const w=event.target.closest(
 // Mission report: a clear payoff when a team comes home.
 const reported=new Set(state.missions.filter(m=>m.status!=='active'&&m.status!=='decision').map(m=>m.id));const reportQueue=[];
 function queueReports(before){for(const m of state.missions){if(reported.has(m.id)||m.status==='active'||m.status==='decision')continue;reported.add(m.id);if(m.auto&&!m.result?.loot?.some(e=>e.tier==='rare'||e.tier==='legendary')&&RANKS.indexOf(state.rank)===RANKS.indexOf(before.rank))continue;reportQueue.push({mission:m,before,rank:state.rank});}if(reportQueue.length&&!$('report-dialog').open&&!heroOn())showReport();}
-function showReport(){const r=reportQueue.shift();if(!r)return;const m=r.mission,q=QUESTS.find(q=>q.id===m.questId),res=m.result||{},rw=res.reward||{};
+function showReport(){if(document.body.classList.contains('scene-only'))return;const r=reportQueue.shift();if(!r)return;const m=r.mission,q=QUESTS.find(q=>q.id===m.questId),res=m.result||{},rw=res.reward||{};
  const chips=[['gold','◈','G'],['wood','▰','ไม้'],['stone','◆','หิน'],['herb','❧','สมุนไพร'],['rep','★','ชื่อเสียง']].filter(([k])=>rw[k]>0).map(([k,icon,label])=>`<span class="report-chip"><b>${icon} +${n(rw[k])}</b><small>${label}</small></span>`).join('');
  const xp=Math.round((q?.reward?.xp||0)*(res.success?1:.35)),team=m.memberIds.map(id=>state.members.find(x=>x.id===id)).filter(Boolean).map(x=>{const up=x.level>(r.before.levels.get(x.id)||x.level);return `<div class="report-member ${up?'up':''}">${portrait(x)}<b>${h(x.name)}</b><small>${up?'เลเวลอัป! Lv.'+x.level:'Lv.'+x.level} · +${n(xp)} XP${x.injury>0?' · บาดเจ็บ':''}</small></div>`;}).join('');
  let rank='';if(RANKS.indexOf(r.rank)>RANKS.indexOf(r.before.rank)){const unlocked=[...(RANK_UNLOCKS[r.rank]||[])];rank=`<div class="report-rank"><span class="rank-seal">${h(r.rank)}</span><div><b>กิลด์เลื่อนเป็นระดับ ${h(r.rank)}!</b><small>${unlocked.length?'ปลดล็อก: '+h(unlocked.join(' · ')):'เปิดคำร้องและสิ่งปลูกสร้างใหม่'}</small></div></div>`;}
@@ -14541,7 +14853,7 @@ $('report-dialog').addEventListener('close',()=>{lastFrame=performance.now();if(
 // Opening chapter: title screen, prologue and adventurers knocking at the door.
 const VISITOR_LINES={get mira(){return `ได้ยินว่าบ้านข้างต้นโอ๊กเปิดเป็น${profile().guildName}แล้ว… คุณ${profile().masterName} ให้ฉันช่วยเฝ้าบ้านหลังนี้ได้ไหม`;},finn:'มิราเล่าว่ามีหุ่นฝึกแล้ว! ผมจำทางรอบหมู่บ้านได้หมดเลยนะ',lune:'ขอมาด้วยคนค่ะ อยากลองใช้เวทช่วยชาวบ้านดูบ้าง',noa:'ได้ยินว่าทีมแรกกลับมาอย่างปลอดภัย ถ้ามีใครบาดเจ็บ ฉันดูแลให้เองนะ'};
 const VISITOR_NEXT={training:'ต่อไป: วางหุ่นฝึกให้มิราฝึกฝีมือ',patrol:'ครบทีมแล้ว! นักผจญภัยจะหยิบงานลาดตระเวนจากกระดานเอง',done:'นักผจญภัยครบสี่คนแล้ว ลองวางบาร์ให้ทุกคนได้นั่งพักหลังเลิกงาน (เมนู “สร้าง”)'};
-function showVisitors(){if(!state.intro||state.intro.step!=='visit'||$('visitor-dialog').open)return;const ids=state.intro.visitors,people=ids.map(id=>MEMBERS.find(m=>m.id===id)).filter(Boolean);if(!people.length)return;
+function showVisitors(){if(document.body.classList.contains('scene-only'))return;if(!state.intro||state.intro.step!=='visit'||$('visitor-dialog').open)return;const ids=state.intro.visitors,people=ids.map(id=>MEMBERS.find(m=>m.id===id)).filter(Boolean);if(!people.length)return;
  $('visitor-content').innerHTML=`<small class="report-kicker">ก๊อก ก๊อก · มีคนมาที่ประตูกิลด์</small><h2 id="visitor-title">${people.length>1?h(people.map(p=>p.name).join(' และ '))+' มาขอเข้าร่วม':h(people[0].name)+' มาขอเข้าร่วมกิลด์'}</h2><div class="visitor-list">${people.map(p=>`<div class="visitor-card">${portrait(p)}<div><b>${h(p.name)}</b><small>${h(jobName(p.class))} · ${h(p.trait||'')}</small><p>“${h(VISITOR_LINES[p.id]||p.description)}”</p><span>${h(p.description)}</span></div></div>`).join('')}</div><div class="report-next"><small>ต่อไป</small><span>${h(VISITOR_NEXT[state.intro.after]||'')}</span></div><div class="dialog-actions"><button class="primary" data-welcome>ต้อนรับเข้ากิลด์</button></div>`;
  injectIcons($('visitor-content'));$('visitor-dialog').showModal();}
 $('visitor-dialog').addEventListener('cancel',event=>event.preventDefault());
@@ -14571,7 +14883,7 @@ function renderFestival(){
  const liveCard=live?`<div class="fest-live"><div><small>${v.phase==='prep'?'กำลังเตรียมงาน':'กำลังจัดงาน'}</small><b>${FESTIVALS[live.kind].icon} ${h(FESTIVALS[live.kind].name)}</b><span>รางวัล ${n(live.gold)} G${live.item?' + '+h(live.item.name):''} · ผู้มาเที่ยว ${n(live.visitors)} คน · ${v.phase==='prep'?'เริ่มในอีก':'เหลือ'} ${n(v.left)} วินาที</span>${live.matches?`<span>${v.phase==='live'?`แข่งไปแล้ว ${v.done}/7 คู่`:'จับสลากสายการแข่งขันแล้ว'}</span>`:''}</div><button class="primary" data-watch-festival>📍 ไปดูที่งาน</button></div>`:'';
  const cards=`<div class="fest-kinds">${kinds.map(k=>{const F=FESTIVALS[k],st=getFestivalInfo(state,k);return `<button class="fest-kind ${k===kind?'active':''} ${st.level?'':'locked'}" data-fest-kind="${k}"><span>${F.icon}</span><b>${h(F.name)}</b><small>${st.level?`${h(VILLAGE_PROJECTS[F.building].name)} ระดับ ${st.level}`:`ต้องสร้าง${h(VILLAGE_PROJECTS[F.building].name)}`}</small></button>`;}).join('')}</div>`;
  const entrants=kind==='tournament'?getFestivalEntrants(state,gold).map(id=>state.members.find(m=>m.id===id)).filter(Boolean):[];
- const form=`<div class="fest-form"><h3>${f.icon} ${h(f.name)}</h3><p>${h(f.description)}</p><p class="tiny-note">ผล: ${h(f.effect)} · เตรียมงาน ${f.prep} วินาที · จัด ${f.length} วินาที</p>
+ const form=`<div class="fest-form"><h3>${f.icon} ${h(f.name)}</h3><p>${h(f.description)}</p><p class="tiny-note">ผล: ${h(f.effect)} · เตรียมงาน ${Math.ceil(info.prep??f.prep)} วินาที · จัด ${Math.ceil(info.length??f.length)} วินาที${kind==='lantern'?' · กลางคืน 18:00–06:00 เท่านั้น':''}</p>
   <label class="fest-field"><span>💰 เงินรางวัล <b>${n(gold)} G</b></span><input type="range" min="${f.minGold}" max="${f.maxGold}" step="20" value="${gold}" data-fest-gold></label>
   <label class="fest-field"><span>🎁 ของรางวัล</span><select data-fest-item><option value="">ไม่มีของรางวัล</option>${items.map(i=>`<option value="${i.type}:${h(i.id)}" ${ui.festItem===i.type+':'+i.id?'selected':''}>${h(i.name)} (มูลค่า ${n(i.value)} G${i.count>1?' · มี '+i.count:''})</option>`).join('')}</select></label>
   ${kind==='tournament'?`<div class="fest-field"><span>⚔ นักผจญภัยสมัครลงแข่งเอง คนเก่งที่สุดที่ว่างและอารมณ์ดีสมัครก่อน · รางวัลยิ่งสูงยิ่งสมัครหลายคน (สูงสุด 4) · ถ้าคนของเมืองชนะ เงินรางวัลเข้ากระเป๋าเขา และของรางวัลกลับคลังกิลด์</span><div class="fest-members">${entrants.map(m=>`<label class="on">${portrait(m)}<b>${h(m.name)}</b><small>Lv.${m.level} ${h(jobName(m.class))}</small></label>`).join('')||'<p class="tiny-note">ตอนนี้ยังไม่มีใครว่างและพร้อมแข่ง</p>'}</div></div>`:''}
@@ -14633,7 +14945,7 @@ function showLesson(id){const x=getGoals(state).list.find(g=>g.id===id);if(!x)re
 $('lesson-dialog')?.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.lessonClose!==undefined){$('lesson-dialog').close();return;}if(b.dataset.lessonGo!==undefined){$('lesson-dialog').close();const x=getGoals(state).list.find(g=>g.id===ui.lessonGoal);if(x)runGoal(x.action);}});
 // The first time an objective comes up, its lesson opens by itself (once per objective).
 let lessonsSeen=null;
-function autoLesson(){const cur=getGoals(state).current;if(!cur||!ui.inGame||introActive(state)||!$('title-screen').hidden)return;if(!lessonsSeen){try{lessonsSeen=JSON.parse(localStorage.getItem('guild-master:lessons')||'{}');}catch{lessonsSeen={};}}
+function autoLesson(){if(document.body.classList.contains('scene-only'))return;const cur=getGoals(state).current;if(!cur||!ui.inGame||introActive(state)||!$('title-screen').hidden)return;if(!lessonsSeen){try{lessonsSeen=JSON.parse(localStorage.getItem('guild-master:lessons')||'{}');}catch{lessonsSeen={};}}
  if(lessonsSeen[cur.id]||heroOn()||document.querySelector('dialog[open]'))return;lessonsSeen[cur.id]=true;try{localStorage.setItem('guild-master:lessons',JSON.stringify(lessonsSeen));}catch{}if(cur.id!=='patrol')showLesson(cur.id);}
 function renderGuildUpgrades(){return `<div class="village-hero"><small>สิ่งที่กิลด์ลงทุนแล้วได้ผลถาวร</small><h2>พัฒนากิลด์</h2><p>ทุกอย่างในหน้านี้เป็นของตัวกิลด์เอง ไม่ใช่ของหมู่บ้าน ราคาเพิ่มขึ้นทุกระดับ</p></div><div class="upgrade-grid">${Object.entries(GUILD_UPGRADES).map(([id,u])=>{const lv=state.upgrades?.[id]||0,cost=getGuildUpgradeCost(state,id),max=lv>=u.max,ok=!max&&canAfford(cost);return `<div class="upgrade-card"><div class="up-head"><span class="up-icon">${u.icon}</span><div><b>${h(u.name)}</b><small>ระดับ ${lv}/${u.max}</small></div></div><p>${h(u.description)}</p><div class="up-pips">${'<i class="on"></i>'.repeat(lv)}${'<i></i>'.repeat(u.max-lv)}</div>${max?'':`<span class="build-cost">${h(moneyCost(cost))}</span>`}<button class="${ok?'primary':''}" data-upgrade-guild="${id}" ${ok?'':'disabled'}>${max?'ระดับสูงสุด':'พัฒนา'}</button></div>`;}).join('')}</div>${state.rank==='B'||state.frontier?.camp?`<div class="section-title">ชายแดนตะวันออก</div><div class="upgrade-grid">${campCard()}</div>`:''}`;}
 // ---- Efficiency: how well the adventurers work, what holds them back, and what fixing it is worth. ----
@@ -14692,7 +15004,7 @@ $('management-dialog').addEventListener('close',()=>document.body.classList.remo
 // Placement bar: live validity from the renderer; nothing is placed until the player confirms.
 function updatePlacementBar(info){if(!info?.active)return;const status=$('pb-status'),text=info.ok?'ลากของเพื่อย้าย · แตะพื้นเพื่อย้ายไปตรงนั้น':(info.message||'วางตรงนี้ไม่ได้');if(status.textContent!==text)status.textContent=text;status.classList.toggle('bad',!info.ok);$('build-hint').querySelector('[data-confirm-placement]').disabled=!info.ok;}
 if(renderer)renderer.onPlacement=updatePlacementBar;
-if(renderer)renderer.onVillagePick=info=>{const status=$('pb-status'),text=info.ok?'แตะพื้นที่ว่างรอบหมู่บ้านเพื่อย้ายจุดสร้าง':info.message;if(status.textContent!==text)status.textContent=text;status.classList.toggle('bad',!info.ok);$('build-hint').querySelector('[data-confirm-placement]').disabled=!info.ok;};
+if(renderer)renderer.onVillagePick=info=>{const status=$('pb-status'),text=info.ok?'แตะพื้นที่ว่างเพื่อวาง · กรอบสีทองเป็นแนวต่อเติมกิลด์':info.message;if(status.textContent!==text)status.textContent=text;status.classList.toggle('bad',!info.ok);$('build-hint').querySelector('[data-confirm-placement]').disabled=!info.ok;};
 // Follow camera chip: who is being followed, a shortcut to their quest, and a stop button.
 let followInfo=null;
 function updateFollowChip(info){followInfo=info;$('follow-chip').hidden=!info;if(!info)return;$('fc-name').textContent=(info.kind==='event'?'ดู ':info.kind==='member'?'ติดตาม ':'ติดตามทีม ')+info.name;$('fc-sub').textContent=info.kind==='event'?(info.quest||''):info.quest?'ภารกิจ: '+info.quest:'อยู่ในกิลด์';$('fc-mission').hidden=!info.missionId;}
@@ -14717,11 +15029,13 @@ document.addEventListener('click',event=>{const b=event.target.closest('[data-au
 
 document.addEventListener('click',event=>{const b=event.target.closest('[data-watch-mission]');if(!b)return;closeMenu();renderer?.focusMission(b.dataset.watchMission);});
 let lastFrame=performance.now(),uiTimer=0,saveTimer=0,seenLog=state.log[0];
-function frame(now){state.settings.paused=ui.paused;const dt=Math.max(0,Math.min((now-lastFrame)/1000,.25));lastFrame=now;if(renderer?.ready&&!document.hidden&&!ui.paused&&!$('confirm-dialog').open&&!$('settings-dialog').open&&!$('report-dialog').open&&!$('event-dialog').open&&!$('hero-event-dialog').open&&!$('visitor-dialog').open&&!$('story-dialog').open&&!$('setup-dialog').open&&!$('lesson-dialog').open&&!$('chest-dialog').open&&!$('celebrate-dialog').open&&!$('away-dialog').open&&$('title-screen').hidden){const before={rank:state.rank,levels:new Map(state.members.map(m=>[m.id,m.level]))};heroInput();tick(state,dt*(heroOn()?1:ui.speed));queueReports(before);if(state.intro?.step==='visit'&&!$('report-dialog').open&&!$('management-dialog').open)showVisitors();showHeroEncounter();showEvent();syncEventBanner();renderer?.setState(state);uiTimer+=dt;saveTimer+=dt;if(state.log[0]!==seenLog){const fresh=[];for(const e of state.log){if(e===seenLog||fresh.length>=20)break;fresh.push(e);}fresh.reverse().forEach(noteLog);seenLog=state.log[0];}flushDigest(dt);syncHeroHud();if(uiTimer>.9){syncHUD();syncHeroMode();if(!document.activeElement?.matches('input,select,textarea')&&(ui.missionId||ui.questId||ui.tab==='journal'||ui.tab==='trade'||ui.tab==='market'||ui.tab==='festival'||ui.tab==='goals'||ui.tab==='codex'||ui.tab==='fieldmaster'||ui.tab==='town'||ui.tab==='efficiency'||ui.tab==='staff'||ui.tab==='members'||ui.tab==='build'||ui.tab==='workshop'||ui.tab==='village'))syncUI();uiTimer=0;}if(saveTimer>12){save();saveTimer=0;}}if(ui.missionId||$('dungeon-dialog').open)drawMissionScene();syncShowPanel(now);syncMusic(dt);requestAnimationFrame(frame);}
+function frame(now){state.settings.paused=ui.paused;const dt=Math.max(0,Math.min((now-lastFrame)/1000,.25));lastFrame=now;if(renderer?.ready&&!document.hidden&&!ui.paused&&!$('confirm-dialog').open&&!$('settings-dialog').open&&!$('notifications-dialog').open&&!$('report-dialog').open&&!$('event-dialog').open&&!$('hero-event-dialog').open&&!$('visitor-dialog').open&&!$('story-dialog').open&&!$('setup-dialog').open&&!$('lesson-dialog').open&&!$('chest-dialog').open&&!$('celebrate-dialog').open&&!$('away-dialog').open&&$('title-screen').hidden){const before={rank:state.rank,levels:new Map(state.members.map(m=>[m.id,m.level]))};heroInput();tick(state,dt*(heroOn()?1:ui.speed));queueReports(before);if(state.intro?.step==='visit'&&!$('report-dialog').open&&!$('management-dialog').open)showVisitors();showHeroEncounter();showEvent();syncEventBanner();renderer?.setState(state);uiTimer+=dt;saveTimer+=dt;if(state.log[0]!==seenLog){const fresh=[];for(const e of state.log){if(e===seenLog||fresh.length>=20)break;fresh.push(e);}fresh.reverse().forEach(noteLog);seenLog=state.log[0];}flushDigest(dt);syncHeroHud();if(uiTimer>.9){syncHUD();syncHeroMode();if(!document.activeElement?.matches('input,select,textarea')&&(ui.missionId||ui.questId||ui.tab==='journal'||ui.tab==='trade'||ui.tab==='market'||ui.tab==='festival'||ui.tab==='goals'||ui.tab==='codex'||ui.tab==='fieldmaster'||ui.tab==='town'||ui.tab==='efficiency'||ui.tab==='staff'||ui.tab==='members'||ui.tab==='build'||ui.tab==='workshop'||ui.tab==='village'))syncUI();uiTimer=0;}if(saveTimer>12){save();saveTimer=0;}}if(ui.missionId||$('dungeon-dialog').open)drawMissionScene();syncShowPanel(now);syncMusic(dt);requestAnimationFrame(frame);}
 function drawMissionScene(){const big=$('dungeon-dialog').open,id=big?ui.bigMission:ui.missionId,canvas=big?$('dungeon-big'):$('mission-scene');if(!canvas||!id)return;const mission=state.missions.find(m=>m.id===id);const quest=QUESTS.find(q=>q.id===mission?.questId);if(mission&&quest)drawDungeonScene(canvas,mission,quest,state,{paused:ui.paused||document.hidden||(!big&&!$('management-dialog').open),time:performance.now()/1000,eventPending:missionEventPending(mission)});}
 // A full-screen window into the dungeon: watch the fight like an online game.
 document.addEventListener('click',event=>{const b=event.target.closest('[data-dungeon-full],[data-dungeon-close]');if(!b)return;if(b.dataset.dungeonFull){const m=state.missions.find(x=>x.id===b.dataset.dungeonFull),q=QUESTS.find(x=>x.id===m?.questId);ui.bigMission=b.dataset.dungeonFull;$('dd-title').textContent=`${q?.name||''} · ${(m?.memberIds||[]).map(id=>state.members.find(x=>x.id===id)?.name).filter(Boolean).join(' · ')}`;$('dungeon-dialog').showModal();}else $('dungeon-dialog').close();});
 
+mobileHUD=initMobileUI({beforeOpen:()=>{clearHeroInput();closeMenu();},afterClose:()=>{clearHeroInput();lastFrame=performance.now();},beforeSceneOnly:()=>{renderer?.setSceneOnly(true);clearHeroInput();closeMenu();cancelBuild();},afterSceneOnly:()=>{renderer?.setSceneOnly(false);clearHeroInput();lastFrame=performance.now();syncHUD();}});
+initFullscreen($('fullscreen-button'),{notify:text=>toast(text,true),resize:()=>window.dispatchEvent(new Event('resize'))});
 syncUI();injectIcons($('dock'));if(hasSave)save();showTitle();requestAnimationFrame(frame);if(loadNotice)setTimeout(()=>toast(loadNotice,true),800);if(idleNotice)setTimeout(()=>toast(idleNotice),1300);document.addEventListener('visibilitychange',()=>{lastFrame=performance.now();if(document.hidden)save();});window.addEventListener('pagehide',()=>save());
 // Read-only diagnostics, useful for reproducible bug reports without a cheat menu.
 window.guildDebug={openShow:k=>openShow(k),showPanel:()=>$('show-panel').innerHTML,audio:()=>({area:musicArea()}),focusGrid:(x,y,z)=>renderer?.focusGrid(x,y,z),getState:()=>JSON.parse(serializeGame(state)),getScenePoint:(x,y)=>{const r=renderer.worldToScreen(x*32,y*32),b=$('guild-world').getBoundingClientRect();return{x:b.left+r.x*b.width/renderer.width,y:b.top+r.y*b.height/renderer.height};},getRendererInfo:()=>renderer?.getInfo(),renderer:()=>renderer,getSceneStats:()=>{const list=renderer?.scene?.children?.list||[],cam=renderer?.camera?.worldView;return{objects:list.length,visible:list.filter(o=>o.visible&&o.alpha>0).length,culled:list.filter(o=>o.cameraFilter).length,onScreen:cam?list.filter(o=>o.visible&&o.getBounds&&Phaser.Geom.Rectangle.Overlaps(cam,o.getBounds())).length:null};},getTravellers:()=>{const b=$('guild-world').getBoundingClientRect();return(renderer?.travellerPoints()||[]).map(t=>({...t,x:b.left+t.x*b.width/renderer.width,y:b.top+t.y*b.height/renderer.height}));},getSnapshot:()=>({rank:state.rank,day:state.day,members:state.members.length,quests:state.completedQuests,finished:state.story?.finished})};

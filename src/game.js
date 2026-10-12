@@ -6,7 +6,7 @@ import { INN, tickLife, createWorld, rallyDefenders, recallHunters, addFree, fre
 import { tickHeroEncounters, resolveHeroEncounter, abandonHeroChallenge, cancelHeroEncounters, sanitizeHeroEncounters } from './hero-events.js';
 import { createDirector, tickDirector, raidReached, bossDefeated, resolveDecision, sanitizeDirector } from './events.js';
 import { SPECIES } from './monsters.js';
-import { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, spotFree, ROTATABLE, homeOf, villageBuildings, doorOf } from './town.js';
+import { tickTown, sanitizePaths, sanitizeHomes, population, housingCapacity, homeStatus, villagePlacementProblem, ROTATABLE, homeOf, villageBuildings, doorOf } from './town.js';
 import { goalBoard, claimGoal, sanitizeMastery, setGoalJobs } from './goals.js';
 import { HERO_CLASSES, HERO_TREE, HERO_GEAR, CLASS_CHANGE_FEE, HERO_BOUNDS, CONTRACT_KINDS, RARE_MATS, treePoints } from './hero.js';
 import { createProgress, sanitizeProgress, addChest, rollChest, recordKill, recordTreasure, offerPolicies, choosePolicy, hasPolicy, newDailyGoals, dailyView, POLICIES, CHESTS, CHEST_RARITIES, TREASURE_SETS, CODEX_FAMILIES } from './progress.js';
@@ -1770,7 +1770,7 @@ function moveVillageBuilding(state, payload) {
   if (rot && !ROTATABLE(key)) return failure('อาคารนี้หมุนไม่ได้');
   if (!finiteNumber(spot.x) || !finiteNumber(spot.y) || Math.abs(spot.x) > 90 || Math.abs(spot.y) > 90) return failure('ตำแหน่งที่ตั้งไม่ถูกต้อง');
   const x = Math.round(spot.x * 4) / 4, y = Math.round(spot.y * 4) / 4;
-  if (!spotFree(state, key, kind, x, y, rot)) return failure('ทับอาคารอื่นหรือที่ดินกิลด์');
+  const problem=villagePlacementProblem(state,key,kind,x,y,rot);if(problem)return failure(problem);
   state.village.lots = { ...(state.village.lots || {}), [key]: { x, y, ...(rot ? { rot: 1 } : {}) } };
   if (state.village.paths) delete state.village.paths[key];
   return success('ย้ายอาคารแล้ว ทางเดินจะค่อย ๆ เกิดใหม่จากประตู');
@@ -1781,8 +1781,10 @@ function buildProject(state, payload) {
   // The player picks where a new building stands; upgrades stay where they are.
   const key = id === 'house' ? 'h' + state.village.houses : id, spot = payload.spot;
   if (spot && (!finiteNumber(spot.x) || !finiteNumber(spot.y) || Math.abs(spot.x) > 90 || Math.abs(spot.y) > 90)) return failure('ตำแหน่งที่ตั้งไม่ถูกต้อง');
+  const newBuilding=id==='house'||!state.village[id];
+  if(spot&&newBuilding){const x=Math.round(spot.x*4)/4,y=Math.round(spot.y*4)/4,rot=spot.rot===1&&ROTATABLE(key)?1:0,problem=villagePlacementProblem(state,key,id,x,y,rot);if(problem)return failure(problem);}
   transact(state, status.cost, `หมู่บ้าน: ${p.name}`);
-  if (spot && !state.village.lots?.[key]) state.village.lots = { ...(state.village.lots || {}), [key]: { x: Math.round(spot.x * 4) / 4, y: Math.round(spot.y * 4) / 4, ...(spot.rot === 1 && ROTATABLE(key) ? { rot: 1 } : {}) } };
+  if (spot && newBuilding) state.village.lots = { ...(state.village.lots || {}), [key]: { x: Math.round(spot.x * 4) / 4, y: Math.round(spot.y * 4) / 4, ...(spot.rot === 1 && ROTATABLE(key) ? { rot: 1 } : {}) } };
   if (id === 'house') state.village.houses += 1; else state.village[id] = (state.village[id] || 0) + 1;
   if (id === 'shop' || id === 'smithy') restockShops(state);
   const before = getVillageInfo(state).level;
