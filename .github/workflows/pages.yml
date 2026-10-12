@@ -18,7 +18,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      # play.html is the standalone build (fonts and code inlined); it becomes the site's front page.
+      # Rebuild the standalone game from current src/ on every deployment.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run export
       - run: mkdir site && cp play.html site/index.html && touch site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
