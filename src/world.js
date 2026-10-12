@@ -435,7 +435,7 @@ export class GuildRenderer {
   for(let k=this.worldProps.length-1;k>=0;k--){const img=this.worldProps[k];if(img.flora&&this.underBuilding(img.flora.x,img.flora.y)){img.destroy();this.worldProps.splice(k,1);}}
  }
  // ---- Villagers bringing petitions: they walk from home along the road, in through the door, and wait at the desk. ----
- bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
+ bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath','work0','work1','sit0','sit1'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
   for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-villager-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
  villagerRoute(home){const h=petitionHome(home),b=buildingRect(this.state),door=b.x+b.w/2,road=17.5,path=Number.isInteger(home)&&this.state.village?.paths?.['h'+home]?.pts;
   // Villagers keep to the footpath their feet wore from home to the road.
@@ -625,11 +625,7 @@ export class GuildRenderer {
     const p=gridPoint(n.x,n.y),dx=p.x-(s.px??p.x),dy=p.y-(s.py??p.y),moved=Math.hypot(dx,dy)>.05&&playing;s.px=p.x;s.py=p.y;if(moved)s.dir=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
     this.placeBody(s.image,key,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):'idle',s.dir,Math.round(p.y)+.2);});
   }
-  // Guild staff at their stations: the receptionist at the desk, the cook behind the bar, the appraiser at the scales.
-  for(const [role,st] of Object.entries(this.state.staff||{})){const def=STAFF[role],f=def&&this.state.facilities.find(x=>x.type===def.needs);if(!f)continue;
-   const e=getFacilityEntry(f),d=getRoomSize(f.type,f.rotation||0),cx=f.x+d.w/2,cy=f.y+d.h/2,off=role==='registrar'?.6:role==='receptionist'?-.6:0,p=gridPoint(cx+(cx-e.x)*.8+(e.y!==cy?off:0),cy+(cy-e.y)*.8+(e.x!==cx?off:0));
-   const look=villagerLook({seed:hash(role)+3,client:def.name}),key=this.actorKey(look),sp=sprite('staff-'+role,()=>({image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52)}));
-   this.placeBody(sp.image,key,null,p,Math.floor(t*1.5+hash(role)%5)%2?'breath':'idle','south',Math.round(p.y)+.4);}
+  this.updateStaff(dt,playing,sprite,t);
   for(const [id,s] of this.lifeSprites)if(!seen.has(id)){s.image.destroy();s.shadow?.destroy();s.crown?.destroy();s.label?.destroy();this.lifeSprites.delete(id);}
   this.playFx(dt);
  }
@@ -726,7 +722,59 @@ export class GuildRenderer {
   }
   for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
  }
+ // A point given in a piece of furniture's own frame (before it is turned), as a grid point in the hall.
+ localPoint(f,lx,ly){const d=FACILITIES[f.type],r=f.rotation||0,[x,y]=r===1?[d.h-ly,lx]:r===2?[d.w-lx,d.h-ly]:r===3?[ly,d.w-lx]:[lx,ly];return{x:f.x+x,y:f.y+y};}
+ // Which way to face to look from one grid point at another, in the sprite's screen terms.
+ faceTo(from,to){const a=gridPoint(from.x,from.y),b=gridPoint(to.x,to.y),dx=b.x-a.x,dy=b.y-a.y;return Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}
+ // Stools at the bar and chairs at dining tables, each given to one adventurer who is eating or drinking now.
+ seatPlan(){
+  const key=(this.state.elapsed|0)+'|'+this.state.facilities.length;if(this.seatKey===key&&this.seatCache)return this.seatCache;
+  const seats={bar:[],dining:[]};
+  for(const f of this.state.facilities){
+   if(f.type==='bar')for(let i=0;i<4;i++){const p=this.localPoint(f,.35+i*.6,1.42),face=this.localPoint(f,.35+i*.6,.9);seats.bar.push({f,kind:'bar',...p,dir:this.faceTo(p,face)});}
+   if(f.type==='dining'&&this.state.facilities.some(k=>k.type==='kitchen')){const c=this.localPoint(f,.875,.875);for(const [x,y] of [[.875,.12],[.875,1.62],[.12,.875],[1.62,.875]]){const p=this.localPoint(f,x,y);seats.dining.push({f,kind:'dining',...p,dir:this.faceTo(p,c)});}}
+  }
+  const plan=new Map(),taken=new Set(),now=this.state.elapsed;
+  const guests=this.state.members.filter(m=>m.town?.at==='guild'&&m.atBar!==undefined&&now-m.atBar<45&&m.task==='rest').sort((a,b)=>a.atBar-b.atBar);
+  for(const m of guests){const list=[...(seats[m.seatKind]||[]),...seats[m.seatKind==='bar'?'dining':'bar']];const seat=list.find(x=>!taken.has(x));if(!seat)continue;taken.add(seat);plan.set(m.id,seat);}
+  this.seatKey=key;this.seatCache=plan;return plan;}
+ // Guild staff each doing their own job: the bartender serves the stools, the cook stirs and carries plates, the clerks write, the appraiser weighs, the scout reads the maps.
+ updateStaff(dt,playing,sprite,t){
+  const LOOK={receptionist:{outfit:'#7a9cc9',hair:'#5b4637',hairStyle:'long',hat:2},registrar:{outfit:'#6f8f6a',hair:'#8b5a3c',hairStyle:'short',hat:1},appraiser:{outfit:'#8a6aa8',hair:'#e9e2d0',hairStyle:'short',hat:1},scout:{outfit:'#5f7a5a',hair:'#3b302a',hairStyle:'short',hat:1},bartender:{outfit:'#4a4458',hair:'#a66c59',hairStyle:'short',hat:2},cook:{outfit:'#f1ece0',hair:'#d9b26f',hairStyle:'long',hat:0}};
+  const step=playing?dt*(this.state.settings?.speed||1):0,plan=this.seatPlan();this.staffBots??={};
+  for(const [role,st] of Object.entries(this.state.staff||{})){
+   const def=STAFF[role],f=def&&this.state.facilities.find(x=>x.type===def.needs);if(!f){this.staffBots[role]?.hide?.();continue;}
+   const look={id:'staff-'+role,name:def.name,class:'villager',skin:'#f1c9a5',...LOOK[role]},key=this.actorKey(look),sp=sprite('staff-'+role,()=>({image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52)}));
+   const b=this.staffBots[role]??={x:null,y:null,goal:null,wait:0,carry:false,work:null};
+   const d=getRoomSize(f.type,f.rotation||0),center={x:f.x+d.w/2,y:f.y+d.h/2},e=getFacilityEntry(f),behind={x:center.x+(center.x-e.x)*.85,y:center.y+(center.y-e.y)*.85};
+   // Where this role stands to work, and what it looks at while working.
+   let spot=behind,look2=e;
+   if(role==='bartender'){
+    // Behind the counter: step over to whoever sits on a stool and pour; with nobody there, wipe the counter end to end.
+    const sat=[0,1,2,3].filter(k=>[...plan.values()].some(x=>x.kind==='bar'&&x.f===f&&Math.hypot(x.x-this.localPoint(f,.35+k*.6,1.42).x,x.y-this.localPoint(f,.35+k*.6,1.42).y)<.05));
+    const k=sat.length?sat[Math.floor(t/5)%sat.length]:Math.floor(t/7)%4;spot=this.localPoint(f,.35+k*.6,.52);look2=this.localPoint(f,.35+k*.6,1.4);}
+   else if(role==='registrar'){spot={x:behind.x+(e.y!==center.y?.6:0),y:behind.y+(e.x!==center.x?.6:0)};}
+   else if(role==='receptionist'){spot={x:behind.x-(e.y!==center.y?.6:0),y:behind.y-(e.x!==center.x?.6:0)};}
+   else if(role==='cook'){
+    // Between stirring, the cook carries a plate out to whoever is waiting at a dining table.
+    const diners=[...plan.values()].filter(x=>x.kind==='dining');
+    if(b.carry&&b.target){spot=b.target;}
+    else if(diners.length&&b.wait<=0&&!b.carry){b.carry=true;b.target=diners[Math.floor(Math.random()*diners.length)];b.target={x:b.target.x+(center.x-b.target.x)*.15,y:b.target.y+(center.y-b.target.y)*.15};spot=b.target;}
+   }
+   else if(role==='scout'){const k=Math.floor(t/6)%3;spot=k===0?behind:{x:center.x+(k===1?.6:-.6),y:center.y+(center.y-e.y)*.6};}
+   if(b.x===null){b.x=spot.x;b.y=spot.y;}
+   const dx=spot.x-b.x,dy=spot.y-b.y,dist=Math.hypot(dx,dy),moving=dist>.04&&playing;
+   if(dist>.04){const s2=Math.min(dist,step*1.3);b.x+=dx/dist*s2;b.y+=dy/dist*s2;}
+   else if(role==='cook'){if(b.carry){b.carry=false;b.target=null;b.wait=6;}else b.wait-=step;}
+   const p=gridPoint(b.x,b.y),dir=moving?this.faceTo({x:b.x-dx,y:b.y-dy},spot):this.faceTo(spot,role==='cook'&&!b.carry?center:look2);
+   const pose=moving?'walk'+(Math.floor(this.elapsed*8)%4):role==='scout'&&Math.floor(t/6)%3?'idle':'work'+(Math.floor(t*(role==='bartender'?2.2:role==='cook'?2.6:1.6)+hash(role))%2);
+   this.placeBody(sp.image,key,null,p,pose,pose.startsWith('work')?'south':dir,Math.round(p.y)+.4);
+   // A plate on the cook's hands while serving; a little steam over the pot while cooking.
+   if(role==='cook'){sp.dish??=this.scene.add.image(0,0,this.emoteTexture('dish')).setOrigin(.5,1);sp.dish.setVisible(b.carry).setPosition(Math.round(p.x+5),Math.round(p.y-14)).setDepth(Math.round(p.y)+.5);}
+  }
+ }
  roomFor(m){if(this.prepping?.has(m.id)){const board=this.state.facilities.find(f=>f.type==='board');if(board)return board;}
+  const seat=this.seatPlan().get(m.id);if(seat)return seat.f;
   // Adventurers dropping in from town read the board, chat at the counter or eat at the kitchen.
   if(m.town?.at==='guild'&&m.task==='rest'&&!(m.injury>15)){const bar=this.state.facilities.filter(f=>f.type==='bar');if(bar.length&&m.atBar&&this.state.elapsed-m.atBar<40)return bar[hash(m.id)%bar.length];const types=['board','reception','appraisal','lounge','board'];for(let i=0;i<types.length;i++){const f=this.state.facilities.find(f=>f.type===types[(hash(m.id)+i)%types.length]);if(f)return f;}}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'kitchen':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
   if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','board'][hash(m.id)%4];
@@ -753,7 +801,8 @@ export class GuildRenderer {
    const entry=getFacilityEntry(room),hall=buildingRect(this.state),idle=m.energy>=95&&!m.injury&&m.task==='rest',index=this.state.members.findIndex(other=>other.id===m.id);
    // Spread people sharing a room point into a small cluster so nobody stands inside anybody else.
    const spread=[[0,0],[.5,0],[-.5,0],[.25,.45],[-.25,.45],[.75,.45],[-.75,.45],[0,.9]][slot%8],shift=roommates.length===2?-.25:0;
-   const logical=idle?this.idleSpots[index]:{x:entry.x+spread[0]+shift,y:entry.y+spread[1]};
+   const seat=this.seatPlan().get(m.id);
+   const logical=seat?{x:seat.x,y:seat.y}:idle?this.idleSpots[index]:{x:entry.x+spread[0]+shift,y:entry.y+spread[1]};
    const target=gridPoint(logical.x,logical.y);
    let a=this.actors.get(m.id);if(!a){
     this.bakeActor(m);
@@ -762,7 +811,9 @@ export class GuildRenderer {
     if(this.arrivals?.delete(m.id)&&!this.frozen){const door=hall.x+hall.w/2,start=gridPoint(door,hall.y+hall.h+3),inside=gridPoint(door,hall.y+hall.h-.5);a.x=start.x;a.y=start.y;a.image.setPosition(start.x,start.y);a.path=[inside,...this.pathBetween(inside.x,inside.y,target.x,target.y)];}
    }
    if(a.class!==m.class){this.bakeActor(m);a.class=m.class;}
-   if(a.roomId!==room.id||(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>3)){a.path=this.pathBetween(a.x,a.y,target.x,target.y);a.roomId=room.id;}
+   // Seats sit inside a table's footprint: walk to the nearest open floor, then the last step onto the chair.
+   if(a.roomId!==room.id||(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>(seat?1:3))){a.path=[...this.pathBetween(a.x,a.y,target.x,target.y),target];a.roomId=room.id;}
+   a.seat=seat||null;
    const anchor=room.x+','+room.y+','+room.rotation;if(a.roomAnchor&&a.roomAnchor!==anchor){a.x=target.x;a.y=target.y;a.path=[];}a.roomAnchor=anchor;
    a.member=m;a.home=target;a.logicalHome=logical;a.away=away.has(m.id);if(!a.away)a.image.setVisible(true);if(this.frozen){a.x=target.x;a.y=target.y;}
   }
@@ -793,13 +844,14 @@ export class GuildRenderer {
  }
  arrive(ids){this.arrivals??=new Set();for(const id of ids)this.arrivals.add(id);}
  bakeActor(m){for(const direction of ['south','east','north','west']){
-  for(const pose of direction==='south'?['idle','breath','blink','sleep','train0','train1','work0','work1','bed']:['idle','breath','blink','sleep','train0','train1','work0','work1'])this.texture(`actor-${m.id}-${m.class}-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
+  for(const pose of direction==='south'?['idle','breath','blink','sleep','train0','train1','work0','work1','bed','sit0','sit1']:['idle','breath','blink','sleep','train0','train1','work0','work1','sit0','sit1'])this.texture(`actor-${m.id}-${m.class}-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
   for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
  emoteTexture(kind){const key='emote-'+kind;if(this.scene.textures.exists(key))return key;const c=document.createElement('canvas');c.width=14;c.height=12;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
   const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
   if(kind==='z'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(4,3,6,1,'#6f6a8f');px(8,4,2,1,'#6f6a8f');px(6,5,2,1,'#6f6a8f');px(4,6,2,1,'#6f6a8f');px(4,7,6,1,'#6f6a8f');}
   else if(kind==='sad'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#e6ecf2');px(3,3,8,3,'#8f9db0');px(4,2,5,1,'#8f9db0');px(4,7,1,2,'#6fa8d8');px(7,7,1,2,'#6fa8d8');px(9,6,1,2,'#6fa8d8');}
   else if(kind==='gear'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff1c4');px(3,8,2,1,'#8a6446');px(4,7,2,1,'#8f9a98');px(6,5,2,1,'#8f9a98');px(8,3,2,1,'#8f9a98');px(7,6,1,1,'#d9584a');px(6,4,1,1,'#d9584a');}
+  else if(kind==='dish'){px(0,6,14,3,'#4f4540');px(1,6,12,2,'#fff7ea');px(3,3,8,3,'#e8b46a');px(5,2,4,1,'#9fd06a');}
   else if(kind==='bag'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(4,4,6,5,'#c9a06a');px(5,3,4,1,'#8a6446');px(6,6,2,1,'#d9584a');}
   else{px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(6,3,2,6,'#d98978');px(4,5,6,2,'#d98978');}
   this.texture(key,c);return key;}
@@ -821,22 +873,25 @@ export class GuildRenderer {
     continue;}
    if(a.inTown){a.inTown=false;const hall=buildingRect(this.state),inside=gridPoint(hall.x+hall.w/2,hall.y+hall.h-.5);a.x=inside.x;a.y=inside.y;a.path=this.pathBetween(inside.x,inside.y,a.home.x,a.home.y);}
    a.image.setRotation(0);a.clock+=elapsed;
-   if(!a.path?.length&&a.clock>6){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
+   if(!a.path?.length&&a.clock>6&&!a.seat){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
    const p=a.path?.[0];let walking=false;if(p){const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy);walking=d>1;
     if(d<=1)a.path.shift();else{const step=Math.min(d,elapsed*22);a.x+=dx/d*step;a.y+=dy/d*step;a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}}
    // Pose from activity: stride while walking, otherwise train / work / sleep at home, or breathe and blink.
    const m=a.member,home=!a.path?.length,t=this.realTime+(hash(m.id)%97)/13;let pose;
-   if(walking&&playing)pose='walk'+(Math.floor(this.elapsed*8)%4);
+   if(a.seat&&home&&!walking){pose=(Math.floor(t*.8+hash(m.id))%3===0)?'sit1':'sit0';a.direction=a.seat.dir;}
+   else if(walking&&playing)pose='walk'+(Math.floor(this.elapsed*8)%4);
    else if(home&&m.task==='train'&&!m.waitingReason)pose='train'+(Math.floor(t*2.4)%2);
    else if(home&&m.task==='work')pose='work'+(Math.floor(t*2.2)%2);
    else if(home&&m.task==='rest'&&m.energy<95&&!m.waitingReason&&!m.injury&&!m.town)pose='sleep';
    else pose=t%4.3<.15?'blink':Math.floor(t*1.5)%2?'breath':'idle';
    const inBed=a.bed&&home&&!walking&&(pose==='sleep'||m.injury>0);if(inBed)pose='bed';else if(pose==='sleep')pose=Math.floor(t*1.2)%2?'breath':'idle';
-   const facing=pose.startsWith('walk')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
+   const facing=pose.startsWith('walk')||pose.startsWith('sit')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
    a.image.setTexture(`actor-${m.id}-${m.class}-${facing}-${pose}`);
    if(inBed)a.image.setPosition(Math.round(a.bed.x),Math.round(a.bed.y)).setDepth(a.bed.depth+(hash(m.id)%89)/1000);
+   // Seated on a stool or chair: lifted onto the seat and drawn over it.
+   else if(pose.startsWith('sit'))a.image.setPosition(Math.round(a.x),Math.round(a.y)-(a.seat?.kind==='bar'?7:6)).setDepth(Math.round(a.y)+2+(hash(m.id)%89)/100);
    else a.image.setPosition(Math.round(a.x),Math.round(a.y)).setDepth(Math.round(a.y)+(hash(m.id)%89)/100);
-   const emote=pose==='sleep'||(pose==='bed'&&!m.injury)?'z':home&&m.injury>0?'heal':null;
+   const emote=pose==='sleep'||(pose==='bed'&&!m.injury)?'z':home&&m.injury>20?'heal':null;
    if(emote){if(!a.emote)a.emote=this.scene.add.image(0,0,this.emoteTexture(emote)).setOrigin(.5,1);if(a.emoteKind!==emote){a.emote.setTexture(this.emoteTexture(emote));a.emoteKind=emote;}
     const float=Math.sin(t*2.2)*1.5;const ex=inBed?a.bed.x+5:a.x+7,ey=inBed?a.bed.y-12:a.y-24;a.emote.setVisible(true).setPosition(Math.round(ex),Math.round(ey+float)).setDepth((inBed?a.bed.depth:Math.round(a.y))+1).setAlpha(.75+Math.sin(t*2.2)*.25);}
    else a.emote?.setVisible(false);

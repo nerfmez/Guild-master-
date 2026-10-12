@@ -83,12 +83,27 @@ export function makeRoom(f){
  const sprite=object(c=>{const previous=projection;projection={r:f.rotation||0,w,h};try{
   if(f.type==='reception'){table(c,1.95,.9);top(c,.35,.12,.7,.46,17.2,'#f6ead0',C.edge);stroke(c,[.43,.2,17.4],[.89,.2,17.4],'#bba787');cube(c,1.38,.22,.2,.2,17,5);}
   else if(f.type==='bar'){
-   // A back shelf of bottles, the counter with mugs and a tap, and a lamp.
-   cube(c,0,0,1.96,.2,0,28,'#8f6a4c','#b98a60','#6f5240');
-   for(let i=0;i<7;i++){const[x,y]=q(.14+i*.27,.1,29);R(c,x-1,y-9,3,9,['#7fb0c8','#c98a72','#9fd06a','#e8c070'][i%4]);R(c,x,y-11,1,2,'#5a4a3a');}
-   cube(c,0,.48,1.96,.42,0,16,'#a07a58','#d0a274','#7f5f45');top(c,-.02,.46,2,.46,16,'#8a6446',C.edge);
-   for(let i=0;i<4;i++){const[x,y]=q(.3+i*.45,.69,17);R(c,x-2,y-6,5,6,'#e8d29a');R(c,x-2,y-7,5,2,'#fff7ea');R(c,x+3,y-5,1,3,'#c9b077');}
-   const[tx,ty]=q(1.75,.6,17);R(c,tx-1,ty-9,2,9,'#b8946a');R(c,tx-3,ty-10,5,2,'#d9b26f');}
+   // Back wall: two shelves of bottles and a pair of kegs; the bartender works in the gap behind the counter.
+   cube(c,.05,0,2.4,.22,0,36,'#7a5a40','#a8805a','#5f4532');
+   for(const [z,row] of [[14,0],[25,1]]){top(c,.05,.02,2.4,.2,z,'#b98a60');for(let i=0;i<9;i++){const[x,y]=q(.18+i*.26,.1,z+1);const col=['#7fb0c8','#c98a72','#9fd06a','#e8c070','#b98ad1'][(i+row*2)%5];R(c,x-1,y-8,3,8,col);R(c,x,y-10,1,2,'#5a4a3a');R(c,x-1,y-5,3,1,'#fff7ea');}}
+   for(const x of [.25,2.05]){cube(c,x,.28,.32,.3,0,10,'#9a6a46','#c48a5a','#7a5034');const[kx,ky]=q(x+.16,.43,6);R(c,kx-6,ky-1,12,1,'#5a4a3a');}
+   // The counter: dark wood front, a light top with taps, mugs and a towel.
+   cube(c,.05,.78,2.4,.34,0,15,'#8a5f40','#c9965f','#6b4632');top(c,0,.74,2.5,.42,15,'#d8ab73',C.edge);top(c,0,.74,2.5,.06,15.2,'#e9c48c');
+   for(const x of [.7,1.1]){const[tx,ty]=q(x,.86,16);R(c,tx-1,ty-8,2,8,'#b8946a');R(c,tx-3,ty-9,6,2,'#d9b26f');R(c,tx-1,ty-10,2,1,'#fff7ea');}
+   for(const x of [1.55,1.85,2.15]){const[mx,my]=q(x,.95,16);R(c,mx-2,my-5,4,5,'#e8d29a');R(c,mx-2,my-6,4,1,'#fff7ea');R(c,mx+2,my-4,1,2,'#c9b077');}
+   {const[wx,wy]=q(.35,.98,16);R(c,wx-3,wy-1,6,2,'#f4f1ea');R(c,wx-3,wy,6,1,'#d9584a');}
+   // Four stools along the front for the customers.
+   for(let i=0;i<4;i++){const x=.35+i*.6;cube(c,x-.11,1.24,.22,.22,0,9,'#8a6446','#c9a074','#6b4a32');top(c,x-.13,1.22,.26,.26,9,'#b84a3a',C.edge);}
+   // A hanging lantern over the counter.
+   {const[lx,ly]=q(1.25,.5,44);R(c,lx,ly-12,1,12,'#5a4a3a');R(c,lx-3,ly,7,6,'#5a4a3a');R(c,lx-2,ly+1,5,4,'#ffe08a');}}
+  else if(f.type==='dining'){
+   // A round-cornered table set for four: plates, a bread basket and a jug; four chairs around it.
+   for(const [x,y] of [[.875,.1],[.875,1.65],[.1,.875],[1.65,.875]]){cube(c,x-.15,y-.15,.3,.3,0,8,'#8a6446','#c9a074','#6b4a32');}
+   cube(c,.875-.13,.1-.17,.26,.06,8,10,'#8a6446','#c9a074','#6b4a32');
+   cube(c,.4,.4,.95,.95,0,13,'#9a6e4c','#d2a676','#7a5238');top(c,.36,.36,1.03,1.03,13,'#e2bb86',C.edge);top(c,.5,.5,.75,.75,13.2,'#f4ecd8');
+   for(const [x,y] of [[.875,.55],[.875,1.2],[.55,.875],[1.2,.875]]){const[px,py]=q(x,y,13.4);E(c,px,py,4,2,'#fff7ea');E(c,px,py,2,1,'#e8d2b0');}
+   {const[bx,by]=q(.875,.875,14);E(c,bx,by-2,5,3,'#b8864a');R(c,bx-3,by-5,2,2,'#e8b46a');R(c,bx+1,by-5,2,2,'#e8b46a');}
+   {const[jx,jy]=q(1.05,.7,14);R(c,jx-2,jy-7,4,7,'#8fb3c9');R(c,jx-2,jy-8,4,1,'#c8e4ef');}}
   else if(f.type==='appraisal'){
    // A cloth-covered table with a balance scale, a loupe and a gem being weighed.
    table(c,1.42,.9);top(c,.12,.12,1.18,.62,17.2,'#c9b6d9',C.edge);

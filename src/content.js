@@ -67,7 +67,8 @@ export const FACILITIES = {
   library: { id: 'library', name: 'ชั้นตำรา', description: 'ฝึกได้เร็วขึ้นและรับมือภารกิจเวทได้ดี', w: 2, h: 0.75, cost: { gold: 420, wood: 18, stone: 8 }, unlockRank: 'D', color: '#acb8d0', maxLevel: 3 },
   lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'มุมนั่งคุยของนักผจญภัย · ความสบายในเมือง +6 ต่อระดับ อารมณ์ของทุกคนดีขึ้น', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
   board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยมาเลือกงานและจับกลุ่มกันเอง รับงานพร้อมกันได้ 2 งานต่อระดับ', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
-  bar: { id: 'bar', name: 'บาร์', description: 'นักผจญภัยแวะกินดื่มและฉลองหลังทำงานสำเร็จ จ่ายเงินให้กิลด์ ฟื้นแรงและอารมณ์ดีขึ้น · นั่งได้ 4 คนต่อระดับ', w: 2, h: 1, cost: { gold: 260, wood: 14, stone: 4 }, unlockRank: 'F', color: '#c9a07a', maxLevel: 3 },
+  bar: { id: 'bar', name: 'บาร์', description: 'เคาน์เตอร์ ชั้นขวด และเก้าอี้บาร์ 4 ตัว บาร์เทนเดอร์ยืนหลังเคาน์เตอร์ นักผจญภัยนั่งดื่มและฉลองหลังทำงานสำเร็จ จ่ายเงินให้กิลด์ ฟื้นแรงและอารมณ์ดีขึ้น · ราคาและรายได้เพิ่มต่อระดับ', w: 2.5, h: 1.5, cost: { gold: 260, wood: 16, stone: 4 }, unlockRank: 'F', color: '#c9a07a', maxLevel: 3 },
+  dining: { id: 'dining', name: 'โต๊ะอาหาร', description: 'โต๊ะกับเก้าอี้ 4 ตัว นักผจญภัยนั่งกินอาหารจากครัว ฟื้นแรงมากกว่าดื่มอย่างเดียว · ต้องมีเตาทำอาหาร', w: 1.75, h: 1.75, cost: { gold: 150, wood: 12 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
   appraisal: { id: 'appraisal', name: 'โต๊ะประเมินของ', description: 'ประเมินของที่รับซื้อจากนักผจญภัย กิลด์ได้ส่วนต่าง 5% ต่อระดับจากทุกชิ้น', w: 1.5, h: 1, cost: { gold: 240, wood: 8, stone: 6 }, unlockRank: 'F', color: '#b9a6c9', maxLevel: 3 },
   dispatch: { id: 'dispatch', name: 'โต๊ะจับกลุ่มปาร์ตี้', description: 'ปาร์ตี้ที่จับกลุ่มในกิลด์วางแผนกันก่อนออกงาน พลังทีม +3% ต่อระดับ และรับงานพร้อมกันได้เพิ่ม 1 งานต่อระดับ', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'F', color: '#9ebdb9', maxLevel: 3 },
 };
@@ -216,7 +217,8 @@ export const STAFF = {
   registrar: { name: 'นายทะเบียน', icon: '📒', needs: 'reception', hire: 220, salary: 18, desc: 'นักผจญภัยหน้าใหม่มาลงทะเบียนเร็วขึ้น 15% ต่อเลเวล และมาพร้อมประสบการณ์มากขึ้น' },
   appraiser: { name: 'นักประเมินราคา', icon: '🔍', needs: 'appraisal', hire: 260, salary: 20, desc: 'ได้ส่วนต่างเพิ่ม 4% ต่อเลเวลจากทุกของที่รับซื้อ' },
   scout: { name: 'หน่วยข่าว', icon: '🦅', needs: 'dispatch', hire: 320, salary: 26, desc: 'รู้ข่าวมอนบุกและบอสโลกล่วงหน้า 25 วินาทีต่อเลเวล เรียกคนกลับมาเตรียมตัว ศัตรูอ่อนลง 6% ต่อเลเวล' },
-  cook: { name: 'แม่ครัวและบาร์เทนเดอร์', icon: '🍲', needs: 'bar', hire: 200, salary: 16, desc: 'อาหารและเครื่องดื่มดีขึ้น: รายได้บาร์ +25% ต่อเลเวล คนที่แวะฟื้นแรงและอารมณ์ดีขึ้นอีก' },
+  bartender: { name: 'บาร์เทนเดอร์', icon: '🍺', needs: 'bar', hire: 180, salary: 15, desc: 'ยืนหลังเคาน์เตอร์ รินเครื่องดื่มให้คนที่นั่งบาร์ รายได้บาร์ +20% ต่อเลเวล และคนที่แวะอารมณ์ดีขึ้น' },
+  cook: { name: 'แม่ครัว', icon: '🍲', needs: 'kitchen', hire: 200, salary: 16, desc: 'ทำอาหารที่เตาแล้วยกไปเสิร์ฟที่โต๊ะอาหาร อาหารดีขึ้น: ราคาอาหาร +15% ต่อเลเวล และคนที่นั่งกินฟื้นแรงมากขึ้น' },
 };
 export const STAFF_MAX_LEVEL = 5;
 export const GUILD_UPGRADES = {

@@ -196,7 +196,7 @@ export function getMemberStats(state, memberOrId) {
 // ---- Condition: five things the guild master looks after, which add up to how well an adventurer works. ----
 export const CONDITIONS = [
   { id: 'health', name: 'บาดแผล', icon: '🩹', w: 0.25, badText: 'บาดเจ็บ', fix: ['clinic', 'infirmary'], fixText: 'คลินิกในเมือง เตียงรักษาในกิลด์' },
-  { id: 'rest', name: 'ความเหนื่อย', icon: '💤', w: 0.25, badText: 'เหนื่อยล้า', fix: ['inn', 'bar', 'kitchen'], fixText: 'ขยายโรงเตี๊ยม บาร์และครัวในกิลด์' },
+  { id: 'rest', name: 'ความเหนื่อย', icon: '💤', w: 0.25, badText: 'เหนื่อยล้า', fix: ['inn', 'dining', 'kitchen'], fixText: 'ขยายโรงเตี๊ยม โต๊ะอาหารและครัวในกิลด์' },
   { id: 'mood', name: 'อารมณ์', icon: '😊', w: 0.2, badText: 'ขวัญเสีย', fix: ['bar', 'lounge', 'shop', 'stage'], fixText: 'บาร์ ชุดโต๊ะน้ำชา ร้านค้า เทศกาล ค่าตอบแทนที่ยุติธรรม' },
   { id: 'gear', name: 'อุปกรณ์', icon: '⚔', w: 0.15, badText: 'อุปกรณ์สึก', fix: ['smithy'], fixText: 'โรงตีเหล็ก (ซ่อมและขายของดี) โต๊ะช่าง' },
   { id: 'supplies', name: 'เสบียง', icon: '🎒', w: 0.15, badText: 'ไม่มีเสบียง', fix: ['shop'], fixText: 'ร้านค้า (เสบียงและยา) ตลาดนัด (สมุนไพร)' },
@@ -236,7 +236,7 @@ export function getEfficiencyReport(state) {
   return { avg, perHead: Math.round(perHead), dims, losses: dims.filter(d => d.gold >= 5).sort((a, b) => b.gold - a.gold), comfort: townComfort(state), trend: last ? Math.round((avg - last.eff) * 100) : 0 };
 }
 /** What one more level of a building would win back each day, from the losses it addresses (a rough estimate shown before buying). */
-const FIX_EFFECT = { bar: { rest: 0.1, mood: 0.15 }, clinic: { health: 0.35 }, infirmary: { health: 0.15 }, inn: { rest: 0.2 }, kitchen: { rest: 0.12, mood: 0.06 }, lounge: { mood: 0.25 }, shop: { supplies: 0.4, mood: 0.06 }, market: { supplies: 0.15 }, smithy: { gear: 0.4 }, stage: { mood: 0.12 }, fairground: { mood: 0.08 }, monument: { mood: 0.1 } };
+const FIX_EFFECT = { bar: { mood: 0.15 }, dining: { rest: 0.15 }, clinic: { health: 0.35 }, infirmary: { health: 0.15 }, inn: { rest: 0.2 }, kitchen: { rest: 0.12, mood: 0.06 }, lounge: { mood: 0.25 }, shop: { supplies: 0.4, mood: 0.06 }, market: { supplies: 0.15 }, smithy: { gear: 0.4 }, stage: { mood: 0.12 }, fairground: { mood: 0.08 }, monument: { mood: 0.1 } };
 export function investmentGain(state, id) {
   const fx = FIX_EFFECT[id]; if (!fx) return null;
   const report = getEfficiencyReport(state), parts = Object.entries(fx).map(([dim, f]) => { const d = report.dims.find(x => x.id === dim); return { dim, name: d.name, icon: d.icon, gold: Math.round(d.gold * f * (id === 'shop' && state.village?.shop ? 0.6 : id === 'smithy' && state.village?.smithy ? 0.6 : 1)) }; });
@@ -378,7 +378,7 @@ export function townNeeds(state) {
   return [
     { id: 'lodging', icon: '🛏', name: 'ที่พักนักผจญภัย', demand: ms.length + (state.applicants || []).length, cap: room.lodging, fix: 'ขยายโรงเตี๊ยมหรือสร้างบ้าน' },
     { id: 'clinic', icon: '🩹', name: 'รักษาบาดแผล', demand: ms.filter(m => m.injury > 20).length, cap: (v.clinic || 0) * 6 + roomLevel(state, 'infirmary') * 2, fix: 'สร้างคลินิกหรือเตียงรักษา' },
-    { id: 'bar', icon: '🍺', name: 'ที่นั่งในบาร์', demand: Math.ceil(ms.length * 0.25), cap: roomLevel(state, 'bar') * 4, fix: 'วางหรืออัปเกรดบาร์' },
+    { id: 'bar', icon: '🍺', name: 'ที่นั่งบาร์และโต๊ะอาหาร', demand: Math.ceil(ms.length * 0.25), cap: hallSeats(state).total, fix: 'วางบาร์หรือโต๊ะอาหารเพิ่ม' },
     { id: 'repair', icon: '🔨', name: 'ซ่อมอุปกรณ์', demand: ms.filter(m => Object.entries(m.equipment || {}).some(([slot, id]) => id && (m.wear?.[slot] ?? 100) < 60)).length, cap: (v.smithy || 0) * 8, fix: 'สร้างหรือขยายโรงตีเหล็ก' },
     { id: 'food', icon: '🍞', name: 'อาหารในเมือง', demand: pop + ms.length, cap: 20 + (v.shop || 0) * 16 + (v.market || 0) * 24 + (v.inn || 0) * 6, fix: 'ร้านค้า ตลาดนัด โรงเตี๊ยม' },
     { id: 'safety', icon: '🛡', name: 'ความปลอดภัย', demand: Math.ceil(pop / 6), cap: Math.round(atHome * 0.6 + (v.dojo || 0) * 3 + (v.arena || 0) * 2 + staffOn(state, 'scout') * 3), fix: 'ให้นักผจญภัยอยู่เมืองมากขึ้น โรงฝึก หน่วยข่าว' },
@@ -520,23 +520,34 @@ function payStaff(state) {
     if (s.level < STAFF_MAX_LEVEL && s.days >= s.level * 2) { s.level += 1; s.days = 0; addLog(state, `${STAFF[id].icon} ${STAFF[id].name}เก่งขึ้นเป็นเลเวล ${s.level}`, 'level'); }
   }
 }
-/** An adventurer dropping in at the guild eats and drinks at the bar: the guild earns, they rest and cheer up. A team back from a job celebrates. */
-export function barPrice(state, celebrate = false) {
-  const quality = (1 + bestRoomLevel(state, 'kitchen') * 0.25) * (1 + staffOn(state, 'cook') * 0.25);
-  return Math.round((3 + bestRoomLevel(state, 'bar') * 1.5) * quality * (celebrate ? 2.5 : 1));
+/** Seats in the hall: four stools at every bar, four chairs at every dining table (meals need the kitchen). */
+export function hallSeats(state) {
+  const bars = state.facilities.filter(f => f.type === 'bar').length, tables = roomLevel(state, 'kitchen') ? state.facilities.filter(f => f.type === 'dining').length : 0;
+  return { bar: bars * 4, dining: tables * 4, total: bars * 4 + tables * 4 };
 }
+/** A drink at the bar: better with a bigger bar and a bartender; a team back from a won job celebrates and spends more. */
+export function barPrice(state, celebrate = false) {
+  return Math.round((3 + bestRoomLevel(state, 'bar') * 1.5) * (1 + staffOn(state, 'bartender') * 0.2) * (celebrate ? 2.5 : 1));
+}
+/** A meal at a dining table: cooked at the stove, better with a cook. */
+export function mealPrice(state) {
+  return Math.round((4 + bestRoomLevel(state, 'kitchen') * 1.5 + bestRoomLevel(state, 'dining')) * (1 + staffOn(state, 'cook') * 0.15));
+}
+/** An adventurer dropping in sits down: a meal when tired (and there is a table and a kitchen), otherwise a drink at the bar. */
 function visitGuild(state, member) {
   const celebrate = Boolean(member.celebrate); member.celebrate = false;
-  if (!roomLevel(state, 'bar')) return;
-  const price = barPrice(state, celebrate);
+  const seats = hallSeats(state);
+  if (!seats.total) return;
+  const meal = seats.dining > 0 && (member.energy < 75 || !seats.bar) && !celebrate;
+  const price = meal ? mealPrice(state) : barPrice(state, celebrate);
   if ((member.purse || 0) < price + 10) return;
   member.purse -= price;
-  transact(state, { gold: price }, 'บาร์และครัว', 1);
+  transact(state, { gold: price }, meal ? 'อาหารจากครัว' : 'บาร์และครัว', 1);
   state.village.prosperity += price * 0.02;
-  const cook = staffOn(state, 'cook'), kitchen = bestRoomLevel(state, 'kitchen');
-  member.energy = clamp(member.energy + 3 + kitchen + cook, 0, 100);
-  member.morale = clamp(member.morale + 2 + cook + (celebrate ? 5 : 0), 0, 100);
-  member.atBar = state.elapsed;
+  const cook = staffOn(state, 'cook'), bartender = staffOn(state, 'bartender'), kitchen = bestRoomLevel(state, 'kitchen');
+  if (meal) { member.energy = clamp(member.energy + 5 + kitchen + cook * 2, 0, 100); member.morale = clamp(member.morale + 1, 0, 100); }
+  else { member.energy = clamp(member.energy + 2, 0, 100); member.morale = clamp(member.morale + 2 + bartender + (celebrate ? 5 : 0), 0, 100); }
+  member.atBar = state.elapsed; member.seatKind = meal ? 'dining' : 'bar';
 }
 /** An unhappy adventurer moves away: their room frees up, friendships and exam places go with them. */
 function leaveTown(state, member) {
@@ -1049,7 +1060,7 @@ function dailyUpdate(state) {
   const people = population(state);
   if (shop) transact(state, { gold: Math.round(shop * (12 + people * 0.25)) }, 'ค่าเช่าร้านค้าในหมู่บ้าน', 1);
   // Townsfolk drop in at the guild's bar too: a bigger town fills more tables.
-  if (roomLevel(state, 'bar')) transact(state, { gold: Math.round(people * 0.5 * bestRoomLevel(state, 'bar') * (1 + staffOn(state, 'cook') * 0.2)) }, 'บาร์และครัว (ชาวเมือง)', 1);
+  if (roomLevel(state, 'bar')) transact(state, { gold: Math.round(people * 0.5 * bestRoomLevel(state, 'bar') * (1 + staffOn(state, 'bartender') * 0.2)) }, 'บาร์และครัว (ชาวเมือง)', 1);
   if (market) transact(state, { wood: market * 3, stone: market * 2, herb: market * 2 }, 'ของจากตลาดนัด', 1);
   const hall = state.upgrades?.trophyHall || 0, monument = state.village?.monument || 0;
   if (hall) transact(state, { gold: hall * 30 }, 'ค่าเข้าชมหอเกียรติยศ', 1);
@@ -1339,7 +1350,7 @@ function lifeContext(state) {
     onSpecialKill: (monster, hunter) => onSpecialKill(state, monster, hunter), onRaidReach: monster => onRaidReach(state, monster),
     campLevel: () => state.frontier?.camp || 0,
     atHome: member => !isBusy(state, member.id), lodge: member => lodgeSpot(state, member),
-    visitGuild: member => visitGuild(state, member), hallCap: () => 8 + bestRoomLevel(state, 'bar') * 4, hasBar: () => roomLevel(state, 'bar') > 0,
+    visitGuild: member => visitGuild(state, member), hallCap: () => 8 + hallSeats(state).total, hasBar: () => hallSeats(state).total > 0,
     // Shops, the smithy, the dojo, the market: adventurers in town go where the village has something for them.
     shopSpots: () => villageBuildings(state).filter(b => b.kind !== 'house').map(b => doorOf(b)),
     indoors: member => member.task === 'train' || member.task === 'work' || (member.injury > 15 && roomLevel(state, 'infirmary') > 0) || state.missions.some(m => m.status === 'active' && m.prep > 0 && m.memberIds.includes(member.id)),
@@ -2178,6 +2189,7 @@ export function deserializeGame(source) {
     normalized.autoTrain = Boolean(member.autoTrain);
     normalized.celebrate = Boolean(member.celebrate);
     if (finiteNumber(member.atBar)) normalized.atBar = member.atBar; else delete normalized.atBar;
+    if (['bar', 'dining'].includes(member.seatKind)) normalized.seatKind = member.seatKind; else delete normalized.seatKind;
     normalized.unhappy = finiteNumber(member.unhappy) ? clamp(member.unhappy, 0, 10000) : 0;
     const t = member.town;
     normalized.town = t && ['street', 'guild', 'lodge'].includes(t.at) && ['x', 'y', 'tx', 'ty', 'wait'].every(k => finiteNumber(t[k]) && Math.abs(t[k]) < 1000) ? { x: t.x, y: t.y, tx: t.tx, ty: t.ty, wait: t.wait, at: t.at, ...(['guild', 'lodge', 'town'].includes(t.goal) ? { goal: t.goal } : {}) } : null;

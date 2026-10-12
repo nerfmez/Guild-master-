@@ -67,7 +67,8 @@ export function simulate(seed = 1, { maxSeconds = 7 * 3600, plan = "standard", l
     // The guild as a home: a bar, an appraisal table, and staff once the guild can afford their wages.
     if (!state.facilities.some(f => f.type === 'bar') && state.gold > 260 + reserve + 200) placeSomewhere(state, 'bar') || act(state, 'expandBuilding');
     if (RANKS.indexOf(state.rank) >= 1 && !state.facilities.some(f => f.type === 'appraisal') && state.gold > 240 + reserve + 300) placeSomewhere(state, 'appraisal') || act(state, 'expandBuilding');
-    for (const role of ['receptionist', 'cook', 'registrar', 'appraiser', 'scout']) { const st = staffStatus(state, role); if (st.ok && state.gold > st.hire + 800) { act(state, 'hireStaff', { role }); say(`hire ${role}`); } }
+    if (state.facilities.some(f => f.type === 'bar') && state.facilities.filter(f => f.type === 'dining').length < 1 + Math.floor(state.members.length / 20) && state.gold > 150 + reserve + 300) placeSomewhere(state, 'dining') || act(state, 'expandBuilding');
+    for (const role of ['receptionist', 'bartender', 'cook', 'registrar', 'appraiser', 'scout']) { const st = staffStatus(state, role); if (st.ok && state.gold > st.hire + 800) { act(state, 'hireStaff', { role }); say(`hire ${role}`); } }
     // More rooms in town when the inn is what holds newcomers back.
     { const room = getLodging(state), st = getProjectStatus(state, 'inn'); if (room.count >= room.cap && room.limit === 'lodging' && st.ok && state.gold > st.cost.gold + reserve + 200) { act(state, 'buildProject', { projectId: 'inn' }); say('inn up'); } }
     // Surplus materials go to the village market, which keeps the shops stocked.

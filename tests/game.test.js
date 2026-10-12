@@ -1248,12 +1248,12 @@ test('the guild is home: a bar that earns and restores, an appraisal table, a pa
   const { barPrice, staffStatus } = await import('../src/game.js');
   const state = createGame(9);
   state.gold = 5000; state.wood = 200; state.stone = 200;
-  assert.equal(act(state, 'hireStaff', { role: 'cook' }).ok, false, 'a cook needs a bar to work at');
+  assert.equal(act(state, 'hireStaff', { role: 'bartender' }).ok, false, 'a bartender needs a bar to work at');
   let placed = false;
   for (let y = 4.5; y < 9.5 && !placed; y += 0.25) for (let x = 5.5; x < 12.5 && !placed; x += 0.25) placed = act(state, 'build', { type: 'bar', x, y }).ok;
   assert.ok(placed, 'the bar fits in the hall');
-  assert.equal(act(state, 'hireStaff', { role: 'cook' }).ok, true);
-  assert.equal(staffStatus(state, 'cook').level, 1);
+  assert.equal(act(state, 'hireStaff', { role: 'bartender' }).ok, true);
+  assert.equal(staffStatus(state, 'bartender').level, 1);
   // A visit to the bar: the adventurer pays from their purse, the guild earns, they rest and cheer up.
   const { tickLife } = await import('../src/life.js');
   const m = state.members[0];
@@ -1272,7 +1272,7 @@ test('the guild is home: a bar that earns and restores, an appraisal table, a pa
   const before = state.gold;
   tick(state, 240 * 2 + 5);
   assert.ok(state.ledger.some(e => e.text === 'เงินเดือนพนักงาน'));
-  assert.equal(staffStatus(state, 'cook').level, 2, 'two days on the job: level 2');
+  assert.equal(staffStatus(state, 'bartender').level, 2, 'two days on the job: level 2');
   assert.ok(before > 0);
   // The appraisal table buys a little under value; the party table makes self-formed teams stronger.
   for (let y = 4.5; y < 9.5; y += 0.25) for (let x = 5.5; x < 12.5; x += 0.25) if (!state.facilities.some(f => f.type === 'dispatch')) act(state, 'build', { type: 'dispatch', x, y });
@@ -1328,4 +1328,22 @@ test('a living town: needs against capacity, satisfaction that moves families in
   // The day's summary keeps the town's numbers for trends on screen.
   tick(state, DAY_LENGTH);
   assert.ok(Number.isFinite(state.history.at(-1).pop) && Number.isFinite(state.history.at(-1).sat));
+});
+
+test('dining tables seat four for a meal from the kitchen; tired adventurers eat, rested ones drink at the bar', async () => {
+  const { hallSeats, mealPrice, guildDoor } = await import('../src/game.js');
+  const state = createGame(15);
+  state.gold = 5000; state.wood = 200; state.stone = 200; state.policy.memberHunting = false;
+  let placed = false;
+  for (let y = 4.5; y < 9.5 && !placed; y += 0.25) for (let x = 5.5; x < 12.5 && !placed; x += 0.25) placed = act(state, 'build', { type: 'dining', x, y }).ok;
+  assert.ok(placed, 'a dining table fits in the hall');
+  assert.equal(hallSeats(state).dining, 4, 'four chairs, with the kitchen there to cook');
+  assert.equal(act(state, 'hireStaff', { role: 'cook' }).ok, true, 'the cook works at the kitchen');
+  const m = state.members[0], door = guildDoor(state);
+  Object.assign(m, { purse: 200, energy: 40, morale: 60 });
+  m.town = { x: door.x, y: door.y, tx: door.x, ty: door.y, wait: 0, at: 'street', goal: 'guild' };
+  const price = mealPrice(state), gold = state.gold;
+  tick(state, 0.5);
+  assert.equal(m.seatKind, 'dining', 'a tired adventurer sits down for a meal');
+  assert.ok(m.energy > 40 && state.gold >= gold + price - 1);
 });

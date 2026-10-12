@@ -1822,7 +1822,8 @@ const FACILITIES = {
   library: { id: 'library', name: 'ชั้นตำรา', description: 'ฝึกได้เร็วขึ้นและรับมือภารกิจเวทได้ดี', w: 2, h: 0.75, cost: { gold: 420, wood: 18, stone: 8 }, unlockRank: 'D', color: '#acb8d0', maxLevel: 3 },
   lounge: { id: 'lounge', name: 'ชุดโต๊ะน้ำชา', description: 'มุมนั่งคุยของนักผจญภัย · ความสบายในเมือง +6 ต่อระดับ อารมณ์ของทุกคนดีขึ้น', w: 2, h: 1.5, cost: { gold: 320, wood: 14, stone: 6 }, unlockRank: 'E', color: '#d8aaa8', maxLevel: 3 },
   board: { id: 'board', name: 'กระดานคำร้อง', description: 'นักผจญภัยมาเลือกงานและจับกลุ่มกันเอง รับงานพร้อมกันได้ 2 งานต่อระดับ', w: 1, h: 0.5, cost: { gold: 120, wood: 8 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
-  bar: { id: 'bar', name: 'บาร์', description: 'นักผจญภัยแวะกินดื่มและฉลองหลังทำงานสำเร็จ จ่ายเงินให้กิลด์ ฟื้นแรงและอารมณ์ดีขึ้น · นั่งได้ 4 คนต่อระดับ', w: 2, h: 1, cost: { gold: 260, wood: 14, stone: 4 }, unlockRank: 'F', color: '#c9a07a', maxLevel: 3 },
+  bar: { id: 'bar', name: 'บาร์', description: 'เคาน์เตอร์ ชั้นขวด และเก้าอี้บาร์ 4 ตัว บาร์เทนเดอร์ยืนหลังเคาน์เตอร์ นักผจญภัยนั่งดื่มและฉลองหลังทำงานสำเร็จ จ่ายเงินให้กิลด์ ฟื้นแรงและอารมณ์ดีขึ้น · ราคาและรายได้เพิ่มต่อระดับ', w: 2.5, h: 1.5, cost: { gold: 260, wood: 16, stone: 4 }, unlockRank: 'F', color: '#c9a07a', maxLevel: 3 },
+  dining: { id: 'dining', name: 'โต๊ะอาหาร', description: 'โต๊ะกับเก้าอี้ 4 ตัว นักผจญภัยนั่งกินอาหารจากครัว ฟื้นแรงมากกว่าดื่มอย่างเดียว · ต้องมีเตาทำอาหาร', w: 1.75, h: 1.75, cost: { gold: 150, wood: 12 }, unlockRank: 'F', color: '#c9a77c', maxLevel: 3 },
   appraisal: { id: 'appraisal', name: 'โต๊ะประเมินของ', description: 'ประเมินของที่รับซื้อจากนักผจญภัย กิลด์ได้ส่วนต่าง 5% ต่อระดับจากทุกชิ้น', w: 1.5, h: 1, cost: { gold: 240, wood: 8, stone: 6 }, unlockRank: 'F', color: '#b9a6c9', maxLevel: 3 },
   dispatch: { id: 'dispatch', name: 'โต๊ะจับกลุ่มปาร์ตี้', description: 'ปาร์ตี้ที่จับกลุ่มในกิลด์วางแผนกันก่อนออกงาน พลังทีม +3% ต่อระดับ และรับงานพร้อมกันได้เพิ่ม 1 งานต่อระดับ', w: 2, h: 1, cost: { gold: 340, wood: 12, stone: 10 }, unlockRank: 'F', color: '#9ebdb9', maxLevel: 3 },
 };
@@ -1971,7 +1972,8 @@ const STAFF = {
   registrar: { name: 'นายทะเบียน', icon: '📒', needs: 'reception', hire: 220, salary: 18, desc: 'นักผจญภัยหน้าใหม่มาลงทะเบียนเร็วขึ้น 15% ต่อเลเวล และมาพร้อมประสบการณ์มากขึ้น' },
   appraiser: { name: 'นักประเมินราคา', icon: '🔍', needs: 'appraisal', hire: 260, salary: 20, desc: 'ได้ส่วนต่างเพิ่ม 4% ต่อเลเวลจากทุกของที่รับซื้อ' },
   scout: { name: 'หน่วยข่าว', icon: '🦅', needs: 'dispatch', hire: 320, salary: 26, desc: 'รู้ข่าวมอนบุกและบอสโลกล่วงหน้า 25 วินาทีต่อเลเวล เรียกคนกลับมาเตรียมตัว ศัตรูอ่อนลง 6% ต่อเลเวล' },
-  cook: { name: 'แม่ครัวและบาร์เทนเดอร์', icon: '🍲', needs: 'bar', hire: 200, salary: 16, desc: 'อาหารและเครื่องดื่มดีขึ้น: รายได้บาร์ +25% ต่อเลเวล คนที่แวะฟื้นแรงและอารมณ์ดีขึ้นอีก' },
+  bartender: { name: 'บาร์เทนเดอร์', icon: '🍺', needs: 'bar', hire: 180, salary: 15, desc: 'ยืนหลังเคาน์เตอร์ รินเครื่องดื่มให้คนที่นั่งบาร์ รายได้บาร์ +20% ต่อเลเวล และคนที่แวะอารมณ์ดีขึ้น' },
+  cook: { name: 'แม่ครัว', icon: '🍲', needs: 'kitchen', hire: 200, salary: 16, desc: 'ทำอาหารที่เตาแล้วยกไปเสิร์ฟที่โต๊ะอาหาร อาหารดีขึ้น: ราคาอาหาร +15% ต่อเลเวล และคนที่นั่งกินฟื้นแรงมากขึ้น' },
 };
 const STAFF_MAX_LEVEL = 5;
 const GUILD_UPGRADES = {
@@ -5513,7 +5515,7 @@ function getMemberStats(state, memberOrId) {
 // ---- Condition: five things the guild master looks after, which add up to how well an adventurer works. ----
 const CONDITIONS = [
   { id: 'health', name: 'บาดแผล', icon: '🩹', w: 0.25, badText: 'บาดเจ็บ', fix: ['clinic', 'infirmary'], fixText: 'คลินิกในเมือง เตียงรักษาในกิลด์' },
-  { id: 'rest', name: 'ความเหนื่อย', icon: '💤', w: 0.25, badText: 'เหนื่อยล้า', fix: ['inn', 'bar', 'kitchen'], fixText: 'ขยายโรงเตี๊ยม บาร์และครัวในกิลด์' },
+  { id: 'rest', name: 'ความเหนื่อย', icon: '💤', w: 0.25, badText: 'เหนื่อยล้า', fix: ['inn', 'dining', 'kitchen'], fixText: 'ขยายโรงเตี๊ยม โต๊ะอาหารและครัวในกิลด์' },
   { id: 'mood', name: 'อารมณ์', icon: '😊', w: 0.2, badText: 'ขวัญเสีย', fix: ['bar', 'lounge', 'shop', 'stage'], fixText: 'บาร์ ชุดโต๊ะน้ำชา ร้านค้า เทศกาล ค่าตอบแทนที่ยุติธรรม' },
   { id: 'gear', name: 'อุปกรณ์', icon: '⚔', w: 0.15, badText: 'อุปกรณ์สึก', fix: ['smithy'], fixText: 'โรงตีเหล็ก (ซ่อมและขายของดี) โต๊ะช่าง' },
   { id: 'supplies', name: 'เสบียง', icon: '🎒', w: 0.15, badText: 'ไม่มีเสบียง', fix: ['shop'], fixText: 'ร้านค้า (เสบียงและยา) ตลาดนัด (สมุนไพร)' },
@@ -5553,7 +5555,7 @@ function getEfficiencyReport(state) {
   return { avg, perHead: Math.round(perHead), dims, losses: dims.filter(d => d.gold >= 5).sort((a, b) => b.gold - a.gold), comfort: townComfort(state), trend: last ? Math.round((avg - last.eff) * 100) : 0 };
 }
 /** What one more level of a building would win back each day, from the losses it addresses (a rough estimate shown before buying). */
-const FIX_EFFECT = { bar: { rest: 0.1, mood: 0.15 }, clinic: { health: 0.35 }, infirmary: { health: 0.15 }, inn: { rest: 0.2 }, kitchen: { rest: 0.12, mood: 0.06 }, lounge: { mood: 0.25 }, shop: { supplies: 0.4, mood: 0.06 }, market: { supplies: 0.15 }, smithy: { gear: 0.4 }, stage: { mood: 0.12 }, fairground: { mood: 0.08 }, monument: { mood: 0.1 } };
+const FIX_EFFECT = { bar: { mood: 0.15 }, dining: { rest: 0.15 }, clinic: { health: 0.35 }, infirmary: { health: 0.15 }, inn: { rest: 0.2 }, kitchen: { rest: 0.12, mood: 0.06 }, lounge: { mood: 0.25 }, shop: { supplies: 0.4, mood: 0.06 }, market: { supplies: 0.15 }, smithy: { gear: 0.4 }, stage: { mood: 0.12 }, fairground: { mood: 0.08 }, monument: { mood: 0.1 } };
 function investmentGain(state, id) {
   const fx = FIX_EFFECT[id]; if (!fx) return null;
   const report = getEfficiencyReport(state), parts = Object.entries(fx).map(([dim, f]) => { const d = report.dims.find(x => x.id === dim); return { dim, name: d.name, icon: d.icon, gold: Math.round(d.gold * f * (id === 'shop' && state.village?.shop ? 0.6 : id === 'smithy' && state.village?.smithy ? 0.6 : 1)) }; });
@@ -5695,7 +5697,7 @@ function townNeeds(state) {
   return [
     { id: 'lodging', icon: '🛏', name: 'ที่พักนักผจญภัย', demand: ms.length + (state.applicants || []).length, cap: room.lodging, fix: 'ขยายโรงเตี๊ยมหรือสร้างบ้าน' },
     { id: 'clinic', icon: '🩹', name: 'รักษาบาดแผล', demand: ms.filter(m => m.injury > 20).length, cap: (v.clinic || 0) * 6 + roomLevel(state, 'infirmary') * 2, fix: 'สร้างคลินิกหรือเตียงรักษา' },
-    { id: 'bar', icon: '🍺', name: 'ที่นั่งในบาร์', demand: Math.ceil(ms.length * 0.25), cap: roomLevel(state, 'bar') * 4, fix: 'วางหรืออัปเกรดบาร์' },
+    { id: 'bar', icon: '🍺', name: 'ที่นั่งบาร์และโต๊ะอาหาร', demand: Math.ceil(ms.length * 0.25), cap: hallSeats(state).total, fix: 'วางบาร์หรือโต๊ะอาหารเพิ่ม' },
     { id: 'repair', icon: '🔨', name: 'ซ่อมอุปกรณ์', demand: ms.filter(m => Object.entries(m.equipment || {}).some(([slot, id]) => id && (m.wear?.[slot] ?? 100) < 60)).length, cap: (v.smithy || 0) * 8, fix: 'สร้างหรือขยายโรงตีเหล็ก' },
     { id: 'food', icon: '🍞', name: 'อาหารในเมือง', demand: pop + ms.length, cap: 20 + (v.shop || 0) * 16 + (v.market || 0) * 24 + (v.inn || 0) * 6, fix: 'ร้านค้า ตลาดนัด โรงเตี๊ยม' },
     { id: 'safety', icon: '🛡', name: 'ความปลอดภัย', demand: Math.ceil(pop / 6), cap: Math.round(atHome * 0.6 + (v.dojo || 0) * 3 + (v.arena || 0) * 2 + staffOn(state, 'scout') * 3), fix: 'ให้นักผจญภัยอยู่เมืองมากขึ้น โรงฝึก หน่วยข่าว' },
@@ -5837,23 +5839,34 @@ function payStaff(state) {
     if (s.level < STAFF_MAX_LEVEL && s.days >= s.level * 2) { s.level += 1; s.days = 0; addLog(state, `${STAFF[id].icon} ${STAFF[id].name}เก่งขึ้นเป็นเลเวล ${s.level}`, 'level'); }
   }
 }
-/** An adventurer dropping in at the guild eats and drinks at the bar: the guild earns, they rest and cheer up. A team back from a job celebrates. */
-function barPrice(state, celebrate = false) {
-  const quality = (1 + bestRoomLevel(state, 'kitchen') * 0.25) * (1 + staffOn(state, 'cook') * 0.25);
-  return Math.round((3 + bestRoomLevel(state, 'bar') * 1.5) * quality * (celebrate ? 2.5 : 1));
+/** Seats in the hall: four stools at every bar, four chairs at every dining table (meals need the kitchen). */
+function hallSeats(state) {
+  const bars = state.facilities.filter(f => f.type === 'bar').length, tables = roomLevel(state, 'kitchen') ? state.facilities.filter(f => f.type === 'dining').length : 0;
+  return { bar: bars * 4, dining: tables * 4, total: bars * 4 + tables * 4 };
 }
+/** A drink at the bar: better with a bigger bar and a bartender; a team back from a won job celebrates and spends more. */
+function barPrice(state, celebrate = false) {
+  return Math.round((3 + bestRoomLevel(state, 'bar') * 1.5) * (1 + staffOn(state, 'bartender') * 0.2) * (celebrate ? 2.5 : 1));
+}
+/** A meal at a dining table: cooked at the stove, better with a cook. */
+function mealPrice(state) {
+  return Math.round((4 + bestRoomLevel(state, 'kitchen') * 1.5 + bestRoomLevel(state, 'dining')) * (1 + staffOn(state, 'cook') * 0.15));
+}
+/** An adventurer dropping in sits down: a meal when tired (and there is a table and a kitchen), otherwise a drink at the bar. */
 function visitGuild(state, member) {
   const celebrate = Boolean(member.celebrate); member.celebrate = false;
-  if (!roomLevel(state, 'bar')) return;
-  const price = barPrice(state, celebrate);
+  const seats = hallSeats(state);
+  if (!seats.total) return;
+  const meal = seats.dining > 0 && (member.energy < 75 || !seats.bar) && !celebrate;
+  const price = meal ? mealPrice(state) : barPrice(state, celebrate);
   if ((member.purse || 0) < price + 10) return;
   member.purse -= price;
-  transact(state, { gold: price }, 'บาร์และครัว', 1);
+  transact(state, { gold: price }, meal ? 'อาหารจากครัว' : 'บาร์และครัว', 1);
   state.village.prosperity += price * 0.02;
-  const cook = staffOn(state, 'cook'), kitchen = bestRoomLevel(state, 'kitchen');
-  member.energy = clamp(member.energy + 3 + kitchen + cook, 0, 100);
-  member.morale = clamp(member.morale + 2 + cook + (celebrate ? 5 : 0), 0, 100);
-  member.atBar = state.elapsed;
+  const cook = staffOn(state, 'cook'), bartender = staffOn(state, 'bartender'), kitchen = bestRoomLevel(state, 'kitchen');
+  if (meal) { member.energy = clamp(member.energy + 5 + kitchen + cook * 2, 0, 100); member.morale = clamp(member.morale + 1, 0, 100); }
+  else { member.energy = clamp(member.energy + 2, 0, 100); member.morale = clamp(member.morale + 2 + bartender + (celebrate ? 5 : 0), 0, 100); }
+  member.atBar = state.elapsed; member.seatKind = meal ? 'dining' : 'bar';
 }
 /** An unhappy adventurer moves away: their room frees up, friendships and exam places go with them. */
 function leaveTown(state, member) {
@@ -6366,7 +6379,7 @@ function dailyUpdate(state) {
   const people = population(state);
   if (shop) transact(state, { gold: Math.round(shop * (12 + people * 0.25)) }, 'ค่าเช่าร้านค้าในหมู่บ้าน', 1);
   // Townsfolk drop in at the guild's bar too: a bigger town fills more tables.
-  if (roomLevel(state, 'bar')) transact(state, { gold: Math.round(people * 0.5 * bestRoomLevel(state, 'bar') * (1 + staffOn(state, 'cook') * 0.2)) }, 'บาร์และครัว (ชาวเมือง)', 1);
+  if (roomLevel(state, 'bar')) transact(state, { gold: Math.round(people * 0.5 * bestRoomLevel(state, 'bar') * (1 + staffOn(state, 'bartender') * 0.2)) }, 'บาร์และครัว (ชาวเมือง)', 1);
   if (market) transact(state, { wood: market * 3, stone: market * 2, herb: market * 2 }, 'ของจากตลาดนัด', 1);
   const hall = state.upgrades?.trophyHall || 0, monument = state.village?.monument || 0;
   if (hall) transact(state, { gold: hall * 30 }, 'ค่าเข้าชมหอเกียรติยศ', 1);
@@ -6656,7 +6669,7 @@ function lifeContext(state) {
     onSpecialKill: (monster, hunter) => onSpecialKill(state, monster, hunter), onRaidReach: monster => onRaidReach(state, monster),
     campLevel: () => state.frontier?.camp || 0,
     atHome: member => !isBusy(state, member.id), lodge: member => lodgeSpot(state, member),
-    visitGuild: member => visitGuild(state, member), hallCap: () => 8 + bestRoomLevel(state, 'bar') * 4, hasBar: () => roomLevel(state, 'bar') > 0,
+    visitGuild: member => visitGuild(state, member), hallCap: () => 8 + hallSeats(state).total, hasBar: () => hallSeats(state).total > 0,
     // Shops, the smithy, the dojo, the market: adventurers in town go where the village has something for them.
     shopSpots: () => villageBuildings(state).filter(b => b.kind !== 'house').map(b => doorOf(b)),
     indoors: member => member.task === 'train' || member.task === 'work' || (member.injury > 15 && roomLevel(state, 'infirmary') > 0) || state.missions.some(m => m.status === 'active' && m.prep > 0 && m.memberIds.includes(member.id)),
@@ -7495,6 +7508,7 @@ function deserializeGame(source) {
     normalized.autoTrain = Boolean(member.autoTrain);
     normalized.celebrate = Boolean(member.celebrate);
     if (finiteNumber(member.atBar)) normalized.atBar = member.atBar; else delete normalized.atBar;
+    if (['bar', 'dining'].includes(member.seatKind)) normalized.seatKind = member.seatKind; else delete normalized.seatKind;
     normalized.unhappy = finiteNumber(member.unhappy) ? clamp(member.unhappy, 0, 10000) : 0;
     const t = member.town;
     normalized.town = t && ['street', 'guild', 'lodge'].includes(t.at) && ['x', 'y', 'tx', 'ty', 'wait'].every(k => finiteNumber(t[k]) && Math.abs(t[k]) < 1000) ? { x: t.x, y: t.y, tx: t.tx, ty: t.ty, wait: t.wait, at: t.at, ...(['guild', 'lodge', 'town'].includes(t.goal) ? { goal: t.goal } : {}) } : null;
@@ -7701,7 +7715,7 @@ function saveChecksum(text) {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-return {SAVE_VERSION,DAY_LENGTH,getRankIndex,getRoomSize,getFacilityEntry,rootClass,contentOf,createGame,PROFILE_LOOKS,DEFAULT_PROFILE,normalizeProfile,INTRO_STEPS,introActive,getMemberStats,CONDITIONS,EFFICIENCY_RANGE,memberCondition,getEfficiencyReport,investmentGain,townComfort,jobSlots,getGuildStats,getRankProgress,renownFactor,getAvailableQuests,getAvailableRecruits,townNeeds,townSatisfaction,getLodging,applicantInterval,regularLimit,addApplicant,staffLevel,staffOn,staffSalary,staffStatus,barPrice,getTeamLuck,rollLoot,suggestTeam,getSellPrice,partyLimit,previewMission,canPlaceFacility,findWalkPath,getWalkableSpots,getBuildingExpansionCost,getPartitionCost,canPlacePartition,previewPartitionMove,getUpgradeCost,getExpansionCost,AUTO_PETITION_WAIT,isImportantQuest,petitionHome,guildDoor,petitionWalkTime,getPayout,getVillageInfo,idleRate,getGuildUpgradeCost,getProjectCost,getProjectStatus,TRADE_LOT,marketPrice,tradeQuote,gearPrice,repairCost,addPetition,bonusStep,boardThreshold,boardStatus,rallyCost,hunterOf,getDirector,getAdventurerRank,lessonFee,getGoals,getFestivalInfo,festivalPrizeItems,CAMP_COSTS,tick,getCraftCost,classChoices,act,deserializeGame,serializeGame};
+return {SAVE_VERSION,DAY_LENGTH,getRankIndex,getRoomSize,getFacilityEntry,rootClass,contentOf,createGame,PROFILE_LOOKS,DEFAULT_PROFILE,normalizeProfile,INTRO_STEPS,introActive,getMemberStats,CONDITIONS,EFFICIENCY_RANGE,memberCondition,getEfficiencyReport,investmentGain,townComfort,jobSlots,getGuildStats,getRankProgress,renownFactor,getAvailableQuests,getAvailableRecruits,townNeeds,townSatisfaction,getLodging,applicantInterval,regularLimit,addApplicant,staffLevel,staffOn,staffSalary,staffStatus,hallSeats,barPrice,mealPrice,getTeamLuck,rollLoot,suggestTeam,getSellPrice,partyLimit,previewMission,canPlaceFacility,findWalkPath,getWalkableSpots,getBuildingExpansionCost,getPartitionCost,canPlacePartition,previewPartitionMove,getUpgradeCost,getExpansionCost,AUTO_PETITION_WAIT,isImportantQuest,petitionHome,guildDoor,petitionWalkTime,getPayout,getVillageInfo,idleRate,getGuildUpgradeCost,getProjectCost,getProjectStatus,TRADE_LOT,marketPrice,tradeQuote,gearPrice,repairCost,addPetition,bonusStep,boardThreshold,boardStatus,rallyCost,hunterOf,getDirector,getAdventurerRank,lessonFee,getGoals,getFestivalInfo,festivalPrizeItems,CAMP_COSTS,tick,getCraftCost,classChoices,act,deserializeGame,serializeGame};
 })();
 const Artwork=(()=>{
 /* Original pixel artwork drawn at runtime. All world coordinates use 32px tiles. */
@@ -7923,6 +7937,8 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
   const stride=walking?Math.sin(phase):0,step=walking?(stride>.3?1:stride<-.3?-1:0):0,hop=walking&&Math.abs(stride)>.6?-1:0;
   const breathe=pose==='breath'?1:0,sleep=pose==='sleep',blink=pose==='blink'||sleep;
   const train=pose==='train0'?0:pose==='train1'?1:-1,work=pose==='work0'?0:pose==='work1'?1:-1;
+  // Seated at a table or a bar stool: sit0 rests a hand on the table, sit1 lifts a mug or spoon to the mouth.
+  const sit=pose==='sit0'||pose==='sit1',sip=pose==='sit1';
   const dark=tone(color,-.3),light=tone(color,.35),hairLight=tone(hair,.3),pants=tone(color,-.5);
   c.save();c.translate(Math.round(x),Math.round(y));if(facing<0||direction==='west')c.scale(-1,1);
   if(pose==='bed'){
@@ -7936,10 +7952,14 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
     rect(c,-6,-9,12,2,OUTLINE);rect(c,-5,-9,10,1,P.cream);
     c.restore();return;
   }
+  if(sit){
+    // Lowered onto the seat, knees forward, feet dangling.
+    c.translate(0,3);rect(c,-4,-4,8,3,OUTLINE);rect(c,-3,-4,6,2,pants);rect(c,-3,-2,2,2,OUTLINE);rect(c,1,-2,2,2,OUTLINE);
+  }else{
   rect(c,-4,-1,8,2,'#3b382c30');
   // Feet: a pixel of lift alternates between the legs.
   rect(c,-3+(side?step:0),-3+(step>0?-1:0),2,3,OUTLINE);rect(c,1-(side?step:0),-3+(step<0?-1:0),2,3,OUTLINE);
-  rect(c,-3+(side?step:0),-3+(step>0?-1:0),2,1,pants);rect(c,1-(side?step:0),-3+(step<0?-1:0),2,1,pants);
+  rect(c,-3+(side?step:0),-3+(step>0?-1:0),2,1,pants);rect(c,1-(side?step:0),-3+(step<0?-1:0),2,1,pants);}
   c.translate(0,hop);
   if(archer&&back){rect(c,-3,-10,2,5,P.woodDark);rect(c,-3,-11,1,1,P.coralLight);}
   // Body: tunic or robe with a lit side and a shaded side.
@@ -7952,12 +7972,13 @@ function sprite(c,x,y,member,phase=0,walking=false,facing=1,direction='south',po
    else if(archer){rect(c,-2,-8+breathe,1,1,P.woodDark);rect(c,-1,-7+breathe,1,1,P.woodDark);rect(c,0,-6,1,1,P.woodDark);}}
   rect(c,-3,-5,6,1,'#8a6a4a');
   // Arms: a coloured pixel column outlined on the outside, hands in skin.
-  const swing=walking?step:0,raised=train===0||work===0,forward=train===1||work===1;
+  const swing=walking?step:0,raised=(train===0||work===0)&&!sit,forward=train===1||work===1||(sit&&!sip);
   rect(c,-6,-8-swing+breathe,2,4,OUTLINE);rect(c,-5,-8-swing+breathe,1,3,color);rect(c,-5,-5-swing+breathe,1,1,skin);
   if(raised){rect(c,4,-12,2,5,OUTLINE);rect(c,4,-12,1,4,color);rect(c,4,-13,1,1,skin);}
+  else if(sip){rect(c,4,-12,2,5,OUTLINE);rect(c,4,-11,1,4,color);rect(c,4,-12,1,1,skin);rect(c,5,-14,3,4,OUTLINE);rect(c,5,-13,2,2,'#e8d29a');rect(c,5,-14,2,1,'#fff7ea');}
   else if(forward){rect(c,4,-8,4,2,OUTLINE);rect(c,4,-8,3,1,color);rect(c,7,-8,1,1,skin);}
   else{rect(c,4,-8+swing+breathe,2,4,OUTLINE);rect(c,4,-8+swing+breathe,1,3,color);rect(c,4,-5+swing+breathe,1,1,skin);}
-  const hand=raised?{x:4,y:-13}:forward?{x:7,y:-8}:{x:4,y:-5+swing+breathe};
+  const hand=raised?{x:4,y:-13}:sip?{x:5,y:-13}:forward?{x:7,y:-8}:{x:4,y:-5+swing+breathe};
   // Big round head with hair cap, fringe and dot eyes.
   c.translate(0,breathe+(sleep?1:0));
   poly(c,[[-4,-19],[4,-19],[6,-17],[6,-11],[4,-9],[-4,-9],[-6,-11],[-6,-17]],OUTLINE);
@@ -8799,12 +8820,27 @@ function makeRoom(f){
  const sprite=object(c=>{const previous=projection;projection={r:f.rotation||0,w,h};try{
   if(f.type==='reception'){table(c,1.95,.9);top(c,.35,.12,.7,.46,17.2,'#f6ead0',C.edge);stroke(c,[.43,.2,17.4],[.89,.2,17.4],'#bba787');cube(c,1.38,.22,.2,.2,17,5);}
   else if(f.type==='bar'){
-   // A back shelf of bottles, the counter with mugs and a tap, and a lamp.
-   cube(c,0,0,1.96,.2,0,28,'#8f6a4c','#b98a60','#6f5240');
-   for(let i=0;i<7;i++){const[x,y]=q(.14+i*.27,.1,29);R(c,x-1,y-9,3,9,['#7fb0c8','#c98a72','#9fd06a','#e8c070'][i%4]);R(c,x,y-11,1,2,'#5a4a3a');}
-   cube(c,0,.48,1.96,.42,0,16,'#a07a58','#d0a274','#7f5f45');top(c,-.02,.46,2,.46,16,'#8a6446',C.edge);
-   for(let i=0;i<4;i++){const[x,y]=q(.3+i*.45,.69,17);R(c,x-2,y-6,5,6,'#e8d29a');R(c,x-2,y-7,5,2,'#fff7ea');R(c,x+3,y-5,1,3,'#c9b077');}
-   const[tx,ty]=q(1.75,.6,17);R(c,tx-1,ty-9,2,9,'#b8946a');R(c,tx-3,ty-10,5,2,'#d9b26f');}
+   // Back wall: two shelves of bottles and a pair of kegs; the bartender works in the gap behind the counter.
+   cube(c,.05,0,2.4,.22,0,36,'#7a5a40','#a8805a','#5f4532');
+   for(const [z,row] of [[14,0],[25,1]]){top(c,.05,.02,2.4,.2,z,'#b98a60');for(let i=0;i<9;i++){const[x,y]=q(.18+i*.26,.1,z+1);const col=['#7fb0c8','#c98a72','#9fd06a','#e8c070','#b98ad1'][(i+row*2)%5];R(c,x-1,y-8,3,8,col);R(c,x,y-10,1,2,'#5a4a3a');R(c,x-1,y-5,3,1,'#fff7ea');}}
+   for(const x of [.25,2.05]){cube(c,x,.28,.32,.3,0,10,'#9a6a46','#c48a5a','#7a5034');const[kx,ky]=q(x+.16,.43,6);R(c,kx-6,ky-1,12,1,'#5a4a3a');}
+   // The counter: dark wood front, a light top with taps, mugs and a towel.
+   cube(c,.05,.78,2.4,.34,0,15,'#8a5f40','#c9965f','#6b4632');top(c,0,.74,2.5,.42,15,'#d8ab73',C.edge);top(c,0,.74,2.5,.06,15.2,'#e9c48c');
+   for(const x of [.7,1.1]){const[tx,ty]=q(x,.86,16);R(c,tx-1,ty-8,2,8,'#b8946a');R(c,tx-3,ty-9,6,2,'#d9b26f');R(c,tx-1,ty-10,2,1,'#fff7ea');}
+   for(const x of [1.55,1.85,2.15]){const[mx,my]=q(x,.95,16);R(c,mx-2,my-5,4,5,'#e8d29a');R(c,mx-2,my-6,4,1,'#fff7ea');R(c,mx+2,my-4,1,2,'#c9b077');}
+   {const[wx,wy]=q(.35,.98,16);R(c,wx-3,wy-1,6,2,'#f4f1ea');R(c,wx-3,wy,6,1,'#d9584a');}
+   // Four stools along the front for the customers.
+   for(let i=0;i<4;i++){const x=.35+i*.6;cube(c,x-.11,1.24,.22,.22,0,9,'#8a6446','#c9a074','#6b4a32');top(c,x-.13,1.22,.26,.26,9,'#b84a3a',C.edge);}
+   // A hanging lantern over the counter.
+   {const[lx,ly]=q(1.25,.5,44);R(c,lx,ly-12,1,12,'#5a4a3a');R(c,lx-3,ly,7,6,'#5a4a3a');R(c,lx-2,ly+1,5,4,'#ffe08a');}}
+  else if(f.type==='dining'){
+   // A round-cornered table set for four: plates, a bread basket and a jug; four chairs around it.
+   for(const [x,y] of [[.875,.1],[.875,1.65],[.1,.875],[1.65,.875]]){cube(c,x-.15,y-.15,.3,.3,0,8,'#8a6446','#c9a074','#6b4a32');}
+   cube(c,.875-.13,.1-.17,.26,.06,8,10,'#8a6446','#c9a074','#6b4a32');
+   cube(c,.4,.4,.95,.95,0,13,'#9a6e4c','#d2a676','#7a5238');top(c,.36,.36,1.03,1.03,13,'#e2bb86',C.edge);top(c,.5,.5,.75,.75,13.2,'#f4ecd8');
+   for(const [x,y] of [[.875,.55],[.875,1.2],[.55,.875],[1.2,.875]]){const[px,py]=q(x,y,13.4);E(c,px,py,4,2,'#fff7ea');E(c,px,py,2,1,'#e8d2b0');}
+   {const[bx,by]=q(.875,.875,14);E(c,bx,by-2,5,3,'#b8864a');R(c,bx-3,by-5,2,2,'#e8b46a');R(c,bx+1,by-5,2,2,'#e8b46a');}
+   {const[jx,jy]=q(1.05,.7,14);R(c,jx-2,jy-7,4,7,'#8fb3c9');R(c,jx-2,jy-8,4,1,'#c8e4ef');}}
   else if(f.type==='appraisal'){
    // A cloth-covered table with a balance scale, a loupe and a gem being weighed.
    table(c,1.42,.9);top(c,.12,.12,1.18,.62,17.2,'#c9b6d9',C.edge);
@@ -11547,7 +11583,7 @@ class GuildRenderer {
   for(let k=this.worldProps.length-1;k>=0;k--){const img=this.worldProps[k];if(img.flora&&this.underBuilding(img.flora.x,img.flora.y)){img.destroy();this.worldProps.splice(k,1);}}
  }
  // ---- Villagers bringing petitions: they walk from home along the road, in through the door, and wait at the desk. ----
- bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
+ bakeVillager(m){for(const direction of ['south','east','north','west']){for(const pose of ['idle','breath','work0','work1','sit0','sit1'])this.texture(`actor-${m.id}-villager-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
   for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-villager-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
  villagerRoute(home){const h=petitionHome(home),b=buildingRect(this.state),door=b.x+b.w/2,road=17.5,path=Number.isInteger(home)&&this.state.village?.paths?.['h'+home]?.pts;
   // Villagers keep to the footpath their feet wore from home to the road.
@@ -11737,11 +11773,7 @@ class GuildRenderer {
     const p=gridPoint(n.x,n.y),dx=p.x-(s.px??p.x),dy=p.y-(s.py??p.y),moved=Math.hypot(dx,dy)>.05&&playing;s.px=p.x;s.py=p.y;if(moved)s.dir=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');
     this.placeBody(s.image,key,null,p,moved?'walk'+(Math.floor(this.elapsed*8)%4):'idle',s.dir,Math.round(p.y)+.2);});
   }
-  // Guild staff at their stations: the receptionist at the desk, the cook behind the bar, the appraiser at the scales.
-  for(const [role,st] of Object.entries(this.state.staff||{})){const def=STAFF[role],f=def&&this.state.facilities.find(x=>x.type===def.needs);if(!f)continue;
-   const e=getFacilityEntry(f),d=getRoomSize(f.type,f.rotation||0),cx=f.x+d.w/2,cy=f.y+d.h/2,off=role==='registrar'?.6:role==='receptionist'?-.6:0,p=gridPoint(cx+(cx-e.x)*.8+(e.y!==cy?off:0),cy+(cy-e.y)*.8+(e.x!==cx?off:0));
-   const look=villagerLook({seed:hash(role)+3,client:def.name}),key=this.actorKey(look),sp=sprite('staff-'+role,()=>({image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52)}));
-   this.placeBody(sp.image,key,null,p,Math.floor(t*1.5+hash(role)%5)%2?'breath':'idle','south',Math.round(p.y)+.4);}
+  this.updateStaff(dt,playing,sprite,t);
   for(const [id,s] of this.lifeSprites)if(!seen.has(id)){s.image.destroy();s.shadow?.destroy();s.crown?.destroy();s.label?.destroy();this.lifeSprites.delete(id);}
   this.playFx(dt);
  }
@@ -11838,7 +11870,59 @@ class GuildRenderer {
   }
   for(const o of this.fxTexts||[])if(o.live){o.age+=dt;if(o.age>.9){o.live=false;o.text.setVisible(false);continue;}o.text.setPosition(Math.round(o.x+o.drift*o.age),Math.round(o.y-o.age*22)).setAlpha(Math.min(1,(.9-o.age)*3)).setDepth(o.y+500);}
  }
+ // A point given in a piece of furniture's own frame (before it is turned), as a grid point in the hall.
+ localPoint(f,lx,ly){const d=FACILITIES[f.type],r=f.rotation||0,[x,y]=r===1?[d.h-ly,lx]:r===2?[d.w-lx,d.h-ly]:r===3?[ly,d.w-lx]:[lx,ly];return{x:f.x+x,y:f.y+y};}
+ // Which way to face to look from one grid point at another, in the sprite's screen terms.
+ faceTo(from,to){const a=gridPoint(from.x,from.y),b=gridPoint(to.x,to.y),dx=b.x-a.x,dy=b.y-a.y;return Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}
+ // Stools at the bar and chairs at dining tables, each given to one adventurer who is eating or drinking now.
+ seatPlan(){
+  const key=(this.state.elapsed|0)+'|'+this.state.facilities.length;if(this.seatKey===key&&this.seatCache)return this.seatCache;
+  const seats={bar:[],dining:[]};
+  for(const f of this.state.facilities){
+   if(f.type==='bar')for(let i=0;i<4;i++){const p=this.localPoint(f,.35+i*.6,1.42),face=this.localPoint(f,.35+i*.6,.9);seats.bar.push({f,kind:'bar',...p,dir:this.faceTo(p,face)});}
+   if(f.type==='dining'&&this.state.facilities.some(k=>k.type==='kitchen')){const c=this.localPoint(f,.875,.875);for(const [x,y] of [[.875,.12],[.875,1.62],[.12,.875],[1.62,.875]]){const p=this.localPoint(f,x,y);seats.dining.push({f,kind:'dining',...p,dir:this.faceTo(p,c)});}}
+  }
+  const plan=new Map(),taken=new Set(),now=this.state.elapsed;
+  const guests=this.state.members.filter(m=>m.town?.at==='guild'&&m.atBar!==undefined&&now-m.atBar<45&&m.task==='rest').sort((a,b)=>a.atBar-b.atBar);
+  for(const m of guests){const list=[...(seats[m.seatKind]||[]),...seats[m.seatKind==='bar'?'dining':'bar']];const seat=list.find(x=>!taken.has(x));if(!seat)continue;taken.add(seat);plan.set(m.id,seat);}
+  this.seatKey=key;this.seatCache=plan;return plan;}
+ // Guild staff each doing their own job: the bartender serves the stools, the cook stirs and carries plates, the clerks write, the appraiser weighs, the scout reads the maps.
+ updateStaff(dt,playing,sprite,t){
+  const LOOK={receptionist:{outfit:'#7a9cc9',hair:'#5b4637',hairStyle:'long',hat:2},registrar:{outfit:'#6f8f6a',hair:'#8b5a3c',hairStyle:'short',hat:1},appraiser:{outfit:'#8a6aa8',hair:'#e9e2d0',hairStyle:'short',hat:1},scout:{outfit:'#5f7a5a',hair:'#3b302a',hairStyle:'short',hat:1},bartender:{outfit:'#4a4458',hair:'#a66c59',hairStyle:'short',hat:2},cook:{outfit:'#f1ece0',hair:'#d9b26f',hairStyle:'long',hat:0}};
+  const step=playing?dt*(this.state.settings?.speed||1):0,plan=this.seatPlan();this.staffBots??={};
+  for(const [role,st] of Object.entries(this.state.staff||{})){
+   const def=STAFF[role],f=def&&this.state.facilities.find(x=>x.type===def.needs);if(!f){this.staffBots[role]?.hide?.();continue;}
+   const look={id:'staff-'+role,name:def.name,class:'villager',skin:'#f1c9a5',...LOOK[role]},key=this.actorKey(look),sp=sprite('staff-'+role,()=>({image:this.scene.add.image(0,0,key+'-south-idle').setOrigin(.5,48/52)}));
+   const b=this.staffBots[role]??={x:null,y:null,goal:null,wait:0,carry:false,work:null};
+   const d=getRoomSize(f.type,f.rotation||0),center={x:f.x+d.w/2,y:f.y+d.h/2},e=getFacilityEntry(f),behind={x:center.x+(center.x-e.x)*.85,y:center.y+(center.y-e.y)*.85};
+   // Where this role stands to work, and what it looks at while working.
+   let spot=behind,look2=e;
+   if(role==='bartender'){
+    // Behind the counter: step over to whoever sits on a stool and pour; with nobody there, wipe the counter end to end.
+    const sat=[0,1,2,3].filter(k=>[...plan.values()].some(x=>x.kind==='bar'&&x.f===f&&Math.hypot(x.x-this.localPoint(f,.35+k*.6,1.42).x,x.y-this.localPoint(f,.35+k*.6,1.42).y)<.05));
+    const k=sat.length?sat[Math.floor(t/5)%sat.length]:Math.floor(t/7)%4;spot=this.localPoint(f,.35+k*.6,.52);look2=this.localPoint(f,.35+k*.6,1.4);}
+   else if(role==='registrar'){spot={x:behind.x+(e.y!==center.y?.6:0),y:behind.y+(e.x!==center.x?.6:0)};}
+   else if(role==='receptionist'){spot={x:behind.x-(e.y!==center.y?.6:0),y:behind.y-(e.x!==center.x?.6:0)};}
+   else if(role==='cook'){
+    // Between stirring, the cook carries a plate out to whoever is waiting at a dining table.
+    const diners=[...plan.values()].filter(x=>x.kind==='dining');
+    if(b.carry&&b.target){spot=b.target;}
+    else if(diners.length&&b.wait<=0&&!b.carry){b.carry=true;b.target=diners[Math.floor(Math.random()*diners.length)];b.target={x:b.target.x+(center.x-b.target.x)*.15,y:b.target.y+(center.y-b.target.y)*.15};spot=b.target;}
+   }
+   else if(role==='scout'){const k=Math.floor(t/6)%3;spot=k===0?behind:{x:center.x+(k===1?.6:-.6),y:center.y+(center.y-e.y)*.6};}
+   if(b.x===null){b.x=spot.x;b.y=spot.y;}
+   const dx=spot.x-b.x,dy=spot.y-b.y,dist=Math.hypot(dx,dy),moving=dist>.04&&playing;
+   if(dist>.04){const s2=Math.min(dist,step*1.3);b.x+=dx/dist*s2;b.y+=dy/dist*s2;}
+   else if(role==='cook'){if(b.carry){b.carry=false;b.target=null;b.wait=6;}else b.wait-=step;}
+   const p=gridPoint(b.x,b.y),dir=moving?this.faceTo({x:b.x-dx,y:b.y-dy},spot):this.faceTo(spot,role==='cook'&&!b.carry?center:look2);
+   const pose=moving?'walk'+(Math.floor(this.elapsed*8)%4):role==='scout'&&Math.floor(t/6)%3?'idle':'work'+(Math.floor(t*(role==='bartender'?2.2:role==='cook'?2.6:1.6)+hash(role))%2);
+   this.placeBody(sp.image,key,null,p,pose,pose.startsWith('work')?'south':dir,Math.round(p.y)+.4);
+   // A plate on the cook's hands while serving; a little steam over the pot while cooking.
+   if(role==='cook'){sp.dish??=this.scene.add.image(0,0,this.emoteTexture('dish')).setOrigin(.5,1);sp.dish.setVisible(b.carry).setPosition(Math.round(p.x+5),Math.round(p.y-14)).setDepth(Math.round(p.y)+.5);}
+  }
+ }
  roomFor(m){if(this.prepping?.has(m.id)){const board=this.state.facilities.find(f=>f.type==='board');if(board)return board;}
+  const seat=this.seatPlan().get(m.id);if(seat)return seat.f;
   // Adventurers dropping in from town read the board, chat at the counter or eat at the kitchen.
   if(m.town?.at==='guild'&&m.task==='rest'&&!(m.injury>15)){const bar=this.state.facilities.filter(f=>f.type==='bar');if(bar.length&&m.atBar&&this.state.elapsed-m.atBar<40)return bar[hash(m.id)%bar.length];const types=['board','reception','appraisal','lounge','board'];for(let i=0;i<types.length;i++){const f=this.state.facilities.find(f=>f.type===types[(hash(m.id)+i)%types.length]);if(f)return f;}}let type=m.waitingReason?'reception':m.injury>0?'infirmary':m.energy<60||m.task==='rest'?'kitchen':m.task==='train'?'training':m.task==='work'?'workshop':'reception';
   if(m.task==='rest'&&m.energy>=95&&!m.injury&&!m.waitingReason)type=['reception','kitchen','training','board'][hash(m.id)%4];
@@ -11865,7 +11949,8 @@ class GuildRenderer {
    const entry=getFacilityEntry(room),hall=buildingRect(this.state),idle=m.energy>=95&&!m.injury&&m.task==='rest',index=this.state.members.findIndex(other=>other.id===m.id);
    // Spread people sharing a room point into a small cluster so nobody stands inside anybody else.
    const spread=[[0,0],[.5,0],[-.5,0],[.25,.45],[-.25,.45],[.75,.45],[-.75,.45],[0,.9]][slot%8],shift=roommates.length===2?-.25:0;
-   const logical=idle?this.idleSpots[index]:{x:entry.x+spread[0]+shift,y:entry.y+spread[1]};
+   const seat=this.seatPlan().get(m.id);
+   const logical=seat?{x:seat.x,y:seat.y}:idle?this.idleSpots[index]:{x:entry.x+spread[0]+shift,y:entry.y+spread[1]};
    const target=gridPoint(logical.x,logical.y);
    let a=this.actors.get(m.id);if(!a){
     this.bakeActor(m);
@@ -11874,7 +11959,9 @@ class GuildRenderer {
     if(this.arrivals?.delete(m.id)&&!this.frozen){const door=hall.x+hall.w/2,start=gridPoint(door,hall.y+hall.h+3),inside=gridPoint(door,hall.y+hall.h-.5);a.x=start.x;a.y=start.y;a.image.setPosition(start.x,start.y);a.path=[inside,...this.pathBetween(inside.x,inside.y,target.x,target.y)];}
    }
    if(a.class!==m.class){this.bakeActor(m);a.class=m.class;}
-   if(a.roomId!==room.id||(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>3)){a.path=this.pathBetween(a.x,a.y,target.x,target.y);a.roomId=room.id;}
+   // Seats sit inside a table's footprint: walk to the nearest open floor, then the last step onto the chair.
+   if(a.roomId!==room.id||(a.home&&Math.hypot(a.home.x-target.x,a.home.y-target.y)>(seat?1:3))){a.path=[...this.pathBetween(a.x,a.y,target.x,target.y),target];a.roomId=room.id;}
+   a.seat=seat||null;
    const anchor=room.x+','+room.y+','+room.rotation;if(a.roomAnchor&&a.roomAnchor!==anchor){a.x=target.x;a.y=target.y;a.path=[];}a.roomAnchor=anchor;
    a.member=m;a.home=target;a.logicalHome=logical;a.away=away.has(m.id);if(!a.away)a.image.setVisible(true);if(this.frozen){a.x=target.x;a.y=target.y;}
   }
@@ -11905,13 +11992,14 @@ class GuildRenderer {
  }
  arrive(ids){this.arrivals??=new Set();for(const id of ids)this.arrivals.add(id);}
  bakeActor(m){for(const direction of ['south','east','north','west']){
-  for(const pose of direction==='south'?['idle','breath','blink','sleep','train0','train1','work0','work1','bed']:['idle','breath','blink','sleep','train0','train1','work0','work1'])this.texture(`actor-${m.id}-${m.class}-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
+  for(const pose of direction==='south'?['idle','breath','blink','sleep','train0','train1','work0','work1','bed','sit0','sit1']:['idle','breath','blink','sleep','train0','train1','work0','work1','sit0','sit1'])this.texture(`actor-${m.id}-${m.class}-${direction}-${pose}`,makeActorTexture(m,0,false,1,direction,pose));
   for(let frame=0;frame<4;frame++)this.texture(`actor-${m.id}-${m.class}-${direction}-walk${frame}`,makeActorTexture(m,frame*Math.PI/2+Math.PI/4,true,1,direction));}}
  emoteTexture(kind){const key='emote-'+kind;if(this.scene.textures.exists(key))return key;const c=document.createElement('canvas');c.width=14;c.height=12;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
   const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
   if(kind==='z'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(4,3,6,1,'#6f6a8f');px(8,4,2,1,'#6f6a8f');px(6,5,2,1,'#6f6a8f');px(4,6,2,1,'#6f6a8f');px(4,7,6,1,'#6f6a8f');}
   else if(kind==='sad'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#e6ecf2');px(3,3,8,3,'#8f9db0');px(4,2,5,1,'#8f9db0');px(4,7,1,2,'#6fa8d8');px(7,7,1,2,'#6fa8d8');px(9,6,1,2,'#6fa8d8');}
   else if(kind==='gear'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff1c4');px(3,8,2,1,'#8a6446');px(4,7,2,1,'#8f9a98');px(6,5,2,1,'#8f9a98');px(8,3,2,1,'#8f9a98');px(7,6,1,1,'#d9584a');px(6,4,1,1,'#d9584a');}
+  else if(kind==='dish'){px(0,6,14,3,'#4f4540');px(1,6,12,2,'#fff7ea');px(3,3,8,3,'#e8b46a');px(5,2,4,1,'#9fd06a');}
   else if(kind==='bag'){px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(4,4,6,5,'#c9a06a');px(5,3,4,1,'#8a6446');px(6,6,2,1,'#d9584a');}
   else{px(1,1,12,10,'#4f4540');px(2,2,10,8,'#fff8e7');px(6,3,2,6,'#d98978');px(4,5,6,2,'#d98978');}
   this.texture(key,c);return key;}
@@ -11933,22 +12021,25 @@ class GuildRenderer {
     continue;}
    if(a.inTown){a.inTown=false;const hall=buildingRect(this.state),inside=gridPoint(hall.x+hall.w/2,hall.y+hall.h-.5);a.x=inside.x;a.y=inside.y;a.path=this.pathBetween(inside.x,inside.y,a.home.x,a.home.y);}
    a.image.setRotation(0);a.clock+=elapsed;
-   if(!a.path?.length&&a.clock>6){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
+   if(!a.path?.length&&a.clock>6&&!a.seat){a.clock=0;const n=hash(a.member.id+Math.floor(this.elapsed/6));const home=gridPosition(a.home.x,a.home.y),p=gridPoint(home.x+((n%9)-4)*.05,home.y);a.path=[p];}
    const p=a.path?.[0];let walking=false;if(p){const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy);walking=d>1;
     if(d<=1)a.path.shift();else{const step=Math.min(d,elapsed*22);a.x+=dx/d*step;a.y+=dy/d*step;a.direction=Math.abs(dx)>Math.abs(dy)*1.6?(dx<0?'west':'east'):(dy<0?'north':'south');}}
    // Pose from activity: stride while walking, otherwise train / work / sleep at home, or breathe and blink.
    const m=a.member,home=!a.path?.length,t=this.realTime+(hash(m.id)%97)/13;let pose;
-   if(walking&&playing)pose='walk'+(Math.floor(this.elapsed*8)%4);
+   if(a.seat&&home&&!walking){pose=(Math.floor(t*.8+hash(m.id))%3===0)?'sit1':'sit0';a.direction=a.seat.dir;}
+   else if(walking&&playing)pose='walk'+(Math.floor(this.elapsed*8)%4);
    else if(home&&m.task==='train'&&!m.waitingReason)pose='train'+(Math.floor(t*2.4)%2);
    else if(home&&m.task==='work')pose='work'+(Math.floor(t*2.2)%2);
    else if(home&&m.task==='rest'&&m.energy<95&&!m.waitingReason&&!m.injury&&!m.town)pose='sleep';
    else pose=t%4.3<.15?'blink':Math.floor(t*1.5)%2?'breath':'idle';
    const inBed=a.bed&&home&&!walking&&(pose==='sleep'||m.injury>0);if(inBed)pose='bed';else if(pose==='sleep')pose=Math.floor(t*1.2)%2?'breath':'idle';
-   const facing=pose.startsWith('walk')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
+   const facing=pose.startsWith('walk')||pose.startsWith('sit')?a.direction:pose==='idle'||pose==='breath'||pose==='blink'?a.direction:'south';
    a.image.setTexture(`actor-${m.id}-${m.class}-${facing}-${pose}`);
    if(inBed)a.image.setPosition(Math.round(a.bed.x),Math.round(a.bed.y)).setDepth(a.bed.depth+(hash(m.id)%89)/1000);
+   // Seated on a stool or chair: lifted onto the seat and drawn over it.
+   else if(pose.startsWith('sit'))a.image.setPosition(Math.round(a.x),Math.round(a.y)-(a.seat?.kind==='bar'?7:6)).setDepth(Math.round(a.y)+2+(hash(m.id)%89)/100);
    else a.image.setPosition(Math.round(a.x),Math.round(a.y)).setDepth(Math.round(a.y)+(hash(m.id)%89)/100);
-   const emote=pose==='sleep'||(pose==='bed'&&!m.injury)?'z':home&&m.injury>0?'heal':null;
+   const emote=pose==='sleep'||(pose==='bed'&&!m.injury)?'z':home&&m.injury>20?'heal':null;
    if(emote){if(!a.emote)a.emote=this.scene.add.image(0,0,this.emoteTexture(emote)).setOrigin(.5,1);if(a.emoteKind!==emote){a.emote.setTexture(this.emoteTexture(emote));a.emoteKind=emote;}
     const float=Math.sin(t*2.2)*1.5;const ex=inBed?a.bed.x+5:a.x+7,ey=inBed?a.bed.y-12:a.y-24;a.emote.setVisible(true).setPosition(Math.round(ex),Math.round(ey+float)).setDepth((inBed?a.bed.depth:Math.round(a.y))+1).setAlpha(.75+Math.sin(t*2.2)*.25);}
    else a.emote?.setVisible(false);
@@ -12085,7 +12176,7 @@ class GuildRenderer {
 return {GuildRenderer};
 })();
 const {partitionSize,partitionRect,containsRect}=Site;
-const {getGoals,getFestivalInfo,festivalPrizeItems,CAMP_COSTS,partyLimit,createGame,tick,act,serializeGame,deserializeGame,getGuildStats,getMemberStats,previewMission,getAvailableQuests,getAvailableRecruits,getUpgradeCost,getExpansionCost,getBuildingExpansionCost,getRoomSize,getPartitionCost,DAY_LENGTH,introActive,suggestTeam,getSellPrice,normalizeProfile,PROFILE_LOOKS,DEFAULT_PROFILE,getPayout,getVillageInfo,getProjectStatus,getGuildUpgradeCost,getCraftCost,getRankProgress,marketPrice,tradeQuote,gearPrice,getAdventurerRank,classChoices,rootClass,lessonFee,contentOf,boardStatus,bonusStep,rallyCost,getLodging,regularLimit,getEfficiencyReport,investmentGain,memberCondition,CONDITIONS,staffStatus,staffSalary,barPrice,townNeeds,townSatisfaction}=Engine;
+const {getGoals,getFestivalInfo,festivalPrizeItems,CAMP_COSTS,partyLimit,createGame,tick,act,serializeGame,deserializeGame,getGuildStats,getMemberStats,previewMission,getAvailableQuests,getAvailableRecruits,getUpgradeCost,getExpansionCost,getBuildingExpansionCost,getRoomSize,getPartitionCost,DAY_LENGTH,introActive,suggestTeam,getSellPrice,normalizeProfile,PROFILE_LOOKS,DEFAULT_PROFILE,getPayout,getVillageInfo,getProjectStatus,getGuildUpgradeCost,getCraftCost,getRankProgress,marketPrice,tradeQuote,gearPrice,getAdventurerRank,classChoices,rootClass,lessonFee,contentOf,boardStatus,bonusStep,rallyCost,getLodging,regularLimit,getEfficiencyReport,investmentGain,memberCondition,CONDITIONS,staffStatus,staffSalary,barPrice,mealPrice,hallSeats,townNeeds,townSatisfaction}=Engine;
 const {STAFF,FACILITIES,MEMBERS,QUESTS,EQUIPMENT,JOBS,RANKS,REGIONS,GUILD_EVENTS,MISSION_POLICIES,RANK_REQUIREMENTS,ROOM_TYPES,BUILDING_STAGES,LOOT,RARITIES,PAYOUT_PLANS,PETITION_LINES,GUILD_UPGRADES,VILLAGE_PROJECTS,RANK_UNLOCKS,MATERIALS,CONSUMABLES,ADVENTURER_RANKS,RANK_POWER,HUNT_ZONES,JOB_COMBAT,PARTS,GOODS,TREASURES,BUY_RATES,TRADE_RULES,HOME_NEEDS,HOUSE_TIERS,FESTIVALS,MONSTER_TRAITS,MONSTER_STATS}=Content;
 const {storeUsed,storeCapacity,wholesalePrice,goodValue,caravanLoad,caravanCapacity}=Trade;
 const {ROTATABLE,homeStatus,homeOf,villageBuildings,housingCapacity}=Town;
@@ -12647,8 +12738,8 @@ function renderEfficiency(){const r=getEfficiencyReport(state),pctv=Math.round(r
  <div class="section-title">ความสบายในเมือง ${n(r.comfort.value)}<small>อารมณ์ของคนที่อยู่บ้านจะค่อย ๆ เข้าหาค่านี้</small></div><div class="comfort-parts">${comfort}</div>
  ${last?`<div class="section-title">สรุปวันที่ ${n(last.day)}<small>ประสิทธิภาพ ${Math.round(last.eff*100)}% · งานสำเร็จ ${n(last.jobs)}${last.failed?` · พลาด ${n(last.failed)}`:''} · มาใหม่ ${n(last.joined)} · ย้ายออก ${n(last.left)}</small></div><div class="day-book"><div><small>รายรับ +${n(last.incomeTotal)} G</small>${book(last.income,1)}</div><div><small>รายจ่าย −${n(last.expenseTotal)} G</small>${book(last.expense,-1)}</div></div>${(state.history||[]).length>1?`<div class="eff-trend">${state.history.map(h=>`<span title="วันที่ ${h.day}"><i style="height:${Math.round((h.eff-.6)/.6*100)}%"></i><small>${Math.round(h.eff*100)}</small></span>`).join('')}</div>`:''}`:'<p class="tiny-note">สรุปรายวันจะขึ้นเมื่อจบวันแรก</p>'}`;}
 // ---- Guild staff: who works in the hall, what they do, and what they cost. ----
-function renderStaff(){const today=state.today?.income||{},last=(state.history||[]).at(-1),bar=today['บาร์และครัว']||0,margin=today['ส่วนต่างประเมินของ']||0,salary=Object.entries(state.staff||{}).reduce((a,[id,s])=>a+staffSalary(id,s.level),0);
- return `<div class="stat-grid"><div class="stat-box">รายได้บาร์และครัววันนี้<b>${n(bar)} G</b></div><div class="stat-box">ส่วนต่างประเมินของวันนี้<b>${n(margin)} G</b></div><div class="stat-box">เงินเดือนพนักงาน<b>${n(salary)} G/วัน</b></div><div class="stat-box">ราคาที่บาร์ต่อครั้ง<b>${n(barPrice(state))} G${state.facilities.some(f=>f.type==='bar')?'':' (ยังไม่มีบาร์)'}</b></div></div>
+function renderStaff(){const today=state.today?.income||{},last=(state.history||[]).at(-1),bar=(today['บาร์และครัว']||0)+(today['อาหารจากครัว']||0),margin=today['ส่วนต่างประเมินของ']||0,salary=Object.entries(state.staff||{}).reduce((a,[id,s])=>a+staffSalary(id,s.level),0);
+ return `<div class="stat-grid"><div class="stat-box">รายได้บาร์และครัววันนี้<b>${n(bar)} G</b></div><div class="stat-box">ส่วนต่างประเมินของวันนี้<b>${n(margin)} G</b></div><div class="stat-box">เงินเดือนพนักงาน<b>${n(salary)} G/วัน</b></div><div class="stat-box">เครื่องดื่ม / อาหาร<b>${n(barPrice(state))} / ${n(mealPrice(state))} G</b><small>ที่นั่ง: บาร์ ${n(hallSeats(state).bar)} · โต๊ะอาหาร ${n(hallSeats(state).dining)}${state.facilities.some(f=>f.type==='dining')&&!state.facilities.some(f=>f.type==='kitchen')?' (ต้องมีเตาทำอาหาร)':''}</small></div></div>
  <p class="tiny-note">พนักงานทำงานประจำที่ของตัวเองในกิลด์ให้เห็น รับเงินเดือนทุกเช้า และเก่งขึ้นเมื่อทำงานไปทุก ๆ ไม่กี่วัน (สูงสุดเลเวล 5) ถ้าเอาที่ทำงานออก พนักงานจะว่างงานและไม่มีผล</p>
  ${Object.entries(STAFF).map(([id,def])=>{const st=staffStatus(state,id);return `<div class="staff-card ${st.hired?'hired':''}"><div class="staff-head"><span class="staff-icon">${def.icon}</span><div><b>${h(def.name)}${st.hired?` · Lv.${st.level}`:''}</b><small>${st.hired?(st.working?`ทำงานที่${h(st.station)} · เงินเดือน ${n(st.salary)} G/วัน${st.level<5?` · อีก ${n(Math.max(0,st.nextAt-st.days))} วันจะเก่งขึ้น`:' · ชำนาญเต็มที่'}`:`⚠ ว่างงาน: วาง${h(st.station)}ในกิลด์`):`ประจำ${h(st.station)} · ค่าแรกเข้า ${n(def.hire)} G · เงินเดือน ${n(st.salary)} G/วัน`}</small></div></div><p>${h(def.desc)}</p>${st.hired?`<div class="progress"><i style="width:${st.level>=5?100:pct(st.days,st.nextAt||1)}%"></i></div><button class="secondary" data-fire-staff="${id}">ให้ออก</button>`:roomCount(def.needs)?`<button class="primary" data-hire-staff="${id}" ${st.ok?'':'disabled'}>จ้าง · ${n(def.hire)} G</button>${st.ok?'':`<small class="tiny-note">${h(st.reason)}</small>`}`:`<button data-build="${def.needs}">🪑 วาง${h(st.station)}ก่อน</button>`}</div>`;}).join('')}`;}
 function roomCount(type){return state.facilities.filter(f=>f.type===type).length;}
