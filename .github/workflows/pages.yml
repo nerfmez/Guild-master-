@@ -26,7 +26,8 @@ jobs:
       - run: npm ci
       - run: npm run export
       - run: mkdir -p site && cp play.html site/index.html && touch site/.nojekyll
-      # Isolated PR #23 preview. Never replace the production homepage.
+      # Isolated PR #23 preview; rebuild on this main-branch workflow update.
+      # Production homepage remains built from main.
       - uses: actions/checkout@v4
         with:
           ref: fix/quest-news-tablet-promotion-20261012
