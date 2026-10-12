@@ -825,3 +825,13 @@ body.compact-ui .world-actions #scene-only-button{order:2}
 body.compact-ui .world-actions #fullscreen-button{order:3}
 body.compact-ui .world-actions #view-controls-toggle{order:4}
 body.compact-ui .world-actions .hud-inbox{order:0}
+
+/* R52: Hard-anchor original four controls to the right viewport edge.
+   Earlier flexbox-only rules did not work because the world-actions box shrinks to its contents. */
+body.compact-ui .world-actions{position:absolute!important;top:calc(max(12px,env(safe-area-inset-top)) + 73px)!important;left:16px!important;right:16px!important;width:calc(100% - 32px)!important;max-width:none!important;display:flex!important;justify-content:flex-end!important;align-items:center!important;gap:7px!important;box-sizing:border-box}
+body.compact-ui .world-actions .hud-inbox{margin-right:auto!important;flex:0 0 auto!important}
+body.compact-ui .world-actions #hero-toggle,
+body.compact-ui .world-actions #scene-only-button,
+body.compact-ui .world-actions #fullscreen-button,
+body.compact-ui .world-actions #view-controls-toggle{flex-shrink:0!important}
+@media(max-height:500px){body.compact-ui .world-actions{top:calc(max(10px,env(safe-area-inset-top)) + 38px)!important}}
