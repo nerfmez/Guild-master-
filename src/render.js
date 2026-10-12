@@ -1,4 +1,5 @@
 /* Original pixel artwork drawn at runtime. All world coordinates use 32px tiles. */
+import { drawIllustratedIcon, drawIllustratedRegion } from './illustrated-art.js';
 import { JOBS, MEMBERS, FACILITIES } from './content.js';
 import { canPlaceFacility } from './game.js';
 import { makeMonster, questFoe } from './monsters.js';
@@ -305,6 +306,7 @@ export function drawPortrait(canvas,member={},size=64) {
 }
 
 export function drawItemIcon(canvas,type='sword',size=40) {
+  if(drawIllustratedIcon(canvas,type,size))return;
   canvas.width=size; canvas.height=size; const c=canvas.getContext('2d'); c.imageSmoothingEnabled=false;
   c.clearRect(0,0,size,size); c.save(); c.translate(size/2,size/2); c.scale(size/32,size/32);
   const name=String(typeof type==='object'?(type.type||type.id||type.name):type).toLowerCase();
@@ -434,21 +436,7 @@ export function makeActorTexture(member={},phase=0,walking=false,facing=1,direct
 
 /** Quest board thumbnail: the region's scenery with the quest's foe. */
 export function drawQuestArt(canvas,quest={},options={}) {
-  const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height;c.imageSmoothingEnabled=false;c.clearRect(0,0,w,h);
-  const region=quest.region||options.region||'meadow';
-  const colors=region==='mist'?['#dce7e1','#acc6bb','#829e97','#c9d6cf']:region==='ruins'?['#ece4dc','#b6c2b7','#869c94','#d8cbb9']:['#eef2dc','#c4d7ac','#91b296','#e2d0ad'];
-  c.save();c.scale(w/160,h/90);
-  rect(c,0,0,160,90,colors[0]);rect(c,0,0,160,20,tone(colors[0],.35));
-  for(let i=0;i<5;i++){const x=i*38-14;rect(c,x+16,24+(i%2)*6,6,40,tone(colors[2],-.25));leafCluster(c,x,18+(i%2)*7,38,28,colors[1],colors[0]);leafCluster(c,x+8,8+(i%2)*6,24,22,colors[1],tone(colors[0],.2));}
-  if(region==='ruins')for(let i=0;i<2;i++){const x=12+i*112;box(c,x,40,12,30,P.stone,'#a0aca5');rect(c,x-3,38,18,4,'#c7ccc0');}
-  rect(c,0,66,160,24,colors[3]);rect(c,0,66,160,2,tone(colors[3],-.12));rect(c,0,72,160,1,tone(colors[3],.3));
-  for(let i=0;i<9;i++)rect(c,(i*29+7)%160,63+(i%3)*2,2,5,colors[2]);
-  if(options.region&&!quest.id){flower(c,30,76,P.coralLight);flower(c,124,74,P.white);}
-  else{c.save();c.translate(108,80);c.scale(.82,.82);battleEnemy(c,0,0,quest,0,false);c.restore();
-    for(const [i,dx] of [[0,22],[1,40]])rect(c,dx,74+i,8,2,'#3b382c30');}
-  if(region==='mist'){c.globalAlpha=.4;rect(c,0,58,160,6,'#eef4f1');rect(c,20,52,90,4,'#eef4f1');c.globalAlpha=1;}
-  if(options.locked){c.fillStyle='#3d352ccc';c.fillRect(0,0,160,90);box(c,72,36,16,13,P.gold,P.woodDark);rect(c,75,29,10,2,P.cream);rect(c,75,29,2,8,P.cream);rect(c,83,29,2,8,P.cream);rect(c,79,40,2,4,P.woodDark);}
-  c.restore();
+  drawIllustratedRegion(canvas,quest.region||options.region||'meadow',Boolean(options.locked));
 }
 
 /** Shared drawing for other views (the dungeon map). */
