@@ -35,7 +35,7 @@ jobs:
       - run: npm ci && npm run export
         working-directory: preview-src
       - run: mkdir -p site/preview/pr-23 && cp preview-src/play.html site/preview/pr-23/index.html
-      # Isolated Hero floating joystick preview from PR #25; refresh after suppressing combat toasts.
+      # Isolated Hero floating joystick preview from PR #25; refresh after preventing camera drag.
       - uses: actions/checkout@v4
         with:
           ref: feat/hero-floating-joystick-20261012
